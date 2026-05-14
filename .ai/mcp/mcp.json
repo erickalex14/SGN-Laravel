@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "C:\\php\\php.exe",
+      "args": [
+        "C:\\Users\\LENOVO\\Desktop\\Backend Novitec Servicio\\novitec-sgn\\artisan",
+        "boost:mcp"
+      ]
+    }
+  }
+}
