@@ -79,5 +79,8 @@ class GuardarEmpresaRequest extends FormRequest
 ### Estado general del proyecto: En tiempo, operando bajo altos estándares de mantenibilidad y seguridad corporativa.
 
 ## 5. Evidencia y metricas de desarrllo
+**Lineas de codigo refactorizadas:** 1500+ (sin contar los archivos de Blade y assets estáticos), contando archivos blade 5022 lineas.
+**Módulos migrados:** 4 (Core, Directorio, Identidad, Inventario - fase inicial).
+**Archivos modificados:** 84+ (Controllers, Services, Repositories, FormRequests, Blade templates y DTOs).
 
-
+**Repositorio Git:** * [Repositorio GitHub - Dominios Identity, Directory terminados e Inventory en fase inicial](https://github.com/erickalex14/SGN-Laravel/tree/dev)
