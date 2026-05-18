@@ -1,15 +1,138 @@
 <?php
 
+use App\Http\Controllers\Directory\CasController;
+use App\Http\Controllers\Directory\EmpresaController;
+use App\Http\Controllers\Directory\SucursalClienteController;
+use App\Http\Controllers\Identity\GrupoAccesoController;
+use App\Http\Controllers\Identity\UsuarioController;
+use App\Http\Controllers\Inventory\MarcaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Identity\AuthController;
+use App\Http\Controllers\DashboardController;
+// ... otros controladores
 
-// Pagina de inicio (Login)
-Route::get('/', function () { return view('auth.login'); })->name('login');
+// Grupo de rutas que requieren sesion activa
+Route::middleware('auth')->group(function () {
 
-// Proceso de autenticacion
-Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+    // Dashboard (Requiere acceso basico)
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-// Dashboard (Protegido por middleware de autenticacion)
-Route::get('/dashboard', function () {
-    return view('dashboard.index');
-})->middleware('auth')->name('dashboard');
+    //-------------------------------------------------------
+    //------------------EMPRESAS-----------------------------
+    //-------------------------------------------------------
+
+    Route::middleware(['permiso:empresas,ver'])->group(function () {
+        Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas.index');
+        Route::get('/empresas/listar', [EmpresaController::class, 'listar'])->name('empresas.listar');
+    });
+
+    Route::middleware(['permiso:empresas,crear'])->group(function () {
+        Route::post('/empresas/guardar', [EmpresaController::class, 'guardar'])->name('empresas.guardar');
+    });
+
+    //-------------------------------------------------------
+    //----------------------CAS------------------------------
+    //-------------------------------------------------------
+
+    // Vista principal protegida por el permiso general del modulo (require_modulo('cas', 'ver'))
+    Route::middleware(['permiso:cas,ver'])->group(function () {
+        Route::get('/cas', [CasController::class, 'index'])->name('cas.index');
+    });
+
+    // Operaciones de guardado protegidas por el permiso estricto (gate_permiso('cas', 'crear'))
+    Route::middleware(['permiso:cas,crear'])->group(function () {
+        Route::post('/cas/guardar', [CasController::class, 'guardar'])->name('cas.guardar');
+    });
+
+    // Endpoint interno para JSON (utilizado en el modulo de Órdenes o reportes)
+    // No requiere validación profunda más allá de estar autenticado
+    Route::get('/cas/activos', [CasController::class, 'listarActivos'])->name('cas.listar_activos');
+
+    //-------------------------------------------------------
+    //--------------SUCURSALES/CLIENTE-SUCURSAL--------------
+    //-------------------------------------------------------
+
+    // Vista principal protegida por (require_modulo('sucursales', 'ver'))
+    Route::middleware(['permiso:sucursales,ver'])->group(function () {
+        Route::get('/sucursales-cliente', [SucursalClienteController::class, 'index'])->name('sucursales_cliente.index');
+    });
+
+    // Crear protegido por gate_permiso('sucursales', 'crear')
+    Route::middleware(['permiso:sucursales,crear'])->group(function () {
+        Route::post('/sucursales-cliente/crear', [SucursalClienteController::class, 'crear'])->name('sucursales_cliente.crear');
+    });
+
+    // Modificar (editar/toggle) protegido por gate_permiso('sucursales', 'editar')
+    Route::middleware(['permiso:sucursales,editar'])->group(function () {
+        Route::post('/sucursales-cliente/actualizar', [SucursalClienteController::class, 'actualizar'])->name('sucursales_cliente.actualizar');
+        Route::post('/sucursales-cliente/toggle', [SucursalClienteController::class, 'toggle'])->name('sucursales_cliente.toggle');
+    });
+
+    //-------------------------------------------------------
+    //------------------PERMISOS GRUPOS----------------------
+    //-------------------------------------------------------
+
+    // Vista principal
+    Route::middleware(['permiso:grupos,ver'])->group(function () {
+        Route::get('/grupos', [GrupoAccesoController::class, 'index'])->name('grupos.index');
+        Route::get('/grupos/permisos/{id}', [GrupoAccesoController::class, 'obtenerPermisos'])->name('grupos.permisos.listar');
+    });
+
+    // Guardar (Crear/Editar) Grupo
+    Route::middleware(['permiso:grupos,crear'])->group(function () {
+        Route::post('/grupos/guardar', [GrupoAccesoController::class, 'guardar'])->name('grupos.guardar');
+    });
+
+    // Eliminar
+    Route::middleware(['permiso:grupos,eliminar'])->group(function () {
+        Route::post('/grupos/eliminar', [GrupoAccesoController::class, 'eliminar'])->name('grupos.eliminar');
+    });
+
+    // Guardar Permisos (Requiere permiso de editar grupos)
+    Route::middleware(['permiso:grupos,editar'])->group(function () {
+        Route::post('/grupos/permisos', [GrupoAccesoController::class, 'guardarPermisos'])->name('grupos.permisos.guardar');
+    });
+
+
+    //-------------------------------------------------------
+    //---------------------USUARIOS--------------------------
+    //-------------------------------------------------------
+
+    // Crear Usuario
+    Route::middleware(['permiso:usuarios,crear'])->group(function () {
+        Route::get('/usuarios/crear', [UsuarioController::class, 'index'])->name('usuarios.crear');
+        Route::post('/usuarios/guardar', [UsuarioController::class, 'storeOrUpdate'])->name('usuarios.guardar');
+    });
+
+    // Modificar Usuario
+    Route::middleware(['permiso:usuarios,editar'])->group(function () {
+        Route::get('/usuarios/modificar', [UsuarioController::class, 'editList'])->name('usuarios.modificar');
+        // El metodo storeOrUpdate gestiona tanto creacion como edicion en base a la existencia del 'id'
+        Route::post('/usuarios/actualizar', [UsuarioController::class, 'storeOrUpdate'])->name('usuarios.actualizar');
+        Route::post('/usuarios/toggle', [UsuarioController::class, 'toggle'])->name('usuarios.toggle');
+
+        // Endpoints AJAX puros
+        Route::get('/usuarios/{id}/permisos', [UsuarioController::class, 'getPermisos']);
+        Route::get('/usuarios/{id}/sucursales', [UsuarioController::class, 'getSucursales']);
+    });
+
+
+    //-------------------------------------------------------
+    //---------------------=MARCAS---------------------------
+    //-------------------------------------------------------
+
+    // Vista conjunta protegida por permiso de modulo
+    Route::middleware(['permiso:marcas,ver'])->group(function () {
+        Route::get('/inventario/marcas-y-tipos', [MarcaController::class, 'index'])->name('marcas_tipos.index');
+    });
+
+    // Rutas operativas de Marcas (Mapeadas al permiso respectivo)
+    Route::middleware(['permiso:marcas,crear'])->group(function () {
+        Route::post('/inventario/marcas', [MarcaController::class, 'guardarMarca'])->name('marcas.guardar');
+    });
+
+    // Rutas operativas de Tipos (Mapeadas al permiso de marcas ya que comparten módulo)
+    Route::middleware(['permiso:marcas,crear'])->group(function () {
+        Route::post('/inventario/tipos', [MarcaController::class, 'guardarTipo'])->name('tipos_dispositivo.guardar');
+    });
+});

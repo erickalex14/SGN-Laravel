@@ -20,20 +20,25 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): RedirectResponse
     {
+        $dto = new LoginDTO(
+            $request->validated('usuario'),
+            $request->validated('clave')
+        );
+
         try {
-            $dto = new LoginDTO(
-                $request->input('usuario'),
-                $request->input('clave')
-            );
-
-            $this->authService->validarAcceso($dto);
-
-            // Redireccion a la ruta de dashboard de Laravel
+            $this->authService->autenticar($dto);
             return redirect()->route('dashboard');
-
         } catch (Exception $e) {
-            // Replicamos el codigo de error '?error=1' para compatibilidad con el frontend
-            return redirect()->to('/login?error=1');
+            $errorParam = $e->getMessage() === 'usuario_inactivo' ? 'inactivo' : '1';
+
+            // Mantenemos la redireccion con GET params como en el sistema original
+            return redirect()->route('login', ['error' => $errorParam]);
         }
+    }
+
+    public function logout(): RedirectResponse
+    {
+        $this->authService->cerrarSesion();
+        return redirect()->route('login');
     }
 }

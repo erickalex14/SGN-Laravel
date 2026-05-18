@@ -2,83 +2,69 @@
 
 namespace App\Http\Controllers\Directory;
 
-use App\DTOs\Directory\SucursalDTO;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Directory\Sucursal\StoreSucursalRequest;
-use App\Http\Requests\Directory\Sucursal\UpdateSucursalRequest;
+use App\Http\Requests\Directory\GuardarSucursalRequest;
 use App\Services\Directory\SucursalService;
-use Exception;
+use App\Repositories\Directory\SucursalRepository;
+use App\DTOs\Directory\SucursalDTO;
 use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
+use Exception;
 
 class SucursalController extends Controller
 {
-    protected SucursalService $sucursalService;
+    protected SucursalService $service;
+    protected SucursalRepository $repository;
 
-    public function __construct(SucursalService $sucursalService)
+    public function __construct(SucursalService $service, SucursalRepository $repository)
     {
-        $this->sucursalService = $sucursalService;
+        $this->service = $service;
+        $this->repository = $repository;
     }
 
-    public function store(StoreSucursalRequest $request): JsonResponse
+    public function index(): View
+    {
+        $sucursales = $this->repository->obtenerTodas();
+        return view('directory.sucursales.index', compact('sucursales'));
+    }
+
+    public function crear(GuardarSucursalRequest $request): JsonResponse
+    {
+        return $this->procesarGuardado($request);
+    }
+
+    public function actualizar(GuardarSucursalRequest $request): JsonResponse
+    {
+        if (!$request->input('id')) {
+            return response()->json(['ok' => false, 'error' => 'Sucursal no identificada.'], 422);
+        }
+        return $this->procesarGuardado($request);
+    }
+
+    private function procesarGuardado(GuardarSucursalRequest $request): JsonResponse
     {
         try {
             $dto = new SucursalDTO(
-                $request->input('nombre_sucursal'),
+                $request->input('id') ? (int) $request->input('id') : null,
+                (int) $request->input('nro_sucursal'),
                 $request->input('ciudad'),
-                $request->input('secuencial'),
-                $request->input('nro_caso')
+                strtoupper($request->input('secuencial')),
+                $request->input('nro_base')
             );
 
-            $this->sucursalService->registrarSucursal($dto);
+            $resultado = $this->service->guardar($dto);
 
             return response()->json([
-                'status' => 'success',
-                'message' => 'La sucursal ha sido registrada correctamente en el sistema.'
-            ], 201);
+                'ok'       => true,
+                'mensaje'  => $resultado['mensaje'],
+                'sucursal' => $resultado['sucursal']
+            ]);
 
         } catch (Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Se ha producido un error interno. Consulte los registros del sistema.'
-            ], 500);
-        }
-    }
-
-    public function index(): JsonResponse
-    {
-        try {
-            $sucursales = $this->sucursalService->listarSucursales();
-            return response()->json(['status' => 'success', 'data' => $sucursales], 200);
-        } catch (Exception $e) {
-            return response()->json(['status' => 'error', 'message' => 'Error obteniendo las sucursales.'], 500);
-        }
-    }
-
-    public function update(UpdateSucursalRequest $request, int $id): JsonResponse
-    {
-        try {
-            $dto = new SucursalDTO(
-                $request->input('nombre_sucursal'),
-                $request->input('ciudad'),
-                $request->input('secuencial'),
-                $request->input('nro_caso')
-            );
-
-            $this->sucursalService->modificarSucursal($id, $dto);
-
-            return response()->json(['status' => 'success', 'message' => 'Sucursal actualizada exitosamente.'], 200);
-        } catch (Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    public function destroy(int $id): JsonResponse
-    {
-        try {
-            $this->sucursalService->removerSucursal($id);
-            return response()->json(['status' => 'success', 'message' => 'Sucursal eliminada del sistema.'], 200);
-        } catch (Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+                'ok'    => false,
+                'error' => $e->getMessage()
+            ], 422);
         }
     }
 }

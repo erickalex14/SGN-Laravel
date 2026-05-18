@@ -2,84 +2,61 @@
 
 namespace App\Services\Directory;
 
+use App\Repositories\Directory\SucursalRepository;
 use App\DTOs\Directory\SucursalDTO;
-use App\Repositories\Contracts\Directory\SucursalRepositoryInterface;
+use App\Models\Directory\Sucursal;
 use Illuminate\Support\Facades\Log;
 use Exception;
-
 class SucursalService
 {
-    protected SucursalRepositoryInterface $sucursalRepository;
+    protected SucursalRepository $repository;
 
-    public function __construct(SucursalRepositoryInterface $sucursalRepository)
+    public function __construct(SucursalRepository $repository)
     {
-        $this->sucursalRepository = $sucursalRepository;
+        $this->repository = $repository;
     }
 
-    public function registrarSucursal(SucursalDTO $dto): object
+    /**
+     * @throws Exception
+     */
+    public function guardar(SucursalDTO $dto): array
     {
-        Log::info('Iniciando proceso de registro para nueva sucursal.', [
-            'nombre_sucursal' => $dto->nombreSucursal
-        ]);
-
-        try {
-            $sucursal = $this->sucursalRepository->crear($dto->toArray());
-
-            Log::info('Sucursal registrada exitosamente en el sistema.', [
-                'sucursal_id' => $sucursal->id
-            ]);
-
-            return $sucursal;
-
-        } catch (Exception $e) {
-            Log::error('Fallo critico al registrar la sucursal.', [
-                'mensaje_error' => $e->getMessage()
-            ]);
-            throw $e;
+        //Validar el numero de la sucursal
+        if ($this->repository->existeNroSucursal($dto->nro_sucursal, $dto->id)) {
+            $mensaje = $dto->id
+                ? "El número de sucursal {$dto->nro_sucursal} ya está en uso por otra sucursal."
+                : "El número de sucursal {$dto->nro_sucursal} ya existe.";
+            Log::warning('Intento de registro de sucursal duplicada.', ['nro_sucursal' => $dto->nro_sucursal]);
+            throw new Exception($mensaje);
         }
-    }
 
-    public function listarSucursales(): \Illuminate\Database\Eloquent\Collection
-    {
-        return $this->sucursalRepository->obtenerTodas();
-    }
-
-    public function modificarSucursal(int $id, SucursalDTO $dto): bool
-    {
-        Log::info('Procesando actualizacion de datos para sucursal.', ['sucursal_id' => $id]);
-
-        try {
-            $actualizado = $this->sucursalRepository->actualizar($id, $dto->toArray());
-
-            if (!$actualizado) {
-                Log::warning('Se intento actualizar una sucursal inexistente.', ['sucursal_id' => $id]);
-                throw new Exception('La sucursal indicada no se encuentra en los registros.');
-            }
-
-            Log::info('Sucursal actualizada con exito.', ['sucursal_id' => $id]);
-            return true;
-
-        } catch (Exception $e) {
-            Log::error('Error critico al modificar la sucursal.', ['mensaje' => $e->getMessage()]);
-            throw $e;
+        if ($dto->id)
+        {
+            $sucursal = $this->repository->buscarPorId($dto->id);
+            if (!$sucursal) throw new Exception('La sucursal no existe.');
+            $mensajeExito = "Sucursal {$dto->nro_sucursal} actualizada correctamente.";
+        } else {
+            $sucursal = new Sucursal();
+            $mensajeExito = "Sucursal {$dto->nro_sucursal} creada correctamente.";
         }
-    }
 
-    public function removerSucursal(int $id): bool
-    {
-        Log::info('Solicitud de eliminacion de sucursal iniciada.', ['sucursal_id' => $id]);
+        $sucursal->nro_sucursal = $dto->nro_sucursal;
+        $sucursal->ciudad = $dto->ciudad;
+        $sucursal->secuencial = $dto->secuencial;
+        $sucursal->nro_base = $dto->nro_base;
+        $sucursal->save();
 
-        try {
-            $eliminado = $this->sucursalRepository->eliminar($id);
-            if (!$eliminado) {
-                throw new Exception('No fue posible ubicar la sucursal para su eliminacion.');
-            }
+        Log::info('Sucursal gestionada exitosamente.', ['sucursal_id' => $sucursal->id]);
 
-            Log::info('Sucursal eliminada de la base de datos de forma permanente.', ['sucursal_id' => $id]);
-            return true;
-        } catch (Exception $e) {
-            Log::error('Fallo al intentar eliminar la sucursal.', ['mensaje' => $e->getMessage()]);
-            throw $e;
-        }
+        return [
+            'mensaje' => $mensajeExito,
+            'sucursal' => [
+                'id' => $sucursal->id,
+                'nro_sucursal' => $sucursal->nro_sucursal,
+                'ciudad' => $sucursal->ciudad,
+                'secuencial' => $sucursal->secuencial,
+                'nro_base' => $sucursal->nro_base
+            ]
+        ];
     }
 }
