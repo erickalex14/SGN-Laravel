@@ -1,88 +1,65 @@
 <?php
 
 namespace App\Services\Directory;
+
+use App\Repositories\Directory\EmpresaRepository;
 use App\DTOs\Directory\EmpresaDTO;
-use App\Repositories\Contracts\Directory\EmpresaRepositoryInterface;
+use App\Models\Directory\Empresa;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
 class EmpresaService
 {
-    //Inyeccion de dependencias
-    protected EmpresaRepositoryInterface $empresaRepository;
+    protected EmpresaRepository $repository;
 
-    public function __construct(EmpresaRepositoryInterface $empresaRepository)
+    public function __construct(EmpresaRepository $repository)
     {
-        $this->empresaRepository = $empresaRepository;
+        $this->repository = $repository;
     }
 
-    //Procesar el registro de una nueva empresa
-    public function registrarEmpresa(EmpresaDTO $dto): object
+    /**
+     * @throws Exception
+     */
+    //Guardar una empresa
+    public function guardar(EmpresaDTO $dto): string
     {
-        Log::info('Iniciando proceso de registro para entidad corporativa.', [
-            'ruc' => $dto->ruc,
-            'nombre' => $dto->nombre
-        ]);
-
-        try {
-            //Validar que no exixsta empresa con el mismo ruc
-            if ($this->empresaRepository->buscarPorRuc($dto->ruc)) {
-                Log::warning('Intento de registro fallido: RUC ya registrado.', [
-                    'ruc' => $dto->ruc
-                ]);
-                throw new Exception('Ya existe una empresa registrada con este RUC.');
-            }
-
-            //Si pasa la validacion crear la empresa
-            $empresa = $this->empresaRepository->crear($dto->toArray());
-
-            log::info();
-
-            return $empresa;
-
-            //Manejo de las excepciones con mensajes para mejor log
-        }catch (Exception $e){
-            Log::error('Fallo critico al registrar la empresa.', [
-                'mensaje' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
+        // Validacion estricta de negocio: RUC duplicado
+        if ($this->repository->existeRuc($dto->ruc, $dto->id)) {
+            Log::warning('Intento de registro de empresa con RUC duplicado.', ['ruc' => $dto->ruc]);
+            throw new Exception('Ya existe una empresa con ese RUC.');
         }
-    }
 
-    //Listar Todas las empresas
-    public function listarEmpresas(): \Illuminate\Database\Eloquent\Collection
-    {
-        return $this->empresaRepository->obtenerTodas();
-    }
-
-    //Actualizar una empresa existente
-    public function modificarEmpresa(int $id, EmpresaDTO $dto): bool
-    {
-        Log::info('Iniciando proceso de actualizacion de entidad corporativa.', ['empresa_id' => $id]);
-        try {
-            $empresaActual = $this->empresaRepository->buscarPorId($id);
-            if (!$empresaActual) {
-                Log::warning('Intento de actualizacion sobre empresa inexistente.', ['empresa_id' => $id]);
-                throw new Exception('El registro de la empresa solicitada no existe en la base de datos.');
-            }
-
-            $actualizado = $this->empresaRepository->actualizar($id, $dto->toArray());
-
-            if ($actualizado) {
-                Log::info('Entidad corporativa actualizada exitosamente.', ['empresa_id' => $id]);
-            }
-
-            return $actualizado;
-
-        } catch (Exception $e) {
-            Log::error('Fallo critico al intentar modificar la empresa.', [
-                'empresa_id' => $id,
-                'mensaje' => $e->getMessage()
-            ]);
-            throw $e;
+        if ($dto->id) {
+            $empresa = $this->repository->buscarPorId($dto->id);
+            if (!$empresa) throw new Exception('La empresa no existe.');
+            $mensaje = 'Empresa actualizada correctamente.';
+        } else {
+            $empresa = new Empresa();
+            $mensaje = 'Empresa creada correctamente.';
         }
+
+        $empresa->nombre            = $dto->nombre;
+        $empresa->ruc               = $dto->ruc;
+        $empresa->telefono          = $dto->telefono;
+        $empresa->correo            = $dto->correo;
+        $empresa->direccion_empresa = $dto->direccion;
+        $empresa->save();
+
+        Log::info('Empresa gestionada exitosamente.', ['empresa_id' => $empresa->id]);
+        return $mensaje;
     }
 
+    /**
+     * @throws Exception
+     */
+    public function eliminar(int $id): void
+    {
+        $empresa = $this->repository->buscarPorId($id);
+        if (!$empresa) {
+            throw new Exception('ID inválido.');
+        }
 
+        $empresa->delete();
+        Log::info('Empresa eliminada del sistema.', ['empresa_id' => $id]);
+    }
 }

@@ -3,44 +3,31 @@
 namespace App\Repositories\Directory;
 
 use App\Models\Directory\Empresa;
-use App\Repositories\Contracts\Directory\EmpresaRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 
-class EmpresaRepository implements EmpresaRepositoryInterface
+class EmpresaRepository
 {
+    //Listar todas las empresas
     public function obtenerTodas(): Collection
     {
-        return Empresa::orderBy('nombre', 'asc')->get();
+        return Empresa::select('id', 'nombre', 'ruc', 'telefono', 'correo', 'direccion_empresa')
+            ->orderBy('nombre', 'asc')
+            ->get();
     }
 
-    public function buscarPorId(int $id): ?object
+    //Verificar que exista ruc
+    public function existeRuc(string $ruc, ?int $excluirId = null): bool
+    {
+        $query = Empresa::where('ruc', $ruc);
+        if ($excluirId) {
+            $query->where('id', '!=', $excluirId);
+        }
+        return $query->exists();
+    }
+
+    //Buscar por ID
+    public function buscarPorId(int $id): ?Empresa
     {
         return Empresa::find($id);
-    }
-
-    public function buscarPorRuc(string $ruc): ?object
-    {
-        return Empresa::where('ruc', $ruc)->first();
-    }
-
-    public function crear(array $datos): object
-    {
-        return Empresa::create($datos);
-    }
-
-    public function actualizar(int $id, array $datos): bool
-    {
-        $empresa = $this->buscarPorId($id);
-        if (!$empresa) return false;
-
-        return $empresa->update($datos);
-    }
-
-    public function eliminar(int $id): bool
-    {
-        $empresa = $this->buscarPorId($id);
-        if (!$empresa) return false;
-
-        return $empresa->delete();
     }
 }
