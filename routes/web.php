@@ -6,6 +6,9 @@ use App\Http\Controllers\Directory\SucursalClienteController;
 use App\Http\Controllers\Identity\GrupoAccesoController;
 use App\Http\Controllers\Identity\UsuarioController;
 use App\Http\Controllers\Inventory\MarcaController;
+use App\Http\Controllers\Inventory\ProductoController;
+use App\Http\Controllers\Inventory\RepuestoController;
+use App\Http\Controllers\Operations\CatalogoPrecioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Identity\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -135,4 +138,49 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:marcas,crear'])->group(function () {
         Route::post('/inventario/tipos', [MarcaController::class, 'guardarTipo'])->name('tipos_dispositivo.guardar');
     });
+
+    //-------------------------------------------------------
+    //--------------------PRODUCTOS--------------------------
+    //-------------------------------------------------------
+
+    // Rutas operativas de Productos protegidas por los permisos estipulados
+    Route::middleware(['permiso:productos,ver'])->group(function () {
+        Route::get('/inventario/productos', [ProductoController::class, 'index'])->name('productos.index');
+        Route::get('/inventario/productos/listar', [ProductoController::class, 'listar'])->name('productos.listar');
+    });
+
+    Route::middleware(['permiso:productos,crear'])->group(function () {
+        Route::post('/inventario/productos', [ProductoController::class, 'procesar'])->name('productos.guardar');
+    });
+
+    //-------------------------------------------------------
+    //--------------------REPUESTOS--------------------------
+    //-------------------------------------------------------
+
+    // Vista y listado JSON de repuestos
+    Route::middleware(['permiso:repuestos,ver'])->group(function () {
+        Route::get('/inventario/repuestos', [RepuestoController::class, 'index'])->name('repuestos.index');
+        Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
+    });
+
+    // Guardar / Modificar / Eliminar repuestos
+    Route::middleware(['permiso:repuestos,crear'])->group(function () {
+        Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO PRECIOS------------------------
+    //-------------------------------------------------------
+
+    // Vista combinada del modulo
+    Route::middleware(['permiso:precios,ver'])->group(function () {
+        Route::get('/operaciones/precios-y-servicios', [CatalogoPrecioController::class, 'index'])->name('precios.index');
+    });
+
+    // Rutas operativas de Precios y Tipos de Servicio
+    Route::middleware(['permiso:precios,crear'])->group(function () {
+        Route::post('/operaciones/precios', [CatalogoPrecioController::class, 'procesarPrecio'])->name('precios.guardar');
+        Route::post('/operaciones/tipos-servicio', [CatalogoPrecioController::class, 'procesarTipo'])->name('tipos_servicio.guardar');
+    });
+
 });
