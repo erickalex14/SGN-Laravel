@@ -14,7 +14,7 @@ Durante la jornada de hoy, se ejecutó con éxito el despliegue de la arquitectu
 Se han completado de manera íntegra las Fases 1 y 2 del roadmap de migración, abarcando los dominios Core, Directorio, Identidad y el inicio del módulo de Inventario.
 
 ## 2. Hitos Alcanzados y Módulos Migrados
-
+    
 ### A. Infraestructura Core y Seguridad
 * **Autenticación Retrocompatible:** Se migró el sistema de login (`validar_login.php`) replicando el ecosistema de sesiones del sistema Legacy para mantener la compatibilidad con contraseñas actuales.
 * **Motor de Autorización:** Se implementó el Middleware `VerificarPermisoLegacy`, el cual bloquea accesos no autorizados a nivel de enrutamiento basado en la matriz de permisos.
