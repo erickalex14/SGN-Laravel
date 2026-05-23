@@ -1,0 +1,223 @@
+:root {
+    --primary: #2F66B3;
+    --primary-hover: #3F7DE0;
+    --dark-text: #0F1C2E;
+    --background: #F4F6F9;
+    --card-bg: #FFFFFF;
+    --border-soft: #E3E8EF;
+}
+
+body {
+    background-color: var(--background);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--dark-text);
+}
+
+/* Cards */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+}
+
+/* Login */
+.login-card {
+    width: 400px;
+    padding: 35px;
+}
+
+/* Buttons */
+.btn-primary {
+    background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-logout {
+    background-color: white;
+    color: var(--primary);
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.btn-logout:hover {
+    background-color: #eaf1ff;
+}
+
+/* dashboard Layout */
+.wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    background-color: var(--primary);
+    color: white;
+    padding: 20px 15px;
+}
+
+.sidebar h4 {
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.sidebar a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.sidebar a:hover {
+    background-color: rgba(255,255,255,0.15);
+}
+
+.sidebar i {
+    font-size: 18px;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.topbar {
+    background-color: white;
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.content-area {
+    padding: 30px;
+}
+
+/* Inputs */
+.form-control {
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+    padding: 12px;
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 3px rgba(47, 102, 179, 0.15);
+    border-color: var(--primary);
+}
+
+.sidebar .collapse a {
+    font-size: 14px;
+    padding: 6px 10px;
+    opacity: 0.9;
+}
+
+.sidebar .collapse a:hover {
+    opacity: 1;
+}
+
+/* Flecha desplegable */
+.menu-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.menu-toggle .arrow {
+    transition: transform 0.3s ease;
+}
+
+/* Rotación cuando está abierto */
+.menu-toggle[aria-expanded="true"] .arrow {
+    transform: rotate(180deg);
+}
+
+.modulo {
+    padding: 30px;
+}
+
+.hidden {
+    display: none;
+}
+
+.card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+    margin-bottom: 25px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+input, select, textarea {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    outline: none;
+}
+
+textarea {
+    min-height: 100px;
+    resize: none;
+}
+
+.btn-primary {
+    margin-top: 20px;
+    background: #2563eb;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+/* crear orden */
+
+.modulo{
+    display:none;
+    padding:25px;
+}
+
+
+.modulo.activo{
+    display:block;
+}
+
+.oculto{
+    display:none;
+}
