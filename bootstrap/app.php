@@ -11,7 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'verificar.permiso.legacy' => \App\Http\Middleware\Identity\VerificarPermisoLegacy::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
