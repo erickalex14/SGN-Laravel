@@ -80,4 +80,32 @@ class OrdenRepository
             ->whereYear('fecha_modificacion', Carbon::now()->year)
             ->count();
     }
+
+    public function filtrarParaReporte(ReporteFiltroDTO $filtro): Collection
+    {
+        $query = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal']);
+
+        if (!empty($filtro->fecha_inicio)) {
+            $query->whereDate('fecha_de_ingreso', '>=', $filtro->fecha_inicio);
+        }
+
+        if (!empty($filtro->fecha_fin)) {
+            $query->whereDate('fecha_de_ingreso', '<=', $filtro->fecha_fin);
+        }
+
+        if (!empty($filtro->estado)) {
+            $query->where('estado_orden', $filtro->estado);
+        }
+
+        if (!empty($filtro->tecnico_id)) {
+            $query->where('tecnico_id', $filtro->tecnico_id);
+        }
+
+        if (!empty($filtro->sucursal_id)) {
+            $query->where('sucursal_id', $filtro->sucursal_id);
+        }
+
+        // Orden cronologico descendente por defecto
+        return $query->orderBy('fecha_de_ingreso', 'desc')->get();
+    }
 }
