@@ -18,7 +18,11 @@ use App\Http\Controllers\DashboardController;
 Route::middleware('auth')->group(function () {
 
     // Dashboard (Requiere acceso basico)
+    // Vista Principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Endpoint asincrono de metricas
+    Route::get('/dashboard/metricas', [DashboardController::class, 'obtenerMetricas'])->name('dashboard.metricas');
 
     //-------------------------------------------------------
     //------------------EMPRESAS-----------------------------
@@ -181,6 +185,78 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:precios,crear'])->group(function () {
         Route::post('/operaciones/precios', [CatalogoPrecioController::class, 'procesarPrecio'])->name('precios.guardar');
         Route::post('/operaciones/tipos-servicio', [CatalogoPrecioController::class, 'procesarTipo'])->name('tipos_servicio.guardar');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO ORDENES------------------------
+    //-------------------------------------------------------
+
+    Route::middleware(['permiso:ordenes,crear'])->group(function () {
+        Route::get('/operaciones/ordenes/crear', [OrdenController::class, 'create'])->name('ordenes.crear');
+        Route::post('/operaciones/ordenes', [OrdenController::class, 'store'])->name('ordenes.store');
+        
+        // Endpoint AJAX para autocompletar
+        Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente']);
+    });
+
+    Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
+        Route::get('/operaciones/mis-ordenes', [MisOrdenesController::class, 'index'])->name('mis_ordenes.index');
+        Route::post('/operaciones/mis-ordenes/estado', [MisOrdenesController::class, 'cambiarEstado'])->name('mis_ordenes.estado');
+    });
+
+    // Modulo de Edicion de Ordenes
+    Route::middleware(['permiso:ordenes,editar'])->group(function () {
+        Route::get('/operaciones/ordenes/editar/{id}', [EdicionOrdenController::class, 'edit'])->name('ordenes.editar');
+        Route::post('/operaciones/ordenes/actualizar', [EdicionOrdenController::class, 'update'])->name('ordenes.update');
+    });
+
+    // Buscador Global (accesible para quienes pueden ver ordenes)
+    Route::middleware(['permiso:ordenes,ver'])->group(function () {
+        Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO INFORMES-----------------------
+    //-------------------------------------------------------
+
+    Route::middleware(['permiso:informes,ver'])->group(function () {
+        Route::get('/operaciones/informes', [InformeController::class, 'index'])->name('informes.index');
+    });
+
+    Route::middleware(['permiso:informes,crear'])->group(function () {
+        Route::post('/operaciones/informes', [InformeController::class, 'store'])->name('informes.store');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO NOTAS CREDITO------------------
+    //-------------------------------------------------------
+
+    // Panel Tecnico (Crear Solicitudes)
+    Route::middleware(['permiso:notas_credito,ver'])->group(function () {
+        Route::get('/operaciones/mis-solicitudes-nc', [NotaCreditoController::class, 'indexTecnico'])->name('notas_credito.tecnico');
+        Route::post('/operaciones/solicitar-nc', [NotaCreditoController::class, 'solicitar'])->name('notas_credito.solicitar');
+    });
+
+    // Panel Admin (Aprobar/Rechazar) -> Requiere permiso de edicion en modulo notas_credito
+    Route::middleware(['permiso:notas_credito,editar'])->group(function () {
+        Route::get('/operaciones/gestion-nc', [NotaCreditoController::class, 'indexAdmin'])->name('notas_credito.admin');
+        Route::post('/operaciones/gestion-nc/procesar', [NotaCreditoController::class, 'gestionar'])->name('notas_credito.gestionar');
+    });
+
+    //-------------------------------------------------------
+    //-------------MODULO SOLICITUDES REPUESTOS--------------
+    //-------------------------------------------------------
+
+    // Panel Tecnico
+    Route::middleware(['permiso:solicitar_repuesto,ver'])->group(function () {
+        Route::get('/operaciones/mis-solicitudes-bodega', [SolicitudRepuestoController::class, 'indexTecnico'])->name('solicitudes_repuestos.tecnico');
+        Route::post('/operaciones/solicitar-repuesto', [SolicitudRepuestoController::class, 'solicitar'])->name('solicitudes_repuestos.solicitar');
+    });
+
+    // Panel Admin/Bodega
+    Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
+        Route::get('/operaciones/bodega-solicitudes', [SolicitudRepuestoController::class, 'indexAdmin'])->name('solicitudes_repuestos.admin');
+        Route::post('/operaciones/bodega-solicitudes/procesar', [SolicitudRepuestoController::class, 'gestionar'])->name('solicitudes_repuestos.gestionar');
     });
 
 });
