@@ -259,4 +259,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/bodega-solicitudes/procesar', [SolicitudRepuestoController::class, 'gestionar'])->name('solicitudes_repuestos.gestionar');
     });
 
+    //-------------------------------------------------------
+    //-------------MODULO REPORTES----------------------------
+    //-------------------------------------------------------
+
+    Route::middleware(['permiso:reportes,ver'])->group(function () {
+        Route::get('/operaciones/reportes', [ReporteController::class, 'index'])->name('reportes.index');
+        Route::get('/operaciones/reportes/filtrar', [ReporteController::class, 'filtrar'])->name('reportes.filtrar');
+    });
+
+    //-------------------------------------------------------
+    //-------------MODULO LISTAS COMPRA----------------------
+    //-------------------------------------------------------
+
+// Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
+    Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
+        Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
+    });
+
+    Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
+        Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
+    });
+    
+
 });
