@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Http\Requests\Operations;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
+class GuardarEdicionOrdenRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'orden_id'               => ['required', 'integer', 'exists:ordenes,id'],
+            'equipo_id'              => ['required', 'integer', 'exists:equipos,id'],
+            'estado_orden'           => ['required', 'string', 'max:50'],
+            'eq_falla'               => ['required', 'string'],
+            'eq_observacion'         => ['nullable', 'string'],
+            'tipo_servicio_id'       => ['nullable', 'integer'],
+            'valor_estandar_id'      => ['nullable', 'integer'],
+            'repuesto_inventario_id' => ['nullable', 'integer'],
+            'fecha_prometido'        => ['nullable', 'date'],
+        ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'ok'    => false,
+            'error' => 'Error de validación: ' . $validator->errors()->first()
+        ]));
+    }
+}
