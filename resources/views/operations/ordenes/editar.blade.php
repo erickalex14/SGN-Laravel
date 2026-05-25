@@ -76,12 +76,12 @@
                     <div class="campo">
                         <label>Estado Actual de la Orden <span class="req">*</span></label>
                         <select id="estado_orden" required>
-                            <option value="INGRESO" {{ $orden->estado_orden === 'INGRESO' ? 'selected' : '' }}>INGRESO</option>
-                            <option value="REVISIÓN" {{ $orden->estado_orden === 'REVISIÓN' ? 'selected' : '' }}>REVISIÓN</option>
-                            <option value="ESPERA REPUESTO" {{ $orden->estado_orden === 'ESPERA REPUESTO' ? 'selected' : '' }}>ESPERA REPUESTO</option>
-                            <option value="REPARADO" {{ $orden->estado_orden === 'REPARADO' ? 'selected' : '' }}>REPARADO</option>
-                            <option value="DEVUELTO SIN REPARAR" {{ $orden->estado_orden === 'DEVUELTO SIN REPARAR' ? 'selected' : '' }}>DEVUELTO SIN REPARAR</option>
-                            <option value="ENTREGADO" {{ $orden->estado_orden === 'ENTREGADO' ? 'selected' : '' }}>ENTREGADO</option>
+                            <option value="Pendiente" {{ in_array($orden->estado_orden, ['Pendiente', 'INGRESO']) ? 'selected' : '' }}>Pendiente</option>
+                            <option value="En proceso" {{ in_array($orden->estado_orden, ['En proceso', 'REVISIÓN', 'REVISION', 'ESPERA REPUESTO']) ? 'selected' : '' }}>En proceso</option>
+                            <option value="Finalizada" {{ in_array($orden->estado_orden, ['Finalizada', 'REPARADO']) ? 'selected' : '' }}>Finalizada</option>
+                            <option value="Entregada" {{ in_array($orden->estado_orden, ['Entregada', 'ENTREGADO']) ? 'selected' : '' }}>Entregada</option>
+                            <option value="Nota de Credito" {{ $orden->estado_orden === 'Nota de Credito' ? 'selected' : '' }}>Nota de Credito</option>
+                            <option value="Devuelto sin reparar" {{ in_array($orden->estado_orden, ['Devuelto sin reparar', 'DEVUELTO SIN REPARAR']) ? 'selected' : '' }}>Devuelto sin reparar</option>
                         </select>
                     </div>
                     <div class="campo">

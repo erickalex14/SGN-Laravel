@@ -25,12 +25,23 @@ readonly class CrearOrdenDTO
         public ?int $tipo_servicio_id,
         public ?string $tipo_servicio_texto,
         public ?string $producto_inventario_codigo,
+        public array $series,
+        public array $credenciales,
 
         // Datos de la Orden
         public int $sucursal_id,
         public int $tecnico_id,
         public int $ingresado_por,
         public string $fecha_ingreso,
-        public ?string $motivo_ingreso
+        public string $motivo_ingreso,
+        public ?string $nro_factura,
+        public ?string $nro_factura_2,
+        public ?string $fecha_facturacion,
+        public ?string $fecha_prometido,
+        public ?int $nro_sucursal_cliente,
+        public ?string $estado_repuesto,
+        public ?string $garantia_tipo,
+        public ?int $cas_id,
+        public ?int $repuesto_inventario_id
     ) {}
 }

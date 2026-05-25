@@ -30,12 +30,13 @@ class GestionOrdenService
         }
 
         $estadoAnterior = $orden->estado_orden;
-        $orden->estado_orden = strtoupper(trim($dto->estado_orden));
+        $estadoNormalizado = $this->normalizarEstado($dto->estado_orden);
+        $orden->estado_orden = $estadoNormalizado;
         $orden->modificado_por = $usuarioModificacionId;
         $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
         // Registrar fecha de finalizacion si el estado corresponde al fin del flujo tecnico
-        if (in_array($orden->estado_orden, ['REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'])) {
+        if (in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
             if (!$orden->fecha_finalizacion) {
                 $orden->fecha_finalizacion = $orden->fecha_modificacion;
             }
@@ -50,5 +51,22 @@ class GestionOrdenService
             'nuevo_estado'    => $orden->estado_orden,
             'tecnico_id'      => $usuarioModificacionId
         ]);
+    }
+
+    private function normalizarEstado(string $estado): string
+    {
+        $estado = trim($estado);
+
+        $map = [
+            'INGRESO' => 'Pendiente',
+            'REVISIÓN' => 'En proceso',
+            'REVISION' => 'En proceso',
+            'ESPERA REPUESTO' => 'En proceso',
+            'REPARADO' => 'Finalizada',
+            'ENTREGADO' => 'Entregada',
+            'DEVUELTO SIN REPARAR' => 'Devuelto sin reparar'
+        ];
+
+        return $map[$estado] ?? $estado;
     }
 }
