@@ -62,7 +62,8 @@
                 <tbody>
                     @forelse($solicitudes as $sr)
                         @php
-                            $clase = match($sr->estado) { 'PENDIENTE'=>'st-pend', 'APROBADA'=>'st-aprob', 'RECHAZADA'=>'st-rech', 'COMPRA'=>'st-comp', default=>'' };
+                            $estadoSR = strtoupper((string) $sr->estado);
+                            $clase = match($estadoSR) { 'PENDIENTE'=>'st-pend', 'APROBADA'=>'st-aprob', 'RECHAZADA'=>'st-rech', 'COMPRA'=>'st-comp', default=>'' };
                         @endphp
                         <tr>
                             <td><span class="badge-sr">{{ $sr->nro_solicitud }}</span></td>
@@ -76,7 +77,7 @@
                             <td><strong>{{ $sr->cantidad }}</strong></td>
                             <td><span class="st-badge {{ $clase }}">{{ $sr->estado }}</span></td>
                             <td style="text-align:right;">
-                                @if($sr->estado === 'PENDIENTE')
+                                @if($estadoSR === 'PENDIENTE')
                                     <button class="btn-accion" onclick="abrirGestion({{ json_encode($sr) }})">Atender</button>
                                 @else
                                     <span style="font-size:11px;color:#94a3b8;"><i class="bi bi-check2-all"></i> Resuelto</span>

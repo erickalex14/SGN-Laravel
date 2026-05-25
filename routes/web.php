@@ -5,6 +5,8 @@ use App\Http\Controllers\Directory\EmpresaController;
 use App\Http\Controllers\Directory\SucursalClienteController;
 use App\Http\Controllers\Identity\GrupoAccesoController;
 use App\Http\Controllers\Identity\UsuarioController;
+use App\Http\Controllers\Identity\NotificationController;
+use App\Http\Controllers\Identity\SuggestionController;
 use App\Http\Controllers\Inventory\MarcaController;
 use App\Http\Controllers\Inventory\ProductoController;
 use App\Http\Controllers\Inventory\RepuestoController;
@@ -44,13 +46,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
     // Rutas de acceso rapido usadas por el layout
-    Route::middleware(['permiso:ordenes,ver'])->group(function () {
+    Route::middleware(['permiso:ordenes_crear,ver'])->group(function () {
         Route::get('/operaciones/ordenes', function () {
             return redirect()->route('ordenes.crear');
         })->name('ordenes.index');
     });
 
-    Route::middleware(['permiso:productos,ver'])->group(function () {
+    Route::middleware(['permiso:inv_productos,ver'])->group(function () {
         Route::get('/inventario', function () {
             return redirect()->route('productos.index');
         })->name('inventario.index');
@@ -62,6 +64,11 @@ Route::middleware('auth')->group(function () {
     
     // Endpoint asincrono de metricas
     Route::get('/dashboard/metricas', [DashboardController::class, 'obtenerMetricas'])->name('dashboard.metricas');
+
+    // Utilidades globales del layout legacy
+    Route::get('/notificaciones', [NotificationController::class, 'index'])->name('notificaciones.index');
+    Route::post('/notificaciones/marcar', [NotificationController::class, 'markAsRead'])->name('notificaciones.marcar');
+    Route::post('/sugerencias/enviar', [SuggestionController::class, 'send'])->name('sugerencias.enviar');
 
     //-------------------------------------------------------
     //------------------EMPRESAS-----------------------------
@@ -119,23 +126,23 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     // Vista principal
-    Route::middleware(['permiso:grupos,ver'])->group(function () {
+    Route::middleware(['permiso:grupos_acceso,ver'])->group(function () {
         Route::get('/grupos', [GrupoAccesoController::class, 'index'])->name('grupos.index');
         Route::get('/grupos/permisos/{id}', [GrupoAccesoController::class, 'obtenerPermisos'])->name('grupos.permisos.listar');
     });
 
     // Guardar (Crear/Editar) Grupo
-    Route::middleware(['permiso:grupos,crear'])->group(function () {
+    Route::middleware(['permiso:grupos_acceso,crear'])->group(function () {
         Route::post('/grupos/guardar', [GrupoAccesoController::class, 'guardar'])->name('grupos.guardar');
     });
 
     // Eliminar
-    Route::middleware(['permiso:grupos,eliminar'])->group(function () {
+    Route::middleware(['permiso:grupos_acceso,eliminar'])->group(function () {
         Route::post('/grupos/eliminar', [GrupoAccesoController::class, 'eliminar'])->name('grupos.eliminar');
     });
 
     // Guardar Permisos (Requiere permiso de editar grupos)
-    Route::middleware(['permiso:grupos,editar'])->group(function () {
+    Route::middleware(['permiso:grupos_acceso,editar'])->group(function () {
         Route::post('/grupos/permisos', [GrupoAccesoController::class, 'guardarPermisos'])->name('grupos.permisos.guardar');
     });
 
@@ -168,17 +175,17 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     // Vista conjunta protegida por permiso de modulo
-    Route::middleware(['permiso:marcas,ver'])->group(function () {
+    Route::middleware(['permiso:inv_marcas,ver'])->group(function () {
         Route::get('/inventario/marcas-y-tipos', [MarcaController::class, 'index'])->name('marcas_tipos.index');
     });
 
     // Rutas operativas de Marcas (Mapeadas al permiso respectivo)
-    Route::middleware(['permiso:marcas,crear'])->group(function () {
+    Route::middleware(['permiso:inv_marcas,crear'])->group(function () {
         Route::post('/inventario/marcas', [MarcaController::class, 'guardarMarca'])->name('marcas.guardar');
     });
 
     // Rutas operativas de Tipos (Mapeadas al permiso de marcas ya que comparten módulo)
-    Route::middleware(['permiso:marcas,crear'])->group(function () {
+    Route::middleware(['permiso:inv_marcas,crear'])->group(function () {
         Route::post('/inventario/tipos', [MarcaController::class, 'guardarTipo'])->name('tipos_dispositivo.guardar');
     });
 
@@ -187,12 +194,12 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     // Rutas operativas de Productos protegidas por los permisos estipulados
-    Route::middleware(['permiso:productos,ver'])->group(function () {
+    Route::middleware(['permiso:inv_productos,ver'])->group(function () {
         Route::get('/inventario/productos', [ProductoController::class, 'index'])->name('productos.index');
         Route::get('/inventario/productos/listar', [ProductoController::class, 'listar'])->name('productos.listar');
     });
 
-    Route::middleware(['permiso:productos,crear'])->group(function () {
+    Route::middleware(['permiso:inv_productos,crear'])->group(function () {
         Route::post('/inventario/productos', [ProductoController::class, 'procesar'])->name('productos.guardar');
     });
 
@@ -201,13 +208,13 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     // Vista y listado JSON de repuestos
-    Route::middleware(['permiso:repuestos,ver'])->group(function () {
+    Route::middleware(['permiso:inv_repuestos,ver'])->group(function () {
         Route::get('/inventario/repuestos', [RepuestoController::class, 'index'])->name('repuestos.index');
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
     });
 
     // Guardar / Modificar / Eliminar repuestos
-    Route::middleware(['permiso:repuestos,crear'])->group(function () {
+    Route::middleware(['permiso:inv_repuestos,crear'])->group(function () {
         Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
     });
 
@@ -230,7 +237,7 @@ Route::middleware('auth')->group(function () {
     //-----------------MODULO ORDENES------------------------
     //-------------------------------------------------------
 
-    Route::middleware(['permiso:ordenes,crear'])->group(function () {
+    Route::middleware(['permiso:ordenes_crear,ver'])->group(function () {
         Route::get('/operaciones/ordenes/crear', [OrdenController::class, 'create'])->name('ordenes.crear');
         Route::post('/operaciones/ordenes', [OrdenController::class, 'store'])->name('ordenes.store');
         
@@ -238,21 +245,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente']);
     });
 
-    Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
+    Route::middleware(['permiso:ordenes_mis,ver'])->group(function () {
         Route::get('/operaciones/mis-ordenes', [MisOrdenesController::class, 'index'])->name('mis_ordenes.index');
         Route::post('/operaciones/mis-ordenes/estado', [MisOrdenesController::class, 'cambiarEstado'])->name('mis_ordenes.estado');
     });
 
     // Modulo de Edicion de Ordenes
-    Route::middleware(['permiso:ordenes,editar'])->group(function () {
+    Route::middleware(['permiso:ordenes_editar,ver'])->group(function () {
         Route::get('/operaciones/ordenes/editar/{id}', [EdicionOrdenController::class, 'edit'])->name('ordenes.editar');
         Route::post('/operaciones/ordenes/actualizar', [EdicionOrdenController::class, 'update'])->name('ordenes.update');
     });
 
-    // Buscador Global (accesible para quienes pueden ver ordenes)
-    Route::middleware(['permiso:ordenes,ver'])->group(function () {
-        Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
-    });
+    // Buscador Global: accesible a usuarios autenticados, filtrando por alcance interno
+    Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
 
     //-------------------------------------------------------
     //-----------------MODULO INFORMES-----------------------
@@ -271,14 +276,18 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     // Panel Tecnico (Crear Solicitudes)
-    Route::middleware(['permiso:notas_credito,ver'])->group(function () {
+    Route::middleware(['permiso:solicitar_nc,ver'])->group(function () {
         Route::get('/operaciones/mis-solicitudes-nc', [NotaCreditoController::class, 'indexTecnico'])->name('notas_credito.tecnico');
         Route::post('/operaciones/solicitar-nc', [NotaCreditoController::class, 'solicitar'])->name('notas_credito.solicitar');
     });
 
-    // Panel Admin (Aprobar/Rechazar) -> Requiere permiso de edicion en modulo notas_credito
-    Route::middleware(['permiso:notas_credito,editar'])->group(function () {
+    // Panel Admin listado
+    Route::middleware(['permiso:notas_credito,ver'])->group(function () {
         Route::get('/operaciones/gestion-nc', [NotaCreditoController::class, 'indexAdmin'])->name('notas_credito.admin');
+    });
+
+    // Panel Admin (Aprobar/Rechazar)
+    Route::middleware(['permiso:notas_credito,editar'])->group(function () {
         Route::post('/operaciones/gestion-nc/procesar', [NotaCreditoController::class, 'gestionar'])->name('notas_credito.gestionar');
     });
 

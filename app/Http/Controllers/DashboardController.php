@@ -25,7 +25,11 @@ class DashboardController extends Controller
     {
         try {
             $tecnicoId = session('tecnico_id');
-            $esAdmin = session('es_superadmin') || isset(session('permisos')['ordenes_asignadas']['ver']); // Adaptar segun su logica legacy
+            $permisos = session('permisos', []);
+            $esAdmin = session('es_superadmin') === true
+                || (($permisos['reportes']['ver'] ?? false) === true)
+                || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+                || (($permisos['ordenes_asignadas']['ver'] ?? false) === true);
 
             $metricas = $this->service->obtenerMetricasGlobales($tecnicoId, $esAdmin);
 

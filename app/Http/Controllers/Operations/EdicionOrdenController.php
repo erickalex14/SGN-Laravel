@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class EdicionOrdenController extends Controller
 {
@@ -83,12 +85,54 @@ class EdicionOrdenController extends Controller
     // Endpoint para el buscador global de ordenes
     public function buscarGlobal(Request $request): JsonResponse
     {
-        $termino = $request->query('q');
-        if (empty($termino)) {
-            return response()->json(['ok' => false]);
+        $termino = trim((string) $request->query('q', ''));
+        if (mb_strlen($termino) < 2) {
+            return response()->json(['ok' => false, 'error' => 'Minimo 2 caracteres.']);
         }
 
-        $resultados = $this->ordenRepo->buscarPorNumeroONombre($termino);
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $sucursalId = (int) session('sucursal_id', 0);
+        $esSuperadmin = session('es_superadmin') === true;
+        $permisos = session('permisos', []);
+
+        $puedeVerTodo = $esSuperadmin
+            || (($permisos['ordenes_asignadas']['ver'] ?? false) === true)
+            || (($permisos['usuarios']['ver'] ?? false) === true);
+
+        try {
+            $query = DB::table('vista_ordenes as vo')
+                ->select([
+                    'vo.orden_id',
+                    'vo.nro_orden',
+                    'vo.tipo_orden',
+                    'vo.cliente',
+                    'vo.identificacion',
+                    'vo.estado_orden',
+                    'vo.marca',
+                    'vo.modelo',
+                    'vo.tecnico_id',
+                    'vo.cliente_id',
+                    'vo.equipo_id',
+                    DB::raw("DATE_FORMAT(vo.fecha_de_ingreso, '%d/%m/%Y') as fecha"),
+                ])
+                ->where(function ($q) use ($termino) {
+                    $q->where('vo.nro_orden', 'like', "%{$termino}%");
+                    if (is_numeric($termino)) {
+                        $q->orWhereRaw("CAST(SUBSTRING_INDEX(vo.nro_orden, '-', -1) AS UNSIGNED) = ?", [(int) $termino]);
+                    }
+                });
+
+            if (!$esSuperadmin && $sucursalId > 0) {
+                $query->where('vo.sucursal_id', $sucursalId);
+            }
+            if (!$puedeVerTodo && $tecnicoId > 0) {
+                $query->where('vo.tecnico_id', $tecnicoId);
+            }
+
+            $resultados = $query->orderByDesc('vo.fecha_de_ingreso')->limit(15)->get();
+        } catch (QueryException $e) {
+            $resultados = $this->ordenRepo->buscarPorNumeroONombre($termino);
+        }
 
         return response()->json([
             'ok'      => true,

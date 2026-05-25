@@ -57,7 +57,8 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
             <tbody>
                 @forelse($solicitudes as $nc)
                     @php
-                        $clase = match($nc->estado) { 'PENDIENTE' => 'st-pend', 'APROBADA' => 'st-aprob', 'RECHAZADA' => 'st-rech', default => '' };
+                        $estadoNC = strtoupper((string) $nc->estado);
+                        $clase = match($estadoNC) { 'PENDIENTE' => 'st-pend', 'APROBADA' => 'st-aprob', 'RECHAZADA' => 'st-rech', default => '' };
                     @endphp
                     <tr>
                         <td>
@@ -69,7 +70,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                         <td><a href="#" style="color:#2563eb;text-decoration:none;font-weight:600;">{{ $nc->orden->nro_orden }}</a></td>
                         <td><span class="status-badge {{ $clase }}">{{ $nc->estado }}</span></td>
                         <td style="text-align:right;">
-                            @if($nc->estado === 'PENDIENTE')
+                            @if($estadoNC === 'PENDIENTE')
                                 <button class="btn-gestion" onclick="abrirGestion({{ json_encode($nc) }})">Gestionar</button>
                             @else
                                 <span style="font-size:11px;color:#94a3b8;">Resuelto por: {{ $nc->nombre_admin }}</span>
