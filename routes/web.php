@@ -9,13 +9,52 @@ use App\Http\Controllers\Inventory\MarcaController;
 use App\Http\Controllers\Inventory\ProductoController;
 use App\Http\Controllers\Inventory\RepuestoController;
 use App\Http\Controllers\Operations\CatalogoPrecioController;
+use App\Http\Controllers\Operations\OrdenController;
+use App\Http\Controllers\Operations\MisOrdenesController;
+use App\Http\Controllers\Operations\EdicionOrdenController;
+use App\Http\Controllers\Operations\InformeController;
+use App\Http\Controllers\Operations\NotaCreditoController;
+use App\Http\Controllers\Operations\SolicitudRepuestoController;
+use App\Http\Controllers\Operations\ReporteController;
+use App\Http\Controllers\Inventory\ListaCompraController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Identity\AuthController;
+use App\Http\Controllers\Identity\AuthController; // Controlador de autenticación heredado
 use App\Http\Controllers\DashboardController;
-// ... otros controladores
+
+
+// ═════════════════════════════════════════════════════════════════
+// 1. RUTAS PÚBLICAS / INVITADOS (GUEST)
+// ═════════════════════════════════════════════════════════════════
+Route::middleware('guest')->group(function () {
+    
+    // Raíz del sitio: Renderiza el formulario de inicio de sesión legacy
+    Route::get('/', function () {
+        return view('auth.login');
+    })->name('login'); // El nombre 'login' es obligatorio para que los redireccionamientos de Laravel funcionen
+
+    // Endpoint que procesa el POST del formulario (Reemplaza a validar_login.php)
+    Route::post('/validar_login', [AuthController::class, 'login'])->name('auth.validar');
+});
+
 
 // Grupo de rutas que requieren sesion activa
 Route::middleware('auth')->group(function () {
+
+    // Cerrar sesion
+    Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+
+    // Rutas de acceso rapido usadas por el layout
+    Route::middleware(['permiso:ordenes,ver'])->group(function () {
+        Route::get('/operaciones/ordenes', function () {
+            return redirect()->route('ordenes.crear');
+        })->name('ordenes.index');
+    });
+
+    Route::middleware(['permiso:productos,ver'])->group(function () {
+        Route::get('/inventario', function () {
+            return redirect()->route('productos.index');
+        })->name('inventario.index');
+    });
 
     // Dashboard (Requiere acceso basico)
     // Vista Principal
