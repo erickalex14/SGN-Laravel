@@ -51,10 +51,10 @@
                     @forelse($ordenes as $ord)
                         @php
                             $claseEstado = match($ord->estado_orden) {
-                                'INGRESO' => 'estado-ingreso',
-                                'REVISIÓN' => 'estado-revision',
-                                'REPARADO' => 'estado-reparado',
-                                'ENTREGADO' => 'estado-entregado',
+                                'INGRESO', 'Pendiente' => 'estado-ingreso',
+                                'REVISIÓN', 'EN PROCESO', 'En proceso' => 'estado-revision',
+                                'REPARADO', 'Finalizada' => 'estado-reparado',
+                                'ENTREGADO', 'Entregada' => 'estado-entregado',
                                 default => 'estado-default'
                             };
                         @endphp
@@ -78,11 +78,12 @@
                                 <span class="estado-label {{ $claseEstado }}">{{ $ord->estado_orden }}</span>
                                 <select class="select-estado" onchange="cambiarEstado({{ $ord->id }}, this.value, '{{ $ord->nro_orden }}')">
                                     <option value="">Cambiar a...</option>
-                                    <option value="INGRESO">INGRESO</option>
-                                    <option value="REVISIÓN">REVISIÓN</option>
-                                    <option value="REPARADO">REPARADO</option>
-                                    <option value="ESPERA REPUESTO">ESPERA REPUESTO</option>
-                                    <option value="DEVUELTO SIN REPARAR">DEVUELTO SIN REPARAR</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="En proceso">En proceso</option>
+                                    <option value="Finalizada">Finalizada</option>
+                                    <option value="Entregada">Entregada</option>
+                                    <option value="Nota de Credito">Nota de Credito</option>
+                                    <option value="Devuelto sin reparar">Devuelto sin reparar</option>
                                 </select>
                             </td>
                             <td style="text-align:right;">

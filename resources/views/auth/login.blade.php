@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGN - Inicio de Sesión</title>
-    <link rel="stylesheet" href="{{ asset('css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ asset('estilos.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <style>
@@ -131,7 +131,7 @@
 
     <div class="login-card">
         <div class="login-logo">
-            <img src="{{ asset('images/logosgn1.png') }}" alt="SGN Logo">
+            <img src="{{ asset('logosgn1.png') }}" alt="SGN Logo">
         </div>
 
         <h2>Sistema de Gestión SGN</h2>

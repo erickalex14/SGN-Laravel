@@ -3,23 +3,31 @@
 namespace App\Repositories\Operations;
 
 use App\Models\Operations\Orden;
+use App\Models\Operations\OrdenEmpresa;
 use App\Models\Directory\Sucursal;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class OrdenRepository
 {
     public function generarNumeroOrden(int $sucursalId): string
     {
         $sucursal = Sucursal::find($sucursalId);
-        
-        // Obtenemos la ultima orden de esta sucursal para generar el secuencial
-        $ultimaOrden = Orden::where('sucursal_id', $sucursalId)->orderBy('id', 'desc')->first();
-        
-        $siguienteNumero = 1;
-        if ($ultimaOrden && preg_match('/-(\d+)$/', $ultimaOrden->nro_orden, $matches)) {
-            $siguienteNumero = (int)$matches[1] + 1;
-        }
+        $secuencial = $sucursal ? strtoupper($sucursal->secuencial) : 'NOV';
+        $prefijo = $secuencial . '-';
 
-        return sprintf("NOV-%s-%06d", strtoupper($sucursal->secuencial), $siguienteNumero);
+        // Obtener el maximo consecutivo en ordenes y ordenesempresas
+        $maxOrden = Orden::where('sucursal_id', $sucursalId)
+            ->where('nro_orden', 'like', $prefijo . '%')
+            ->max(DB::raw("CAST(SUBSTRING_INDEX(nro_orden, '-', -1) AS UNSIGNED)"));
+
+        $maxEmpresa = OrdenEmpresa::where('sucursal_id', $sucursalId)
+            ->where('nro_orden', 'like', $prefijo . '%')
+            ->max(DB::raw("CAST(SUBSTRING_INDEX(nro_orden, '-', -1) AS UNSIGNED)"));
+
+        $siguienteNumero = max((int)$maxOrden, (int)$maxEmpresa) + 1;
+
+        return $prefijo . str_pad((string)$siguienteNumero, 6, '0', STR_PAD_LEFT);
     }
 
     public function obtenerOrdenesPorTecnico(int $tecnicoId): Collection
@@ -63,19 +71,31 @@ class OrdenRepository
 
     public function contarOrdenesActivasGlobales(): int
     {
-        return Orden::whereNotIn('estado_orden', ['ENTREGADO', 'DEVUELTO SIN REPARAR'])->count();
+        return Orden::whereNotIn('estado_orden', [
+            'Entregada',
+            'Devuelto sin reparar',
+            'Nota de Credito',
+            'ENTREGADO',
+            'DEVUELTO SIN REPARAR'
+        ])->count();
     }
 
     public function contarOrdenesActivasPorTecnico(int $tecnicoId): int
     {
         return Orden::where('tecnico_id', $tecnicoId)
-            ->whereNotIn('estado_orden', ['ENTREGADO', 'DEVUELTO SIN REPARAR'])
+            ->whereNotIn('estado_orden', [
+                'Entregada',
+                'Devuelto sin reparar',
+                'Nota de Credito',
+                'ENTREGADO',
+                'DEVUELTO SIN REPARAR'
+            ])
             ->count();
     }
 
     public function contarEquiposReparadosMesActual(): int
     {
-        return Orden::where('estado_orden', 'REPARADO')
+        return Orden::whereIn('estado_orden', ['Finalizada', 'REPARADO'])
             ->whereMonth('fecha_modificacion', Carbon::now()->month)
             ->whereYear('fecha_modificacion', Carbon::now()->year)
             ->count();

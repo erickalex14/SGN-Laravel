@@ -25,6 +25,11 @@
 .msg-box { display: none; padding: 16px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
 .msg-box.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .msg-box.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.lista-lineas { display: flex; flex-direction: column; gap: 10px; }
+.linea-item { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 10px; align-items: center; }
+.btn-mini { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-mini:hover { background: #e2e8f0; }
+.hidden { display: none; }
 </style>
 @endpush
 
@@ -37,6 +42,34 @@
     <div id="ord-msg" class="msg-box"></div>
 
     <form id="form-orden" onsubmit="event.preventDefault(); guardarOrden();">
+        @csrf
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-clipboard-check"></i> Motivo de Ingreso</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Motivo <span class="req">*</span></label>
+                        <select id="motivo_ingreso" name="motivo_ingreso" required onchange="actualizarMotivo()">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Servicio Tecnico">Servicio Tecnico</option>
+                            <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
+                            <option value="Validacion de Garantia">Validación de Garantía</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Sucursal Cliente</label>
+                        <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($sucursalesCliente as $suc)
+                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
+                            @endforeach
+                            <option value="999">999 - EXTERNO</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="seccion-form">
             <div class="seccion-hdr"><i class="bi bi-person-badge"></i> Datos del Cliente</div>
             <div class="seccion-body">
@@ -44,7 +77,7 @@
                     <div class="campo" style="grid-column: span 2;">
                         <label>Cédula / RUC <span class="req">*</span></label>
                         <div style="display:flex; gap:10px;">
-                            <input type="text" id="cli_identificacion" style="flex:1;" maxlength="20" required>
+                            <input type="text" id="cli_identificacion" name="cli_identificacion" style="flex:1;" maxlength="20" required>
                             <button type="button" class="btn-buscar" onclick="buscarClienteAjax()">
                                 <i class="bi bi-search"></i> Buscar
                             </button>
@@ -52,27 +85,27 @@
                     </div>
                     <div class="campo">
                         <label>Teléfono de Contacto <span class="req">*</span></label>
-                        <input type="text" id="cli_telefono" maxlength="20" required>
+                        <input type="text" id="cli_telefono" name="cli_telefono" maxlength="20" required>
                     </div>
                 </div>
                 <div class="grid-2">
                     <div class="campo">
                         <label>Nombres <span class="req">*</span></label>
-                        <input type="text" id="cli_nombres" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
+                        <input type="text" id="cli_nombres" name="cli_nombres" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
                     </div>
                     <div class="campo">
                         <label>Apellidos <span class="req">*</span></label>
-                        <input type="text" id="cli_apellidos" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
+                        <input type="text" id="cli_apellidos" name="cli_apellidos" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
                 <div class="grid-2">
                     <div class="campo">
                         <label>Correo Electrónico</label>
-                        <input type="email" id="cli_correo" maxlength="100">
+                        <input type="email" id="cli_correo" name="cli_correo" maxlength="100">
                     </div>
                     <div class="campo">
                         <label>Dirección</label>
-                        <input type="text" id="cli_direccion" maxlength="200" oninput="this.value=this.value.toUpperCase()">
+                        <input type="text" id="cli_direccion" name="cli_direccion" maxlength="200" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
             </div>
@@ -84,34 +117,88 @@
                 <div class="grid-3">
                     <div class="campo">
                         <label>Tipo de Equipo <span class="req">*</span></label>
-                        <input type="text" id="eq_tipo" required placeholder="Ej: LAPTOP" oninput="this.value=this.value.toUpperCase()">
+                        <select id="eq_tipo" name="eq_tipo" required>
+                            <option value="">-- Seleccione --</option>
+                            @foreach($tiposDispositivo as $tipo)
+                                <option value="{{ $tipo->nombre }}">{{ $tipo->nombre }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="campo">
                         <label>Marca <span class="req">*</span></label>
-                        <input type="text" id="eq_marca" required placeholder="Ej: DELL" oninput="this.value=this.value.toUpperCase()">
+                        <select id="eq_marca" name="eq_marca" required>
+                            <option value="">-- Seleccione --</option>
+                            @foreach($marcas as $marca)
+                                <option value="{{ $marca->nombre }}">{{ $marca->nombre }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="campo">
                         <label>Modelo <span class="req">*</span></label>
-                        <input type="text" id="eq_modelo" required placeholder="Ej: INSPIRON 15" oninput="this.value=this.value.toUpperCase()">
+                        <input type="text" id="eq_modelo" name="eq_modelo" required placeholder="Ej: INSPIRON 15" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
                 <div class="grid-2">
                     <div class="campo">
                         <label>Número de Serie (S/N) <span class="req">*</span></label>
-                        <input type="text" id="eq_serie" required oninput="this.value=this.value.toUpperCase()">
+                        <div class="lista-lineas" id="series-container">
+                            <div class="linea-item">
+                                <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Serie principal">
+                                <button type="button" class="btn-mini" onclick="agregarSerie()">+</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="campo">
                         <label>Contraseña / PIN de acceso</label>
-                        <input type="text" id="eq_contrasena" placeholder="Si aplica...">
+                        <input type="text" id="eq_contrasena" name="eq_contrasena" placeholder="Si aplica...">
                     </div>
                 </div>
                 <div class="campo">
                     <label>Falla Reportada por el Cliente <span class="req">*</span></label>
-                    <textarea id="eq_falla" rows="3" required></textarea>
+                    <textarea id="eq_falla" name="eq_falla" rows="3" required></textarea>
                 </div>
                 <div class="campo">
                     <label>Observaciones del Estado Físico (Rayones, golpes, etc.)</label>
-                    <textarea id="eq_observacion" rows="2"></textarea>
+                    <textarea id="eq_observacion" name="eq_observacion" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantía y Facturación</div>
+            <div class="seccion-body">
+                <div id="bloque-facturacion" class="grid-3 hidden">
+                    <div class="campo">
+                        <label>Nro. Factura 1</label>
+                        <input type="text" id="nro_factura" name="nro_factura">
+                    </div>
+                    <div class="campo">
+                        <label>Nro. Factura 2</label>
+                        <input type="text" id="nro_factura_2" name="nro_factura_2">
+                    </div>
+                    <div class="campo">
+                        <label>Fecha de Facturación</label>
+                        <input type="date" id="fecha_facturacion" name="fecha_facturacion">
+                    </div>
+                </div>
+                <div id="bloque-garantia" class="grid-2 hidden">
+                    <div class="campo">
+                        <label>Tipo de Garantía</label>
+                        <select id="garantia_tipo" name="garantia_tipo">
+                            <option value="">-- Seleccione --</option>
+                            <option value="INTERNA">INTERNA</option>
+                            <option value="EXTERNA">EXTERNA</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>CAS (solo garantía externa)</label>
+                        <select id="cas_id" name="cas_id">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($cas as $c)
+                                <option value="{{ $c->id }}">{{ $c->nombre }} ({{ $c->marca }})</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -122,7 +209,7 @@
                 <div class="grid-2">
                     <div class="campo">
                         <label>Técnico Asignado <span class="req">*</span></label>
-                        <select id="ord_tecnico_id" required>
+                        <select id="ord_tecnico_id" name="ord_tecnico_id" required>
                             <option value="">-- Seleccione un Técnico --</option>
                             @foreach($tecnicos as $tec)
                                 <option value="{{ $tec->id }}">{{ $tec->nombre_tecnico }}</option>
@@ -131,12 +218,69 @@
                     </div>
                     <div class="campo">
                         <label>Tipo de Servicio Sugerido</label>
-                        <select id="eq_tipo_servicio">
+                        <select id="eq_tipo_servicio" name="eq_tipo_servicio">
                             <option value="">-- Seleccione (Opcional) --</option>
                             @foreach($tiposServicio as $ts)
                                 <option value="{{ $ts->id }}">{{ $ts->nombre }}</option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+                <div id="bloque-servicio-externo" class="grid-2 hidden">
+                    <div class="campo" style="grid-column: span 2;">
+                        <label>Tipo de Servicio (Cliente Externo)</label>
+                        <input type="text" id="tipo_servicio_texto" name="tipo_servicio_texto" placeholder="Ej: INSTALACION / REVISION" oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Fecha Prometido <span class="req">*</span></label>
+                        <input type="date" id="fecha_prometido" name="fecha_prometido" required>
+                    </div>
+                    <div class="campo">
+                        <label>Estado de Repuesto</label>
+                        <select id="estado_repuesto" name="estado_repuesto">
+                            <option value="No requerido">No requerido</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Entregado">Entregado</option>
+                            <option value="No se encontró">No se encontró</option>
+                            <option value="Rechazado">Rechazado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos y Producto</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Repuesto (Inventario)</label>
+                        <select id="repuesto_inventario_id" name="repuesto_inventario_id">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($productosInventario as $prod)
+                                <option value="{{ $prod->id }}">{{ $prod->codigo }} - {{ $prod->descripcion }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Código de Producto Inventario</label>
+                        <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo" oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-key"></i> Credenciales del Equipo</div>
+            <div class="seccion-body">
+                <div class="lista-lineas" id="credenciales-container">
+                    <div class="linea-item">
+                        <input type="text" name="cred_usuario[]" placeholder="Usuario (opcional)">
+                        <input type="text" name="cred_contrasena[]" placeholder="Contraseña / PIN">
+                        <input type="hidden" name="cred_es_patron[]" value="0">
+                        <button type="button" class="btn-mini" onclick="agregarCredencial()">+</button>
                     </div>
                 </div>
             </div>
@@ -181,30 +325,62 @@ async function buscarClienteAjax() {
     } catch(e) { alert('Error al buscar cliente.'); }
 }
 
+function actualizarMotivo() {
+    const motivo = document.getElementById('motivo_ingreso').value;
+    const bloqueFacturacion = document.getElementById('bloque-facturacion');
+    const bloqueGarantia = document.getElementById('bloque-garantia');
+    const bloqueServicioExterno = document.getElementById('bloque-servicio-externo');
+    const selectSucursal = document.getElementById('nro_sucursal_cliente');
+    const tipoServicioSelect = document.getElementById('eq_tipo_servicio');
+    const tipoServicioTexto = document.getElementById('tipo_servicio_texto');
+    const nroFactura = document.getElementById('nro_factura');
+    const fechaFacturacion = document.getElementById('fecha_facturacion');
+
+    const esGarantia = motivo === 'Validacion de Garantia';
+    const esExterno = motivo === 'Servicio Cliente Externo';
+
+    bloqueFacturacion.classList.toggle('hidden', !esGarantia);
+    bloqueGarantia.classList.toggle('hidden', !esGarantia);
+    bloqueServicioExterno.classList.toggle('hidden', !esExterno);
+
+    tipoServicioSelect.disabled = esGarantia || esExterno;
+    tipoServicioTexto.required = esExterno;
+    nroFactura.required = esGarantia;
+    fechaFacturacion.required = esGarantia;
+
+    if (esExterno) {
+        selectSucursal.value = '999';
+    }
+    selectSucursal.disabled = esExterno;
+}
+
+function agregarSerie() {
+    const container = document.getElementById('series-container');
+    const row = document.createElement('div');
+    row.className = 'linea-item';
+    row.innerHTML = `
+        <input type="text" name="series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional">
+        <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
+    `;
+    container.appendChild(row);
+}
+
+function agregarCredencial() {
+    const container = document.getElementById('credenciales-container');
+    const row = document.createElement('div');
+    row.className = 'linea-item';
+    row.innerHTML = `
+        <input type="text" name="cred_usuario[]" placeholder="Usuario (opcional)">
+        <input type="text" name="cred_contrasena[]" placeholder="Contraseña / PIN">
+        <input type="hidden" name="cred_es_patron[]" value="0">
+        <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
+    `;
+    container.appendChild(row);
+}
+
 async function guardarOrden() {
-    const fd = new FormData();
-    fd.append('_token', '{{ csrf_token() }}');
-    
-    // Cliente
-    fd.append('cli_identificacion', document.getElementById('cli_identificacion').value.trim());
-    fd.append('cli_nombres', document.getElementById('cli_nombres').value.trim());
-    fd.append('cli_apellidos', document.getElementById('cli_apellidos').value.trim());
-    fd.append('cli_telefono', document.getElementById('cli_telefono').value.trim());
-    fd.append('cli_correo', document.getElementById('cli_correo').value.trim());
-    fd.append('cli_direccion', document.getElementById('cli_direccion').value.trim());
-
-    // Equipo
-    fd.append('eq_tipo', document.getElementById('eq_tipo').value.trim());
-    fd.append('eq_marca', document.getElementById('eq_marca').value.trim());
-    fd.append('eq_modelo', document.getElementById('eq_modelo').value.trim());
-    fd.append('eq_serie', document.getElementById('eq_serie').value.trim());
-    fd.append('eq_contrasena', document.getElementById('eq_contrasena').value.trim());
-    fd.append('eq_falla', document.getElementById('eq_falla').value.trim());
-    fd.append('eq_observacion', document.getElementById('eq_observacion').value.trim());
-    fd.append('eq_tipo_servicio', document.getElementById('eq_tipo_servicio').value);
-
-    // Orden
-    fd.append('ord_tecnico_id', document.getElementById('ord_tecnico_id').value);
+    const form = document.getElementById('form-orden');
+    const fd = new FormData(form);
 
     const btn = document.getElementById('btn-guardar');
     btn.disabled = true;
@@ -217,6 +393,7 @@ async function guardarOrden() {
         if(d.ok) {
             mostrarMensaje(false, `<strong>¡Éxito!</strong> ${d.mensaje} <br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`);
             document.getElementById('form-orden').reset();
+            actualizarMotivo();
         } else {
             mostrarMensaje(true, d.error);
         }
@@ -227,5 +404,9 @@ async function guardarOrden() {
         btn.innerHTML = '<i class="bi bi-floppy"></i> Generar Orden de Ingreso';
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    actualizarMotivo();
+});
 </script>
 @endpush

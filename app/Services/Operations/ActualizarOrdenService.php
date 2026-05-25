@@ -42,7 +42,7 @@ class ActualizarOrdenService
                 }
 
                 // 2. Actualizar datos de la Orden
-                $orden->estado_orden           = strtoupper(trim($dto->estado_orden));
+                $orden->estado_orden           = $this->normalizarEstado($dto->estado_orden);
                 $orden->valor_estandar_id      = $dto->valor_estandar_id;
                 $orden->repuesto_inventario_id = $dto->repuesto_inventario_id;
                 $orden->fecha_prometido        = $dto->fecha_prometido;
@@ -50,7 +50,7 @@ class ActualizarOrdenService
                 $orden->fecha_modificacion     = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
                 // Cierre automatico si el estado corresponde
-                if (in_array($orden->estado_orden, ['REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'])) {
+                if (in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
                     if (!$orden->fecha_finalizacion) {
                         $orden->fecha_finalizacion = $orden->fecha_modificacion;
                     }
@@ -68,5 +68,22 @@ class ActualizarOrdenService
             Log::error('Error transaccional al actualizar orden.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrió un error interno al actualizar la orden. Los cambios fueron revertidos.');
         }
+    }
+
+    private function normalizarEstado(string $estado): string
+    {
+        $estado = trim($estado);
+
+        $map = [
+            'INGRESO' => 'Pendiente',
+            'REVISIÓN' => 'En proceso',
+            'REVISION' => 'En proceso',
+            'ESPERA REPUESTO' => 'En proceso',
+            'REPARADO' => 'Finalizada',
+            'ENTREGADO' => 'Entregada',
+            'DEVUELTO SIN REPARAR' => 'Devuelto sin reparar'
+        ];
+
+        return $map[$estado] ?? $estado;
     }
 }
