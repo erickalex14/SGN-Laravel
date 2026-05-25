@@ -41,7 +41,7 @@ class SolicitudRepuestoService
                 $sol->link_compra     = $dto->link_compra;
                 $sol->cantidad        = $dto->cantidad;
                 $sol->descripcion     = $dto->descripcion;
-                $sol->estado          = 'PENDIENTE';
+                $sol->estado          = 'Pendiente';
                 $sol->fecha_solicitud = Carbon::now('America/Guayaquil');
                 $sol->save();
 
@@ -61,18 +61,21 @@ class SolicitudRepuestoService
     {
         $solicitud = $this->repository->buscarPorId($dto->solicitud_id);
         if (!$solicitud) throw new Exception('Solicitud no encontrada.');
-        if ($solicitud->estado !== 'PENDIENTE') throw new Exception("La solicitud ya fue procesada ({$solicitud->estado}).");
+        if ($solicitud->estado !== 'Pendiente') throw new Exception("La solicitud ya fue procesada ({$solicitud->estado}).");
 
         try {
             DB::transaction(function () use ($solicitud, $dto) {
-                $solicitud->estado = $dto->estado;
+                $estadoRecibido = strtoupper(trim($dto->estado));
+                $estadoFinal = $estadoRecibido === 'RECHAZADA' ? 'Rechazada' : 'Aprobada';
+
+                $solicitud->estado = $estadoFinal;
                 $solicitud->aprobado_por = $dto->aprobado_por;
                 $solicitud->fecha_gestion = Carbon::now('America/Guayaquil');
 
-                if ($dto->estado === 'RECHAZADA') {
+                if ($estadoFinal === 'Rechazada') {
                     $solicitud->motivo_rechazo = trim($dto->motivo_rechazo);
                 } 
-                elseif ($dto->estado === 'APROBADA' && $solicitud->repuesto_inv_id) {
+                elseif ($estadoFinal === 'Aprobada' && $solicitud->repuesto_inv_id) {
                     // Descontar del inventario automaticamente
                     $repuesto = Repuesto::find($solicitud->repuesto_inv_id);
                     if ($repuesto) {
@@ -85,7 +88,7 @@ class SolicitudRepuestoService
                 }
 
                 $solicitud->save();
-                Log::info('Solicitud repuesto gestionada.', ['sr_id' => $solicitud->id, 'estado' => $dto->estado]);
+                Log::info('Solicitud repuesto gestionada.', ['sr_id' => $solicitud->id, 'estado' => $estadoFinal]);
             });
         } catch (Exception $e) {
             Log::error('Error al gestionar SR', ['error' => $e->getMessage()]);

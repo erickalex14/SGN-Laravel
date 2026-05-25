@@ -175,7 +175,6 @@
                             <th>Crear</th>
                             <th>Editar</th>
                             <th>Eliminar</th>
-                            <th>Imprimir</th>
                         </tr>
                         </thead>
                         <tbody id="p-tbody">
@@ -197,11 +196,15 @@
     <script>
         // El listado exacto de módulos legados se mantiene
         const modulos = [
-            'cas','configuracion','empresas','grupos','informes','inventario',
-            'marcas','notas_credito','ordenes','ordenes_asignadas','precios',
-            'preordenes','productos','repuestos','sucursales','sucursales_cliente','usuarios'
+            'ordenes_crear','ordenes_editar','ordenes_buscar',
+            'ordenes_mis','ordenes_asignadas','preordenes',
+            'informes','presupuestos','solicitar_nc','solicitar_repuesto',
+            'reportes','notas_credito','repuestos_admin',
+            'inv_productos','inv_marcas','inv_repuestos',
+            'precios','sucursales','sucursales_novicompu',
+            'empresas','cas','mi_cuenta','usuarios','grupos_acceso'
         ];
-        const acciones = ['ver', 'crear', 'editar', 'eliminar', 'imprimir'];
+        const acciones = ['ver', 'crear', 'editar', 'eliminar'];
 
         function mostrarMsg(id, esError, texto) {
             const el = document.getElementById(id);

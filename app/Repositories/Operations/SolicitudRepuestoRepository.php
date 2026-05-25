@@ -39,6 +39,6 @@ class SolicitudRepuestoRepository
 
     public function contarSolicitudesPendientes(): int
     {
-        return SolicitudRepuesto::where('estado', 'PENDIENTE')->count();
+        return SolicitudRepuesto::where('estado', 'Pendiente')->count();
     }
 }

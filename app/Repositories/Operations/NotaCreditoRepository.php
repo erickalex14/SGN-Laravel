@@ -29,7 +29,7 @@ class NotaCreditoRepository
     public function existeSolicitudPendienteParaOrden(int $ordenId): bool
     {
         return SolicitudNc::where('orden_id', $ordenId)
-            ->where('estado', 'PENDIENTE')
+            ->where('estado', 'Pendiente')
             ->exists();
     }
 
@@ -47,6 +47,6 @@ class NotaCreditoRepository
 
     public function contarSolicitudesNcPendientes(): int
     {
-        return SolicitudNc::where('estado', 'PENDIENTE')->count();
+        return SolicitudNc::where('estado', 'Pendiente')->count();
     }
 }
