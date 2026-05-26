@@ -15,7 +15,10 @@ class UsuarioRepository
     public function encontrarPorCredencialesLegadas(string $usuario, string $clave): ?Usuario
     {
         return Usuario::with(['grupo', 'sucursalesAsignadas', 'permisos'])
-            ->where('usuario', $usuario)
+            ->where(function ($query) use ($usuario) {
+                $query->where('usuario', $usuario)
+                      ->orWhere('correo_tec', $usuario);
+            })
             ->where('clave', $clave)
             ->first();
     }

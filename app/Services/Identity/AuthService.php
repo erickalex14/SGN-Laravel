@@ -2,13 +2,11 @@
 
 namespace App\Services\Identity;
 
-use App\Models\Identity\Usuario;
-
 use App\DTOs\Identity\LoginDTO;
 use App\Repositories\Identity\UsuarioRepository;
 use Exception;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AuthService
 {
@@ -21,31 +19,28 @@ class AuthService
 
     public function autenticar(LoginDTO $dto): void
     {
-        // 1. Buscamos al usuario manualmente cargando las relaciones necesarias
-        $usuario = \App\Models\Identity\Usuario::with(['grupo', 'sucursalesAsignadas', 'permisos'])
-            ->where('usuario', $dto->usuario)
-            ->first();
+        $usuarioInput = $this->normalizarInput($dto->usuario);
+        $claveInput = $this->normalizarInput($dto->clave);
 
-        // 2. Comparamos la contraseña en texto plano (Retrocompatibilidad Legacy)
-        if (!$usuario || $usuario->clave !== $dto->clave) {
-            Log::warning('Intento de login fallido: credenciales incorrectas', ['usuario' => $dto->usuario]);
+        // Validacion compatible con legacy: usuario o correo + clave (comparacion SQL)
+        $usuario = $this->usuarioRepository->encontrarPorCredencialesLegadas($usuarioInput, $claveInput);
+
+        if (!$usuario) {
+            Log::warning('Intento de login fallido: credenciales incorrectas', ['usuario' => $usuarioInput]);
             throw new Exception('credenciales_invalidas');
         }
 
-        // 3. Verificamos si el usuario está inactivo (en legacy, NULL equivale a activo)
-        if ((int)($usuario->activo ?? 1) === 0) {
-            Log::warning('Intento de login fallido: usuario inactivo', ['usuario' => $dto->usuario]);
+        // En legacy, NULL equivale a activo
+        if ((int) ($usuario->activo ?? 1) === 0) {
+            Log::warning('Intento de login fallido: usuario inactivo', ['usuario' => $usuarioInput]);
             throw new Exception('usuario_inactivo');
         }
 
-        // 4. Forzamos el inicio de sesión en Laravel
         Auth::login($usuario);
 
-        // 5. Replicamos las sesiones requeridas por el código legacy
         $grupo = $usuario->grupo;
-        $es_superadmin = $grupo ? (bool) $grupo->es_superadmin : false;
+        $esSuperadmin = $grupo ? (bool) $grupo->es_superadmin : false;
 
-        // Extraer IDs de sucursales asignadas
         $sucursalesIds = [];
         foreach ($usuario->sucursalesAsignadas as $sucursalAsignada) {
             $sucursalesIds[] = $sucursalAsignada->id;
@@ -55,7 +50,6 @@ class AuthService
             $sucursalesIds[] = (int) $usuario->sucursal_id;
         }
 
-        // Replicar logica de sgn_cargar_permisos (Merge de grupo y usuario)
         $permisosFinales = [];
         if ($grupo && $grupo->permisos) {
             foreach ($grupo->permisos as $permiso) {
@@ -66,7 +60,6 @@ class AuthService
             $permisosFinales[$permiso->modulo][$permiso->accion] = (bool) $permiso->permitido;
         }
 
-        // Registrar en la sesión de Laravel utilizando las mismas llaves del PHP Vanilla
         session([
             'usuario'        => $usuario->usuario,
             'nombre'         => $usuario->nombre_tecnico,
@@ -75,16 +68,21 @@ class AuthService
             'sucursales_ids' => $sucursalesIds,
             'grupo_id'       => $usuario->grupo_id ?? 0,
             'grupo_nombre'   => $grupo ? $grupo->nombre : 'Sin grupo',
-            'es_superadmin'  => $es_superadmin,
+            'es_superadmin'  => $esSuperadmin,
             'permisos'       => $permisosFinales,
         ]);
     }
 
     public function cerrarSesion(): void
     {
-        // Limpiamos la sesión de forma segura
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();
+    }
+
+    private function normalizarInput(string $valor): string
+    {
+        $normalizado = preg_replace('/[\x{00A0}\x{2000}-\x{200B}\x{202F}\x{205F}\x{3000}]/u', ' ', $valor);
+        return trim($normalizado ?? $valor);
     }
 }
