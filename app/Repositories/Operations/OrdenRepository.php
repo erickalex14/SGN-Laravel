@@ -2,9 +2,11 @@
 
 namespace App\Repositories\Operations;
 
+use App\DTOs\Operations\ReporteFiltroDTO;
 use App\Models\Operations\Orden;
 use App\Models\Operations\OrdenEmpresa;
 use App\Models\Directory\Sucursal;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -127,5 +129,36 @@ class OrdenRepository
 
         // Orden cronologico descendente por defecto
         return $query->orderBy('fecha_de_ingreso', 'desc')->get();
+    }
+
+    public function obtenerOrdenesElegiblesParaNc(int $tecnicoId, bool $esAdmin): Collection
+    {
+        $query = Orden::query()
+            ->select('id', 'nro_orden', 'estado_orden')
+            ->where('motivo_ingreso', 'Validacion de Garantia')
+            ->whereIn('estado_orden', ['Finalizada', 'Entregada', 'Nota de Credito'])
+            ->whereDoesntHave('solicitudesNc')
+            ->orderByDesc('id');
+
+        if (!$esAdmin) {
+            $query->where('tecnico_id', $tecnicoId);
+        }
+
+        return $query->get();
+    }
+
+    public function obtenerOrdenesElegiblesParaRepuesto(int $tecnicoId, bool $esAdmin): Collection
+    {
+        $query = Orden::query()
+            ->select('id', 'nro_orden', 'estado_orden')
+            ->whereNotIn('estado_orden', ['Entregada', 'Nota de Credito'])
+            ->whereDoesntHave('solicitudesRepuesto')
+            ->orderByDesc('id');
+
+        if (!$esAdmin) {
+            $query->where('tecnico_id', $tecnicoId);
+        }
+
+        return $query->get();
     }
 }

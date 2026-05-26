@@ -16,10 +16,10 @@ class GuardarSucursalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id' => ['nullable'. 'integer', 'min:1'],
-            'nro_sucursal' => ['required', 'integer', 'min:1', 'max:9999'],
-            'ciudad' => ['required', 'string', 'max: 100'],
-            'secuencial' => ['nullable', 'string', 'min: 2', 'max: 100', 'regex:/^[A-Z0-9]+$/'],
+            'id' => ['nullable', 'integer', 'min:1'],
+            'nro_sucursal' => ['required', 'integer', 'min:1', 'max:999'],
+            'ciudad' => ['required', 'string', 'max:100'],
+            'secuencial' => ['required', 'string', 'min:2', 'max:10', 'regex:/^[A-Z0-9]+$/'],
             'nro_base'     => ['nullable', 'string', 'regex:/^09\d{8}$/'],
         ];
     }
@@ -39,11 +39,11 @@ class GuardarSucursalRequest extends FormRequest
 
     protected function failedValidation(Validator $validator): void
     {
-        //se fuerza el codigo 422 como en el proyecto vanilla
+        $error = $validator->errors()->first() ?: 'Validation errors';
         throw new HttpResponseException(response()->json([
-            'success' => false,
-            'message' => 'Validation errors',
-            'errors' => $validator->errors()
+            'ok' => false,
+            'error' => $error,
+            'errors' => $validator->errors(),
         ], 422));
     }
 }

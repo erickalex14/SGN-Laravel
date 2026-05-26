@@ -38,9 +38,15 @@ class SolicitudRepuestoController extends Controller
 
     public function indexTecnico(): View
     {
-        $tecnicoId = session('tecnico_id');
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $permisos = (array) session('permisos', []);
+        $esAdmin = (bool) session('es_superadmin', false)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+            || (($permisos['usuarios']['crear'] ?? false) === true);
+
         $solicitudes = $this->srRepository->obtenerPorTecnico($tecnicoId);
-        $ordenes = $this->ordenRepository->obtenerOrdenesPorTecnico($tecnicoId);
+        $ordenes = $this->ordenRepository->obtenerOrdenesElegiblesParaRepuesto($tecnicoId, $esAdmin);
         
         return view('operations.solicitudes_repuestos.tecnico', compact('solicitudes', 'ordenes'));
     }
@@ -48,10 +54,16 @@ class SolicitudRepuestoController extends Controller
     public function solicitar(GuardarSolicitudRepuestoRequest $request): JsonResponse
     {
         try {
+            $permisos = (array) session('permisos', []);
+            $esAdmin = (bool) session('es_superadmin', false)
+                || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+                || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+                || (($permisos['usuarios']['crear'] ?? false) === true);
+
             $dto = new SolicitudRepuestoDTO(
                 (int) $request->input('orden_id'),
-                session('tecnico_id'),
-                session('nombre'),
+                (int) session('tecnico_id', 0),
+                (string) (session('nombre_tecnico') ?? session('nombre') ?? session('usuario') ?? ''),
                 $request->input('repuesto_nombre'),
                 $request->input('nro_parte'),
                 $request->input('link_compra'),
@@ -60,7 +72,7 @@ class SolicitudRepuestoController extends Controller
                 $request->input('repuesto_inv_id') ? (int) $request->input('repuesto_inv_id') : null
             );
 
-            $nro = $this->service->registrarSolicitud($dto);
+            $nro = $this->service->registrarSolicitud($dto, $esAdmin);
 
             return response()->json(['ok' => true, 'mensaje' => "Ticket {$nro} enviado a bodega."]);
         } catch (Exception $e) {

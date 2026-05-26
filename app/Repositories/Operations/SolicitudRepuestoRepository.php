@@ -3,6 +3,7 @@
 namespace App\Repositories\Operations;
 
 use App\Models\Operations\SolicitudRepuesto;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 class SolicitudRepuestoRepository
@@ -27,14 +28,31 @@ class SolicitudRepuestoRepository
         return SolicitudRepuesto::find($id);
     }
 
+    public function existeSolicitudParaOrden(int $ordenId): bool
+    {
+        return SolicitudRepuesto::where('orden_id', $ordenId)->exists();
+    }
+
     public function generarNumeroSolicitud(): string
     {
-        $ultima = SolicitudRepuesto::orderBy('id', 'desc')->first();
-        $sec = 1;
-        if ($ultima && preg_match('/SR-(\d+)/', $ultima->nro_solicitud, $matches)) {
-            $sec = (int)$matches[1] + 1;
+        $anio = Carbon::now('America/Guayaquil')->year;
+        $sec = SolicitudRepuesto::whereYear('created_at', $anio)->count() + 1;
+
+        $nro = 'SR-' . $anio . '-' . str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
+        if (!SolicitudRepuesto::where('nro_solicitud', $nro)->exists()) {
+            return $nro;
         }
-        return 'SR-' . str_pad($sec, 5, '0', STR_PAD_LEFT);
+
+        // Fallback por si ya existe el secuencial del anio.
+        $ultimoDelAnio = SolicitudRepuesto::where('nro_solicitud', 'like', "SR-{$anio}-%")
+            ->orderByDesc('id')
+            ->value('nro_solicitud');
+
+        if (is_string($ultimoDelAnio) && preg_match('/SR-\d{4}-(\d+)/', $ultimoDelAnio, $matches)) {
+            $sec = ((int) $matches[1]) + 1;
+        }
+
+        return 'SR-' . $anio . '-' . str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
     }
 
     public function contarSolicitudesPendientes(): int

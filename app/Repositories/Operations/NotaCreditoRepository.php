@@ -33,16 +33,24 @@ class NotaCreditoRepository
             ->exists();
     }
 
+    public function existeSolicitudParaOrden(int $ordenId): bool
+    {
+        return SolicitudNc::where('orden_id', $ordenId)->exists();
+    }
+
     public function generarNumeroSolicitud(): string
     {
-        $ultima = SolicitudNc::orderBy('id', 'desc')->first();
+        $ultima = SolicitudNc::orderBy('id', 'desc')->value('nro_solicitud');
         $secuencial = 1;
-        
-        if ($ultima && preg_match('/NC-(\d+)/', $ultima->nro_solicitud, $matches)) {
-            $secuencial = (int)$matches[1] + 1;
+
+        if (is_string($ultima) && preg_match('/SOL-NC-(\d+)/', $ultima, $matches)) {
+            $secuencial = ((int) $matches[1]) + 1;
+        } else {
+            // Legacy: secuencial basado en total historico
+            $secuencial = SolicitudNc::count() + 1;
         }
 
-        return 'NC-' . str_pad($secuencial, 5, '0', STR_PAD_LEFT);
+        return 'SOL-NC-' . str_pad((string) $secuencial, 6, '0', STR_PAD_LEFT);
     }
 
     public function contarSolicitudesNcPendientes(): int

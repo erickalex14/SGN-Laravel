@@ -69,6 +69,7 @@
     $hasControl = $hasInventario || $can('precios', 'ver');
     $hasServicios = $can('empresas', 'ver') || $can('cas', 'ver');
     $hasAccesoAdmin = $can('usuarios', 'ver') || $can('grupos', 'ver');
+    $hasAcceso = $can('mi_cuenta', 'ver') || $hasAccesoAdmin;
 @endphp
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -106,6 +107,18 @@
                             <span class="nav-label" style="margin-left:10px;">Mis Órdenes</span>
                         </a>
                     @endif
+                    @if ($can('ordenes_asignadas', 'ver'))
+                        <a data-tip="Órdenes Asignadas" href="{{ route('ordenes_asignadas.index') }}">
+                            <i class="bi bi-list-check" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Órdenes Asignadas</span>
+                        </a>
+                    @endif
+                    @if ($can('preordenes', 'ver'))
+                        <a data-tip="Preórdenes" href="{{ route('preordenes.index') }}">
+                            <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Preórdenes</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -130,6 +143,12 @@
                                     <a data-tip="Informes" href="{{ route('informes.index') }}">
                                         <i class="bi bi-file-earmark-medical" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Informes</span>
+                                    </a>
+                                @endif
+                                @if ($can('presupuestos', 'ver'))
+                                    <a data-tip="Proformas" href="{{ route('presupuestos.index') }}">
+                                        <i class="bi bi-calculator" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Proformas</span>
                                     </a>
                                 @endif
                                 @if ($can('notas_credito_tecnico', 'ver'))
@@ -250,10 +269,18 @@
                     <i class="bi bi-chevron-down nav-arrow ms-auto"></i>
                 </a>
                 <div class="nav-submenu">
-                    <a data-tip="NOVICOM PU" href="{{ route('sucursales_cliente.index') }}">
-                        <i class="bi bi-building" style="flex-shrink:0;"></i>
-                        <span class="nav-label" style="margin-left:10px;">NOVICOM PU</span>
+                    @if ($can('sucursales', 'ver'))
+                    <a data-tip="NONITEC" href="{{ route('sucursales.index') }}">
+                        <i class="bi bi-shop" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">NONITEC</span>
                     </a>
+                    @endif
+                    @if ($can('sucursales_cliente', 'ver'))
+                        <a data-tip="NOVICOM PU" href="{{ route('sucursales_cliente.index') }}">
+                            <i class="bi bi-building" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">NOVICOM PU</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -282,7 +309,7 @@
             </div>
         @endif
 
-        @if ($hasAccesoAdmin)
+        @if ($hasAcceso)
             <div class="nav-group">
                 <a class="nav-toggle" data-tip="Acceso" onclick="navToggle(this)">
                     <i class="bi bi-person-lock" style="flex-shrink:0;"></i>
@@ -290,6 +317,12 @@
                     <i class="bi bi-chevron-down nav-arrow ms-auto"></i>
                 </a>
                 <div class="nav-submenu">
+                    @if ($can('mi_cuenta', 'ver'))
+                        <a data-tip="Mi Cuenta" href="{{ route('mi_cuenta.index') }}">
+                            <i class="bi bi-person-circle" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Mi Cuenta</span>
+                        </a>
+                    @endif
                     <div class="nav-subgroup">
                         <div class="nav-subtoggle" onclick="navSubToggle(this)">
                             <i class="bi bi-shield-lock" style="font-size:11px;"></i>

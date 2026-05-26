@@ -18,7 +18,6 @@ readonly class CrearOrdenDTO
         public string $tipo_equipo,
         public string $marca,
         public string $modelo,
-        public string $serie,
         public ?string $contrasena_equipo,
         public string $falla,
         public ?string $observacion,

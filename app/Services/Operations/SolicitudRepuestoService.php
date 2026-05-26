@@ -3,6 +3,7 @@
 namespace App\Services\Operations;
 
 use App\Repositories\Operations\SolicitudRepuestoRepository;
+use App\Repositories\Operations\OrdenRepository;
 use App\DTOs\Operations\SolicitudRepuestoDTO;
 use App\DTOs\Operations\GestionarSolicitudRepuestoDTO;
 use App\Models\Operations\SolicitudRepuesto;
@@ -15,17 +16,39 @@ use Exception;
 class SolicitudRepuestoService
 {
     protected SolicitudRepuestoRepository $repository;
+    protected OrdenRepository $ordenRepository;
 
-    public function __construct(SolicitudRepuestoRepository $repository)
+    public function __construct(
+        SolicitudRepuestoRepository $repository,
+        OrdenRepository $ordenRepository
+    )
     {
         $this->repository = $repository;
+        $this->ordenRepository = $ordenRepository;
     }
 
     /**
      * @throws Exception
      */
-    public function registrarSolicitud(SolicitudRepuestoDTO $dto): string
+    public function registrarSolicitud(SolicitudRepuestoDTO $dto, bool $esAdmin = false): string
     {
+        $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('Orden no encontrada.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== (int) $dto->tecnico_id) {
+            throw new Exception('No puedes solicitar repuesto para una orden que no te esta asignada.');
+        }
+
+        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+            throw new Exception('La orden no admite cambios en su estado actual.');
+        }
+
+        if ($this->repository->existeSolicitudParaOrden($dto->orden_id)) {
+            throw new Exception('Esta orden ya tiene una solicitud de repuesto registrada.');
+        }
+
         try {
             return DB::transaction(function () use ($dto) {
                 $nro = $this->repository->generarNumeroSolicitud();
@@ -44,6 +67,13 @@ class SolicitudRepuestoService
                 $sol->estado          = 'Pendiente';
                 $sol->fecha_solicitud = Carbon::now('America/Guayaquil');
                 $sol->save();
+
+                // Legacy: al registrar solicitud se marca estado de repuesto como requerido.
+                $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
+                if ($orden) {
+                    $orden->estado_repuesto = 'Requerido';
+                    $orden->save();
+                }
 
                 Log::info('Solicitud de repuesto creada', ['sr_id' => $sol->id, 'orden_id' => $dto->orden_id]);
                 return $nro;

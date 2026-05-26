@@ -17,8 +17,8 @@ class GuardarSolicitudRepuestoRequest extends FormRequest
             'cantidad'        => ['required', 'integer', 'min:1'],
             'repuesto_nombre' => ['required_without:repuesto_inv_id', 'nullable', 'string', 'max:255'],
             'repuesto_inv_id' => ['nullable', 'integer', 'exists:repuestos,id'],
-            'nro_parte'       => ['nullable', 'string', 'max:100'],
-            'link_compra'     => ['nullable', 'url'],
+            'nro_parte'       => ['required', 'string', 'max:100'],
+            'link_compra'     => ['nullable', 'string', 'max:500'],
             'descripcion'     => ['nullable', 'string']
         ];
     }

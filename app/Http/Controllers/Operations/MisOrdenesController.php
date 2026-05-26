@@ -40,12 +40,20 @@ class MisOrdenesController extends Controller
         try {
             $dto = new CambiarEstadoOrdenDTO(
                 (int) $request->input('id'),
-                $request->input('estado')
+                (string) $request->input('estado'),
+                $request->input('nc_asunto'),
+                $request->input('nc_detalles')
             );
 
-            $usuarioModificacionId = session('tecnico_id');
+            $usuarioModificacionId = (int) session('tecnico_id', 0);
+            $tecnicoNombre = (string) (session('nombre_tecnico') ?? session('nombre') ?? session('usuario') ?? '');
+            $permisos = (array) session('permisos', []);
+            $esAdmin = (bool) session('es_superadmin', false)
+                || (($permisos['ordenes_asignadas']['ver'] ?? false) === true)
+                || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+                || (($permisos['usuarios']['crear'] ?? false) === true);
 
-            $this->service->actualizarEstado($dto, $usuarioModificacionId);
+            $this->service->actualizarEstado($dto, $usuarioModificacionId, $tecnicoNombre, $esAdmin);
 
             return response()->json([
                 'ok'      => true,
