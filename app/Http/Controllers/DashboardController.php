@@ -18,20 +18,33 @@ class DashboardController extends Controller
 
     public function index(): View
     {
-        return view('dashboard.index');
+        $permisos = session('permisos', []);
+        $esSuperadmin = session('es_superadmin') === true;
+        $puedeVerGestion = $esSuperadmin
+            || (($permisos['reportes']['ver'] ?? false) === true)
+            || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['ordenes_asignadas']['ver'] ?? false) === true);
+
+        return view('dashboard.index', [
+            'esSuperadmin' => $esSuperadmin,
+            'puedeVerGestion' => $puedeVerGestion,
+        ]);
     }
 
     public function obtenerMetricas(): JsonResponse
     {
         try {
-            $tecnicoId = session('tecnico_id');
+            $tecnicoId = (int) session('tecnico_id', 0);
             $permisos = session('permisos', []);
-            $esAdmin = session('es_superadmin') === true
+            $esSuperadmin = session('es_superadmin') === true;
+            $sucursalId = (int) session('sucursal_id', 0);
+            $esAdmin = $esSuperadmin
                 || (($permisos['reportes']['ver'] ?? false) === true)
                 || (($permisos['repuestos_admin']['ver'] ?? false) === true)
                 || (($permisos['ordenes_asignadas']['ver'] ?? false) === true);
 
-            $metricas = $this->service->obtenerMetricasGlobales($tecnicoId, $esAdmin);
+            $metricas = $this->service->obtenerMetricasGlobales($tecnicoId, $esAdmin, $esSuperadmin, $sucursalId);
 
             return response()->json([
                 'ok' => true,

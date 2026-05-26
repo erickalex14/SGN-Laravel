@@ -112,4 +112,9 @@ class Orden extends Model
     {
         return $this->hasMany(SolicitudRepuesto::class, 'orden_id', 'id');
     }
+
+    public function ordenRepuestos()
+    {
+        return $this->hasMany(OrdenRepuesto::class, 'orden_id', 'id');
+    }
 }

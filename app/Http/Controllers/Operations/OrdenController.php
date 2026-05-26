@@ -12,6 +12,7 @@ use App\Repositories\Identity\UsuarioRepository;
 use App\Repositories\Inventory\MarcaRepository;
 use App\Repositories\Inventory\ProductoRepository;
 use App\Repositories\Inventory\TipoDispositivoRepository;
+use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\TipoServicioRepository;
 use App\DTOs\Operations\CrearOrdenDTO;
 use Illuminate\Http\Request;
@@ -31,6 +32,7 @@ class OrdenController extends Controller
     protected CasRepository $casRepo;
     protected SucursalClienteRepository $sucursalClienteRepo;
     protected ProductoRepository $productoRepo;
+    protected OrdenRepository $ordenRepo;
 
     public function __construct(
         CrearOrdenService $service,
@@ -41,7 +43,8 @@ class OrdenController extends Controller
         TipoDispositivoRepository $tipoDispositivoRepo,
         CasRepository $casRepo,
         SucursalClienteRepository $sucursalClienteRepo,
-        ProductoRepository $productoRepo
+        ProductoRepository $productoRepo,
+        OrdenRepository $ordenRepo
     ) {
         $this->service = $service;
         $this->clienteRepo = $clienteRepo;
@@ -52,12 +55,13 @@ class OrdenController extends Controller
         $this->casRepo = $casRepo;
         $this->sucursalClienteRepo = $sucursalClienteRepo;
         $this->productoRepo = $productoRepo;
+        $this->ordenRepo = $ordenRepo;
     }
 
     public function create(): View
     {
-        // Cargamos tecnicos activos y tipos de servicio para los selects
-        $tecnicos = $this->usuarioRepo->obtenerTodosConRelaciones()->where('activo', 1);
+        // Tecnicos activos con carga actual (pendientes/en proceso), ordenados por menor carga
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual();
         $tiposServicio = $this->tipoServicioRepo->obtenerTodos()->where('activo', 1);
         $marcas = $this->marcaRepo->obtenerTodas();
         $tiposDispositivo = $this->tipoDispositivoRepo->obtenerTodos();
@@ -165,5 +169,22 @@ class OrdenController extends Controller
         }
 
         return response()->json(['ok' => false, 'error' => 'Cliente no encontrado']);
+    }
+
+    public function imprimir(int $id): View
+    {
+        $orden = $this->ordenRepo->obtenerOrdenCompleta($id);
+        abort_if(!$orden, 404);
+
+        $orden->loadMissing([
+            'equipo.series',
+            'equipo.tipoServicio',
+            'tecnico',
+            'sucursal',
+            'cas',
+            'usuarioIngreso',
+        ]);
+
+        return view('operations.ordenes.imprimir', compact('orden'));
     }
 }

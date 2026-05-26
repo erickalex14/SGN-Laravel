@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Operations;
 
 use App\DTOs\Operations\IngresarPreordenDTO;
+use App\DTOs\Operations\VerificarPreordenDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\IngresarPreordenRequest;
+use App\Http\Requests\Operations\VerificarPreordenRequest;
 use App\Services\Operations\PreordenService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -79,5 +81,28 @@ class PreordenController extends Controller
         abort_unless($preorden, 404);
 
         return view('operations.preordenes.reporte', ['o' => $preorden]);
+    }
+
+    public function verificar(VerificarPreordenRequest $request): JsonResponse
+    {
+        try {
+            $dto = new VerificarPreordenDTO(
+                trim((string) $request->query('ci', '')),
+                trim((string) $request->query('codigo', ''))
+            );
+
+            $preorden = $this->service->verificarPreorden($dto);
+
+            return response()->json([
+                'ok' => true,
+                'preorden' => $preorden,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'preorden' => null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

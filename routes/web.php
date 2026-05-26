@@ -17,6 +17,7 @@ use App\Http\Controllers\Operations\OrdenController;
 use App\Http\Controllers\Operations\MisOrdenesController;
 use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\EdicionOrdenController;
+use App\Http\Controllers\Operations\BuscarOrdenController;
 use App\Http\Controllers\Operations\InformeController;
 use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
@@ -261,15 +262,25 @@ Route::middleware('auth')->group(function () {
         
         // Endpoint AJAX para autocompletar
         Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente']);
+        Route::get('/operaciones/ordenes/repuestos/buscar', [RepuestoController::class, 'buscarParaOrden'])->name('ordenes.repuestos.buscar');
+        Route::get('/operaciones/preordenes/verificar', [PreordenController::class, 'verificar'])->name('preordenes.verificar');
     });
 
     Route::middleware(['permiso:ordenes_mis,ver'])->group(function () {
         Route::get('/operaciones/mis-ordenes', [MisOrdenesController::class, 'index'])->name('mis_ordenes.index');
         Route::post('/operaciones/mis-ordenes/estado', [MisOrdenesController::class, 'cambiarEstado'])->name('mis_ordenes.estado');
+        Route::post('/operaciones/mis-ordenes/repuesto/estado', [MisOrdenesController::class, 'cambiarEstadoRepuesto'])->name('mis_ordenes.repuesto_estado');
+        Route::post('/operaciones/mis-ordenes/repuesto/asignar', [MisOrdenesController::class, 'asignarRepuesto'])->name('mis_ordenes.repuesto_asignar');
+        Route::post('/operaciones/mis-ordenes/repuesto/revertir', [MisOrdenesController::class, 'revertirRepuesto'])->name('mis_ordenes.repuesto_revertir');
     });
 
     Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
         Route::get('/operaciones/ordenes/asignadas', [OrdenesAsignadasController::class, 'index'])->name('ordenes_asignadas.index');
+    });
+
+    Route::middleware(['permiso:ordenes_buscar,ver'])->group(function () {
+        Route::get('/operaciones/ordenes/buscar', [BuscarOrdenController::class, 'index'])->name('ordenes_buscar.index');
+        Route::get('/operaciones/ordenes/buscar/listar', [BuscarOrdenController::class, 'listar'])->name('ordenes_buscar.listar');
     });
 
     // Modulo de Edicion de Ordenes
@@ -280,6 +291,8 @@ Route::middleware('auth')->group(function () {
 
     // Buscador Global: accesible a usuarios autenticados, filtrando por alcance interno
     Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
+    // Reimpresion de comprobante OT (legacy: disponible para usuario autenticado)
+    Route::get('/operaciones/ordenes/{id}/imprimir', [OrdenController::class, 'imprimir'])->name('ordenes.imprimir');
 
     //-------------------------------------------------------
     //-----------------MODULO INFORMES-----------------------
@@ -287,6 +300,8 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['permiso:informes,ver'])->group(function () {
         Route::get('/operaciones/informes', [InformeController::class, 'index'])->name('informes.index');
+        Route::get('/operaciones/informes/ver', [InformeController::class, 'verPorOrden'])->name('informes.ver');
+        Route::get('/operaciones/informes/{id}/imprimir', [InformeController::class, 'imprimir'])->name('informes.imprimir');
     });
 
     Route::middleware(['permiso:informes,crear'])->group(function () {
@@ -328,6 +343,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:notas_credito,editar'])->group(function () {
         Route::post('/operaciones/gestion-nc/procesar', [NotaCreditoController::class, 'gestionar'])->name('notas_credito.gestionar');
     });
+    // Reimpresion de solicitudes NC (acceso controlado dentro del controlador)
+    Route::get('/operaciones/notas-credito/{id}/imprimir', [NotaCreditoController::class, 'imprimir'])->name('notas_credito.imprimir');
 
     //-------------------------------------------------------
     //-------------MODULO SOLICITUDES REPUESTOS--------------
@@ -344,6 +361,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/bodega-solicitudes', [SolicitudRepuestoController::class, 'indexAdmin'])->name('solicitudes_repuestos.admin');
         Route::post('/operaciones/bodega-solicitudes/procesar', [SolicitudRepuestoController::class, 'gestionar'])->name('solicitudes_repuestos.gestionar');
     });
+    // Reimpresion de tickets de repuestos (acceso controlado dentro del controlador)
+    Route::get('/operaciones/solicitudes-repuestos/{id}/imprimir', [SolicitudRepuestoController::class, 'imprimir'])->name('solicitudes_repuestos.imprimir');
 
     //-------------------------------------------------------
     //-------------MODULO REPORTES----------------------------
@@ -361,6 +380,7 @@ Route::middleware('auth')->group(function () {
 // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
+        Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
     });
 
     Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {

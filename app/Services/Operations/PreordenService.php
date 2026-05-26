@@ -3,6 +3,7 @@
 namespace App\Services\Operations;
 
 use App\DTOs\Operations\IngresarPreordenDTO;
+use App\DTOs\Operations\VerificarPreordenDTO;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\PreordenRepository;
 use Illuminate\Support\Facades\Log;
@@ -180,6 +181,14 @@ class PreordenService
     public function obtenerNumeroOrdenPorId(int $ordenId): ?string
     {
         return $this->repository->obtenerNumeroOrdenPorId($ordenId);
+    }
+
+    public function verificarPreorden(VerificarPreordenDTO $dto): ?object
+    {
+        return $this->repository->buscarPendientePorCiOCodigo(
+            trim($dto->ci),
+            trim($dto->codigo)
+        );
     }
 
     private function generarIdentificacionTemporal(): string

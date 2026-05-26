@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\GuardarSolicitudRepuestoRequest;
 use App\Http\Requests\Operations\GestionarSolicitudRepuestoRequest;
 use App\Services\Operations\SolicitudRepuestoService;
+use App\Repositories\Inventory\RepuestoRepository;
 use App\Repositories\Operations\SolicitudRepuestoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\DTOs\Operations\SolicitudRepuestoDTO;
@@ -19,21 +20,25 @@ class SolicitudRepuestoController extends Controller
     protected SolicitudRepuestoService $service;
     protected SolicitudRepuestoRepository $srRepository;
     protected OrdenRepository $ordenRepository;
+    protected RepuestoRepository $repuestoRepository;
 
     public function __construct(
         SolicitudRepuestoService $service,
         SolicitudRepuestoRepository $srRepository,
-        OrdenRepository $ordenRepository
+        OrdenRepository $ordenRepository,
+        RepuestoRepository $repuestoRepository
     ) {
         $this->service = $service;
         $this->srRepository = $srRepository;
         $this->ordenRepository = $ordenRepository;
+        $this->repuestoRepository = $repuestoRepository;
     }
 
     public function indexAdmin(): View
     {
         $solicitudes = $this->srRepository->obtenerTodas();
-        return view('operations.solicitudes_repuestos.admin', compact('solicitudes'));
+        $repuestos = $this->repuestoRepository->buscarParaOrden('', true);
+        return view('operations.solicitudes_repuestos.admin', compact('solicitudes', 'repuestos'));
     }
 
     public function indexTecnico(): View
@@ -87,7 +92,8 @@ class SolicitudRepuestoController extends Controller
                 (int) $request->input('solicitud_id'),
                 $request->input('estado'),
                 $request->input('motivo_rechazo'),
-                session('nombre')
+                session('nombre'),
+                $request->filled('repuesto_id') ? (int) $request->input('repuesto_id') : null
             );
 
             $this->service->gestionar($dto);
@@ -96,5 +102,23 @@ class SolicitudRepuestoController extends Controller
         } catch (Exception $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    public function imprimir(int $id): View
+    {
+        $solicitud = $this->srRepository->buscarPorIdConRelaciones($id);
+        abort_if(!$solicitud, 404);
+
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $permisos = (array) session('permisos', []);
+        $esAdmin = (bool) session('es_superadmin', false)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['repuestos_admin']['editar'] ?? false) === true)
+            || (($permisos['usuarios_crear']['ver'] ?? false) === true);
+
+        $esPropietario = (int) $solicitud->tecnico_id === $tecnicoId;
+        abort_unless($esAdmin || $esPropietario, 403);
+
+        return view('operations.solicitudes_repuestos.imprimir', compact('solicitud'));
     }
 }

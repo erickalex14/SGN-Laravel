@@ -147,6 +147,44 @@ class PreordenRepository
         return $row ? (string) $row->nro_orden : null;
     }
 
+    public function buscarPendientePorCiOCodigo(string $ci, string $codigo): ?object
+    {
+        $ci = trim($ci);
+        $codigo = trim($codigo);
+
+        if ($ci === '' && $codigo === '') {
+            return null;
+        }
+
+        $query = DB::table('preordenes as p')
+            ->select([
+                'p.id',
+                'p.nro_preorden',
+                'p.nombres',
+                'p.apellidos',
+                'p.identificacion',
+                'p.codigo_producto',
+                'p.desc_producto',
+                'p.marca_producto',
+                'p.tipo_producto',
+                'p.estado',
+                DB::raw('COALESCE(p.created_at, p.fecha_registro) as created_at'),
+            ])
+            ->where('p.estado', '=', 'pendiente')
+            ->whereNull('p.orden_id');
+
+        if ($ci !== '' && $codigo !== '') {
+            $query->where('p.identificacion', '=', $ci)
+                ->where('p.codigo_producto', '=', $codigo);
+        } elseif ($ci !== '') {
+            $query->where('p.identificacion', '=', $ci);
+        } else {
+            $query->where('p.codigo_producto', '=', $codigo);
+        }
+
+        return $query->orderByDesc('created_at')->first();
+    }
+
     public function obtenerCorreoTecnico(int $tecnicoId): ?string
     {
         $row = DB::table('usuarios')

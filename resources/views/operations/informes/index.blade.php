@@ -68,14 +68,17 @@
                 <div class="inf-card-body">
                     <div class="campo">
                         <label>Seleccione la Orden a Reportar <span class="req">*</span></label>
-                        <select id="orden_id" required>
+                        <select id="orden_id" required onchange="cargarInformeExistente(this.value)">
                             <option value="">-- Seleccione una orden pendiente --</option>
                             @foreach($ordenesPendientes as $ord)
                                 <option value="{{ $ord->id }}">
-                                    {{ $ord->nro_orden }} - {{ $ord->cliente->nombres }} {{ $ord->cliente->apellidos }} ({{ $ord->equipo->marca }} {{ $ord->equipo->modelo }})
+                                    {{ $ord->nro_orden }} - {{ $ord->cliente_nombre }} ({{ $ord->equipo_nombre ?: 'Equipo no especificado' }})
                                 </option>
                             @endforeach
                         </select>
+                        <div id="info-informe-existente" style="display:none;margin-top:8px;padding:9px 12px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;border-radius:8px;font-size:12.5px;">
+                            Esta orden ya tiene informe registrado. Puedes actualizarlo y volver a guardar.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,9 +107,10 @@
                     <div class="campo">
                         <label>Estado Final del Equipo <span class="req">*</span></label>
                         <select id="estado_equipo" required>
-                            <option value="OPERATIVO">OPERATIVO / REPARADO</option>
-                            <option value="NO OPERATIVO">NO OPERATIVO / DAÑO IRREPARABLE</option>
-                            <option value="OPERATIVO PARCIAL">OPERATIVO PARCIAL / FUNCIONES LIMITADAS</option>
+                            <option value="Operativo">Operativo</option>
+                            <option value="Reparado parcialmente">Reparado parcialmente</option>
+                            <option value="Desguace">Desguace</option>
+                            <option value="En espera de repuesto">En espera de repuesto</option>
                         </select>
                     </div>
                 </div>
@@ -120,8 +124,8 @@
                     <label class="file-upload-wrapper" onclick="document.getElementById('fotos').click()">
                         <i class="bi bi-cloud-arrow-up" style="font-size:24px; color:#64748b;"></i><br>
                         <span style="font-weight:600; color:#475569;">Haga clic aquí para subir imágenes</span><br>
-                        <span style="font-size:12px; color:#94a3b8;">Formatos permitidos: JPG, PNG. (Máx. 4 archivos)</span>
-                        <input type="file" id="fotos" multiple accept="image/jpeg, image/png" onchange="mostrarArchivos()">
+                        <span style="font-size:12px; color:#94a3b8;">Formatos permitidos: JPG, PNG, WEBP. (Máx. 10 archivos)</span>
+                        <input type="file" id="fotos" multiple accept="image/jpeg, image/png, image/webp" onchange="mostrarArchivos()">
                     </label>
                     <div id="file-list" class="file-list"></div>
                 </div>
@@ -150,10 +154,10 @@
                     <tbody>
                         @forelse($informesGenerados as $inf)
                             <tr>
-                                <td><span class="ord-badge">{{ $inf->orden->nro_orden }}</span></td>
-                                <td>{{ \Carbon\Carbon::parse($inf->fecha_informe)->format('d/m/Y') }}</td>
-                                <td>{{ $inf->orden->cliente->nombres }} {{ $inf->orden->cliente->apellidos }}</td>
-                                <td>{{ $inf->orden->equipo->marca }} {{ $inf->orden->equipo->modelo }}</td>
+                                <td><span class="ord-badge">{{ $inf->nro_orden ?? '-' }}</span></td>
+                                <td>{{ !empty($inf->fecha_informe) ? \Carbon\Carbon::parse($inf->fecha_informe)->format('d/m/Y') : '-' }}</td>
+                                <td>{{ $inf->cliente_nombre ?? '-' }}</td>
+                                <td>{{ $inf->equipo_nombre ?: '-' }}</td>
                                 <td><strong>{{ $inf->estado_equipo }}</strong></td>
                                 <td style="text-align:right;">
                                     <a href="{{ url('/operaciones/informes/'.$inf->id.'/imprimir') }}" target="_blank" class="btn-accion">
@@ -174,6 +178,7 @@
 
 @push('js_adicional')
 <script>
+const _urlVerInformePorOrden = '{{ route("informes.ver") }}';
 function infTab(panel, btn) {
     document.querySelectorAll('.inf-tab').forEach(b => b.classList.remove('activo'));
     document.querySelectorAll('.inf-panel').forEach(p => p.classList.remove('activo'));
@@ -181,13 +186,41 @@ function infTab(panel, btn) {
     document.getElementById('panel-' + panel).classList.add('activo');
 }
 
+async function cargarInformeExistente(ordenId) {
+    const aviso = document.getElementById('info-informe-existente');
+    if (!ordenId) {
+        if (aviso) aviso.style.display = 'none';
+        return;
+    }
+
+    try {
+        const r = await fetch(_urlVerInformePorOrden + '?orden_id=' + encodeURIComponent(ordenId), { cache: 'no-store' });
+        const d = await r.json();
+        if (!d.ok || !d.informe) {
+            if (aviso) aviso.style.display = 'none';
+            return;
+        }
+
+        document.getElementById('antecedentes').value = d.informe.antecedentes || '';
+        document.getElementById('proceso').value = d.informe.proceso || '';
+        document.getElementById('conclusion').value = d.informe.conclusion || '';
+        document.getElementById('recomendaciones').value = d.informe.recomendaciones || '';
+        if (d.informe.estado_equipo) {
+            document.getElementById('estado_equipo').value = d.informe.estado_equipo;
+        }
+        if (aviso) aviso.style.display = 'block';
+    } catch {
+        if (aviso) aviso.style.display = 'none';
+    }
+}
+
 function mostrarArchivos() {
     const input = document.getElementById('fotos');
     const list = document.getElementById('file-list');
     list.innerHTML = '';
     
-    if(input.files.length > 4) {
-        alert('Se permite un máximo de 4 fotografías por informe.');
+    if(input.files.length > 10) {
+        alert('Se permite un máximo de 10 fotografías por informe.');
         input.value = '';
         return;
     }

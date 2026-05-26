@@ -107,4 +107,22 @@ class NotaCreditoController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }
+
+    public function imprimir(int $id): View
+    {
+        $solicitud = $this->ncRepository->buscarPorIdConRelaciones($id);
+        abort_if(!$solicitud, 404);
+
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $permisos = (array) session('permisos', []);
+        $esAdmin = (bool) session('es_superadmin', false)
+            || (($permisos['notas_credito']['ver'] ?? false) === true)
+            || (($permisos['notas_credito']['editar'] ?? false) === true)
+            || (($permisos['usuarios_crear']['ver'] ?? false) === true);
+
+        $esPropietario = (int) $solicitud->tecnico_id === $tecnicoId;
+        abort_unless($esAdmin || $esPropietario, 403);
+
+        return view('operations.notas_credito.imprimir', compact('solicitud'));
+    }
 }

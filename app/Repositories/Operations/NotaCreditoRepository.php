@@ -26,6 +26,16 @@ class NotaCreditoRepository
         return SolicitudNc::find($id);
     }
 
+    public function buscarPorIdConRelaciones(int $id): ?SolicitudNc
+    {
+        return SolicitudNc::with([
+            'orden',
+            'orden.cliente',
+            'orden.equipo',
+            'tecnico',
+        ])->find($id);
+    }
+
     public function existeSolicitudPendienteParaOrden(int $ordenId): bool
     {
         return SolicitudNc::where('orden_id', $ordenId)

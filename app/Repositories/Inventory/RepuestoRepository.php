@@ -28,4 +28,26 @@ class RepuestoRepository
         }
         return $query->exists();
     }
+
+    public function buscarParaOrden(string $q = '', bool $stockOnly = true): Collection
+    {
+        $query = Repuesto::query()
+            ->select('id', 'codigo', 'nro_parte', 'nombre', 'descripcion', 'stock')
+            ->orderBy('codigo', 'asc');
+
+        $q = trim($q);
+        if ($q !== '') {
+            $query->where(function ($inner) use ($q) {
+                $inner->where('codigo', 'like', "%{$q}%")
+                    ->orWhere('nombre', 'like', "%{$q}%")
+                    ->orWhere('descripcion', 'like', "%{$q}%");
+            });
+        }
+
+        if ($stockOnly) {
+            $query->where('stock', '>', 0);
+        }
+
+        return $query->limit(40)->get();
+    }
 }

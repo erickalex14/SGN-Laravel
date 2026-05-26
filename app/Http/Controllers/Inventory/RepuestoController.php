@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Inventory\GuardarRepuestoRequest;
+use App\Http\Requests\Inventory\BuscarRepuestoOrdenRequest;
 use App\Services\Inventory\RepuestoService;
 use App\Repositories\Inventory\RepuestoRepository;
 use App\Repositories\Inventory\MarcaRepository;
 use App\Repositories\Inventory\TipoDispositivoRepository;
 use App\DTOs\Inventory\RepuestoDTO;
+use App\DTOs\Inventory\BuscarRepuestoOrdenDTO;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Exception;
@@ -82,5 +84,27 @@ class RepuestoController extends Controller
             'ok'        => true,
             'repuestos' => $repuestos
         ]);
+    }
+
+    public function buscarParaOrden(BuscarRepuestoOrdenRequest $request): JsonResponse
+    {
+        try {
+            $dto = new BuscarRepuestoOrdenDTO(
+                (string) $request->query('q', ''),
+                filter_var($request->query('stock_only', true), FILTER_VALIDATE_BOOLEAN)
+            );
+
+            $repuestos = $this->service->buscarParaOrden($dto);
+
+            return response()->json([
+                'ok' => true,
+                'repuestos' => $repuestos,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

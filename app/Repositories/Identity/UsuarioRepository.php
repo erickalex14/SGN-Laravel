@@ -26,6 +26,28 @@ class UsuarioRepository
         return Usuario::with(['rol', 'grupo', 'sucursalPrincipal'])->orderBy('usuario', 'asc')->get();
     }
 
+    /**
+     * Lista tecnicos activos con su carga operativa actual.
+     * Carga = ordenes en estado Pendiente o En proceso.
+     */
+    public function obtenerTecnicosConCargaActual(): Collection
+    {
+        return Usuario::query()
+            ->from('usuarios as u')
+            ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
+            ->where('u.activo', 1)
+            ->whereNotNull('u.nombre_tecnico')
+            ->selectRaw(
+                "u.id, u.nombre_tecnico,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) = 'PENDIENTE' THEN 1 ELSE 0 END) as pendientes,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) IN ('EN PROCESO', 'EN_PROCESO') THEN 1 ELSE 0 END) as en_proceso"
+            )
+            ->groupBy('u.id', 'u.nombre_tecnico')
+            ->orderByRaw('(pendientes + en_proceso) ASC')
+            ->orderBy('u.nombre_tecnico')
+            ->get();
+    }
+
     // Metodo para verificar si un nombre de usuario ya existe, excluyendo un ID específico (útil para actualizaciones)
     public function existeUsuario(string $usuario, ?int $excluirId = null): bool
     {

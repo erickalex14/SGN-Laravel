@@ -4,7 +4,7 @@
 
 @push('css_adicional')
     <style>
-        /* CSS idéntico al legacy proporcionado */
+        /* CSS idéntico al legacy  */
         .cas-wrap { padding: 28px 24px; max-width: 1050px; margin: 0 auto; }
         .cas-titulo h2 { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px; }
         .cas-titulo p  { color: #94a3b8; font-size: 13px; margin: 0 0 24px; }

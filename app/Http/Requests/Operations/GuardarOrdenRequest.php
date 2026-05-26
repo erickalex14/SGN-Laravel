@@ -49,7 +49,7 @@ class GuardarOrdenRequest extends FormRequest
             'estado_repuesto'          => ['nullable', 'string', 'max:50'],
             'garantia_tipo'            => ['nullable', 'string', 'max:50'],
             'cas_id'                   => ['nullable', 'integer', 'exists:cas,id'],
-            'repuesto_inventario_id'   => ['nullable', 'integer', 'exists:productosinventario,id'],
+            'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
 
             'cred_usuario'             => ['nullable', 'array'],
             'cred_contrasena'          => ['nullable', 'array'],

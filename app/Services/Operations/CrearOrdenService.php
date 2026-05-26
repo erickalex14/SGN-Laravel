@@ -4,6 +4,7 @@ namespace App\Services\Operations;
 
 use App\Repositories\Directory\ClienteRepository;
 use App\Repositories\Operations\OrdenRepository;
+use App\Repositories\Operations\OrdenRepuestoRepository;
 use App\DTOs\Operations\CrearOrdenDTO;
 use App\Models\Inventory\ProductoInventario;
 use App\Models\Operations\CredencialEquipo;
@@ -18,11 +19,17 @@ class CrearOrdenService
 {
     protected ClienteRepository $clienteRepo;
     protected OrdenRepository $ordenRepo;
+    protected OrdenRepuestoRepository $ordenRepuestoRepo;
 
-    public function __construct(ClienteRepository $clienteRepo, OrdenRepository $ordenRepo)
+    public function __construct(
+        ClienteRepository $clienteRepo,
+        OrdenRepository $ordenRepo,
+        OrdenRepuestoRepository $ordenRepuestoRepo
+    )
     {
         $this->clienteRepo = $clienteRepo;
         $this->ordenRepo = $ordenRepo;
+        $this->ordenRepuestoRepo = $ordenRepuestoRepo;
     }
 
     /**
@@ -48,9 +55,15 @@ class CrearOrdenService
                 $series = $this->normalizarSeries($dto->series);
                 $seriePrincipal = $series[0] ?? '';
                 $nroSucursalCliente = $dto->nro_sucursal_cliente;
+                $estadoRepuesto = $this->normalizarEstadoRepuesto($dto->estado_repuesto);
+                $repuestoSeleccionadoId = $dto->repuesto_inventario_id ? (int) $dto->repuesto_inventario_id : 0;
 
                 if ($motivoIngreso === 'Servicio Cliente Externo') {
                     $nroSucursalCliente = 999;
+                }
+
+                if ($estadoRepuesto === 'Con stock' && $repuestoSeleccionadoId <= 0) {
+                    throw new Exception('Debe seleccionar un repuesto del inventario cuando el estado es Con stock.');
                 }
 
                 $codigoFinal = $dto->producto_inventario_codigo ?: $dto->modelo;
@@ -126,14 +139,22 @@ class CrearOrdenService
                 $orden->nro_factura      = $dto->nro_factura;
                 $orden->nro_factura_2    = $dto->nro_factura_2;
                 $orden->nro_sucursal_cliente = $nroSucursalCliente;
-                $orden->estado_repuesto  = $dto->estado_repuesto ?: 'No requerido';
+                $orden->estado_repuesto  = $estadoRepuesto;
                 $orden->estado_garantia  = $motivoIngreso === 'Validacion de Garantia' ? 'Pendiente' : null;
                 $orden->fecha_prometido  = $dto->fecha_prometido;
                 $orden->garantia_tipo    = $dto->garantia_tipo;
                 $orden->cas_id           = $dto->cas_id;
-                $orden->repuesto_inventario_id = $dto->repuesto_inventario_id;
+                $orden->repuesto_inventario_id = $repuestoSeleccionadoId > 0 ? $repuestoSeleccionadoId : null;
                 
                 $orden->save();
+
+                if ($estadoRepuesto === 'Con stock' && $repuestoSeleccionadoId > 0) {
+                    $this->ordenRepuestoRepo->registrarDesdeCreacion(
+                        (int) $orden->id,
+                        $repuestoSeleccionadoId,
+                        (int) $dto->ingresado_por
+                    );
+                }
 
                 Log::info('Orden de Servicio creada exitosamente.', [
                     'nro_orden' => $nroOrden,
@@ -165,5 +186,20 @@ class CrearOrdenService
         }
 
         return $resultado;
+    }
+
+    private function normalizarEstadoRepuesto(?string $estado): string
+    {
+        $valor = trim((string) $estado);
+        if ($valor === '') {
+            return 'No requerido';
+        }
+
+        return match (mb_strtoupper($valor)) {
+            'NO REQUERIDO' => 'No requerido',
+            'REQUERIDO' => 'Requerido',
+            'CON STOCK' => 'Con stock',
+            default => $valor,
+        };
     }
 }

@@ -61,6 +61,7 @@
                                 <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }}</div>
                                 <div class="oa-meta-row">
                                     <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
+                                    <a class="btn-det" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i>Imprimir</a>
                                     <a class="btn-det" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i>Ver detalle</a>
                                 </div>
                             </div>
@@ -78,6 +79,7 @@
                                 <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }}</div>
                                 <div class="oa-meta-row">
                                     <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
+                                    <a class="btn-det" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i>Imprimir</a>
                                     <a class="btn-det" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i>Ver detalle</a>
                                 </div>
                             </div>
@@ -102,4 +104,3 @@ function toggleTecnico(id) {
 }
 </script>
 @endpush
-
