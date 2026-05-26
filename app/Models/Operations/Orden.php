@@ -8,6 +8,8 @@ use App\Models\Directory\Sucursal;
 use App\Models\Directory\Cas;
 use App\Models\Identity\Usuario;
 use App\Models\Inventory\ProductoInventario;
+use App\Models\Operations\SolicitudNc;
+use App\Models\Operations\SolicitudRepuesto;
 
 class Orden extends Model
 {
@@ -99,5 +101,15 @@ class Orden extends Model
     public function informes()
     {
         return $this->hasMany(Informe::class, 'orden_id', 'id');
+    }
+
+    public function solicitudesNc()
+    {
+        return $this->hasMany(SolicitudNc::class, 'orden_id', 'id');
+    }
+
+    public function solicitudesRepuesto()
+    {
+        return $this->hasMany(SolicitudRepuesto::class, 'orden_id', 'id');
     }
 }

@@ -116,15 +116,15 @@
             <table class="perm-table">
                 <thead>
                 <tr>
-                    <th>Módulo</th><th>Ver</th><th>Crear</th><th>Editar</th><th>Eliminar</th><th>Imprimir</th>
+                    <th>Módulo</th><th>Ver</th><th>Crear</th><th>Editar</th><th>Eliminar</th>
                 </tr>
                 </thead>
                 <tbody>
-                @php $modulos = ['cas','configuracion','empresas','grupos','informes','inventario','marcas','notas_credito','ordenes','ordenes_asignadas','precios','preordenes','productos','repuestos','sucursales','sucursales_cliente','usuarios']; @endphp
+                @php $modulos = ['ordenes_crear','ordenes_editar','ordenes_buscar','ordenes_mis','ordenes_asignadas','preordenes','informes','presupuestos','solicitar_nc','solicitar_repuesto','reportes','notas_credito','repuestos_admin','inv_productos','inv_marcas','inv_repuestos','precios','sucursales','sucursales_novicompu','empresas','cas','mi_cuenta','usuarios','grupos_acceso']; @endphp
                 @foreach($modulos as $mod)
                     <tr>
                         <td>{{ str_replace('_', ' ', $mod) }}</td>
-                        @foreach(['ver', 'crear', 'editar', 'eliminar', 'imprimir'] as $acc)
+                        @foreach(['ver', 'crear', 'editar', 'eliminar'] as $acc)
                             <td><input type="checkbox" class="chk-mod" data-mod="{{ $mod }}" data-acc="{{ $acc }}"></td>
                         @endforeach
                     </tr>

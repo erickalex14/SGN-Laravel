@@ -54,7 +54,7 @@ class GrupoAccesoRepository
                     }
                 }
             }
-            if (empty($insertData)) {
+            if (!empty($insertData)) {
                 PermisoGrupo::insert($insertData);
             }
         });
