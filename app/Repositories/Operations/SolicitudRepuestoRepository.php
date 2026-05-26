@@ -28,6 +28,17 @@ class SolicitudRepuestoRepository
         return SolicitudRepuesto::find($id);
     }
 
+    public function buscarPorIdConRelaciones(int $id): ?SolicitudRepuesto
+    {
+        return SolicitudRepuesto::with([
+            'orden',
+            'orden.cliente',
+            'orden.equipo',
+            'tecnico',
+            'repuestoAsignado',
+        ])->find($id);
+    }
+
     public function existeSolicitudParaOrden(int $ordenId): bool
     {
         return SolicitudRepuesto::where('orden_id', $ordenId)->exists();

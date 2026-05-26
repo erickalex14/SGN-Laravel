@@ -4,7 +4,7 @@ namespace App\Services\Operations;
 
 use App\Repositories\Operations\OrdenRepository;
 use App\DTOs\Operations\ReporteFiltroDTO;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -20,10 +20,15 @@ class ReporteService
     /**
      * @throws Exception
      */
-    public function generarReporte(ReporteFiltroDTO $dto, int $usuarioSolicitanteId): Collection
+    public function generarReporte(
+        ReporteFiltroDTO $dto,
+        int $usuarioSolicitanteId,
+        bool $esMaster,
+        int $sucursalSesion
+    ): Collection
     {
         try {
-            $resultados = $this->ordenRepo->filtrarParaReporte($dto);
+            $resultados = $this->ordenRepo->filtrarParaReporte($dto, $esMaster, $sucursalSesion);
             
             Log::info('Reporte de ordenes generado.', [
                 'usuario_id' => $usuarioSolicitanteId,

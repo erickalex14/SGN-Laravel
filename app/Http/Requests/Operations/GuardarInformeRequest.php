@@ -16,14 +16,14 @@ class GuardarInformeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'orden_id'        => ['required', 'integer', 'exists:ordenes,id'],
+            'orden_id'        => ['required', 'integer', 'min:1'],
             'antecedentes'    => ['required', 'string'],
             'proceso'         => ['required', 'string'],
             'conclusion'      => ['required', 'string'],
             'recomendaciones' => ['nullable', 'string'],
-            'estado_equipo'   => ['required', 'string', 'max:100'],
-            'fotos'           => ['nullable', 'array', 'max:4'], // Maximo 4 fotos por informe
-            'fotos.*'         => ['image', 'mimes:jpeg,png,jpg', 'max:5120'] // Max 5MB por imagen
+            'estado_equipo'   => ['required', 'string', 'in:Operativo,Reparado parcialmente,Desguace,En espera de repuesto,OPERATIVO,OPERATIVO PARCIAL,NO OPERATIVO'],
+            'fotos'           => ['nullable', 'array', 'max:10'],
+            'fotos.*'         => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120']
         ];
     }
 

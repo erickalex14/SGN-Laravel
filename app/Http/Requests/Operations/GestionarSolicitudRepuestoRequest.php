@@ -15,7 +15,8 @@ class GestionarSolicitudRepuestoRequest extends FormRequest
         return [
             'solicitud_id'   => ['required', 'integer', 'exists:solicitudesrepuesto,id'],
             'estado'         => ['required', 'string', 'in:APROBADA,RECHAZADA,COMPRA'],
-            'motivo_rechazo' => ['required_if:estado,RECHAZADA', 'nullable', 'string']
+            'motivo_rechazo' => ['required_if:estado,RECHAZADA', 'nullable', 'string'],
+            'repuesto_id'    => ['nullable', 'integer', 'exists:repuestos,id']
         ];
     }
 

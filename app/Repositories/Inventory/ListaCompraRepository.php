@@ -34,4 +34,22 @@ class ListaCompraRepository
 
         return 'LC-' . str_pad($secuencial, 5, '0', STR_PAD_LEFT);
     }
+
+    public function buscarPorId(int $id): ?ListaCompra
+    {
+        return ListaCompra::find($id);
+    }
+
+    public function obtenerItemsPorLista(int $listaId): Collection
+    {
+        return SolicitudRepuesto::with([
+            'orden',
+            'orden.cliente',
+            'orden.equipo',
+            'orden.sucursal',
+        ])
+            ->where('lista_compra_id', $listaId)
+            ->orderBy('id', 'asc')
+            ->get();
+    }
 }

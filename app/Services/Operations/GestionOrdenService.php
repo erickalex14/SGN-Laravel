@@ -4,7 +4,11 @@ namespace App\Services\Operations;
 
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\NotaCreditoRepository;
+use App\Repositories\Operations\OrdenRepuestoRepository;
 use App\DTOs\Operations\CambiarEstadoOrdenDTO;
+use App\DTOs\Operations\CambiarEstadoRepuestoDTO;
+use App\DTOs\Operations\AsignarRepuestoOrdenDTO;
+use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
 use App\Models\Operations\Orden;
 use App\Models\Operations\SolicitudNc;
 use Illuminate\Support\Facades\Log;
@@ -16,14 +20,17 @@ class GestionOrdenService
 {
     protected OrdenRepository $repository;
     protected NotaCreditoRepository $notaCreditoRepository;
+    protected OrdenRepuestoRepository $ordenRepuestoRepository;
 
     public function __construct(
         OrdenRepository $repository,
-        NotaCreditoRepository $notaCreditoRepository
+        NotaCreditoRepository $notaCreditoRepository,
+        OrdenRepuestoRepository $ordenRepuestoRepository
     )
     {
         $this->repository = $repository;
         $this->notaCreditoRepository = $notaCreditoRepository;
+        $this->ordenRepuestoRepository = $ordenRepuestoRepository;
     }
 
     /**
@@ -180,5 +187,99 @@ class GestionOrdenService
             throw new Exception('Debe registrar un informe tecnico antes de solicitar la Nota de Credito.');
         }
 
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function actualizarEstadoRepuesto(CambiarEstadoRepuestoDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    {
+        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('La orden especificada no existe.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioId) {
+            throw new Exception('Sin permiso sobre esta orden.');
+        }
+
+        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+            throw new Exception('La orden no puede modificarse en su estado actual.');
+        }
+
+        $estado = trim($dto->estado_repuesto);
+        if (!in_array($estado, ['No requerido', 'Requerido', 'Con stock'], true)) {
+            throw new Exception('Estado de repuesto no permitido.');
+        }
+
+        $orden->estado_repuesto = $estado;
+        if ($estado !== 'Con stock') {
+            $orden->repuesto_inventario_id = null;
+        }
+        $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+        $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+        $orden->save();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function asignarRepuesto(AsignarRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    {
+        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('La orden especificada no existe.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioId) {
+            throw new Exception('Sin permiso sobre esta orden.');
+        }
+
+        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+            throw new Exception('La orden no puede modificarse en su estado actual.');
+        }
+
+        DB::transaction(function () use ($dto, $orden, $usuarioId): void {
+            $this->ordenRepuestoRepository->asignarRepuestoEnOrden(
+                (int) $orden->id,
+                (int) $dto->repuesto_inventario_id,
+                $usuarioId,
+                true
+            );
+
+            $orden->repuesto_inventario_id = (int) $dto->repuesto_inventario_id;
+            $orden->estado_repuesto = 'Con stock';
+            $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+            $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            $orden->save();
+        });
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function revertirRepuesto(RevertirRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    {
+        if (!$esAdmin) {
+            throw new Exception('No autorizado para revertir repuestos.');
+        }
+
+        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('La orden especificada no existe.');
+        }
+
+        DB::transaction(function () use ($dto, $orden, $usuarioId): void {
+            $this->ordenRepuestoRepository->revertirRepuestosDeOrden(
+                (int) $orden->id,
+                $dto->repuesto_id
+            );
+
+            $orden->repuesto_inventario_id = null;
+            $orden->estado_repuesto = 'No requerido';
+            $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+            $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            $orden->save();
+        });
     }
 }

@@ -3,9 +3,11 @@
 namespace App\Services\Inventory;
 
 use App\Repositories\Inventory\RepuestoRepository;
+use App\DTOs\Inventory\BuscarRepuestoOrdenDTO;
 use App\DTOs\Inventory\RepuestoDTO;
 use App\Models\Inventory\Repuesto;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Exception;
 
 class RepuestoService
@@ -76,5 +78,13 @@ class RepuestoService
             ]);
             throw new Exception('No es posible eliminar el repuesto debido a que cuenta con transacciones asociadas.');
         }
+    }
+
+    public function buscarParaOrden(BuscarRepuestoOrdenDTO $dto): Collection
+    {
+        return $this->repository->buscarParaOrden(
+            trim($dto->q),
+            $dto->stock_only
+        );
     }
 }

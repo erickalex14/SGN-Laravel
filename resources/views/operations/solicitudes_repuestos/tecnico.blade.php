@@ -20,6 +20,8 @@
     .sr-msg { display:none; margin-top:10px; padding:10px 12px; border-radius:8px; font-size:13px; }
     .sr-table { width:100%; border-collapse:collapse; }
     .sr-table th, .sr-table td { border-bottom:1px solid #f1f5f9; padding:10px; font-size:13px; text-align:left; }
+    .btn-print { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:6px; padding:6px 10px; font-size:12px; font-weight:700; text-decoration:none; display:inline-block; }
+    .btn-print:hover { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
     .badge { display:inline-block; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:700; }
     .b-p { background:#fef3c7; color:#92400e; }
     .b-a { background:#dcfce7; color:#166534; }
@@ -79,6 +81,7 @@
                     <th>Repuesto</th>
                     <th>Estado</th>
                     <th>Fecha</th>
+                    <th style="text-align:right;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -93,9 +96,14 @@
                         <td>{{ $s->repuesto_nombre }}</td>
                         <td><span class="badge {{ $cls }}">{{ $s->estado }}</span></td>
                         <td>{{ $s->fecha_solicitud }}</td>
+                        <td style="text-align:right;">
+                            <a href="{{ route('solicitudes_repuestos.imprimir', ['id' => $s->id]) }}" target="_blank" class="btn-print">
+                                <i class="bi bi-printer"></i> Imprimir
+                            </a>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" style="color:#94a3b8;">Sin solicitudes registradas.</td></tr>
+                    <tr><td colspan="6" style="color:#94a3b8;">Sin solicitudes registradas.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -146,4 +154,3 @@ async function enviarSolicitudSR() {
 }
 </script>
 @endpush
-

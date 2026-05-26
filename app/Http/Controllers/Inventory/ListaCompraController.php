@@ -48,4 +48,15 @@ class ListaCompraController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }
+
+    public function imprimir(int $id): View
+    {
+        $lista = $this->repository->buscarPorId($id);
+        abort_if(!$lista, 404);
+
+        $items = $this->repository->obtenerItemsPorLista($id);
+        $totalCantidad = (int) $items->sum('cantidad');
+
+        return view('inventory.listas_compra.imprimir', compact('lista', 'items', 'totalCantidad'));
+    }
 }

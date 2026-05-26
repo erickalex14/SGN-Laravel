@@ -96,28 +96,56 @@ class SolicitudRepuestoService
         try {
             DB::transaction(function () use ($solicitud, $dto) {
                 $estadoRecibido = strtoupper(trim($dto->estado));
-                $estadoFinal = $estadoRecibido === 'RECHAZADA' ? 'Rechazada' : 'Aprobada';
+                $estadoFinal = match ($estadoRecibido) {
+                    'RECHAZADA' => 'Rechazada',
+                    'COMPRA' => 'COMPRA',
+                    default => 'Aprobada',
+                };
 
                 $solicitud->estado = $estadoFinal;
                 $solicitud->aprobado_por = $dto->aprobado_por;
                 $solicitud->fecha_gestion = Carbon::now('America/Guayaquil');
+                $solicitud->repuesto_id = null;
 
                 if ($estadoFinal === 'Rechazada') {
                     $solicitud->motivo_rechazo = trim($dto->motivo_rechazo);
-                } 
-                elseif ($estadoFinal === 'Aprobada' && $solicitud->repuesto_inv_id) {
-                    // Descontar del inventario automaticamente
-                    $repuesto = Repuesto::find($solicitud->repuesto_inv_id);
-                    if ($repuesto) {
-                        if ($repuesto->stock < $solicitud->cantidad) {
+                } else {
+                    $solicitud->motivo_rechazo = null;
+                }
+
+                $orden = $this->ordenRepository->buscarPorId((int) $solicitud->orden_id);
+                if (!$orden) {
+                    throw new Exception('La orden asociada a la solicitud no existe.');
+                }
+
+                if ($estadoFinal === 'Aprobada') {
+                    $repuestoIdAsignado = $dto->repuesto_id ?: $solicitud->repuesto_inv_id;
+                    $repuestoIdAsignado = $repuestoIdAsignado ? (int) $repuestoIdAsignado : null;
+
+                    if ($repuestoIdAsignado) {
+                        $repuesto = Repuesto::find($repuestoIdAsignado);
+                        if (!$repuesto) {
+                            throw new Exception('El repuesto seleccionado no existe.');
+                        }
+                        if ($repuesto->stock < (int) $solicitud->cantidad) {
                             throw new Exception("Stock insuficiente del repuesto '{$repuesto->nombre}'.");
                         }
-                        $repuesto->stock -= $solicitud->cantidad;
+                        $repuesto->stock -= (int) $solicitud->cantidad;
                         $repuesto->save();
                     }
+
+                    $solicitud->repuesto_id = $repuestoIdAsignado;
+                    $orden->estado_repuesto = $repuestoIdAsignado ? 'Con stock' : 'Sin stock';
+                    $orden->repuesto_inventario_id = $repuestoIdAsignado;
+                } elseif ($estadoFinal === 'Rechazada') {
+                    $orden->estado_repuesto = 'Sin stock';
+                } else {
+                    // COMPRA: queda pendiente de abastecimiento
+                    $orden->estado_repuesto = 'Requerido';
                 }
 
                 $solicitud->save();
+                $orden->save();
                 Log::info('Solicitud repuesto gestionada.', ['sr_id' => $solicitud->id, 'estado' => $estadoFinal]);
             });
         } catch (Exception $e) {

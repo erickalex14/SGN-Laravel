@@ -23,6 +23,12 @@
 .estado-entregado { background: #f1f5f9; color: #475569; }
 .estado-default { background: #f3f4f6; color: #374151; }
 .mo-empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 15px; }
+.rep-wrap { display: flex; flex-direction: column; gap: 6px; }
+.rep-sel { width: 100%; padding: 6px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.rep-actions { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.btn-mini-rep { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-mini-rep.danger { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.rep-note { font-size: 10.5px; color: #94a3b8; }
 </style>
 @endpush
 
@@ -43,6 +49,8 @@
                         <th>Equipo</th>
                         <th>Falla Reportada</th>
                         <th style="width:160px;">Estado Actual</th>
+                        <th style="width:210px;">Estado Repuesto</th>
+                        <th style="width:260px;">Repuesto (Stock)</th>
                         <th style="width:180px; text-align:right;">Acciones</th>
                     </tr>
                 </thead>
@@ -84,7 +92,38 @@
                                     <option value="Nota de Credito">Nota de Credito</option>
                                 </select>
                             </td>
+                            <td>
+                                @php $estadoRep = $ord->estado_repuesto ?: 'No requerido'; @endphp
+                                <div class="rep-wrap">
+                                    <span class="estado-label estado-default" id="rep-lbl-{{ $ord->id }}">{{ $estadoRep }}</span>
+                                    <select class="rep-sel" id="rep-estado-{{ $ord->id }}" onchange="cambiarEstadoRepuesto({{ $ord->id }}, this.value)">
+                                        <option value="No requerido" @selected($estadoRep === 'No requerido')>No requerido</option>
+                                        <option value="Requerido" @selected($estadoRep === 'Requerido')>Requerido</option>
+                                        <option value="Con stock" @selected($estadoRep === 'Con stock')>Con stock</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="rep-wrap" id="rep-panel-{{ $ord->id }}" style="{{ $estadoRep === 'Con stock' ? '' : 'display:none;' }}">
+                                    <select class="rep-sel" id="rep-inv-{{ $ord->id }}">
+                                        <option value="">Seleccione repuesto...</option>
+                                        @foreach($repuestos as $rep)
+                                            <option value="{{ $rep->id }}" @selected((int)$ord->repuesto_inventario_id === (int)$rep->id)>
+                                                {{ $rep->codigo }} - {{ $rep->nombre }} (Stock: {{ (int)$rep->stock }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="rep-actions">
+                                        <button type="button" class="btn-mini-rep" onclick="asignarRepuesto({{ $ord->id }})">Asignar</button>
+                                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto({{ $ord->id }})">Revertir</button>
+                                    </div>
+                                    <div class="rep-note">Revertir disponible para administrador.</div>
+                                </div>
+                            </td>
                             <td style="text-align:right;">
+                                <a href="{{ route('ordenes.imprimir', ['id' => $ord->id]) }}" target="_blank" class="btn-accion" style="margin-right:6px;">
+                                    Imprimir OT
+                                </a>
                                 <a href="{{ url('/operaciones/ordenes/editar/'.$ord->id) }}" class="btn-accion">
                                     Detalles / Editar
                                 </a>
@@ -92,7 +131,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="9">
                                 <div class="mo-empty">Actualmente no posee ordenes asignadas en el sistema.</div>
                             </td>
                         </tr>
@@ -159,6 +198,85 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden) {
     } catch (e) {
         alert('Error de comunicacion con el servidor.');
         location.reload();
+    }
+}
+
+async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
+    if (!nuevoEstado) return;
+
+    const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
+    fd.append('orden_id', ordenId);
+    fd.append('estado_repuesto', nuevoEstado);
+
+    try {
+        const r = await fetch('{{ route("mis_ordenes.repuesto_estado") }}', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            alert(d.error || 'No se pudo actualizar estado de repuesto.');
+            location.reload();
+            return;
+        }
+
+        const lbl = document.getElementById('rep-lbl-' + ordenId);
+        const panel = document.getElementById('rep-panel-' + ordenId);
+        if (lbl) lbl.textContent = nuevoEstado;
+        if (panel) panel.style.display = (nuevoEstado === 'Con stock') ? '' : 'none';
+    } catch (e) {
+        alert('Error de comunicación con el servidor.');
+        location.reload();
+    }
+}
+
+async function asignarRepuesto(ordenId) {
+    const sel = document.getElementById('rep-inv-' + ordenId);
+    const repuestoId = sel ? sel.value : '';
+    if (!repuestoId) {
+        alert('Seleccione un repuesto.');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
+    fd.append('orden_id', ordenId);
+    fd.append('repuesto_inventario_id', repuestoId);
+
+    try {
+        const r = await fetch('{{ route("mis_ordenes.repuesto_asignar") }}', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            alert(d.error || 'No se pudo asignar repuesto.');
+            return;
+        }
+
+        const estadoSel = document.getElementById('rep-estado-' + ordenId);
+        const lbl = document.getElementById('rep-lbl-' + ordenId);
+        if (estadoSel) estadoSel.value = 'Con stock';
+        if (lbl) lbl.textContent = 'Con stock';
+        alert('Repuesto asignado correctamente.');
+    } catch (e) {
+        alert('Error de comunicación con el servidor.');
+    }
+}
+
+async function revertirRepuesto(ordenId) {
+    if (!confirm('¿Confirma revertir el repuesto y devolver stock a inventario?')) return;
+
+    const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
+    fd.append('orden_id', ordenId);
+
+    try {
+        const r = await fetch('{{ route("mis_ordenes.repuesto_revertir") }}', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            alert(d.error || 'No se pudo revertir repuesto.');
+            return;
+        }
+        alert('Repuesto revertido correctamente.');
+        location.reload();
+    } catch (e) {
+        alert('Error de comunicación con el servidor.');
     }
 }
 </script>

@@ -113,6 +113,12 @@
                             <span class="nav-label" style="margin-left:10px;">Órdenes Asignadas</span>
                         </a>
                     @endif
+                    @if ($can('ordenes_buscar', 'ver'))
+                        <a data-tip="Buscar Órdenes" href="{{ route('ordenes_buscar.index') }}">
+                            <i class="bi bi-search" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Buscar Órdenes</span>
+                        </a>
+                    @endif
                     @if ($can('preordenes', 'ver'))
                         <a data-tip="Preórdenes" href="{{ route('preordenes.index') }}">
                             <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
@@ -796,4 +802,3 @@
 @stack('js_adicional')
 </body>
 </html>
-

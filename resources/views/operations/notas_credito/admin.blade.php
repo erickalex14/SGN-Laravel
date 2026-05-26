@@ -19,6 +19,8 @@
 .st-rech { background: #fee2e2; color: #991b1b; }
 .btn-gestion { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; }
 .btn-gestion:hover { background: #2563eb; color: #fff; }
+.btn-print { background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; text-decoration:none; display:inline-block; }
+.btn-print:hover { background:#0f172a; color:#fff; border-color:#0f172a; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6); z-index: 9999; display: none; align-items: center; justify-content: center; }
 .modal-overlay.activo { display: flex; }
 .modal-box { background: #fff; width: 100%; max-width: 500px; border-radius: 12px; display: flex; flex-direction: column; }
@@ -70,6 +72,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                         <td><a href="#" style="color:#2563eb;text-decoration:none;font-weight:600;">{{ $nc->orden->nro_orden }}</a></td>
                         <td><span class="status-badge {{ $clase }}">{{ $nc->estado }}</span></td>
                         <td style="text-align:right;">
+                            <a href="{{ route('notas_credito.imprimir', ['id' => $nc->id]) }}" target="_blank" class="btn-print">Imprimir</a>
                             @if($estadoNC === 'PENDIENTE')
                                 <button class="btn-gestion" onclick="abrirGestion({{ json_encode($nc) }})">Gestionar</button>
                             @else
