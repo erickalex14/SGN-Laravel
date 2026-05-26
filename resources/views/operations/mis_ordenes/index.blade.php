@@ -1,9 +1,8 @@
 @extends('layouts.app')
-@section('titulo', 'Mis Órdenes Asignadas')
+@section('titulo', 'Mis Ordenes Asignadas')
 
 @push('css_adicional')
 <style>
-/* Estructura CSS extraida de mis-ordenes.css */
 .mo-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
 .mo-hdr { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
 .mo-hdr h2 { margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; }
@@ -30,7 +29,7 @@
 @section('contenido')
 <div class="mo-container">
     <div class="mo-hdr">
-        <h2>Listado de Órdenes Asignadas</h2>
+        <h2>Listado de Ordenes Asignadas</h2>
     </div>
 
     <div class="mo-card">
@@ -52,7 +51,7 @@
                         @php
                             $claseEstado = match($ord->estado_orden) {
                                 'INGRESO', 'Pendiente' => 'estado-ingreso',
-                                'REVISIÓN', 'EN PROCESO', 'En proceso' => 'estado-revision',
+                                'REVISION', 'EN PROCESO', 'En proceso' => 'estado-revision',
                                 'REPARADO', 'Finalizada' => 'estado-reparado',
                                 'ENTREGADO', 'Entregada' => 'estado-entregado',
                                 default => 'estado-default'
@@ -83,7 +82,6 @@
                                     <option value="Finalizada">Finalizada</option>
                                     <option value="Entregada">Entregada</option>
                                     <option value="Nota de Credito">Nota de Credito</option>
-                                    <option value="Devuelto sin reparar">Devuelto sin reparar</option>
                                 </select>
                             </td>
                             <td style="text-align:right;">
@@ -95,7 +93,7 @@
                     @empty
                         <tr>
                             <td colspan="7">
-                                <div class="mo-empty">Actualmente no posee órdenes asignadas en el sistema.</div>
+                                <div class="mo-empty">Actualmente no posee ordenes asignadas en el sistema.</div>
                             </td>
                         </tr>
                     @endforelse
@@ -111,15 +109,39 @@
 async function cambiarEstado(ordenId, nuevoEstado, nroOrden) {
     if (!nuevoEstado) return;
 
-    if (!confirm(`¿Confirma la actualización de la orden ${nroOrden} a estado: ${nuevoEstado}?`)) {
-        location.reload(); 
+    if (!confirm(`Confirma la actualizacion de la orden ${nroOrden} a estado: ${nuevoEstado}?`)) {
+        location.reload();
         return;
+    }
+
+    let ncAsunto = '';
+    let ncDetalles = '';
+
+    if (nuevoEstado === 'Nota de Credito') {
+        ncAsunto = (prompt('Asunto de la Nota de Credito:') || '').trim();
+        if (!ncAsunto) {
+            alert('El asunto es obligatorio para Nota de Credito.');
+            location.reload();
+            return;
+        }
+
+        ncDetalles = (prompt('Detalles / justificacion de la Nota de Credito:') || '').trim();
+        if (!ncDetalles) {
+            alert('Los detalles son obligatorios para Nota de Credito.');
+            location.reload();
+            return;
+        }
     }
 
     const fd = new FormData();
     fd.append('_token', '{{ csrf_token() }}');
     fd.append('id', ordenId);
     fd.append('estado', nuevoEstado);
+
+    if (nuevoEstado === 'Nota de Credito') {
+        fd.append('nc_asunto', ncAsunto);
+        fd.append('nc_detalles', ncDetalles);
+    }
 
     try {
         const r = await fetch('{{ route("mis_ordenes.estado") }}', {
@@ -131,11 +153,11 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden) {
         if (d.ok) {
             location.reload();
         } else {
-            alert('Error en el proceso de actualización: ' + d.error);
+            alert('Error en la actualizacion: ' + d.error);
             location.reload();
         }
     } catch (e) {
-        alert('Se detectó un error de comunicación con el servidor.');
+        alert('Error de comunicacion con el servidor.');
         location.reload();
     }
 }

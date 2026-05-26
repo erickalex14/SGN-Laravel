@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Directory\CasController;
 use App\Http\Controllers\Directory\EmpresaController;
+use App\Http\Controllers\Directory\SucursalController;
 use App\Http\Controllers\Directory\SucursalClienteController;
+use App\Http\Controllers\Identity\MiCuentaController;
 use App\Http\Controllers\Identity\GrupoAccesoController;
 use App\Http\Controllers\Identity\UsuarioController;
 use App\Http\Controllers\Identity\NotificationController;
@@ -13,8 +15,11 @@ use App\Http\Controllers\Inventory\RepuestoController;
 use App\Http\Controllers\Operations\CatalogoPrecioController;
 use App\Http\Controllers\Operations\OrdenController;
 use App\Http\Controllers\Operations\MisOrdenesController;
+use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\EdicionOrdenController;
 use App\Http\Controllers\Operations\InformeController;
+use App\Http\Controllers\Operations\PreordenController;
+use App\Http\Controllers\Operations\PresupuestoController;
 use App\Http\Controllers\Operations\NotaCreditoController;
 use App\Http\Controllers\Operations\SolicitudRepuestoController;
 use App\Http\Controllers\Operations\ReporteController;
@@ -119,6 +124,19 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:sucursales,editar'])->group(function () {
         Route::post('/sucursales-cliente/actualizar', [SucursalClienteController::class, 'actualizar'])->name('sucursales_cliente.actualizar');
         Route::post('/sucursales-cliente/toggle', [SucursalClienteController::class, 'toggle'])->name('sucursales_cliente.toggle');
+    });
+
+    // Sucursales NONITEC (tabla legacy: sucursales)
+    Route::middleware(['permiso:sucursales,ver'])->group(function () {
+        Route::get('/sucursales-nonitec', [SucursalController::class, 'index'])->name('sucursales.index');
+    });
+
+    Route::middleware(['permiso:sucursales,crear'])->group(function () {
+        Route::post('/sucursales-nonitec/crear', [SucursalController::class, 'crear'])->name('sucursales.crear');
+    });
+
+    Route::middleware(['permiso:sucursales,editar'])->group(function () {
+        Route::post('/sucursales-nonitec/actualizar', [SucursalController::class, 'actualizar'])->name('sucursales.actualizar');
     });
 
     //-------------------------------------------------------
@@ -250,6 +268,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/mis-ordenes/estado', [MisOrdenesController::class, 'cambiarEstado'])->name('mis_ordenes.estado');
     });
 
+    Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
+        Route::get('/operaciones/ordenes/asignadas', [OrdenesAsignadasController::class, 'index'])->name('ordenes_asignadas.index');
+    });
+
     // Modulo de Edicion de Ordenes
     Route::middleware(['permiso:ordenes_editar,ver'])->group(function () {
         Route::get('/operaciones/ordenes/editar/{id}', [EdicionOrdenController::class, 'edit'])->name('ordenes.editar');
@@ -269,6 +291,22 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['permiso:informes,crear'])->group(function () {
         Route::post('/operaciones/informes', [InformeController::class, 'store'])->name('informes.store');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO PREORDENES---------------------
+    //-------------------------------------------------------
+    Route::middleware(['permiso:preordenes,ver'])->group(function () {
+        Route::get('/operaciones/preordenes', [PreordenController::class, 'index'])->name('preordenes.index');
+        Route::post('/operaciones/preordenes/reporte', [PreordenController::class, 'reporte'])->name('preordenes.reporte');
+        Route::post('/operaciones/preordenes/ingresar', [PreordenController::class, 'ingresar'])->name('preordenes.ingresar');
+    });
+
+    //-------------------------------------------------------
+    //-----------------MODULO PRESUPUESTOS-------------------
+    //-------------------------------------------------------
+    Route::middleware(['permiso:presupuestos,ver'])->group(function () {
+        Route::get('/operaciones/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
     });
 
     //-------------------------------------------------------
@@ -328,6 +366,14 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
     });
-    
+
+    //-------------------------------------------------------
+    //--------------------MI CUENTA--------------------------
+    //-------------------------------------------------------
+    Route::middleware(['permiso:mi_cuenta,ver'])->group(function () {
+        Route::get('/mi-cuenta', [MiCuentaController::class, 'index'])->name('mi_cuenta.index');
+        Route::get('/configuracion', [MiCuentaController::class, 'index'])->name('configuracion.index');
+        Route::post('/mi-cuenta/guardar', [MiCuentaController::class, 'guardar'])->name('mi_cuenta.guardar');
+    });
 
 });

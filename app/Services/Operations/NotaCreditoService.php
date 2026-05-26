@@ -7,6 +7,7 @@ use App\DTOs\Operations\SolicitudNcDTO;
 use App\Models\Identity\Notificacion;
 use App\Models\Operations\SolicitudNc;
 use App\Repositories\Operations\NotaCreditoRepository;
+use App\Repositories\Operations\OrdenRepository;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -15,19 +16,38 @@ use Illuminate\Support\Facades\Log;
 class NotaCreditoService
 {
     protected NotaCreditoRepository $repository;
+    protected OrdenRepository $ordenRepository;
 
-    public function __construct(NotaCreditoRepository $repository)
+    public function __construct(NotaCreditoRepository $repository, OrdenRepository $ordenRepository)
     {
         $this->repository = $repository;
+        $this->ordenRepository = $ordenRepository;
     }
 
     /**
      * @throws Exception
      */
-    public function solicitar(SolicitudNcDTO $dto): string
+    public function solicitar(SolicitudNcDTO $dto, bool $esAdmin = false): string
     {
-        if ($this->repository->existeSolicitudPendienteParaOrden($dto->orden_id)) {
-            throw new Exception('Ya existe una solicitud de Nota de Credito en estado Pendiente para esta orden.');
+        $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('La orden especificada no existe.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== (int) $dto->tecnico_id) {
+            throw new Exception('No puedes solicitar NC para una orden que no te esta asignada.');
+        }
+
+        if (trim((string) $orden->motivo_ingreso) !== 'Validacion de Garantia') {
+            throw new Exception('La Nota de Credito solo aplica a ordenes de Validacion de Garantia.');
+        }
+
+        if (!in_array((string) $orden->estado_orden, ['Finalizada', 'Entregada', 'Nota de Credito'], true)) {
+            throw new Exception('La orden no cumple el estado requerido para solicitar NC.');
+        }
+
+        if ($this->repository->existeSolicitudParaOrden($dto->orden_id)) {
+            throw new Exception('Esta orden ya tiene una solicitud de Nota de Credito registrada.');
         }
 
         try {
@@ -144,4 +164,3 @@ class NotaCreditoService
         ]);
     }
 }
-

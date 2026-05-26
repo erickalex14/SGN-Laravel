@@ -16,8 +16,10 @@ class CambiarEstadoOrdenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id'     => ['required', 'integer', 'exists:ordenes,id'],
-            'estado' => ['required', 'string', 'max:50']
+            'id' => ['required', 'integer', 'exists:ordenes,id'],
+            'estado' => ['required', 'string', 'in:Pendiente,En proceso,Finalizada,Entregada,Nota de Credito'],
+            'nc_asunto' => ['nullable', 'string', 'max:255', 'required_if:estado,Nota de Credito'],
+            'nc_detalles' => ['nullable', 'string', 'max:5000', 'required_if:estado,Nota de Credito'],
         ];
     }
 

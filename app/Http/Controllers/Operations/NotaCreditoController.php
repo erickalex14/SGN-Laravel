@@ -39,8 +39,14 @@ class NotaCreditoController extends Controller
     public function indexTecnico(): View
     {
         $tecnicoId = (int) session('tecnico_id');
+        $permisos = (array) session('permisos', []);
+        $esAdmin = (bool) session('es_superadmin', false)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+            || (($permisos['usuarios']['crear'] ?? false) === true);
+
         $solicitudes = $this->ncRepository->obtenerPorTecnico($tecnicoId);
-        $ordenes = $this->ordenRepository->obtenerOrdenesPorTecnico($tecnicoId);
+        $ordenes = $this->ordenRepository->obtenerOrdenesElegiblesParaNc($tecnicoId, $esAdmin);
 
         return view('operations.notas_credito.tecnico', compact('solicitudes', 'ordenes'));
     }
@@ -48,15 +54,21 @@ class NotaCreditoController extends Controller
     public function solicitar(SolicitarNcRequest $request): JsonResponse
     {
         try {
+            $permisos = (array) session('permisos', []);
+            $esAdmin = (bool) session('es_superadmin', false)
+                || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+                || (($permisos['usuarios_crear']['ver'] ?? false) === true)
+                || (($permisos['usuarios']['crear'] ?? false) === true);
+
             $dto = new SolicitudNcDTO(
                 (int) $request->input('orden_id'),
                 (string) $request->input('asunto'),
                 (string) $request->input('detalles'),
-                (int) session('tecnico_id'),
-                (string) session('nombre')
+                (int) session('tecnico_id', 0),
+                (string) (session('nombre_tecnico') ?? session('nombre') ?? session('usuario') ?? '')
             );
 
-            $nroSolicitud = $this->service->solicitar($dto);
+            $nroSolicitud = $this->service->solicitar($dto, $esAdmin);
 
             return response()->json([
                 'ok' => true,
@@ -96,4 +108,3 @@ class NotaCreditoController extends Controller
         }
     }
 }
-

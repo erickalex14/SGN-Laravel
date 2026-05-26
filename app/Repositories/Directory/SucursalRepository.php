@@ -19,7 +19,7 @@ class SucursalRepository
         return Sucursal::find($id);
     }
 
-    public function existeNroSucursal(string $nroSucursal, ?int $excluirId = null): bool
+    public function existeNroSucursal(int $nroSucursal, ?int $excluirId = null): bool
     {
         $query = Sucursal::where('nro_sucursal', $nroSucursal);
         if ($excluirId) {
