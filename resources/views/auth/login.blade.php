@@ -130,7 +130,9 @@
             @if(request()->query('error'))
                 <div class="mb-md rounded-lg border border-error/30 bg-error-container px-sm py-sm">
                     <p class="font-body-sm text-body-sm text-on-error-container">
-                        @if(request()->query('error') === 'inactivo')
+                        @if(request()->query('error') === 'db')
+                            No se pudo conectar a la base de datos. Verifique conectividad y credenciales del servidor.
+                        @elseif(request()->query('error') === 'inactivo')
                             El usuario se encuentra inactivo. Contacte al administrador.
                         @else
                             Usuario o contrasena incorrectos. Intente de nuevo.
