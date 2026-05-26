@@ -5,6 +5,7 @@ namespace App\Http\Requests\Operations;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
 class GuardarOrdenRequest extends FormRequest
 {
@@ -47,8 +48,14 @@ class GuardarOrdenRequest extends FormRequest
             'fecha_prometido'          => ['required', 'date'],
             'nro_sucursal_cliente'     => ['nullable', 'integer'],
             'estado_repuesto'          => ['nullable', 'string', 'max:50'],
-            'garantia_tipo'            => ['nullable', 'string', 'max:50'],
-            'cas_id'                   => ['nullable', 'integer', 'exists:cas,id'],
+            'garantia_tipo'            => [
+                'required_if:motivo_ingreso,Validacion de Garantia',
+                'nullable',
+                'string',
+                'max:50',
+                Rule::in(['propia', 'externa', 'PROPIA', 'EXTERNA', 'interna', 'INTERNA'])
+            ],
+            'cas_id'                   => ['required_if:garantia_tipo,externa,EXTERNA', 'nullable', 'integer', 'exists:cas,id'],
             'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
 
             'cred_usuario'             => ['nullable', 'array'],

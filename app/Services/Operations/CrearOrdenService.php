@@ -40,10 +40,13 @@ class CrearOrdenService
         try {
             return DB::transaction(function () use ($dto) {
                 $motivoIngreso = trim($dto->motivo_ingreso);
+                $esValidacionGarantia = $motivoIngreso === 'Validacion de Garantia';
                 $tipoServicioId = $dto->tipo_servicio_id;
                 $tipoServicioTexto = $dto->tipo_servicio_texto ? strtoupper(trim($dto->tipo_servicio_texto)) : null;
+                $garantiaTipo = $this->normalizarGarantiaTipo($dto->garantia_tipo);
+                $casId = $dto->cas_id;
 
-                if ($motivoIngreso === 'Validacion de Garantia') {
+                if ($esValidacionGarantia) {
                     $tipoServicioId = null;
                     $tipoServicioTexto = null;
                 }
@@ -64,6 +67,21 @@ class CrearOrdenService
 
                 if ($estadoRepuesto === 'Con stock' && $repuestoSeleccionadoId <= 0) {
                     throw new Exception('Debe seleccionar un repuesto del inventario cuando el estado es Con stock.');
+                }
+
+                if ($esValidacionGarantia && $garantiaTipo === null) {
+                    throw new Exception('Debe seleccionar el tipo de garantia para la validacion.');
+                }
+
+                if ($garantiaTipo !== 'externa') {
+                    $casId = null;
+                } elseif (empty($casId)) {
+                    throw new Exception('Debe seleccionar el CAS para garantia externa.');
+                }
+
+                if (!$esValidacionGarantia) {
+                    $garantiaTipo = null;
+                    $casId = null;
                 }
 
                 $codigoFinal = $dto->producto_inventario_codigo ?: $dto->modelo;
@@ -140,10 +158,10 @@ class CrearOrdenService
                 $orden->nro_factura_2    = $dto->nro_factura_2;
                 $orden->nro_sucursal_cliente = $nroSucursalCliente;
                 $orden->estado_repuesto  = $estadoRepuesto;
-                $orden->estado_garantia  = $motivoIngreso === 'Validacion de Garantia' ? 'Pendiente' : null;
+                $orden->estado_garantia  = $esValidacionGarantia ? 'Pendiente' : null;
                 $orden->fecha_prometido  = $dto->fecha_prometido;
-                $orden->garantia_tipo    = $dto->garantia_tipo;
-                $orden->cas_id           = $dto->cas_id;
+                $orden->garantia_tipo    = $garantiaTipo;
+                $orden->cas_id           = $casId;
                 $orden->repuesto_inventario_id = $repuestoSeleccionadoId > 0 ? $repuestoSeleccionadoId : null;
                 
                 $orden->save();
@@ -200,6 +218,20 @@ class CrearOrdenService
             'REQUERIDO' => 'Requerido',
             'CON STOCK' => 'Con stock',
             default => $valor,
+        };
+    }
+
+    private function normalizarGarantiaTipo(?string $tipo): ?string
+    {
+        $valor = trim((string) $tipo);
+        if ($valor === '') {
+            return null;
+        }
+
+        return match (mb_strtoupper($valor)) {
+            'INTERNA', 'PROPIA' => 'propia',
+            'EXTERNA' => 'externa',
+            default => null,
         };
     }
 }

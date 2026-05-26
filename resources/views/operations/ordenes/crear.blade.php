@@ -231,8 +231,8 @@
                         <label>Tipo de Garantía</label>
                         <select id="garantia_tipo" name="garantia_tipo">
                             <option value="">-- Seleccione --</option>
-                            <option value="INTERNA">INTERNA</option>
-                            <option value="EXTERNA">EXTERNA</option>
+                            <option value="propia">INTERNA</option>
+                            <option value="externa">EXTERNA</option>
                         </select>
                     </div>
                     <div class="campo">
