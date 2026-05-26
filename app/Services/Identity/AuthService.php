@@ -2,11 +2,13 @@
 
 namespace App\Services\Identity;
 
+use App\Models\Identity\Usuario;
+
 use App\DTOs\Identity\LoginDTO;
 use App\Repositories\Identity\UsuarioRepository;
 use Exception;
 use Illuminate\Support\Facades\Log;
-USE Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth;
 
 class AuthService
 {
@@ -17,45 +19,41 @@ class AuthService
         $this->usuarioRepository = $usuarioRepository;
     }
 
-    //Autenticar
-
     public function autenticar(LoginDTO $dto): void
     {
-        $usuario = $this->usuarioRepository->encontrarPorCredencialesLegadas($dto->usuario, $dto->clave);
+        // 1. Buscamos al usuario manualmente cargando las relaciones necesarias
+        $usuario = \App\Models\Identity\Usuario::with(['grupo', 'sucursalesAsignadas', 'permisos'])
+            ->where('usuario', $dto->usuario)
+            ->first();
 
-        //Valida si un usuario ingresa mal
-        if (!$usuario) {
-            Log::warning('Intento de inicio de sesion fallido. Credenciales incorrectas.', ['usuario' => $dto->usuario]);
-            throw new Exception('Credenciales incorrectas');
+        // 2. Comparamos la contraseña en texto plano (Retrocompatibilidad Legacy)
+        if (!$usuario || $usuario->clave !== $dto->clave) {
+            Log::warning('Intento de login fallido: credenciales incorrectas', ['usuario' => $dto->usuario]);
+            throw new Exception('credenciales_invalidas');
         }
 
-        //Valida si un usuario no esta activo le deniega el login
-        IF (!$usuario->activo) {
-            Log::warning('Intento de inicio de sesion fallido. Usuario inactivo.', ['usuario_id' => $usuario->id]);
-            throw new Exception('Usuario inactivo');
+        // 3. Verificamos si el usuario está inactivo (en legacy, NULL equivale a activo)
+        if ((int)($usuario->activo ?? 1) === 0) {
+            Log::warning('Intento de login fallido: usuario inactivo', ['usuario' => $dto->usuario]);
+            throw new Exception('usuario_inactivo');
         }
 
-        //Registramops al user al sistema de auth de laravel de forma manual para no tener que hashear claves ni modificar BD
+        // 4. Forzamos el inicio de sesión en Laravel
         Auth::login($usuario);
 
-        // Replicar las variables de sesion legacy para asegurar retrocompatibilidad
-        $this->establecerSesionLegada($usuario);
-
-        log::info('Usuario autenticado exitosamente.', ['usuario_id' => $usuario->id]);
-    }
-
-    private function establecerSesionLegada($usuario): void
-    {
+        // 5. Replicamos las sesiones requeridas por el código legacy
         $grupo = $usuario->grupo;
-        $es_superadmin = $grupo ? (bool)$grupo->es_superadmin : false;
+        $es_superadmin = $grupo ? (bool) $grupo->es_superadmin : false;
 
-        //LOGICA REPLICADA SGN_CARGAR_SUCURSALES
-        $sucursalesIds = [$usuario->sucursal_id];
-        foreach ($usuario->sucursalesAsignadas as $sucursalAsignada)
-        {
+        // Extraer IDs de sucursales asignadas
+        $sucursalesIds = [];
+        foreach ($usuario->sucursalesAsignadas as $sucursalAsignada) {
             $sucursalesIds[] = $sucursalAsignada->id;
         }
         $sucursalesIds = array_unique(array_filter($sucursalesIds));
+        if (empty($sucursalesIds) && (int) $usuario->sucursal_id > 0) {
+            $sucursalesIds[] = (int) $usuario->sucursal_id;
+        }
 
         // Replicar logica de sgn_cargar_permisos (Merge de grupo y usuario)
         $permisosFinales = [];
@@ -68,7 +66,7 @@ class AuthService
             $permisosFinales[$permiso->modulo][$permiso->accion] = (bool) $permiso->permitido;
         }
 
-        // Registrar en la sesion de Laravel utilizando las mismas llaves del PHP Vanilla
+        // Registrar en la sesión de Laravel utilizando las mismas llaves del PHP Vanilla
         session([
             'usuario'        => $usuario->usuario,
             'nombre'         => $usuario->nombre_tecnico,
@@ -84,10 +82,9 @@ class AuthService
 
     public function cerrarSesion(): void
     {
-        $userId = Auth::id();
+        // Limpiamos la sesión de forma segura
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();
-        Log::info('Sesion cerrada correctamente.', ['usuario_id' => $userId]);
     }
 }
