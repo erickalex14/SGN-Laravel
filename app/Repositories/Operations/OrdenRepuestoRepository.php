@@ -5,6 +5,7 @@ namespace App\Repositories\Operations;
 use App\Models\Inventory\Repuesto;
 use App\Models\Operations\OrdenRepuesto;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Exception;
 
 class OrdenRepuestoRepository
@@ -75,17 +76,17 @@ class OrdenRepuestoRepository
 
     private function asegurarTablaOrdenRepuestos(): void
     {
-        DB::statement("
-            CREATE TABLE IF NOT EXISTS orden_repuestos (
-                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                orden_id INT UNSIGNED NOT NULL,
-                repuesto_id INT UNSIGNED NOT NULL,
-                cantidad INT NOT NULL DEFAULT 1,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                usuario_id INT UNSIGNED NULL,
-                INDEX idx_orden_id (orden_id),
-                INDEX idx_repuesto_id (repuesto_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
+        static $tablaVerificada = false;
+        if ($tablaVerificada) {
+            return;
+        }
+
+        // Evitar DDL en caliente dentro de transacciones operativas:
+        // CREATE TABLE provoca commit implicito en MySQL y rompe el flujo transaccional.
+        if (!Schema::hasTable('orden_repuestos')) {
+            throw new Exception("Falta la tabla 'orden_repuestos'. Debe existir en el esquema antes de asignar/revertir repuestos.");
+        }
+
+        $tablaVerificada = true;
     }
 }
