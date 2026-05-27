@@ -40,7 +40,15 @@ class InformeController extends Controller
             $contexto['sucursal_id']
         );
 
-        return view('operations.informes.index', compact('ordenesPendientes', 'informesGenerados'));
+        $esAdmin = $contexto['es_admin'];
+        $permisos = (array) session('permisos', []);
+        $puedeEditar = !$esAdmin && (
+            (($permisos['informes']['crear'] ?? false) === true)
+            || (($permisos['informes']['editar'] ?? false) === true)
+        );
+        $nombreTecnico = (string) session('nombre', session('usuario', ''));
+
+        return view('operations.informes.index', compact('ordenesPendientes', 'informesGenerados', 'esAdmin', 'puedeEditar', 'nombreTecnico'));
     }
 
     public function store(GuardarInformeRequest $request): JsonResponse
@@ -54,7 +62,9 @@ class InformeController extends Controller
                 $request->input('conclusion'),
                 $request->input('recomendaciones'),
                 $request->input('estado_equipo'),
-                $request->file('fotos', [])
+                $request->input('fecha_informe'),
+                $request->file('fotos', []),
+                $request->input('captions', [])
             );
 
             $contexto = $this->resolverContextoInformes();
@@ -94,11 +104,14 @@ class InformeController extends Controller
 
         $informe = $this->repository->buscarPorOrdenId($ordenId);
         if (!$informe) {
-            return response()->json(['ok' => true, 'informe' => null]);
+            return response()->json(['ok' => true, 'existe' => false, 'informe' => null]);
         }
+
+        $repuestosUsados = $this->repository->obtenerRepuestosUsados($ordenId);
 
         return response()->json([
             'ok' => true,
+            'existe' => true,
             'informe' => [
                 'id' => $informe->id,
                 'antecedentes' => (string) $informe->antecedentes,
@@ -107,12 +120,14 @@ class InformeController extends Controller
                 'recomendaciones' => (string) ($informe->recomendaciones ?? ''),
                 'estado_equipo' => (string) ($informe->estado_equipo ?? ''),
                 'fecha_informe' => (string) ($informe->fecha_informe ?? ''),
+                'repuestos_usados' => $repuestosUsados,
                 'fotos' => $informe->fotos->map(function ($foto) {
                     $ruta = (string) ($foto->foto_data ?? '');
                     $src = str_starts_with($ruta, 'data:') ? $ruta : asset('storage/' . ltrim($ruta, '/'));
                     return [
                         'id' => $foto->id,
                         'src' => $src,
+                        'dataUrl' => $src,
                         'caption' => (string) ($foto->caption ?? ''),
                         'nombre_archivo' => (string) ($foto->nombre_archivo ?? ''),
                     ];
@@ -135,14 +150,13 @@ class InformeController extends Controller
 
     private function resolverContextoInformes(): array
     {
-        $permisos = (array) session('permisos', []);
         $tecnicoId = (int) session('tecnico_id', 0);
         $sucursalSesion = (int) session('sucursal_id', 0);
         $esSuperadmin = (bool) session('es_superadmin', false);
+        $grupoNombre = mb_strtolower(trim((string) session('grupo_nombre', '')));
 
-        $esAdmin = $esSuperadmin
-            || (($permisos['informes']['editar'] ?? false) === true)
-            || (($permisos['reportes']['ver'] ?? false) === true);
+        // Paridad legacy: modo admin solo para admin/master.
+        $esAdmin = $esSuperadmin || in_array($grupoNombre, ['admin', 'master'], true);
 
         return [
             'tecnico_id' => $tecnicoId,

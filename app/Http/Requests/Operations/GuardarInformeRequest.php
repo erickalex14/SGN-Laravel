@@ -21,9 +21,12 @@ class GuardarInformeRequest extends FormRequest
             'proceso'         => ['required', 'string'],
             'conclusion'      => ['required', 'string'],
             'recomendaciones' => ['nullable', 'string'],
-            'estado_equipo'   => ['required', 'string', 'in:Operativo,Reparado parcialmente,Desguace,En espera de repuesto,OPERATIVO,OPERATIVO PARCIAL,NO OPERATIVO'],
+            'estado_equipo'   => ['required', 'string', 'in:Operativo,Reparado parcialmente,Sin reparación posible,En espera de repuesto,Desguace,OPERATIVO,OPERATIVO PARCIAL,NO OPERATIVO'],
+            'fecha_informe'   => ['nullable', 'date'],
             'fotos'           => ['nullable', 'array', 'max:10'],
-            'fotos.*'         => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120']
+            'fotos.*'         => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+            'captions'        => ['nullable', 'array', 'max:10'],
+            'captions.*'      => ['nullable', 'string', 'max:255'],
         ];
     }
 

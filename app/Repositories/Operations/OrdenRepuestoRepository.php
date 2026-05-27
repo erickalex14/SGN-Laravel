@@ -4,14 +4,30 @@ namespace App\Repositories\Operations;
 
 use App\Models\Inventory\Repuesto;
 use App\Models\Operations\OrdenRepuesto;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class OrdenRepuestoRepository
 {
     public function registrarDesdeCreacion(int $ordenId, int $repuestoId, int $usuarioId): void
     {
+        if (!$this->tablaOrdenRepuestosDisponible()) {
+            $repuesto = Repuesto::find($repuestoId);
+            if (!$repuesto) {
+                throw new Exception('El repuesto seleccionado no existe.');
+            }
+
+            $this->descontarStock($repuesto);
+            Log::warning('No se pudo registrar orden_repuestos durante la creacion; se desconto stock usando compatibilidad legacy.', [
+                'orden_id' => $ordenId,
+                'repuesto_id' => $repuestoId,
+                'usuario_id' => $usuarioId,
+            ]);
+            return;
+        }
+
         $this->asignarRepuestoEnOrden($ordenId, $repuestoId, $usuarioId, true);
     }
 
@@ -37,14 +53,7 @@ class OrdenRepuestoRepository
         }
 
         if ($descontarStock) {
-            $actualizado = DB::table('repuestos')
-                ->where('id', $repuestoId)
-                ->where('stock', '>=', 1)
-                ->decrement('stock', 1);
-
-            if ($actualizado === 0) {
-                throw new Exception("Stock insuficiente para el repuesto '{$repuesto->nombre}'.");
-            }
+            $this->descontarStock($repuesto);
         }
 
         $item = new OrdenRepuesto();
@@ -76,17 +85,37 @@ class OrdenRepuestoRepository
 
     private function asegurarTablaOrdenRepuestos(): void
     {
-        static $tablaVerificada = false;
-        if ($tablaVerificada) {
+        if ($this->tablaOrdenRepuestosDisponible()) {
             return;
         }
 
-        // Evitar DDL en caliente dentro de transacciones operativas:
-        // CREATE TABLE provoca commit implicito en MySQL y rompe el flujo transaccional.
-        if (!Schema::hasTable('orden_repuestos')) {
-            throw new Exception("Falta la tabla 'orden_repuestos'. Debe existir en el esquema antes de asignar/revertir repuestos.");
-        }
+        throw new Exception("Falta la tabla 'orden_repuestos'. Debe existir en el esquema antes de asignar/revertir repuestos.");
+    }
 
-        $tablaVerificada = true;
+    private function tablaOrdenRepuestosDisponible(): bool
+    {
+        try {
+            DB::table('orden_repuestos')->select('id')->limit(1)->get();
+            return true;
+        } catch (QueryException $e) {
+            $sqlState = (string) ($e->errorInfo[0] ?? '');
+            if ($sqlState === '42S02') {
+                return false;
+            }
+
+            throw $e;
+        }
+    }
+
+    private function descontarStock(Repuesto $repuesto): void
+    {
+        $actualizado = DB::table('repuestos')
+            ->where('id', $repuesto->id)
+            ->where('stock', '>=', 1)
+            ->decrement('stock', 1);
+
+        if ($actualizado === 0) {
+            throw new Exception("Stock insuficiente para el repuesto '{$repuesto->nombre}'.");
+        }
     }
 }

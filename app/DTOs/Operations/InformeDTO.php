@@ -12,6 +12,8 @@ readonly class InformeDTO
         public string $conclusion,
         public ?string $recomendaciones,
         public string $estado_equipo,
-        public array $fotos // Arreglo de archivos cargados (UploadedFile)
+        public ?string $fecha_informe,
+        public array $fotos, // Arreglo de archivos cargados (UploadedFile)
+        public array $captions = []
     ) {}
 }

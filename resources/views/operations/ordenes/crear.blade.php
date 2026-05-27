@@ -3,25 +3,134 @@
 
 @push('css_adicional')
 <style>
-/* CSS Integro de ordenes.css */
-.ord-wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
-.ord-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
-.ord-hdr h2 { margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
-.seccion-form { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px; margin-bottom: 24px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.03); }
-.seccion-hdr { background: #f8fafc; padding: 14px 20px; border-bottom: 1.5px solid #e2e8f0; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 15px; }
-.seccion-body { padding: 24px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
-.campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.campo label { font-size: 13px; font-weight: 600; color: #475569; }
-.campo input, .campo select, .campo textarea { padding: 11px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; transition: border-color .2s; }
-.campo input:focus, .campo select:focus, .campo textarea:focus { outline: none; border-color: #2563eb; }
+/* Visual 1:1 basado en SGN Vanilla / Modulos / Ordenes / Crear */
+.modulo {
+    padding: 30px;
+    background: #f1f5f9;
+    min-height: 100%;
+}
+.orden-container {
+    background: white;
+    border-radius: 14px;
+    padding: 35px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    max-width: 1000px;
+    margin: 0 auto;
+}
+.form-titulo {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f1f5f9;
+}
+.form-titulo h2 {
+    margin: 0 0 4px 0;
+    color: #0f172a;
+    font-size: 22px;
+    font-weight: 700;
+}
+.form-titulo p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 14px;
+}
+.seccion-form {
+    margin-bottom: 28px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: none;
+}
+.seccion-hdr {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.seccion-hdr i { font-size: 18px; }
+.seccion-body { padding: 20px; }
+.grid-2,
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+}
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 0;
+}
+.campo label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+.campo input,
+.campo select,
+.campo textarea {
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 14px;
+    color: #0f172a;
+    background: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    font-family: inherit;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.campo textarea { resize: vertical; }
 .req { color: #ef4444; }
-.btn-buscar { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 11px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .2s; }
+.btn-buscar { background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 10px 14px; border-radius: 7px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .2s; }
 .btn-buscar:hover { background: #dbeafe; }
-.btn-submit { background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 14px 28px; border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; transition: opacity .2s; }
-.btn-submit:hover { opacity: .9; }
-.btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+.botones {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+}
+.btn-crear {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-crear:hover { background: #1d4ed8; }
+.btn-crear:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-limpiar {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-limpiar:hover { background: #e2e8f0; }
 .msg-box { display: none; padding: 16px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
 .msg-box.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .msg-box.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
@@ -39,7 +148,7 @@
 .rep-item:hover { background: #fffbeb; }
 .rep-badge { display: none; margin-top: 8px; align-items: center; gap: 8px; background: #dcfce7; border: 1px solid #86efac; border-radius: 7px; padding: 7px 12px; }
 .rep-badge-txt { font-size: 13px; color: #166534; font-weight: 700; flex: 1; }
-.motivo-lock-msg { margin-top: 10px; font-size: 12.5px; color: #475569; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 9px 12px; }
+.motivo-lock-msg { margin-top: 16px; font-size: 12.5px; color: #475569; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 9px 12px; }
 .tec-native-sr { position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
 .tec-dropdown { position: relative; width: 100%; }
 .tec-trigger { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; cursor: pointer; background: #fff; user-select: none; transition: border-color .15s; }
@@ -61,13 +170,19 @@
 .tec-item-nombre { flex: 1; font-size: 12.5px; font-weight: 600; color: #0f172a; }
 .tec-item-stats { font-size: 11px; color: #94a3b8; white-space: nowrap; }
 .tec-item-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; margin-left: 6px; }
+@media (max-width: 768px) {
+    .modulo { padding: 16px; }
+    .orden-container { padding: 22px; }
+}
 </style>
 @endpush
 
 @section('contenido')
-<div class="ord-wrap">
-    <div class="ord-hdr">
-        <h2><i class="bi bi-file-earmark-plus" style="color:#2563eb;"></i> Nueva Orden de Ingreso</h2>
+<section class="modulo activo">
+<div class="orden-container">
+    <div class="form-titulo">
+        <h2><i class="bi bi-clipboard-plus me-2"></i>Nueva Orden de Servicio</h2>
+        <p>Complete todos los campos requeridos</p>
     </div>
 
     <div id="ord-msg" class="msg-box"></div>
@@ -401,13 +516,17 @@
             </div>
         </div>
 
-        <div id="acciones-orden" class="hidden">
-            <button type="submit" id="btn-guardar" class="btn-submit">
+        <div id="acciones-orden" class="botones hidden">
+            <button type="button" class="btn-limpiar" onclick="document.getElementById('form-orden').reset(); actualizarMotivo();">
+                Limpiar
+            </button>
+            <button type="submit" id="btn-guardar" class="btn-crear">
                 <i class="bi bi-floppy"></i> Generar Orden de Ingreso
             </button>
         </div>
     </form>
 </div>
+</section>
 @endsection
 
 @push('js_adicional')

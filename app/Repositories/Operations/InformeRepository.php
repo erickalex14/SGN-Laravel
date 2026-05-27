@@ -5,6 +5,7 @@ namespace App\Repositories\Operations;
 use App\Models\Operations\Informe;
 use App\Models\Operations\Orden;
 use App\Models\Operations\OrdenEmpresa;
+use App\Models\Inventory\Repuesto;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,35 +26,55 @@ class InformeRepository
             ->all();
 
         $personales = Orden::query()
-            ->with(['cliente', 'equipo'])
+            ->with(['cliente', 'equipo', 'tecnico', 'usuarioIngreso'])
             ->when(!$esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
             ->when($esAdmin && !$esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
             ->orderByDesc('id')
             ->get()
             ->map(function (Orden $orden) use ($idsConInforme) {
                 $clienteNombre = trim((string) (($orden->cliente->nombres ?? '') . ' ' . ($orden->cliente->apellidos ?? '')));
-                $equipoNombre = trim((string) (($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
+                $equipoTipo = (string) ($orden->equipo->tipo ?? '');
+                $equipoMarca = (string) ($orden->equipo->marca ?? '');
+                $equipoModelo = (string) ($orden->equipo->modelo ?? '');
+                $equipoSerie = (string) ($orden->equipo->serie ?? '');
+                $equipoNombre = trim($equipoTipo . ' ' . $equipoMarca . ' ' . $equipoModelo);
 
                 return (object) [
                     'id' => $orden->id,
                     'tipo_orden' => 'personal',
                     'nro_orden' => (string) $orden->nro_orden,
                     'estado_orden' => (string) ($orden->estado_orden ?? ''),
+                    'nro_factura' => (string) ($orden->nro_factura ?? ''),
+                    'nro_factura_2' => (string) ($orden->nro_factura_2 ?? ''),
                     'cliente_nombre' => $clienteNombre,
+                    'cliente_identificacion' => (string) ($orden->cliente->identificacion ?? ''),
+                    'cliente_telefono' => (string) ($orden->cliente->numero_contacto ?? ''),
+                    'cliente_correo' => (string) ($orden->cliente->correo ?? ''),
+                    'cliente_direccion' => (string) ($orden->cliente->direccion_clientes ?? ''),
                     'equipo_nombre' => $equipoNombre,
+                    'equipo_tipo' => $equipoTipo,
+                    'equipo_marca' => $equipoMarca,
+                    'equipo_modelo' => $equipoModelo,
+                    'equipo_serie' => $equipoSerie,
+                    'tecnico' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
+                    'ingresado_por_nombre' => (string) ($orden->usuarioIngreso->nombre_tecnico ?? ''),
                     'tiene_informe' => in_array((int) $orden->id, $idsConInforme, true),
                 ];
             });
 
         $empresas = OrdenEmpresa::query()
-            ->with(['empresa', 'equipo'])
+            ->with(['empresa', 'equipo', 'tecnico', 'ingresadoPor'])
             ->where('subtipo', 'Autoconsumo')
             ->when(!$esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
             ->when($esAdmin && !$esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
             ->orderByDesc('id')
             ->get()
             ->map(function (OrdenEmpresa $orden) use ($idsConInforme) {
-                $equipoNombre = trim((string) (($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
+                $equipoTipo = (string) ($orden->equipo->tipo ?? '');
+                $equipoMarca = (string) ($orden->equipo->marca ?? '');
+                $equipoModelo = (string) ($orden->equipo->modelo ?? '');
+                $equipoSerie = (string) ($orden->equipo->serie ?? '');
+                $equipoNombre = trim($equipoTipo . ' ' . $equipoMarca . ' ' . $equipoModelo);
 
                 return (object) [
                     'id' => $orden->id,
@@ -61,7 +82,19 @@ class InformeRepository
                     'nro_orden' => (string) $orden->nro_orden,
                     'estado_orden' => (string) ($orden->estado ?? ''),
                     'cliente_nombre' => (string) ($orden->empresa->nombre ?? 'EMPRESA'),
+                    'cliente_identificacion' => (string) ($orden->empresa->ruc ?? ''),
+                    'cliente_telefono' => (string) ($orden->empresa->telefono ?? ''),
+                    'cliente_correo' => (string) ($orden->empresa->correo ?? ''),
+                    'cliente_direccion' => (string) ($orden->empresa->direccion_empresa ?? ''),
                     'equipo_nombre' => $equipoNombre,
+                    'equipo_tipo' => $equipoTipo,
+                    'equipo_marca' => $equipoMarca,
+                    'equipo_modelo' => $equipoModelo,
+                    'equipo_serie' => $equipoSerie,
+                    'tecnico' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
+                    'ingresado_por_nombre' => (string) ($orden->ingresadoPor->nombre_tecnico ?? ''),
+                    'nro_factura' => '',
+                    'nro_factura_2' => '',
                     'tiene_informe' => in_array((int) $orden->id, $idsConInforme, true),
                 ];
             });
@@ -182,5 +215,49 @@ class InformeRepository
         }
 
         return $informe;
+    }
+
+    public function obtenerRepuestosUsados(int $ordenId): array
+    {
+        $repuestos = [];
+
+        if (Schema::hasTable('orden_repuestos')) {
+            $filas = DB::table('orden_repuestos as orep')
+                ->join('repuestos as r', 'r.id', '=', 'orep.repuesto_id')
+                ->where('orep.orden_id', $ordenId)
+                ->orderBy('orep.fecha')
+                ->get(['r.codigo', 'r.nombre', 'r.nro_parte']);
+
+            foreach ($filas as $fila) {
+                $repuestos[] = [
+                    'codigo' => (string) ($fila->codigo ?? ''),
+                    'nombre' => (string) ($fila->nombre ?? ''),
+                    'nro_parte' => (string) ($fila->nro_parte ?? ''),
+                ];
+            }
+        }
+
+        if (!empty($repuestos)) {
+            return $repuestos;
+        }
+
+        $orden = Orden::query()->select(['id', 'repuesto_inventario_id'])->find($ordenId);
+        if (!$orden || empty($orden->repuesto_inventario_id)) {
+            return [];
+        }
+
+        $repuesto = Repuesto::query()
+            ->select(['codigo', 'nombre', 'nro_parte'])
+            ->find((int) $orden->repuesto_inventario_id);
+
+        if (!$repuesto) {
+            return [];
+        }
+
+        return [[
+            'codigo' => (string) ($repuesto->codigo ?? ''),
+            'nombre' => (string) ($repuesto->nombre ?? ''),
+            'nro_parte' => (string) ($repuesto->nro_parte ?? ''),
+        ]];
     }
 }
