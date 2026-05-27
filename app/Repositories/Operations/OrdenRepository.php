@@ -35,7 +35,15 @@ class OrdenRepository
 
     public function obtenerOrdenesPorTecnico(int $tecnicoId): Collection
     {
-        return Orden::with(['cliente', 'equipo', 'sucursal'])
+        return Orden::with([
+                'cliente',
+                'equipo.credenciales',
+                'sucursal',
+                'solicitudesNc',
+                'informes',
+                'usuarioIngreso',
+                'repuestoInventario',
+            ])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('id', 'desc')
             ->get();

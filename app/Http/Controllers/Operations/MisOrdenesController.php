@@ -8,7 +8,6 @@ use App\Http\Requests\Operations\CambiarEstadoRepuestoRequest;
 use App\Http\Requests\Operations\CambiarEstadoGarantiaRequest;
 use App\Http\Requests\Operations\AsignarRepuestoOrdenRequest;
 use App\Http\Requests\Operations\RevertirRepuestoOrdenRequest;
-use App\Repositories\Inventory\RepuestoRepository;
 use App\Services\Operations\GestionOrdenService;
 use App\Repositories\Operations\OrdenRepository;
 use App\DTOs\Operations\CambiarEstadoOrdenDTO;
@@ -24,17 +23,14 @@ class MisOrdenesController extends Controller
 {
     protected GestionOrdenService $service;
     protected OrdenRepository $repository;
-    protected RepuestoRepository $repuestoRepository;
 
     public function __construct(
         GestionOrdenService $service,
-        OrdenRepository $repository,
-        RepuestoRepository $repuestoRepository
+        OrdenRepository $repository
     )
     {
         $this->service = $service;
         $this->repository = $repository;
-        $this->repuestoRepository = $repuestoRepository;
     }
 
     public function index(): View
@@ -46,9 +42,7 @@ class MisOrdenesController extends Controller
         }
 
         $ordenes = $this->repository->obtenerOrdenesPorTecnico($tecnicoId);
-        $repuestos = $this->repuestoRepository->buscarParaOrden('', true);
-
-        return view('operations.mis_ordenes.index', compact('ordenes', 'repuestos'));
+        return view('operations.mis_ordenes.index', compact('ordenes'));
     }
 
     public function cambiarEstado(CambiarEstadoOrdenRequest $request): JsonResponse

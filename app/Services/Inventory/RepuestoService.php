@@ -42,14 +42,14 @@ class RepuestoService
         }
 
         $repuesto->codigo              = $codigoNormalizado;
-        $repuesto->nro_parte           = strtoupper(trim($dto->nro_parte));
+        $repuesto->nro_parte           = $this->normalizarTextoOpcional($dto->nro_parte, true);
         $repuesto->nombre              = strtoupper(trim($dto->nombre));
         $repuesto->stock               = $dto->stock;
         $repuesto->costo               = $dto->costo;
         $repuesto->bodega              = $this->normalizarBodegaParaEsquema($dto->bodega);
-        $repuesto->descripcion         = trim($dto->descripcion);
-        $repuesto->marca_id            = $dto->marca_id;
-        $repuesto->tipo_dispositivo_id = $dto->tipo_dispositivo_id;
+        $repuesto->descripcion         = $this->normalizarTextoOpcional($dto->descripcion);
+        $repuesto->marca_id            = $this->normalizarTextoOpcional($dto->marca_id, true);
+        $repuesto->tipo_dispositivo_id = $this->normalizarTextoOpcional($dto->tipo_dispositivo_id, true);
 
         $repuesto->save();
 
@@ -139,5 +139,15 @@ class RepuestoService
         }
 
         return $cache;
+    }
+
+    private function normalizarTextoOpcional(?string $valor, bool $upper = false): ?string
+    {
+        $texto = trim((string) $valor);
+        if ($texto === '') {
+            return null;
+        }
+
+        return $upper ? strtoupper($texto) : $texto;
     }
 }
