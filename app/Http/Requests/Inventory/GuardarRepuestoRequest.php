@@ -28,8 +28,8 @@ class GuardarRepuestoRequest extends FormRequest
             $reglas['costo']               = ['required', 'numeric', 'min:0'];
             $reglas['bodega']              = ['nullable', 'string', 'max:100'];
             $reglas['descripcion']         = ['nullable', 'string'];
-            $reglas['marca_id']            = ['required', 'string'];
-            $reglas['tipo_dispositivo_id'] = ['required', 'string'];
+            $reglas['marca_id']            = ['nullable', 'string', 'max:100'];
+            $reglas['tipo_dispositivo_id'] = ['nullable', 'string', 'max:100'];
         }
 
         return $reglas;

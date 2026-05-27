@@ -7,8 +7,6 @@ use App\Http\Requests\Inventory\GuardarRepuestoRequest;
 use App\Http\Requests\Inventory\BuscarRepuestoOrdenRequest;
 use App\Services\Inventory\RepuestoService;
 use App\Repositories\Inventory\RepuestoRepository;
-use App\Repositories\Inventory\MarcaRepository;
-use App\Repositories\Inventory\TipoDispositivoRepository;
 use App\DTOs\Inventory\RepuestoDTO;
 use App\DTOs\Inventory\BuscarRepuestoOrdenDTO;
 use Illuminate\Http\JsonResponse;
@@ -19,28 +17,20 @@ class RepuestoController extends Controller
 {
     protected RepuestoService $service;
     protected RepuestoRepository $repository;
-    protected MarcaRepository $marcaRepository;
-    protected TipoDispositivoRepository $tipoRepository;
 
     public function __construct(
         RepuestoService $service,
-        RepuestoRepository $repository,
-        MarcaRepository $marcaRepository,
-        TipoDispositivoRepository $tipoRepository
+        RepuestoRepository $repository
     ) {
         $this->service = $service;
         $this->repository = $repository;
-        $this->marcaRepository = $marcaRepository;
-        $this->tipoRepository = $tipoRepository;
     }
 
     public function index(): View
     {
         $repuestos = $this->repository->obtenerTodos();
-        $marcas    = $this->marcaRepository->obtenerTodas();
-        $tipos     = $this->tipoRepository->obtenerTodos();
 
-        return view('inventory.repuestos.index', compact('repuestos', 'marcas', 'tipos'));
+        return view('inventory.repuestos.index', compact('repuestos'));
     }
 
     public function procesar(GuardarRepuestoRequest $request): JsonResponse

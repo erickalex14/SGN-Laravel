@@ -48,15 +48,6 @@
         .msg-box.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     </style>
 
-    <script>
-        // Catalogos mapeados para reemplazo visual rapido (evitando JOINs problematicos de la BD legacy)
-        const mapMarcas = {
-            @foreach($marcas as $m) "{{ $m->id }}": "{{ addslashes($m->nombre) }}", @endforeach
-        };
-        const mapTipos = {
-            @foreach($tipos as $t) "{{ $t->id }}": "{{ addslashes($t->nombre) }}", @endforeach
-        };
-    </script>
 @endpush
 
 @section('contenido')
@@ -105,9 +96,7 @@
                                 <span class="stock-badge {{ $cClass }}">{{ $r->stock }}</span>
                             </td>
                             <td>{{ number_format($r->costo, 2) }}</td>
-                            <td style="font-size:12px;">
-                                <script>document.write((mapMarcas["{{ $r->marca_id }}"] || 'N/A') + ' / ' + (mapTipos["{{ $r->tipo_dispositivo_id }}"] || 'N/A'));</script>
-                            </td>
+                            <td style="font-size:12px;">{{ $r->marca_id ?: 'N/A' }} / {{ $r->tipo_dispositivo_id ?: 'N/A' }}</td>
                             <td>{{ $r->bodega ?: '-' }}</td>
                             <td style="text-align:right;">
                                 <button class="btn-action" title="Editar" onclick="abrirModal({{ json_encode($r) }})"><i class="bi bi-pencil"></i></button>
@@ -162,22 +151,12 @@
 
                 <div class="grid-2">
                     <div class="campo">
-                        <label>Marca <span class="req">*</span></label>
-                        <select id="r-marca">
-                            <option value="">-- Seleccionar --</option>
-                            @foreach($marcas as $m)
-                                <option value="{{ $m->id }}">{{ $m->nombre }}</option>
-                            @endforeach
-                        </select>
+                        <label>Marca</label>
+                        <input type="text" id="r-marca" maxlength="100" placeholder="Ej: SAMSUNG" oninput="this.value=this.value.toUpperCase()">
                     </div>
                     <div class="campo">
-                        <label>Tipo de Dispositivo <span class="req">*</span></label>
-                        <select id="r-tipo">
-                            <option value="">-- Seleccionar --</option>
-                            @foreach($tipos as $t)
-                                <option value="{{ $t->id }}">{{ $t->codigo }} - {{ $t->nombre }}</option>
-                            @endforeach
-                        </select>
+                        <label>Tipo de Dispositivo</label>
+                        <input type="text" id="r-tipo" maxlength="100" placeholder="Ej: LAPTOP, CELULAR" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
 
@@ -263,7 +242,7 @@
             const marca = document.getElementById('r-marca').value;
             const tipo = document.getElementById('r-tipo').value;
 
-            if (!codigo || !nombre || !marca || !tipo) {
+            if (!codigo || !nombre) {
                 mostrarError('Los campos marcados con (*) son obligatorios.');
                 return;
             }
