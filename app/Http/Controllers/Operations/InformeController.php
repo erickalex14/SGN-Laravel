@@ -25,23 +25,19 @@ class InformeController extends Controller
 
     public function index(): View
     {
-        $tecnicoId = session('tecnico_id');
-        $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
-        $esAdmin = in_array($rol, ['admin', 'master'], true);
-        $esMaster = $rol === 'master';
-        $sucursalSesion = (int) session('sucursal_id', 0);
+        $contexto = $this->resolverContextoInformes();
 
         $ordenesPendientes = $this->repository->obtenerOrdenesSinInforme(
-            (int) $tecnicoId,
-            $esAdmin,
-            $esMaster,
-            $sucursalSesion
+            $contexto['tecnico_id'],
+            $contexto['es_admin'],
+            $contexto['es_master'],
+            $contexto['sucursal_id']
         );
         $informesGenerados = $this->repository->obtenerInformesPorTecnico(
-            (int) $tecnicoId,
-            $esAdmin,
-            $esMaster,
-            $sucursalSesion
+            $contexto['tecnico_id'],
+            $contexto['es_admin'],
+            $contexto['es_master'],
+            $contexto['sucursal_id']
         );
 
         return view('operations.informes.index', compact('ordenesPendientes', 'informesGenerados'));
@@ -52,7 +48,7 @@ class InformeController extends Controller
         try {
             $dto = new InformeDTO(
                 (int) $request->input('orden_id'),
-                session('tecnico_id'),
+                (int) session('tecnico_id'),
                 $request->input('antecedentes'),
                 $request->input('proceso'),
                 $request->input('conclusion'),
@@ -61,12 +57,9 @@ class InformeController extends Controller
                 $request->file('fotos', [])
             );
 
-            $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
-            $esAdmin = in_array($rol, ['admin', 'master'], true);
-            $esMaster = $rol === 'master';
-            $sucursalSesion = (int) session('sucursal_id', 0);
+            $contexto = $this->resolverContextoInformes();
 
-            $this->service->procesarInforme($dto, $esAdmin, $esMaster, $sucursalSesion);
+            $this->service->procesarInforme($dto, $contexto['es_admin'], $contexto['es_master'], $contexto['sucursal_id']);
 
             return response()->json([
                 'ok'      => true,
@@ -85,6 +78,18 @@ class InformeController extends Controller
         $ordenId = (int) $request->query('orden_id', 0);
         if ($ordenId <= 0) {
             return response()->json(['ok' => false, 'error' => 'Orden invalida.']);
+        }
+
+        $contexto = $this->resolverContextoInformes();
+        $ordenValida = $this->repository->buscarOrdenValidaParaInforme(
+            $ordenId,
+            $contexto['tecnico_id'],
+            $contexto['es_admin'],
+            $contexto['es_master'],
+            $contexto['sucursal_id']
+        );
+        if (!$ordenValida) {
+            return response()->json(['ok' => false, 'error' => 'No tiene permisos sobre la orden seleccionada.']);
         }
 
         $informe = $this->repository->buscarPorOrdenId($ordenId);
@@ -121,6 +126,30 @@ class InformeController extends Controller
         $informe = $this->repository->buscarPorId($id);
         abort_if(!$informe, 404);
 
+        $contexto = $this->resolverContextoInformes();
+        $esPropietario = (int) ($informe->tecnico_id ?? 0) === $contexto['tecnico_id'];
+        abort_unless($contexto['es_admin'] || $esPropietario, 403);
+
         return view('operations.informes.imprimir', compact('informe'));
+    }
+
+    private function resolverContextoInformes(): array
+    {
+        $permisos = (array) session('permisos', []);
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $sucursalSesion = (int) session('sucursal_id', 0);
+        $esSuperadmin = (bool) session('es_superadmin', false);
+
+        $esAdmin = $esSuperadmin
+            || (($permisos['informes']['editar'] ?? false) === true)
+            || (($permisos['reportes']['ver'] ?? false) === true);
+
+        return [
+            'tecnico_id' => $tecnicoId,
+            'sucursal_id' => $sucursalSesion,
+            'es_admin' => $esAdmin,
+            // En este modulo, admin debe listar todos los informes.
+            'es_master' => $esAdmin,
+        ];
     }
 }

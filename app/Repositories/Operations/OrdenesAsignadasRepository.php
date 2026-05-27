@@ -11,11 +11,18 @@ class OrdenesAsignadasRepository
     {
         return DB::table('usuarios as u')
             ->join('ordenes as o', 'o.tecnico_id', '=', 'u.id')
-            ->select('u.id', 'u.nombre_tecnico')
+            ->selectRaw(
+                "u.id, u.nombre_tecnico,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) = 'PENDIENTE' THEN 1 ELSE 0 END) AS pendientes,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) IN ('EN PROCESO','EN_PROCESO') THEN 1 ELSE 0 END) AS en_proceso,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) = 'ENTREGADA' THEN 1 ELSE 0 END) AS entregadas,
+                SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) NOT IN ('ENTREGADA','NOTA DE CREDITO') THEN 1 ELSE 0 END) AS activas"
+            )
             ->when(!$esSuperadmin && $sucursalSesion > 0, function ($q) use ($sucursalSesion) {
                 $q->where('u.sucursal_id', $sucursalSesion);
             })
-            ->distinct()
+            ->groupBy('u.id', 'u.nombre_tecnico')
+            ->orderByRaw('(pendientes + en_proceso) DESC')
             ->orderBy('u.nombre_tecnico')
             ->get();
     }
@@ -27,7 +34,8 @@ class OrdenesAsignadasRepository
             ->join('equipos as e', 'o.equipo_id', '=', 'e.id')
             ->selectRaw(
                 'o.id as orden_id, o.nro_orden, o.estado_orden, o.estado_repuesto, o.fecha_de_ingreso,' .
-                " CONCAT(c.nombres, ' ', c.apellidos) as cliente, e.tipo, e.marca, e.modelo, e.serie"
+                " o.fecha_prometido, o.motivo_ingreso, o.estado_garantia,
+                CONCAT(c.nombres, ' ', c.apellidos) as cliente, e.tipo, e.marca, e.modelo, e.serie"
             )
             ->where('o.tecnico_id', $tecnicoId)
             ->when(
@@ -39,4 +47,3 @@ class OrdenesAsignadasRepository
             ->get();
     }
 }
-

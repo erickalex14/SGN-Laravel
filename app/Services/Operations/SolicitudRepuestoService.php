@@ -96,9 +96,9 @@ class SolicitudRepuestoService
         try {
             DB::transaction(function () use ($solicitud, $dto) {
                 $estadoRecibido = strtoupper(trim($dto->estado));
+                $esCompra = $estadoRecibido === 'COMPRA';
                 $estadoFinal = match ($estadoRecibido) {
                     'RECHAZADA' => 'Rechazada',
-                    'COMPRA' => 'COMPRA',
                     default => 'Aprobada',
                 };
 
@@ -118,35 +118,43 @@ class SolicitudRepuestoService
                     throw new Exception('La orden asociada a la solicitud no existe.');
                 }
 
-                if ($estadoFinal === 'Aprobada') {
+                if ($estadoFinal === 'Aprobada' && !$esCompra) {
                     $repuestoIdAsignado = $dto->repuesto_id ?: $solicitud->repuesto_inv_id;
                     $repuestoIdAsignado = $repuestoIdAsignado ? (int) $repuestoIdAsignado : null;
 
-                    if ($repuestoIdAsignado) {
-                        $repuesto = Repuesto::find($repuestoIdAsignado);
-                        if (!$repuesto) {
-                            throw new Exception('El repuesto seleccionado no existe.');
-                        }
-                        if ($repuesto->stock < (int) $solicitud->cantidad) {
-                            throw new Exception("Stock insuficiente del repuesto '{$repuesto->nombre}'.");
-                        }
-                        $repuesto->stock -= (int) $solicitud->cantidad;
-                        $repuesto->save();
+                    if (!$repuestoIdAsignado) {
+                        throw new Exception('Seleccione un repuesto para aprobar y despachar, o use la opcion Mandar a compras.');
                     }
 
+                    $repuesto = Repuesto::find($repuestoIdAsignado);
+                    if (!$repuesto) {
+                        throw new Exception('El repuesto seleccionado no existe.');
+                    }
+                    if ($repuesto->stock < (int) $solicitud->cantidad) {
+                        throw new Exception("Stock insuficiente del repuesto '{$repuesto->nombre}'.");
+                    }
+                    $repuesto->stock -= (int) $solicitud->cantidad;
+                    $repuesto->save();
+
                     $solicitud->repuesto_id = $repuestoIdAsignado;
-                    $orden->estado_repuesto = $repuestoIdAsignado ? 'Con stock' : 'Sin stock';
+                    $orden->estado_repuesto = 'Con stock';
                     $orden->repuesto_inventario_id = $repuestoIdAsignado;
                 } elseif ($estadoFinal === 'Rechazada') {
                     $orden->estado_repuesto = 'Sin stock';
                 } else {
-                    // COMPRA: queda pendiente de abastecimiento
+                    // Flujo COMPRA: en BD se almacena como Aprobada por enum legacy.
+                    $solicitud->repuesto_id = null;
                     $orden->estado_repuesto = 'Requerido';
+                    $orden->repuesto_inventario_id = null;
                 }
 
                 $solicitud->save();
                 $orden->save();
-                Log::info('Solicitud repuesto gestionada.', ['sr_id' => $solicitud->id, 'estado' => $estadoFinal]);
+                Log::info('Solicitud repuesto gestionada.', [
+                    'sr_id' => $solicitud->id,
+                    'estado' => $estadoFinal,
+                    'es_compra' => $esCompra,
+                ]);
             });
         } catch (Exception $e) {
             Log::error('Error al gestionar SR', ['error' => $e->getMessage()]);

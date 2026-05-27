@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operations;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\CambiarEstadoOrdenRequest;
 use App\Http\Requests\Operations\CambiarEstadoRepuestoRequest;
+use App\Http\Requests\Operations\CambiarEstadoGarantiaRequest;
 use App\Http\Requests\Operations\AsignarRepuestoOrdenRequest;
 use App\Http\Requests\Operations\RevertirRepuestoOrdenRequest;
 use App\Repositories\Inventory\RepuestoRepository;
@@ -12,6 +13,7 @@ use App\Services\Operations\GestionOrdenService;
 use App\Repositories\Operations\OrdenRepository;
 use App\DTOs\Operations\CambiarEstadoOrdenDTO;
 use App\DTOs\Operations\CambiarEstadoRepuestoDTO;
+use App\DTOs\Operations\CambiarEstadoGarantiaDTO;
 use App\DTOs\Operations\AsignarRepuestoOrdenDTO;
 use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
 use Illuminate\View\View;
@@ -94,6 +96,32 @@ class MisOrdenesController extends Controller
             return response()->json([
                 'ok' => true,
                 'mensaje' => 'Estado de repuesto actualizado.'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function cambiarEstadoGarantia(CambiarEstadoGarantiaRequest $request): JsonResponse
+    {
+        try {
+            $dto = new CambiarEstadoGarantiaDTO(
+                (int) $request->input('orden_id'),
+                (string) $request->input('estado_garantia')
+            );
+
+            $this->service->actualizarEstadoGarantia(
+                $dto,
+                (int) session('tecnico_id', 0),
+                $this->resolverEsAdmin()
+            );
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Estado de garantia actualizado.'
             ]);
         } catch (Exception $e) {
             return response()->json([

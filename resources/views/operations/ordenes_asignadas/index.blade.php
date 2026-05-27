@@ -3,36 +3,100 @@
 
 @push('css_adicional')
 <style>
-.oa-container{max-width:1100px;margin:0 auto;padding:28px 24px;}
-.oa-global-empty{text-align:center;color:#94a3b8;padding:40px;font-size:14px;}
-.oa-tecnico-bloque{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:18px;overflow:hidden;}
-.oa-tec-header{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
-.oa-tec-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;}
-.oa-tec-nombre{font-size:15px;font-weight:700;color:#0f172a;flex:1;}
-.oa-badge-asig,.oa-badge-entr{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
-.oa-badge-asig{background:#dbeafe;color:#1e40af;}
-.oa-badge-entr{background:#dcfce7;color:#166534;}
-.oa-tec-body{display:none;padding:16px;}
-.oa-tec-body.open{display:block;}
-.oa-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;padding-top:10px;}
-.oa-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;}
-.oa-card-top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
-.oa-nro{font-family:monospace;font-weight:800;font-size:14px;color:#2563eb;}
-.oa-cliente{padding:0 14px 4px;font-size:13px;font-weight:600;color:#0f172a;}
-.oa-equipo{padding:0 14px 4px;font-size:12px;color:#475569;}
-.oa-meta-row{padding:6px 14px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid #f1f5f9;}
-.oa-meta{font-size:11.5px;color:#64748b;}
-.btn-det{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;text-decoration:none;}
-.oa-empty{color:#94a3b8;font-size:13px;padding:16px;text-align:center;}
+.oa-container { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+.oa-head { margin-bottom: 18px; }
+.oa-head h2 { margin: 0 0 4px; font-size: 21px; font-weight: 800; color: #0f172a; }
+.oa-head p { margin: 0; font-size: 13px; color: #94a3b8; }
+.oa-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.oa-kpi { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 11px 13px; }
+.oa-kpi-lbl { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: .35px; }
+.oa-kpi-val { margin-top: 4px; font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
+.oa-global-empty { text-align: center; color: #94a3b8; padding: 40px; font-size: 14px; background:#fff; border:1.5px solid #e2e8f0; border-radius:12px; }
+
+.oa-tecnico-bloque { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+.oa-tec-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.oa-tec-header:hover { background: #f1f5f9; }
+.oa-tec-avatar { width: 36px; height: 36px; border-radius: 50%; color: #fff; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.oa-tec-nombre { font-size: 15px; font-weight: 700; color: #0f172a; flex: 1; }
+.oa-tec-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.oa-badge-asig { background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.oa-badge-entr { background: #dcfce7; color: #166534; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.oa-badge-carga { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; border: 1px solid transparent; }
+.oa-chevron { font-size: 11px; color: #94a3b8; transition: transform .2s; }
+.oa-chevron.open { transform: rotate(180deg); }
+
+.oa-tec-body { display: none; padding: 14px 16px 18px; }
+.oa-tec-body.open { display: block; }
+.oa-sub-title { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 13px; font-weight: 700; color: #1e293b; }
+.oa-sub-pill { margin-left: auto; background: #e2e8f0; color: #334155; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+.oa-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.oa-empty { color: #94a3b8; font-size: 13px; padding: 14px; text-align: center; border: 1.5px dashed #e2e8f0; border-radius: 10px; }
+
+.oa-card { border: 1.5px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
+.oa-card-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 8px; border-bottom: 1px solid #f1f5f9; }
+.oa-nro { font-family: monospace; font-weight: 800; color: #2563eb; font-size: 13px; }
+.oa-status { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
+.oa-status.pend { background: #fef9c3; color: #854d0e; }
+.oa-status.proc { background: #dbeafe; color: #1e40af; }
+.oa-status.fin { background: #dcfce7; color: #166534; }
+.oa-status.ent { background: #f1f5f9; color: #475569; }
+.oa-status.def { background: #f1f5f9; color: #475569; }
+.oa-cliente { padding: 8px 12px 4px; font-size: 13px; font-weight: 700; color: #0f172a; }
+.oa-equipo { padding: 0 12px 6px; font-size: 12px; color: #475569; }
+.oa-meta-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid #f1f5f9; }
+.oa-meta { font-size: 11px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2px 8px; }
+.oa-actions { display: flex; gap: 8px; padding: 9px 12px 12px; border-top: 1px solid #f1f5f9; }
+.btn-det { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border-radius: 7px; padding: 7px 10px; font-size: 12px; font-weight: 700; text-decoration: none; border: 1px solid transparent; }
+.btn-det.ot { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.btn-det.ver { background: #f8fafc; color: #334155; border-color: #e2e8f0; }
+
+.oa-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.48); display: none; align-items: center; justify-content: center; z-index: 9999; }
+.oa-modal-overlay.open { display: flex; }
+.oa-modal-box { width: 95%; max-width: 680px; max-height: 86vh; overflow-y: auto; border-radius: 16px; background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,.25); padding: 24px 26px; position: relative; }
+.oa-modal-close { position: absolute; top: 12px; right: 14px; border: none; background: none; font-size: 23px; color: #94a3b8; cursor: pointer; }
+.det-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.det-nro { font-family: monospace; font-size: 19px; font-weight: 900; color: #2563eb; }
+.det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.det-campo { display: flex; flex-direction: column; gap: 2px; }
+.det-campo label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+.det-campo span { font-size: 13px; color: #0f172a; }
+.det-full { grid-column: 1/-1; }
+
+@media (max-width: 980px) { .oa-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .oa-container { padding: 16px 12px; } .det-grid { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
 @section('contenido')
 <section class="modulo activo">
 <div class="oa-container">
-    <div class="form-titulo">
+    <div class="oa-head">
         <h2><i class="bi bi-person-check me-2"></i>Ordenes Asignadas</h2>
-        <p>Vista de ordenes agrupadas por tecnico</p>
+        <p>Agrupadas por técnico y organizadas según su carga actual.</p>
+    </div>
+
+    @php
+        $kpiTecnicos = count($porTecnico);
+        $kpiEnCurso = 0;
+        $kpiEntregadas = 0;
+        $kpiPendientes = 0;
+        $cargasTecnicos = [];
+        foreach ($porTecnico as $p) {
+            $kpiEnCurso += count($p['en_curso']);
+            $kpiEntregadas += count($p['entregadas']);
+            $pend = (int) ($p['tecnico']->pendientes ?? 0);
+            $proceso = (int) ($p['tecnico']->en_proceso ?? 0);
+            $kpiPendientes += $pend;
+            $cargasTecnicos[] = $pend + $proceso;
+        }
+        $maxCargaTecnico = count($cargasTecnicos) > 0 ? max($cargasTecnicos) : 0;
+    @endphp
+
+    <div class="oa-kpis">
+        <div class="oa-kpi"><div class="oa-kpi-lbl">Técnicos con carga</div><div class="oa-kpi-val">{{ $kpiTecnicos }}</div></div>
+        <div class="oa-kpi"><div class="oa-kpi-lbl">Órdenes en curso</div><div class="oa-kpi-val">{{ $kpiEnCurso }}</div></div>
+        <div class="oa-kpi"><div class="oa-kpi-lbl">Entregadas</div><div class="oa-kpi-val">{{ $kpiEntregadas }}</div></div>
+        <div class="oa-kpi"><div class="oa-kpi-lbl">Pendientes</div><div class="oa-kpi-val">{{ $kpiPendientes }}</div></div>
     </div>
 
     @if(count($porTecnico) === 0)
@@ -43,48 +107,87 @@
                 $tec = $pack['tecnico'];
                 $enCurso = $pack['en_curso'];
                 $entregadas = $pack['entregadas'];
+                $pendientes = (int) ($tec->pendientes ?? 0);
+                $enProceso = (int) ($tec->en_proceso ?? 0);
+                $totalCarga = $pendientes + $enProceso;
+                $ratioCarga = $maxCargaTecnico > 0 ? ($totalCarga / $maxCargaTecnico) : 0;
+
+                if ($totalCarga === 0 || $ratioCarga < 0.40) { $cargaColor = '#10b981'; $cargaLabel = 'Baja'; }
+                elseif ($ratioCarga < 0.75) { $cargaColor = '#f59e0b'; $cargaLabel = 'Media'; }
+                else { $cargaColor = '#ef4444'; $cargaLabel = 'Alta'; }
             @endphp
+
             <div class="oa-tecnico-bloque">
-                <div class="oa-tec-header" onclick="toggleTecnico('tec-{{ $idx }}')">
-                    <div class="oa-tec-avatar">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
+                <div class="oa-tec-header" onclick="toggleTecnico('tec-{{ $idx }}', 'chev-{{ $idx }}')">
+                    <div class="oa-tec-avatar" style="background: {{ $cargaColor }};">{{ strtoupper(substr((string) $tec->nombre_tecnico, 0, 1)) }}</div>
                     <span class="oa-tec-nombre">{{ $tec->nombre_tecnico }}</span>
-                    <span class="oa-badge-asig">{{ count($enCurso) }} en curso</span>
-                    <span class="oa-badge-entr">{{ count($entregadas) }} entregadas</span>
+                    <div class="oa-tec-badges">
+                        <span class="oa-badge-asig">{{ count($enCurso) }} en curso</span>
+                        <span class="oa-badge-entr">{{ count($entregadas) }} entregadas</span>
+                        <span class="oa-badge-carga" style="background:{{ $cargaColor }}20;color:{{ $cargaColor }};border-color:{{ $cargaColor }}66;">
+                            {{ $pendientes }}P · {{ $enProceso }}EP · {{ $cargaLabel }}
+                        </span>
+                    </div>
+                    <span class="oa-chevron" id="chev-{{ $idx }}">&#9660;</span>
                 </div>
+
                 <div class="oa-tec-body" id="tec-{{ $idx }}">
-                    <h5 style="font-size:13px;color:#1e40af;margin:4px 0 8px;">Ordenes Asignadas</h5>
+                    <div class="oa-sub-title"><i class="bi bi-wrench"></i> Órdenes Asignadas <span class="oa-sub-pill">{{ count($enCurso) }}</span></div>
                     <div class="oa-cards-grid">
                         @forelse($enCurso as $o)
-                            <div class="oa-card">
-                                <div class="oa-card-top"><span class="oa-nro">{{ $o->nro_orden }}</span><span>{{ $o->estado_orden }}</span></div>
+                            @php
+                                $estado = trim((string) $o->estado_orden);
+                                $estadoClass = match (true) {
+                                    in_array($estado, ['Pendiente', 'INGRESO'], true) => 'pend',
+                                    in_array($estado, ['En proceso', 'REVISION', 'EN PROCESO'], true) => 'proc',
+                                    in_array($estado, ['Finalizada', 'REPARADO'], true) => 'fin',
+                                    in_array($estado, ['Entregada', 'ENTREGADO'], true) => 'ent',
+                                    default => 'def',
+                                };
+                            @endphp
+                            <div class="oa-card" data-orden='@json($o)'>
+                                <div class="oa-card-top">
+                                    <span class="oa-nro">{{ $o->nro_orden }}</span>
+                                    <span class="oa-status {{ $estadoClass }}">{{ $o->estado_orden }}</span>
+                                </div>
                                 <div class="oa-cliente">{{ $o->cliente }}</div>
-                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }}</div>
+                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
                                 <div class="oa-meta-row">
                                     <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
-                                    <a class="btn-det" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i>Imprimir</a>
-                                    <a class="btn-det" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i>Ver detalle</a>
+                                    <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
+                                    @if(!empty($o->motivo_ingreso))<span class="oa-meta">{{ $o->motivo_ingreso }}</span>@endif
+                                </div>
+                                <div class="oa-actions">
+                                    <a class="btn-det ot" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
+                                    <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                 </div>
                             </div>
                         @empty
-                            <div class="oa-empty">Sin ordenes en esta seccion.</div>
+                            <div class="oa-empty">Sin ordenes en esta sección.</div>
                         @endforelse
                     </div>
 
-                    <h5 style="font-size:13px;color:#166534;margin:14px 0 8px;">Ordenes Entregadas</h5>
+                    <div class="oa-sub-title"><i class="bi bi-check-circle"></i> Órdenes Entregadas <span class="oa-sub-pill">{{ count($entregadas) }}</span></div>
                     <div class="oa-cards-grid">
                         @forelse($entregadas as $o)
-                            <div class="oa-card">
-                                <div class="oa-card-top"><span class="oa-nro">{{ $o->nro_orden }}</span><span>{{ $o->estado_orden }}</span></div>
+                            <div class="oa-card" data-orden='@json($o)'>
+                                <div class="oa-card-top">
+                                    <span class="oa-nro">{{ $o->nro_orden }}</span>
+                                    <span class="oa-status ent">{{ $o->estado_orden }}</span>
+                                </div>
                                 <div class="oa-cliente">{{ $o->cliente }}</div>
-                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }}</div>
+                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
                                 <div class="oa-meta-row">
                                     <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
-                                    <a class="btn-det" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i>Imprimir</a>
-                                    <a class="btn-det" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i>Ver detalle</a>
+                                    <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
+                                </div>
+                                <div class="oa-actions">
+                                    <a class="btn-det ot" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
+                                    <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                 </div>
                             </div>
                         @empty
-                            <div class="oa-empty">Sin ordenes en esta seccion.</div>
+                            <div class="oa-empty">Sin ordenes en esta sección.</div>
                         @endforelse
                     </div>
                 </div>
@@ -93,14 +196,85 @@
     @endif
 </div>
 </section>
+
+<div id="oa-modal" class="oa-modal-overlay" onclick="cerrarDetalle(event)">
+    <div class="oa-modal-box">
+        <button class="oa-modal-close" onclick="cerrarModal()">&times;</button>
+        <div id="oa-modal-body"></div>
+    </div>
+</div>
 @endsection
 
 @push('js_adicional')
 <script>
-function toggleTecnico(id) {
-    var body = document.getElementById(id);
+function esc(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function toggleTecnico(id, chevId) {
+    const body = document.getElementById(id);
+    const chev = document.getElementById(chevId);
     if (!body) return;
     body.classList.toggle('open');
+    if (chev) chev.classList.toggle('open', body.classList.contains('open'));
 }
+
+function abrirDetalleDesdeCard(card) {
+    if (!card) return;
+    const raw = card.getAttribute('data-orden');
+    if (!raw) return;
+
+    let o = null;
+    try { o = JSON.parse(raw); } catch { return; }
+
+    const motivo = o.motivo_ingreso || '-';
+    const garantia = o.estado_garantia || '-';
+    const html = `
+        <div class="det-titulo">
+            <span class="det-nro">${esc(o.nro_orden)}</span>
+            <span class="oa-status def">${esc(o.estado_orden || '-')}</span>
+        </div>
+        <div class="det-grid">
+            <div class="det-campo"><label>Cliente</label><span>${esc(o.cliente || '-')}</span></div>
+            <div class="det-campo"><label>Fecha de Ingreso</label><span>${esc(o.fecha_de_ingreso || '-')}</span></div>
+            <div class="det-campo"><label>Equipo</label><span>${esc((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
+            <div class="det-campo"><label>Serie</label><span>${esc(o.serie || '-')}</span></div>
+            <div class="det-campo"><label>Motivo de Ingreso</label><span>${esc(motivo)}</span></div>
+            <div class="det-campo"><label>Estado Garantía</label><span>${esc(garantia)}</span></div>
+            <div class="det-campo"><label>Estado Repuesto</label><span>${esc(o.estado_repuesto || '-')}</span></div>
+            <div class="det-campo"><label>Fecha Prometido</label><span>${esc(o.fecha_prometido || '-')}</span></div>
+        </div>
+    `;
+
+    const body = document.getElementById('oa-modal-body');
+    const modal = document.getElementById('oa-modal');
+    if (body) body.innerHTML = html;
+    if (modal) modal.classList.add('open');
+}
+
+function cerrarModal() {
+    const modal = document.getElementById('oa-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+function cerrarDetalle(e) {
+    if (e.target && e.target.id === 'oa-modal') cerrarModal();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.oa-card').forEach((card) => {
+        card.addEventListener('dblclick', () => abrirDetalleDesdeCard(card));
+    });
+
+    const first = document.querySelector('.oa-tec-body');
+    const firstChev = document.querySelector('.oa-chevron');
+    if (first) first.classList.add('open');
+    if (firstChev) firstChev.classList.add('open');
+});
 </script>
 @endpush

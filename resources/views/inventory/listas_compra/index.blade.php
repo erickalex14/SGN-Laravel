@@ -119,11 +119,15 @@
                     </thead>
                     <tbody>
                         @forelse($listas as $lst)
+                            @php
+                                $estadoRaw = trim((string) ($lst->estado ?? ''));
+                                $estadoUi = $estadoRaw === 'Pendiente' ? 'GENERADA' : strtoupper($estadoRaw);
+                            @endphp
                             <tr>
                                 <td><span class="badge-lc">{{ $lst->nro_lista }}</span></td>
                                 <td>{{ \Carbon\Carbon::parse($lst->fecha_creacion)->format('d/m/Y H:i') }}</td>
                                 <td>{{ $lst->creado_por }}</td>
-                                <td><span style="background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;">{{ $lst->estado }}</span></td>
+                                <td><span style="background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;">{{ $estadoUi }}</span></td>
                                 <td><span style="font-size:12px; color:#64748b;">{{ $lst->observacion ?: '-' }}</span></td>
                                 <td style="text-align:right;">
                                     <a href="{{ url('/operaciones/listas-compra/'.$lst->id.'/imprimir') }}" target="_blank" class="btn-pdf">

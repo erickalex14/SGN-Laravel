@@ -15,9 +15,17 @@ class ListaCompraRepository
 
     public function obtenerSolicitudesPendientesDeCompra(): Collection
     {
-        // Traemos las solicitudes que bodega envio a compras y aun no estan en una lista
+        // Compatibilidad legacy:
+        // - Datos antiguos: estado = 'COMPRA'
+        // - Datos actuales (enum): estado = 'Aprobada' + sin repuesto asignado
         return SolicitudRepuesto::with('orden')
-            ->where('estado', 'COMPRA')
+            ->where(function ($query) {
+                $query->where('estado', 'COMPRA')
+                    ->orWhere(function ($inner) {
+                        $inner->where('estado', 'Aprobada')
+                            ->whereNull('repuesto_id');
+                    });
+            })
             ->whereNull('lista_compra_id')
             ->orderBy('fecha_solicitud', 'asc')
             ->get();

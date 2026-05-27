@@ -49,12 +49,15 @@ class OrdenRepository
     public function obtenerOrdenCompleta(int $id): ?Orden
     {
         return Orden::with([
-            'cliente', 
-            'equipo', 
-            'tecnico', 
-            'sucursal', 
-            'precioEstandar', 
-            'repuestoInventario'
+            'cliente',
+            'equipo',
+            'tecnico',
+            'sucursal',
+            'precioEstandar',
+            'repuestoInventario',
+            'usuarioIngreso',
+            'usuarioModificacion',
+            'cas',
         ])->find($id);
     }
 

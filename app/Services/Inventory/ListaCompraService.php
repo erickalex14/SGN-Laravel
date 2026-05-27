@@ -34,7 +34,8 @@ class ListaCompraService
                 $lista->creado_por     = $usuarioNombre;
                 $lista->creado_por_id  = $usuarioId;
                 $lista->fecha_creacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
-                $lista->estado         = 'GENERADA';
+                // Legacy DB: enum('Pendiente','Completada','Cancelada')
+                $lista->estado         = 'Pendiente';
                 $lista->observacion    = trim($dto->observacion);
                 $lista->save();
 

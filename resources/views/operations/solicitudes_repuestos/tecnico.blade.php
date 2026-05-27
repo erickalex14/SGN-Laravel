@@ -88,13 +88,15 @@
                 @forelse($solicitudes as $s)
                     @php
                         $estado = strtoupper((string)$s->estado);
-                        $cls = $estado === 'APROBADA' ? 'b-a' : ($estado === 'RECHAZADA' ? 'b-r' : 'b-p');
+                        $esCompra = $estado === 'COMPRA' || ($estado === 'APROBADA' && empty($s->repuesto_id));
+                        $cls = $estado === 'RECHAZADA' ? 'b-r' : ($esCompra ? 'b-p' : ($estado === 'APROBADA' ? 'b-a' : 'b-p'));
+                        $estadoLabel = $esCompra ? 'COMPRA' : ($s->estado ?: '-');
                     @endphp
                     <tr>
                         <td>{{ $s->nro_solicitud }}</td>
                         <td>{{ $s->orden->nro_orden ?? ('#' . $s->orden_id) }}</td>
                         <td>{{ $s->repuesto_nombre }}</td>
-                        <td><span class="badge {{ $cls }}">{{ $s->estado }}</span></td>
+                        <td><span class="badge {{ $cls }}">{{ $estadoLabel }}</span></td>
                         <td>{{ $s->fecha_solicitud }}</td>
                         <td style="text-align:right;">
                             <a href="{{ route('solicitudes_repuestos.imprimir', ['id' => $s->id]) }}" target="_blank" class="btn-print">

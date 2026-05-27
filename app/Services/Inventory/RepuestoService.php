@@ -6,6 +6,7 @@ use App\Repositories\Inventory\RepuestoRepository;
 use App\DTOs\Inventory\BuscarRepuestoOrdenDTO;
 use App\DTOs\Inventory\RepuestoDTO;
 use App\Models\Inventory\Repuesto;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use Exception;
@@ -45,7 +46,7 @@ class RepuestoService
         $repuesto->nombre              = strtoupper(trim($dto->nombre));
         $repuesto->stock               = $dto->stock;
         $repuesto->costo               = $dto->costo;
-        $repuesto->bodega              = strtoupper(trim($dto->bodega));
+        $repuesto->bodega              = $this->normalizarBodegaParaEsquema($dto->bodega);
         $repuesto->descripcion         = trim($dto->descripcion);
         $repuesto->marca_id            = $dto->marca_id;
         $repuesto->tipo_dispositivo_id = $dto->tipo_dispositivo_id;
@@ -86,5 +87,57 @@ class RepuestoService
             trim($dto->q),
             $dto->stock_only
         );
+    }
+
+    private function normalizarBodegaParaEsquema(?string $bodega): int|string
+    {
+        $valor = strtoupper(trim((string) $bodega));
+
+        if ($this->columnaBodegaEsNumerica()) {
+            if ($valor === '') {
+                return 1;
+            }
+
+            if (is_numeric($valor)) {
+                return (int) $valor;
+            }
+
+            if (str_contains($valor, 'QUITO')) {
+                return 1;
+            }
+
+            if (str_contains($valor, 'GUAYAQUIL') || str_contains($valor, 'GYE')) {
+                return 2;
+            }
+
+            return 1;
+        }
+
+        return $valor;
+    }
+
+    private function columnaBodegaEsNumerica(): bool
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        try {
+            $database = (string) DB::getDatabaseName();
+            $dataType = DB::table('information_schema.columns')
+                ->where('TABLE_SCHEMA', $database)
+                ->where('TABLE_NAME', 'repuestos')
+                ->where('COLUMN_NAME', 'bodega')
+                ->value('DATA_TYPE');
+
+            $cache = in_array(strtolower((string) $dataType), [
+                'tinyint', 'smallint', 'mediumint', 'int', 'bigint', 'decimal', 'numeric', 'float', 'double'
+            ], true);
+        } catch (Exception) {
+            $cache = false;
+        }
+
+        return $cache;
     }
 }

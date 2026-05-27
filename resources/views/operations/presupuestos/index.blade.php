@@ -64,6 +64,9 @@
         </div>
 
         <div class="pres-acciones">
+            <button type="button" class="pres-btn-preview" onclick="previsualizarPresupuesto()">
+                <i class="bi bi-eye me-2"></i>Previsualizar
+            </button>
             <button type="button" class="pres-btn-imprimir" onclick="imprimirPresupuesto()">
                 <i class="bi bi-printer me-2"></i>Imprimir / Guardar PDF
             </button>
@@ -114,6 +117,7 @@
 .pres-total-final{border-top:2px solid #e2e8f0;padding-top:8px;margin-top:2px;}
 #pres-notas{width:100%;border:none;padding:16px 20px;font-size:13px;resize:vertical;min-height:80px;}
 .pres-acciones{display:flex;gap:12px;margin-top:4px;}
+.pres-btn-preview{background:#f8fafc;color:#1e293b;border:1.5px solid #e2e8f0;border-radius:9px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;}
 .pres-btn-imprimir{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:9px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;}
 .pres-btn-limpiar{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0;border-radius:9px;padding:12px 20px;}
 .modal-cat-inner{background:#fff;border-radius:14px;padding:24px 28px;max-width:540px;width:90%;max-height:80vh;overflow-y:auto;}
@@ -312,16 +316,22 @@ function recalcularTotales() {
     }
 }
 
-window.imprimirPresupuesto = function() {
+function _h(v) {
+    return String(v || '').replace(/[&<>"']/g, function(s) {
+        return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' })[s];
+    });
+}
+
+function construirPayloadPresupuesto() {
     if (!_ordenActual) {
         alert('Selecciona una orden primero.');
-        return;
+        return null;
     }
 
     var filas = document.querySelectorAll('.pres-item-fila');
     if (!filas.length) {
         alert('Agrega al menos un item al presupuesto.');
-        return;
+        return null;
     }
 
     var items = [];
@@ -336,94 +346,41 @@ window.imprimirPresupuesto = function() {
 
     if (!items.length) {
         alert('Agrega al menos un item valido.');
+        return null;
+    }
+
+    return {
+        items: items,
+        notas: document.getElementById('pres-notas').value.trim()
+    };
+}
+
+function abrirVistaPresupuesto(autoImprimir) {
+    var payload = construirPayloadPresupuesto();
+    if (!payload || !_ordenActual || !_ordenActual.id) {
         return;
     }
 
-    var notas = document.getElementById('pres-notas').value.trim();
-    var subtotal = items.reduce(function(s, i) { return s + i.precio; }, 0);
-    var iva = subtotal * 0.15;
-    var total = subtotal + iva;
-    var tecnico = @json(session('nombre') ?? session('usuario') ?? '');
-    var fecha = new Date().toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    var json = JSON.stringify(payload);
+    var base64 = btoa(unescape(encodeURIComponent(json)));
+    var url = '{{ url('/operaciones/presupuestos') }}/' + encodeURIComponent(String(_ordenActual.id)) + '/imprimir'
+        + '?payload=' + encodeURIComponent(base64)
+        + (autoImprimir ? '&auto=1' : '');
 
-    var filasTbl = items.map(function(i) {
-        return '<tr>' +
-            '<td style="padding:7px 10px;border:1px solid #e2e8f0;">' + i.nombre +
-            (i.desc ? '<div style="font-size:10px;color:#64748b;">' + i.desc + '</div>' : '') + '</td>' +
-            '<td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:600;">$' + i.precio.toFixed(2) + '</td>' +
-            '<td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:600;color:#059669;">$' + (i.precio * 1.15).toFixed(2) + '</td>' +
-            '</tr>';
-    }).join('');
+    var win = window.open(url, '_blank', 'width=980,height=760,scrollbars=yes');
+    if (!win) {
+        alert('El navegador bloqueo la ventana emergente. Habilita pop-ups para este sitio.');
+        return false;
+    }
+    return true;
+}
 
-    var html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">' +
-        '<title>Presupuesto ' + _ordenActual.nro + '</title>' +
-        '<style>' +
-        '* { margin:0; padding:0; box-sizing:border-box; }' +
-        'body { font-family:Arial,sans-serif; font-size:9pt; color:#000; background:#fff; }' +
-        '@media print { @page { size:A4 portrait; margin:10mm; } .no-print { display:none!important; } body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }' +
-        '.wrap { max-width:190mm; margin:auto; padding:6mm; }' +
-        '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1.5px solid #000; padding-bottom:6px; margin-bottom:10px; }' +
-        '.empresa { font-size:11pt; font-weight:bold; }' +
-        '.header-info { font-size:8.5pt; line-height:1.6; }' +
-        '.badge-pres { background:#1a56db; color:#fff; padding:5px 12px; border-radius:4px; font-size:13pt; font-weight:bold; }' +
-        '.sec { background:#dbeafe; font-weight:bold; font-size:7.5pt; text-transform:uppercase; padding:3px 8px; border-left:3px solid #1a56db; margin:8px 0 3px; }' +
-        'table { width:100%; border-collapse:collapse; margin-bottom:8px; }' +
-        'td { font-size:8.5pt; vertical-align:top; }' +
-        '.lbl { font-size:6.5pt; color:#6b7280; font-weight:bold; text-transform:uppercase; display:block; margin-bottom:1px; }' +
-        '.firma-box { width:44%; text-align:center; }' +
-        '.firma-linea { border-top:1px solid #000; padding-top:4px; font-size:8.5pt; margin-top:28px; }' +
-        '.nota { background:#fef9c3; border:1px solid #fde047; border-radius:3px; font-size:7.5pt; color:#713f12; text-align:center; padding:5px 10px; margin-top:10px; }' +
-        '</style></head><body>' +
-        '<button class="no-print" onclick="window.print()" style="position:fixed;top:10px;right:10px;background:#1a56db;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:bold;">&#128438; Imprimir / Guardar PDF</button>' +
-        '<div class="wrap">' +
-        '<div class="header">' +
-            '<div class="header-info">' +
-                '<div class="empresa">Novitecnologia Cia. Ltda.</div>' +
-                '<div><b>GYE:</b> 04-6031337 &nbsp; <b>UIO:</b> 02-6001635 &nbsp; <b>MTA:</b> 05-2611080</div>' +
-                '<div>soporte@novitec.com.ec &nbsp; www.novitec.com.ec</div>' +
-            '</div>' +
-            '<div style="text-align:right;">' +
-                '<div class="badge-pres">' + _ordenActual.nro + '</div>' +
-                '<div style="font-size:8pt;margin-top:4px;color:#475569;">Presupuesto - ' + fecha + '</div>' +
-            '</div>' +
-        '</div>' +
-        '<div class="sec">Datos de la Orden</div>' +
-        '<table><tr>' +
-            '<td width="30%" style="border:1px solid #e2e8f0;padding:5px 8px;"><span class="lbl">Nro. Orden</span>' + _ordenActual.nro + '</td>' +
-            '<td width="40%" style="border:1px solid #e2e8f0;padding:5px 8px;"><span class="lbl">Cliente</span>' + _ordenActual.cliente + '</td>' +
-            '<td width="30%" style="border:1px solid #e2e8f0;padding:5px 8px;"><span class="lbl">Tecnico</span>' + tecnico + '</td>' +
-        '</tr><tr>' +
-            '<td colspan="3" style="border:1px solid #e2e8f0;padding:5px 8px;"><span class="lbl">Equipo</span>' + _ordenActual.equipo + '</td>' +
-        '</tr></table>' +
-        '<div class="sec">Detalle del Presupuesto</div>' +
-        '<table>' +
-            '<tr style="background:#f1f5f9;">' +
-                '<th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;font-size:8pt;">Servicio / Reparacion</th>' +
-                '<th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;font-size:8pt;">Sin IVA</th>' +
-                '<th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;font-size:8pt;">Con IVA 15%</th>' +
-            '</tr>' +
-            filasTbl +
-        '</table>' +
-        '<table style="width:45%;margin-left:auto;">' +
-            '<tr><td style="padding:5px 10px;border:1px solid #e2e8f0;"><span class="lbl">Subtotal</span></td>' +
-                '<td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:600;">$' + subtotal.toFixed(2) + '</td></tr>' +
-            '<tr><td style="padding:5px 10px;border:1px solid #e2e8f0;"><span class="lbl">IVA 15%</span></td>' +
-                '<td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:600;color:#f59e0b;">$' + iva.toFixed(2) + '</td></tr>' +
-            '<tr style="background:#f0fdf4;"><td style="padding:5px 10px;border:1px solid #e2e8f0;"><span class="lbl">TOTAL</span></td>' +
-                '<td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-size:12pt;font-weight:800;color:#059669;">$' + total.toFixed(2) + '</td></tr>' +
-        '</table>' +
-        (notas ? '<div class="sec">Notas / Condiciones</div><div style="font-size:8.5pt;padding:6px 8px;border:1px solid #e2e8f0;border-radius:4px;">' + notas + '</div>' : '') +
-        '<div style="display:flex;justify-content:space-between;margin-top:20px;">' +
-            '<div class="firma-box"><div class="firma-linea">Tecnico:</div></div>' +
-            '<div class="firma-box"><div class="firma-linea">Cliente acepta:</div></div>' +
-        '</div>' +
-        '<div class="nota"><b>NOTA:</b> Este presupuesto es valido por 15 dias calendario desde la fecha de emision. Los precios incluyen IVA 15%.</div>' +
-        '<div style="text-align:center;margin-top:8px;font-size:7pt;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:6px;">Novitecnologia Cia. Ltda. - Sistema de Gestion Novitec</div>' +
-        '</div></body></html>';
+window.previsualizarPresupuesto = function() {
+    abrirVistaPresupuesto(false);
+};
 
-    var win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
+window.imprimirPresupuesto = function() {
+    abrirVistaPresupuesto(true);
 };
 
 window.limpiarPresupuesto = function() {
