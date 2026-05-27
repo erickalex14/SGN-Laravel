@@ -171,6 +171,30 @@ class OrdenController extends Controller
         return response()->json(['ok' => false, 'error' => 'Cliente no encontrado']);
     }
 
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $codigo = strtoupper(trim((string) $request->query('codigo', '')));
+        if ($codigo === '') {
+            return response()->json(['ok' => false]);
+        }
+
+        $producto = $this->productoRepo->buscarPorCodigo($codigo);
+        if (!$producto) {
+            return response()->json(['ok' => false, 'error' => 'Producto no encontrado']);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'producto' => [
+                'codigo' => (string) $producto->codigo,
+                'descripcion' => (string) $producto->descripcion,
+                'marca' => (string) ($producto->marca->nombre ?? ''),
+                'tipo_codigo' => (string) ($producto->tipoDispositivo->codigo ?? ''),
+                'tipo_nombre' => (string) ($producto->tipoDispositivo->nombre ?? ''),
+            ],
+        ]);
+    }
+
     public function imprimir(int $id): View
     {
         $orden = $this->ordenRepo->obtenerOrdenCompleta($id);

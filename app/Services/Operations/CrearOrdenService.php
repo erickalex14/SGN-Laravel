@@ -7,6 +7,8 @@ use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\OrdenRepuestoRepository;
 use App\DTOs\Operations\CrearOrdenDTO;
 use App\Models\Inventory\ProductoInventario;
+use App\Models\Inventory\Marca;
+use App\Models\Inventory\TipoDispositivo;
 use App\Models\Operations\CredencialEquipo;
 use App\Models\Operations\Equipo;
 use App\Models\Operations\EquipoSerie;
@@ -84,7 +86,8 @@ class CrearOrdenService
                     $casId = null;
                 }
 
-                $codigoFinal = $dto->producto_inventario_codigo ?: $dto->modelo;
+                $codigoProductoInventario = strtoupper(trim((string) $dto->producto_inventario_codigo));
+                $codigoFinal = $codigoProductoInventario !== '' ? $codigoProductoInventario : $dto->modelo;
                 
                 // 1. Gestionar Cliente (Crear o Actualizar si ya existe)
                 $cliente = $this->clienteRepo->actualizarOCrear([
@@ -109,12 +112,14 @@ class CrearOrdenService
                 $equipo->fecha_facturacion = $dto->fecha_facturacion;
                 $equipo->contrasena_equipo = $dto->contrasena_equipo;
 
-                if ($dto->producto_inventario_codigo) {
-                    $codigoInv = trim($dto->producto_inventario_codigo);
-                    $existeCodigo = ProductoInventario::where('codigo', $codigoInv)->exists();
-                    if ($existeCodigo) {
-                        $equipo->producto_inventario_codigo = $codigoInv;
-                    }
+                if ($codigoProductoInventario !== '') {
+                    $this->asegurarProductoInventario(
+                        $codigoProductoInventario,
+                        $dto->modelo,
+                        $dto->marca,
+                        $dto->tipo_equipo
+                    );
+                    $equipo->producto_inventario_codigo = $codigoProductoInventario;
                 }
                 $equipo->save();
 
@@ -233,5 +238,34 @@ class CrearOrdenService
             'EXTERNA' => 'externa',
             default => null,
         };
+    }
+
+    private function asegurarProductoInventario(string $codigo, string $descripcion, string $marcaNombre, string $tipoNombre): void
+    {
+        if (ProductoInventario::where('codigo', $codigo)->exists()) {
+            return;
+        }
+
+        $marca = Marca::query()
+            ->whereRaw('UPPER(nombre) = ?', [strtoupper(trim($marcaNombre))])
+            ->first();
+        if (!$marca) {
+            throw new Exception('La marca seleccionada no existe para registrar el producto de inventario.');
+        }
+
+        $tipo = TipoDispositivo::query()
+            ->whereRaw('UPPER(nombre) = ?', [strtoupper(trim($tipoNombre))])
+            ->first();
+        if (!$tipo) {
+            throw new Exception('El tipo de equipo seleccionado no existe para registrar el producto de inventario.');
+        }
+
+        ProductoInventario::create([
+            'codigo' => $codigo,
+            'descripcion' => strtoupper(trim($descripcion !== '' ? $descripcion : $codigo)),
+            'marca_id' => $marca->id,
+            'tipo_dispositivo_id' => $tipo->id,
+            'tipo_dispositivo_codigo' => $tipo->codigo,
+        ]);
     }
 }

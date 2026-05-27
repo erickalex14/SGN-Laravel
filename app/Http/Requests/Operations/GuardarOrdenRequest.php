@@ -34,7 +34,7 @@ class GuardarOrdenRequest extends FormRequest
             'eq_observacion'           => ['nullable', 'string'],
             'eq_tipo_servicio'         => ['nullable', 'integer'],
             'tipo_servicio_texto'      => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
-            'producto_inventario_codigo' => ['nullable', 'string', 'max:50'],
+            'producto_inventario_codigo' => ['required', 'string', 'max:50'],
 
             'series'                   => ['required', 'array', 'min:1'],
             'series.*'                 => ['nullable', 'string', 'max:100'],
