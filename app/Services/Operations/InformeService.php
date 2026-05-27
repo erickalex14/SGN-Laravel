@@ -56,7 +56,8 @@ class InformeService
 
                 $informe = $informeExistente ?: new Informe();
                 $informe->orden_id        = $dto->orden_id;
-                $informe->tecnico_id      = $dto->tecnico_id;
+                // Mantener el tecnico propietario original cuando se actualiza un informe.
+                $informe->tecnico_id      = $informeExistente ? (int) $informeExistente->tecnico_id : $dto->tecnico_id;
                 $informe->antecedentes    = trim($dto->antecedentes);
                 $informe->proceso         = trim($dto->proceso);
                 $informe->conclusion      = trim($dto->conclusion);

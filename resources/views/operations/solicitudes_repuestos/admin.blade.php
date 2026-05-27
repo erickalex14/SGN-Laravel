@@ -68,7 +68,15 @@
                     @forelse($solicitudes as $sr)
                         @php
                             $estadoSR = strtoupper((string) $sr->estado);
-                            $clase = match($estadoSR) { 'PENDIENTE'=>'st-pend', 'APROBADA'=>'st-aprob', 'RECHAZADA'=>'st-rech', 'COMPRA'=>'st-comp', default=>'' };
+                            $esCompra = $estadoSR === 'COMPRA' || ($estadoSR === 'APROBADA' && empty($sr->repuesto_id));
+                            $clase = match(true) {
+                                $estadoSR === 'PENDIENTE' => 'st-pend',
+                                $estadoSR === 'RECHAZADA' => 'st-rech',
+                                $esCompra => 'st-comp',
+                                $estadoSR === 'APROBADA' => 'st-aprob',
+                                default => '',
+                            };
+                            $estadoLabel = $esCompra ? 'COMPRA' : ($sr->estado ?: '-');
                         @endphp
                         <tr>
                             <td><span class="badge-sr">{{ $sr->nro_solicitud }}</span></td>
@@ -80,7 +88,7 @@
                                 <span style="font-size:11px;color:#64748b;">{{ $sr->nro_parte ? 'P/N: '.$sr->nro_parte : '' }}</span>
                             </td>
                             <td><strong>{{ $sr->cantidad }}</strong></td>
-                            <td><span class="st-badge {{ $clase }}">{{ $sr->estado }}</span></td>
+                            <td><span class="st-badge {{ $clase }}">{{ $estadoLabel }}</span></td>
                             <td style="text-align:right;">
                                 <a href="{{ route('solicitudes_repuestos.imprimir', ['id' => $sr->id]) }}" target="_blank" class="btn-print">Imprimir</a>
                                 @if($estadoSR === 'PENDIENTE')
@@ -213,8 +221,8 @@ async function procesar(estado) {
     }
 
     if (estado === 'APROBADA' && !repuestoId) {
-        const seguir = confirm('Va a aprobar sin seleccionar repuesto. La orden se marcara sin stock. Desea continuar?');
-        if (!seguir) return;
+        alert('Para aprobar y despachar debe seleccionar un repuesto. Si no hay stock use "Mandar a compras".');
+        return;
     }
 
     if (!confirm(`Confirma pasar el ticket al estado: ${estado}?`)) return;

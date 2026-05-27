@@ -29,6 +29,17 @@
 .btn-mini-rep { border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
 .btn-mini-rep.danger { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .rep-note { font-size: 10.5px; color: #94a3b8; }
+.motivo-chip { display:inline-block; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; }
+.gar-wrap { display:flex; flex-direction:column; gap:6px; }
+.gar-badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; display:inline-block; width:max-content; text-transform:uppercase; }
+.gar-pend { background:#fef9c3; color:#854d0e; }
+.gar-ok { background:#dcfce7; color:#166534; }
+.gar-no { background:#fee2e2; color:#991b1b; }
+.mo-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.mo-kpi { background:#fff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; }
+.mo-kpi-lbl { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; font-weight:700; }
+.mo-kpi-val { font-size:24px; font-weight:800; color:#0f172a; margin-top:4px; line-height:1; }
+@media (max-width: 980px) { .mo-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 </style>
 @endpush
 
@@ -36,6 +47,22 @@
 <div class="mo-container">
     <div class="mo-hdr">
         <h2>Listado de Ordenes Asignadas</h2>
+    </div>
+
+    @php
+        $totalOrdenes = $ordenes->count();
+        $totalPendientes = $ordenes->filter(fn($o) => in_array(trim((string) $o->estado_orden), ['Pendiente', 'INGRESO'], true))->count();
+        $totalEnProceso = $ordenes->filter(fn($o) => in_array(trim((string) $o->estado_orden), ['En proceso', 'REVISION', 'EN PROCESO'], true))->count();
+        $totalGarantiaPendiente = $ordenes->filter(function ($o) {
+            return trim((string) $o->motivo_ingreso) === 'Validacion de Garantia'
+                && in_array(trim((string) ($o->estado_garantia ?? 'Pendiente')), ['', 'Pendiente'], true);
+        })->count();
+    @endphp
+    <div class="mo-kpis">
+        <div class="mo-kpi"><div class="mo-kpi-lbl">Total Asignadas</div><div class="mo-kpi-val">{{ $totalOrdenes }}</div></div>
+        <div class="mo-kpi"><div class="mo-kpi-lbl">Pendientes</div><div class="mo-kpi-val">{{ $totalPendientes }}</div></div>
+        <div class="mo-kpi"><div class="mo-kpi-lbl">En Proceso</div><div class="mo-kpi-val">{{ $totalEnProceso }}</div></div>
+        <div class="mo-kpi"><div class="mo-kpi-lbl">Garantía Pendiente</div><div class="mo-kpi-val">{{ $totalGarantiaPendiente }}</div></div>
     </div>
 
     <div class="mo-card">
@@ -49,6 +76,7 @@
                         <th>Equipo</th>
                         <th>Falla Reportada</th>
                         <th style="width:160px;">Estado Actual</th>
+                        <th style="width:220px;">Motivo / Garantia</th>
                         <th style="width:210px;">Estado Repuesto</th>
                         <th style="width:260px;">Repuesto (Stock)</th>
                         <th style="width:180px; text-align:right;">Acciones</th>
@@ -63,6 +91,15 @@
                                 'REPARADO', 'Finalizada' => 'estado-reparado',
                                 'ENTREGADO', 'Entregada' => 'estado-entregado',
                                 default => 'estado-default'
+                            };
+                            $motivo = trim((string) ($ord->motivo_ingreso ?? ''));
+                            $esGarantia = $motivo === 'Validacion de Garantia';
+                            $estadoGarantia = trim((string) ($ord->estado_garantia ?? ''));
+                            if ($estadoGarantia === '') { $estadoGarantia = 'Pendiente'; }
+                            $garClass = match ($estadoGarantia) {
+                                'Aceptada' => 'gar-ok',
+                                'Rechazada' => 'gar-no',
+                                default => 'gar-pend'
                             };
                         @endphp
                         <tr>
@@ -91,6 +128,20 @@
                                     <option value="Entregada">Entregada</option>
                                     <option value="Nota de Credito">Nota de Credito</option>
                                 </select>
+                            </td>
+                            <td>
+                                <span class="motivo-chip">{{ $motivo ?: 'Sin motivo' }}</span>
+                                @if($esGarantia)
+                                    <div class="gar-wrap" style="margin-top:8px;">
+                                        <span class="gar-badge {{ $garClass }}" id="gar-lbl-{{ $ord->id }}">{{ $estadoGarantia }}</span>
+                                        <select class="rep-sel" onchange="cambiarEstadoGarantia({{ $ord->id }}, this.value)">
+                                            <option value="">Cambiar garantia...</option>
+                                            <option value="Pendiente" @selected($estadoGarantia === 'Pendiente')>Pendiente</option>
+                                            <option value="Aceptada" @selected($estadoGarantia === 'Aceptada')>Aceptada</option>
+                                            <option value="Rechazada" @selected($estadoGarantia === 'Rechazada')>Rechazada</option>
+                                        </select>
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 @php $estadoRep = $ord->estado_repuesto ?: 'No requerido'; @endphp
@@ -131,7 +182,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9">
+                            <td colspan="10">
                                 <div class="mo-empty">Actualmente no posee ordenes asignadas en el sistema.</div>
                             </td>
                         </tr>
@@ -222,6 +273,37 @@ async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
         const panel = document.getElementById('rep-panel-' + ordenId);
         if (lbl) lbl.textContent = nuevoEstado;
         if (panel) panel.style.display = (nuevoEstado === 'Con stock') ? '' : 'none';
+    } catch (e) {
+        alert('Error de comunicación con el servidor.');
+        location.reload();
+    }
+}
+
+async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
+    if (!nuevoEstado) return;
+
+    const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
+    fd.append('orden_id', ordenId);
+    fd.append('estado_garantia', nuevoEstado);
+
+    try {
+        const r = await fetch('{{ route("mis_ordenes.garantia_estado") }}', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            alert(d.error || 'No se pudo actualizar estado de garantia.');
+            location.reload();
+            return;
+        }
+
+        const lbl = document.getElementById('gar-lbl-' + ordenId);
+        if (lbl) {
+            lbl.textContent = nuevoEstado;
+            lbl.classList.remove('gar-pend', 'gar-ok', 'gar-no');
+            if (nuevoEstado === 'Aceptada') lbl.classList.add('gar-ok');
+            else if (nuevoEstado === 'Rechazada') lbl.classList.add('gar-no');
+            else lbl.classList.add('gar-pend');
+        }
     } catch (e) {
         alert('Error de comunicación con el servidor.');
         location.reload();

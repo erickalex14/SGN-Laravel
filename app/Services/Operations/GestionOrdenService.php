@@ -7,6 +7,7 @@ use App\Repositories\Operations\NotaCreditoRepository;
 use App\Repositories\Operations\OrdenRepuestoRepository;
 use App\DTOs\Operations\CambiarEstadoOrdenDTO;
 use App\DTOs\Operations\CambiarEstadoRepuestoDTO;
+use App\DTOs\Operations\CambiarEstadoGarantiaDTO;
 use App\DTOs\Operations\AsignarRepuestoOrdenDTO;
 use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
 use App\Models\Operations\Orden;
@@ -216,6 +217,39 @@ class GestionOrdenService
         if ($estado !== 'Con stock') {
             $orden->repuesto_inventario_id = null;
         }
+        $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+        $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+        $orden->save();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function actualizarEstadoGarantia(CambiarEstadoGarantiaDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    {
+        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if (!$orden) {
+            throw new Exception('La orden especificada no existe.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioId) {
+            throw new Exception('Sin permiso sobre esta orden.');
+        }
+
+        if (trim((string) $orden->motivo_ingreso) !== 'Validacion de Garantia') {
+            throw new Exception('Solo las ordenes de validacion de garantia permiten este cambio.');
+        }
+
+        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+            throw new Exception('La orden no puede modificarse en su estado actual.');
+        }
+
+        $estado = trim($dto->estado_garantia);
+        if (!in_array($estado, ['Pendiente', 'Aceptada', 'Rechazada'], true)) {
+            throw new Exception('Estado de garantia no permitido.');
+        }
+
+        $orden->estado_garantia = $estado;
         $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
         $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
         $orden->save();

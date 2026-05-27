@@ -39,6 +39,7 @@
 .rep-item:hover { background: #fffbeb; }
 .rep-badge { display: none; margin-top: 8px; align-items: center; gap: 8px; background: #dcfce7; border: 1px solid #86efac; border-radius: 7px; padding: 7px 12px; }
 .rep-badge-txt { font-size: 13px; color: #166534; font-weight: 700; flex: 1; }
+.motivo-lock-msg { margin-top: 10px; font-size: 12.5px; color: #475569; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 9px 12px; }
 .tec-native-sr { position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
 .tec-dropdown { position: relative; width: 100%; }
 .tec-trigger { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; cursor: pointer; background: #fff; user-select: none; transition: border-color .15s; }
@@ -88,7 +89,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form motivo-base">
             <div class="seccion-hdr"><i class="bi bi-clipboard-check"></i> Motivo de Ingreso</div>
             <div class="seccion-body">
                 <div class="grid-2">
@@ -112,10 +113,13 @@
                         </select>
                     </div>
                 </div>
+                <div id="motivo-lock-msg" class="motivo-lock-msg">
+                    Seleccione el motivo de ingreso para habilitar el resto del formulario.
+                </div>
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-person-badge"></i> Datos del Cliente</div>
             <div class="seccion-body">
                 <div class="grid-3">
@@ -156,7 +160,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-laptop"></i> Datos del Equipo</div>
             <div class="seccion-body">
                 <div class="grid-3">
@@ -209,7 +213,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantía y Facturación</div>
             <div class="seccion-body">
                 <div id="bloque-facturacion" class="grid-3 hidden">
@@ -248,7 +252,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-person-workspace"></i> Asignación y Servicio</div>
             <div class="seccion-body">
                 <div class="grid-2">
@@ -366,7 +370,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos y Producto</div>
             <div class="seccion-body">
                 <div class="grid-2">
@@ -383,7 +387,7 @@
             </div>
         </div>
 
-        <div class="seccion-form">
+        <div class="seccion-form bloque-motivo hidden">
             <div class="seccion-hdr"><i class="bi bi-key"></i> Credenciales del Equipo</div>
             <div class="seccion-body">
                 <div class="lista-lineas" id="credenciales-container">
@@ -397,9 +401,11 @@
             </div>
         </div>
 
-        <button type="submit" id="btn-guardar" class="btn-submit">
-            <i class="bi bi-floppy"></i> Generar Orden de Ingreso
-        </button>
+        <div id="acciones-orden" class="hidden">
+            <button type="submit" id="btn-guardar" class="btn-submit">
+                <i class="bi bi-floppy"></i> Generar Orden de Ingreso
+            </button>
+        </div>
     </form>
 </div>
 @endsection
@@ -683,9 +689,17 @@ function actualizarMotivo() {
     const tipoServicioTexto = document.getElementById('tipo_servicio_texto');
     const nroFactura = document.getElementById('nro_factura');
     const fechaFacturacion = document.getElementById('fecha_facturacion');
+    const bloquesDependientes = document.querySelectorAll('.bloque-motivo');
+    const acciones = document.getElementById('acciones-orden');
+    const lockMsg = document.getElementById('motivo-lock-msg');
 
     const esGarantia = motivo === 'Validacion de Garantia';
     const esExterno = motivo === 'Servicio Cliente Externo';
+    const motivoSeleccionado = motivo !== '';
+
+    bloquesDependientes.forEach((el) => el.classList.toggle('hidden', !motivoSeleccionado));
+    if (acciones) acciones.classList.toggle('hidden', !motivoSeleccionado);
+    if (lockMsg) lockMsg.classList.toggle('hidden', motivoSeleccionado);
 
     bloqueFacturacion.classList.toggle('hidden', !esGarantia);
     bloqueGarantia.classList.toggle('hidden', !esGarantia);

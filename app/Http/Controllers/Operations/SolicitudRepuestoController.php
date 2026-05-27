@@ -44,11 +44,7 @@ class SolicitudRepuestoController extends Controller
     public function indexTecnico(): View
     {
         $tecnicoId = (int) session('tecnico_id', 0);
-        $permisos = (array) session('permisos', []);
-        $esAdmin = (bool) session('es_superadmin', false)
-            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
-            || (($permisos['usuarios_crear']['ver'] ?? false) === true)
-            || (($permisos['usuarios']['crear'] ?? false) === true);
+        $esAdmin = $this->esAdminRepuestos();
 
         $solicitudes = $this->srRepository->obtenerPorTecnico($tecnicoId);
         $ordenes = $this->ordenRepository->obtenerOrdenesElegiblesParaRepuesto($tecnicoId, $esAdmin);
@@ -59,11 +55,7 @@ class SolicitudRepuestoController extends Controller
     public function solicitar(GuardarSolicitudRepuestoRequest $request): JsonResponse
     {
         try {
-            $permisos = (array) session('permisos', []);
-            $esAdmin = (bool) session('es_superadmin', false)
-                || (($permisos['repuestos_admin']['ver'] ?? false) === true)
-                || (($permisos['usuarios_crear']['ver'] ?? false) === true)
-                || (($permisos['usuarios']['crear'] ?? false) === true);
+            $esAdmin = $this->esAdminRepuestos();
 
             $dto = new SolicitudRepuestoDTO(
                 (int) $request->input('orden_id'),
@@ -110,15 +102,19 @@ class SolicitudRepuestoController extends Controller
         abort_if(!$solicitud, 404);
 
         $tecnicoId = (int) session('tecnico_id', 0);
-        $permisos = (array) session('permisos', []);
-        $esAdmin = (bool) session('es_superadmin', false)
-            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
-            || (($permisos['repuestos_admin']['editar'] ?? false) === true)
-            || (($permisos['usuarios_crear']['ver'] ?? false) === true);
+        $esAdmin = $this->esAdminRepuestos();
 
         $esPropietario = (int) $solicitud->tecnico_id === $tecnicoId;
         abort_unless($esAdmin || $esPropietario, 403);
 
         return view('operations.solicitudes_repuestos.imprimir', compact('solicitud'));
+    }
+
+    private function esAdminRepuestos(): bool
+    {
+        $permisos = (array) session('permisos', []);
+        return (bool) session('es_superadmin', false)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['repuestos_admin']['editar'] ?? false) === true);
     }
 }

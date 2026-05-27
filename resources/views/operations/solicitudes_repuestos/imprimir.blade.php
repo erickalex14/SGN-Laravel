@@ -42,10 +42,12 @@ a { color: #1d4ed8; text-decoration: none; }
         <h3>Datos de Solicitud</h3>
         @php
             $estado = strtoupper((string) $solicitud->estado);
-            $badge = $estado === 'APROBADA' ? 'aprob' : ($estado === 'RECHAZADA' ? 'rech' : ($estado === 'COMPRA' ? 'comp' : 'pend'));
+            $esCompra = $estado === 'COMPRA' || ($estado === 'APROBADA' && empty($solicitud->repuesto_id));
+            $badge = $estado === 'RECHAZADA' ? 'rech' : ($esCompra ? 'comp' : ($estado === 'APROBADA' ? 'aprob' : 'pend'));
+            $estadoLabel = $esCompra ? 'COMPRA' : ($solicitud->estado ?: '-');
         @endphp
         <div class="grid">
-            <div class="item"><b>Estado</b><span class="badge {{ $badge }}">{{ $solicitud->estado }}</span></div>
+            <div class="item"><b>Estado</b><span class="badge {{ $badge }}">{{ $estadoLabel }}</span></div>
             <div class="item"><b>Tecnico</b><span>{{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}</span></div>
             <div class="item"><b>Repuesto Solicitado</b><span>{{ $solicitud->repuesto_nombre ?: '-' }}</span></div>
             <div class="item"><b>Nro. Parte</b><span>{{ $solicitud->nro_parte ?: '-' }}</span></div>

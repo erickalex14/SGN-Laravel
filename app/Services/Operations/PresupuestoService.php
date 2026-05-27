@@ -21,5 +21,9 @@ class PresupuestoService
             'catalogo' => $this->repository->obtenerCatalogoActivo(),
         ];
     }
-}
 
+    public function obtenerOrdenParaImpresion(PresupuestoContextDTO $contexto, int $ordenId): ?object
+    {
+        return $this->repository->obtenerOrdenPorId($contexto, $ordenId);
+    }
+}

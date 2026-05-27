@@ -270,6 +270,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/mis-ordenes', [MisOrdenesController::class, 'index'])->name('mis_ordenes.index');
         Route::post('/operaciones/mis-ordenes/estado', [MisOrdenesController::class, 'cambiarEstado'])->name('mis_ordenes.estado');
         Route::post('/operaciones/mis-ordenes/repuesto/estado', [MisOrdenesController::class, 'cambiarEstadoRepuesto'])->name('mis_ordenes.repuesto_estado');
+        Route::post('/operaciones/mis-ordenes/garantia/estado', [MisOrdenesController::class, 'cambiarEstadoGarantia'])->name('mis_ordenes.garantia_estado');
         Route::post('/operaciones/mis-ordenes/repuesto/asignar', [MisOrdenesController::class, 'asignarRepuesto'])->name('mis_ordenes.repuesto_asignar');
         Route::post('/operaciones/mis-ordenes/repuesto/revertir', [MisOrdenesController::class, 'revertirRepuesto'])->name('mis_ordenes.repuesto_revertir');
     });
@@ -322,6 +323,7 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
     Route::middleware(['permiso:presupuestos,ver'])->group(function () {
         Route::get('/operaciones/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
+        Route::get('/operaciones/presupuestos/{id}/imprimir', [PresupuestoController::class, 'imprimir'])->name('presupuestos.imprimir');
     });
 
     //-------------------------------------------------------
