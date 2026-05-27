@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 @section('titulo', 'Crear Orden de Servicio')
 
 @push('css_adicional')
@@ -148,6 +148,9 @@
 .rep-item:hover { background: #fffbeb; }
 .rep-badge { display: none; margin-top: 8px; align-items: center; gap: 8px; background: #dcfce7; border: 1px solid #86efac; border-radius: 7px; padding: 7px 12px; }
 .rep-badge-txt { font-size: 13px; color: #166534; font-weight: 700; flex: 1; }
+.prod-badge { display:none; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:20px; margin-top:4px; width:fit-content; }
+.prod-spinner { display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:13px; color:#2563eb; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .motivo-lock-msg { margin-top: 16px; font-size: 12.5px; color: #475569; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 9px 12px; }
 .tec-native-sr { position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
 .tec-dropdown { position: relative; width: 100%; }
@@ -195,7 +198,7 @@
             <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
                 <button type="button" onclick="irAPreordenes()"
                         style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;">
-                    <i class="bi bi-arrow-right-circle"></i> Ir a Preórdenes
+                    <i class="bi bi-arrow-right-circle"></i> Ir a Preordenes
                 </button>
                 <button type="button" onclick="ignorarPreorden()"
                         style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:600;cursor:pointer;">
@@ -214,7 +217,7 @@
                             <option value="">-- Seleccione --</option>
                             <option value="Servicio Tecnico">Servicio Tecnico</option>
                             <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
-                            <option value="Validacion de Garantia">Validación de Garantía</option>
+                            <option value="Validacion de Garantia">Validacion de Garantia</option>
                         </select>
                     </div>
                     <div class="campo">
@@ -239,7 +242,7 @@
             <div class="seccion-body">
                 <div class="grid-3">
                     <div class="campo" style="grid-column: span 2;">
-                        <label>Cédula / RUC <span class="req">*</span></label>
+                        <label>Cedula / RUC <span class="req">*</span></label>
                         <div style="display:flex; gap:10px;">
                             <input type="text" id="cli_identificacion" name="cli_identificacion" style="flex:1;" maxlength="20" required>
                             <button type="button" class="btn-buscar" onclick="buscarClienteAjax()">
@@ -248,7 +251,7 @@
                         </div>
                     </div>
                     <div class="campo">
-                        <label>Teléfono de Contacto <span class="req">*</span></label>
+                        <label>Telefono de Contacto <span class="req">*</span></label>
                         <input type="text" id="cli_telefono" name="cli_telefono" maxlength="20" required>
                     </div>
                 </div>
@@ -264,11 +267,11 @@
                 </div>
                 <div class="grid-2">
                     <div class="campo">
-                        <label>Correo Electrónico</label>
+                        <label>Correo Electronico</label>
                         <input type="email" id="cli_correo" name="cli_correo" maxlength="100">
                     </div>
                     <div class="campo">
-                        <label>Dirección</label>
+                        <label>Direccion</label>
                         <input type="text" id="cli_direccion" name="cli_direccion" maxlength="200" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
@@ -279,6 +282,18 @@
             <div class="seccion-hdr"><i class="bi bi-laptop"></i> Datos del Equipo</div>
             <div class="seccion-body">
                 <div class="grid-3">
+                    <div class="campo">
+                        <label>Codigo <span class="req">*</span></label>
+                        <div style="position:relative;">
+                            <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo" required
+                                   autocomplete="off" style="width:100%;text-transform:uppercase;"
+                                   oninput="this.value=this.value.toUpperCase(); buscarProductoPorCodigo(this.value);">
+                            <span id="prod-spinner" class="prod-spinner">
+                                <i class="bi bi-arrow-repeat" style="animation:spin .7s linear infinite;display:inline-block;"></i>
+                            </span>
+                        </div>
+                        <span id="prod-badge" class="prod-badge"></span>
+                    </div>
                     <div class="campo">
                         <label>Tipo de Equipo <span class="req">*</span></label>
                         <select id="eq_tipo" name="eq_tipo" required>
@@ -304,7 +319,7 @@
                 </div>
                 <div class="grid-2">
                     <div class="campo">
-                        <label>Número de Serie (S/N) <span class="req">*</span></label>
+                        <label>Numero de Serie (S/N) <span class="req">*</span></label>
                         <div class="lista-lineas" id="series-container">
                             <div class="linea-item">
                                 <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Serie principal">
@@ -322,14 +337,14 @@
                     <textarea id="eq_falla" name="eq_falla" rows="3" required></textarea>
                 </div>
                 <div class="campo">
-                    <label>Observaciones del Estado Físico (Rayones, golpes, etc.)</label>
+                    <label>Observaciones del Estado fisico (Rayones, golpes, etc.)</label>
                     <textarea id="eq_observacion" name="eq_observacion" rows="2"></textarea>
                 </div>
             </div>
         </div>
 
         <div class="seccion-form bloque-motivo hidden">
-            <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantía y Facturación</div>
+            <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantia y Facturacion</div>
             <div class="seccion-body">
                 <div id="bloque-facturacion" class="grid-3 hidden">
                     <div class="campo">
@@ -341,13 +356,13 @@
                         <input type="text" id="nro_factura_2" name="nro_factura_2">
                     </div>
                     <div class="campo">
-                        <label>Fecha de Facturación</label>
+                        <label>Fecha de Facturacion</label>
                         <input type="date" id="fecha_facturacion" name="fecha_facturacion">
                     </div>
                 </div>
                 <div id="bloque-garantia" class="grid-2 hidden">
                     <div class="campo">
-                        <label>Tipo de Garantía</label>
+                        <label>Tipo de Garantia</label>
                         <select id="garantia_tipo" name="garantia_tipo">
                             <option value="">-- Seleccione --</option>
                             <option value="propia">INTERNA</option>
@@ -355,7 +370,7 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label>CAS (solo garantía externa)</label>
+                        <label>CAS (solo garantia externa)</label>
                         <select id="cas_id" name="cas_id">
                             <option value="">-- Seleccione --</option>
                             @foreach($cas as $c)
@@ -368,13 +383,13 @@
         </div>
 
         <div class="seccion-form bloque-motivo hidden">
-            <div class="seccion-hdr"><i class="bi bi-person-workspace"></i> Asignación y Servicio</div>
+            <div class="seccion-hdr"><i class="bi bi-person-workspace"></i> Asignacion y Servicio</div>
             <div class="seccion-body">
                 <div class="grid-2">
                     <div class="campo">
-                        <label>Técnico Asignado <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;">ordenado por menor carga</span></label>
+                        <label>Tecnico Asignado <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;">ordenado por menor carga</span></label>
                         <select id="ord_tecnico_id" name="ord_tecnico_id" required class="tec-native-sr">
-                            <option value="">-- Seleccione un Técnico --</option>
+                            <option value="">-- Seleccione un Tecnico --</option>
                             @foreach($tecnicos as $tec)
                                 @php
                                     $pendientes = (int) ($tec->pendientes ?? 0);
@@ -389,7 +404,7 @@
                             <div class="tec-trigger" id="tec-trigger" onclick="toggleTecDropdown()">
                                 <div class="tec-trigger-avatar" id="tec-trigger-avatar">?</div>
                                 <div class="tec-trigger-info">
-                                    <div class="tec-trigger-nombre" id="tec-trigger-nombre">-- Seleccionar técnico --</div>
+                                    <div class="tec-trigger-nombre" id="tec-trigger-nombre">-- Seleccionar tecnico --</div>
                                     <div class="tec-trigger-stats" id="tec-trigger-stats"></div>
                                 </div>
                                 <i class="bi bi-chevron-down tec-trigger-arrow"></i>
@@ -423,7 +438,7 @@
                                          onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }})">
                                         <div class="tec-item-avatar" style="background:{{ $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
                                         <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
-                                        <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
+                                        <span class="tec-item-stats">{{ $pendientes }}P Â· {{ $enProceso }}EP</span>
                                         <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
                                     </div>
                                 @endforeach
@@ -486,17 +501,13 @@
         </div>
 
         <div class="seccion-form bloque-motivo hidden">
-            <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos y Producto</div>
+            <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos</div>
             <div class="seccion-body">
                 <div class="grid-2">
                     <div class="campo">
                         <label>Repuesto Seleccionado</label>
                         <input type="text" id="repuesto_inventario_preview" value="Sin seleccionar" readonly style="background:#f8fafc;">
                         <input type="hidden" id="repuesto_inventario_id" name="repuesto_inventario_id" value="">
-                    </div>
-                    <div class="campo">
-                        <label>Código de Producto Inventario</label>
-                        <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
             </div>
@@ -517,7 +528,7 @@
         </div>
 
         <div id="acciones-orden" class="botones hidden">
-            <button type="button" class="btn-limpiar" onclick="document.getElementById('form-orden').reset(); actualizarMotivo();">
+            <button type="button" class="btn-limpiar" onclick="document.getElementById('form-orden').reset(); actualizarMotivo(); limpiarBadgeProducto();">
                 Limpiar
             </button>
             <button type="submit" id="btn-guardar" class="btn-crear">
@@ -534,9 +545,11 @@
 const _urlVerificarPreorden = '{{ route("preordenes.verificar") }}';
 const _urlPreordenes = '{{ route("preordenes.index") }}';
 const _urlBuscarRepuestosOrden = '{{ route("ordenes.repuestos.buscar") }}';
+const _urlBuscarProductoOrden = '{{ route("ordenes.productos.buscar") }}';
 let _preordenIgnorada = false;
 let _preordenTimer = null;
 let _repuestoTimer = null;
+let _productoTimer = null;
 
 function mostrarMensaje(isError, texto) {
     const box = document.getElementById('ord-msg');
@@ -568,8 +581,8 @@ function seleccionarTecnico(item, tecId, nombre, color, _etiqueta, pend, enproc)
         av.style.background = color;
         av.textContent = (nombre || '?').substring(0, 1).toUpperCase();
     }
-    if (nm) nm.textContent = nombre || '-- Seleccionar técnico --';
-    if (st) st.textContent = `${pend} pend. · ${enproc} en proc.`;
+    if (nm) nm.textContent = nombre || '-- Seleccionar tÃ©cnico --';
+    if (st) st.textContent = `${pend} pend. Â· ${enproc} en proc.`;
 
     document.querySelectorAll('#tec-dropdown-list .tec-item').forEach((el) => el.classList.remove('selected'));
     if (item) item.classList.add('selected');
@@ -590,7 +603,7 @@ function sincronizarTecnicoDesdeSelect() {
             av.style.background = '#94a3b8';
             av.textContent = '?';
         }
-        if (nm) nm.textContent = '-- Seleccionar técnico --';
+        if (nm) nm.textContent = '-- Seleccionar tÃ©cnico --';
         if (st) st.textContent = '';
         return;
     }
@@ -602,12 +615,12 @@ function sincronizarTecnicoDesdeSelect() {
 
 async function buscarClienteAjax() {
     const iden = document.getElementById('cli_identificacion').value.trim();
-    if(!iden) { alert('Ingrese una identificación válida para buscar.'); return; }
+    if(!iden) { alert('Ingrese una identificaciÃ³n vÃ¡lida para buscar.'); return; }
 
     try {
         const r = await fetch('{{ url("/operaciones/ordenes/buscar-cliente") }}?identificacion=' + iden);
         const d = await r.json();
-        
+
         if(d.ok && d.cliente) {
             document.getElementById('cli_nombres').value = d.cliente.nombres;
             document.getElementById('cli_apellidos').value = d.cliente.apellidos;
@@ -672,8 +685,8 @@ function mostrarAvisoPreorden(pre) {
     detalle.innerHTML =
         '<strong>Preorden:</strong> ' + escHtml(pre.nro_preorden || '-') + ' &nbsp;|&nbsp; ' +
         '<strong>Cliente:</strong> ' + escHtml((pre.nombres || '') + ' ' + (pre.apellidos || '')) + ' (' + escHtml(pre.identificacion || '-') + ')<br>' +
-        '<strong>Equipo:</strong> ' + escHtml((pre.tipo_producto || '-') + ' ' + (pre.marca_producto || '')) + (pre.desc_producto ? ' — ' + escHtml(pre.desc_producto) : '') + '<br>' +
-        '<strong>Código:</strong> ' + escHtml(pre.codigo_producto || '-') + ' &nbsp;|&nbsp; ' +
+        '<strong>Equipo:</strong> ' + escHtml((pre.tipo_producto || '-') + ' ' + (pre.marca_producto || '')) + (pre.desc_producto ? ' â€” ' + escHtml(pre.desc_producto) : '') + '<br>' +
+        '<strong>CÃ³digo:</strong> ' + escHtml(pre.codigo_producto || '-') + ' &nbsp;|&nbsp; ' +
         '<strong>Registrada:</strong> ' + escHtml(fecha);
 
     aviso.style.display = 'block';
@@ -692,6 +705,87 @@ function ignorarPreorden() {
 
 function irAPreordenes() {
     window.location.href = _urlPreordenes;
+}
+
+function seleccionarOpcionPorTexto(selectId, texto) {
+    const select = document.getElementById(selectId);
+    if (!select || !texto) return;
+
+    const objetivo = String(texto).trim().toUpperCase();
+    Array.from(select.options).some((opt) => {
+        if (String(opt.value).trim().toUpperCase() === objetivo || String(opt.textContent).trim().toUpperCase() === objetivo) {
+            select.value = opt.value;
+            return true;
+        }
+        return false;
+    });
+}
+
+function mostrarBadgeProducto(tipo, texto) {
+    const badge = document.getElementById('prod-badge');
+    if (!badge) return;
+
+    badge.textContent = texto;
+    if (tipo === 'ok') {
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.border = '1px solid #86efac';
+    } else {
+        badge.style.background = '#fef9c3';
+        badge.style.color = '#92400e';
+        badge.style.border = '1px solid #fde68a';
+    }
+    badge.style.display = 'inline-block';
+}
+
+function limpiarBadgeProducto() {
+    const badge = document.getElementById('prod-badge');
+    if (badge) {
+        badge.style.display = 'none';
+        badge.textContent = '';
+    }
+}
+
+function buscarProductoPorCodigo(codigo) {
+    clearTimeout(_productoTimer);
+    const badge = document.getElementById('prod-badge');
+    const spinner = document.getElementById('prod-spinner');
+    const q = (codigo || '').trim();
+
+    _preordenIgnorada = false;
+    verificarPreorden();
+
+    if (q.length < 3) {
+        limpiarBadgeProducto();
+        return;
+    }
+
+    _productoTimer = setTimeout(async () => {
+        if (spinner) spinner.style.display = 'inline-block';
+        if (badge) badge.style.display = 'none';
+
+        try {
+            const r = await fetch(_urlBuscarProductoOrden + '?codigo=' + encodeURIComponent(q), { cache: 'no-store' });
+            const d = await r.json();
+
+            if (!d.ok || !d.producto) {
+                mostrarBadgeProducto('warn', 'Codigo no encontrado. Complete los datos y se registrara como producto nuevo.');
+                return;
+            }
+
+            const p = d.producto;
+            seleccionarOpcionPorTexto('eq_tipo', p.tipo_nombre || '');
+            seleccionarOpcionPorTexto('eq_marca', p.marca || '');
+            if (p.descripcion) {
+                document.getElementById('eq_modelo').value = String(p.descripcion).toUpperCase();
+            }
+            mostrarBadgeProducto('ok', 'Producto encontrado: ' + (p.descripcion || p.codigo));
+        } catch {
+            limpiarBadgeProducto();
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+        }
+    }, 450);
 }
 
 function onEstadoRepuestoChange(valor) {
@@ -752,7 +846,7 @@ function renderRepuestosResultado(repuestos) {
         item.className = 'rep-item';
         item.innerHTML =
             '<code style="font-size:12px;color:#b45309;font-weight:700;white-space:nowrap;">' + escHtml(r.codigo) + '</code>' +
-            '<span style="font-size:13px;color:#1e293b;">' + escHtml(r.nombre) + (r.descripcion ? '<span style="color:#94a3b8;font-size:11.5px;"> — ' + escHtml(r.descripcion) + '</span>' : '') + '</span>' +
+            '<span style="font-size:13px;color:#1e293b;">' + escHtml(r.nombre) + (r.descripcion ? '<span style="color:#94a3b8;font-size:11.5px;"> â€” ' + escHtml(r.descripcion) + '</span>' : '') + '</span>' +
             '<span style="background:#dcfce7;color:#166534;font-size:10.5px;padding:1px 7px;border-radius:10px;font-weight:700;">Stock: ' + (r.stock || 0) + '</span>';
         item.onclick = () => seleccionarRepuesto(r);
         lista.appendChild(item);
@@ -855,7 +949,7 @@ function agregarCredencial() {
     row.className = 'linea-item';
     row.innerHTML = `
         <input type="text" name="cred_usuario[]" placeholder="Usuario (opcional)">
-        <input type="text" name="cred_contrasena[]" placeholder="Contraseña / PIN">
+        <input type="text" name="cred_contrasena[]" placeholder="ContraseÃ±a / PIN">
         <input type="hidden" name="cred_es_patron[]" value="0">
         <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
     `;
@@ -873,21 +967,22 @@ async function guardarOrden() {
     try {
         const r = await fetch('{{ route("ordenes.store") }}', { method:'POST', body:fd });
         const d = await r.json();
-        
+
         if(d.ok) {
-            mostrarMensaje(false, `<strong>¡Éxito!</strong> ${d.mensaje} <br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`);
+            mostrarMensaje(false, `<strong>Â¡Ã‰xito!</strong> ${d.mensaje} <br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`);
             document.getElementById('form-orden').reset();
             actualizarMotivo();
             _preordenIgnorada = false;
             ocultarAvisoPreorden();
             onEstadoRepuestoChange(document.getElementById('estado_repuesto').value || 'No requerido');
             limpiarRepuestoSeleccionado();
+            limpiarBadgeProducto();
             sincronizarTecnicoDesdeSelect();
         } else {
             mostrarMensaje(true, d.error);
         }
     } catch(e) {
-        mostrarMensaje(true, 'Ocurrió un error crítico de conexión.');
+        mostrarMensaje(true, 'OcurriÃ³ un error crÃ­tico de conexiÃ³n.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-floppy"></i> Generar Orden de Ingreso';
@@ -927,3 +1022,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+

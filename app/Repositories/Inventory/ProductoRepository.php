@@ -19,6 +19,13 @@ class ProductoRepository
         return ProductoInventario::find($id);
     }
 
+    public function buscarPorCodigo(string $codigo): ?ProductoInventario
+    {
+        return ProductoInventario::with(['marca', 'tipoDispositivo'])
+            ->where('codigo', strtoupper(trim($codigo)))
+            ->first();
+    }
+
     public function existeCodigo(string $codigo, ?int $excluirId = null): bool
     {
         $query = ProductoInventario::where('codigo', $codigo);
