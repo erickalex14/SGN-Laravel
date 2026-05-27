@@ -5,117 +5,197 @@
     $empresa = $ordenEmpresa?->empresa;
     $equipo = $orden?->equipo ?? $ordenEmpresa?->equipo;
     $tecnico = $informe->tecnico;
-    $repuestosUsados = $orden?->ordenRepuestos ?? collect();
+
+    $nroOrden = (string) ($orden?->nro_orden ?? $ordenEmpresa?->nro_orden ?? '-');
+    $clienteNombre = trim((string) (($cliente?->nombres ?? '') . ' ' . ($cliente?->apellidos ?? '')));
+    if ($clienteNombre === '') {
+        $clienteNombre = (string) ($empresa?->nombre ?? '-');
+    }
+    $identificacion = (string) ($cliente?->identificacion ?? $empresa?->ruc ?? '—');
+    $telefono = (string) ($cliente?->numero_contacto ?? $empresa?->telefono ?? '—');
+    $correo = (string) ($cliente?->correo ?? $empresa?->correo ?? '—');
+    $direccion = (string) ($cliente?->direccion_clientes ?? $empresa?->direccion_empresa ?? '');
+    $nroFactura = trim((string) ($orden?->nro_factura ?? ''));
+    $nroFactura2 = trim((string) ($orden?->nro_factura_2 ?? ''));
+    $estadoOrden = (string) ($orden?->estado_orden ?? $ordenEmpresa?->estado ?? '');
+    $estadoEquipo = (string) ($informe->estado_equipo ?? '');
+
+    $colorEstado = '#64748b';
+    if ($estadoEquipo === 'Operativo') {
+        $colorEstado = '#10b981';
+    } elseif ($estadoEquipo === 'Reparado parcialmente') {
+        $colorEstado = '#f59e0b';
+    } elseif ($estadoEquipo === 'Sin reparación posible' || $estadoEquipo === 'Desguace') {
+        $colorEstado = '#ef4444';
+    } elseif ($estadoEquipo === 'En espera de repuesto') {
+        $colorEstado = '#3b82f6';
+    }
+
+    $repuestos = collect();
+    if ($orden && $orden->relationLoaded('ordenRepuestos')) {
+        $repuestos = $orden->ordenRepuestos->map(function ($r) {
+            return (object) [
+                'codigo' => (string) ($r->repuesto?->codigo ?? ''),
+                'nombre' => (string) ($r->repuesto?->nombre ?? ''),
+                'nro_parte' => (string) ($r->repuesto?->nro_parte ?? ''),
+            ];
+        })->filter(fn ($r) => $r->nombre !== '')->values();
+    }
+
+    $fechaInforme = (string) ($informe->fecha_informe ?? '');
+    $fFmt = $fechaInforme;
+    if ($fechaInforme !== '') {
+        try {
+            $meses = [1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            $fecha = \Carbon\Carbon::parse($fechaInforme);
+            $fFmt = $fecha->format('d') . ' de ' . ($meses[(int) $fecha->format('n')] ?? $fecha->format('m')) . ' de ' . $fecha->format('Y');
+        } catch (\Throwable $e) {
+            $fFmt = $fechaInforme;
+        }
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Informe {{ $orden?->nro_orden ?? $ordenEmpresa?->nro_orden ?? $informe->id }}</title>
+<title>Informe {{ $nroOrden }}</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; background: #fff; color: #0f172a; font-size: 12px; }
-.page { width: 100%; max-width: 190mm; margin: 0 auto; padding: 8mm; }
-.print-btn { position: fixed; top: 12px; right: 12px; border: 0; background: #1d4ed8; color: #fff; padding: 10px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }
-.header { border-bottom: 1px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; }
-.title { font-size: 20px; font-weight: 800; }
-.meta { text-align: right; line-height: 1.5; }
-.sec { margin-bottom: 10px; }
-.sec h3 { font-size: 12px; text-transform: uppercase; background: #dbeafe; border-left: 3px solid #1d4ed8; padding: 4px 8px; margin-bottom: 4px; }
-table { width: 100%; border-collapse: collapse; }
-td { border: 1px solid #cbd5e1; padding: 5px 8px; vertical-align: top; }
-.lbl { display: block; font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; font-weight: 700; }
-.txt { border: 1px solid #cbd5e1; padding: 8px; line-height: 1.45; min-height: 70px; white-space: pre-wrap; }
-.fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.foto-card { border: 1px solid #cbd5e1; padding: 6px; }
-.foto-card img { width: 100%; height: 190px; object-fit: cover; border: 1px solid #e2e8f0; }
-.foto-cap { margin-top: 4px; font-size: 10px; color: #475569; }
-@media print {
-    @page { size: A4 portrait; margin: 10mm; }
-    .print-btn { display: none; }
-    .page { padding: 0; }
-}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}
+@media print{@page{size:A4 portrait;margin:10mm}.no-print{display:none!important}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+.wrap{width:100%;max-width:190mm;margin:auto;padding:6mm}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:8px}
+.header-info{font-size:8.5pt;line-height:1.6}.header-info .empresa{font-size:11pt;font-weight:bold}.header img{height:42px}
+.orden-header{display:flex;justify-content:space-between;align-items:center;background:#1a56db;color:#fff;padding:5px 10px;border-radius:3px;margin-bottom:8px}
+.orden-header .nro{font-size:13pt;font-weight:bold}.orden-header .meta{font-size:8pt;text-align:right;line-height:1.7}
+.sec-titulo{background:#dbeafe;font-weight:bold;font-size:7.5pt;text-transform:uppercase;padding:3px 8px;border-left:3px solid #1a56db;margin-bottom:1px;margin-top:6px}
+table.datos{width:100%;border-collapse:collapse;margin-bottom:7px}table.datos td{border:1px solid #d1d5db;padding:4px 7px;font-size:8.5pt;vertical-align:top}
+table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transform:uppercase;display:block;margin-bottom:1px}
+.texto-campo{border:1px solid #d1d5db;padding:5px 8px;font-size:8.5pt;margin-bottom:7px;min-height:28px;white-space:pre-wrap;line-height:1.55}
+.estado-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:8pt;font-weight:700;color:#fff}
+.firmas{display:flex;justify-content:space-between;margin:10px 0}.firma-box{width:44%;text-align:center}
+.firma-linea{border-top:1px solid #000;padding-top:4px;font-size:8.5pt;margin-top:28px}
+.btn-print{position:fixed;top:10px;right:10px;background:#1a56db;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:bold;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 </style>
 </head>
 <body>
-<button class="print-btn" onclick="window.print()">Imprimir / Guardar PDF</button>
-<div class="page">
+<button class="btn-print no-print" onclick="window.print()">&#128424; Imprimir / Guardar PDF</button>
+<div class="wrap">
     <div class="header">
-        <div>
-            <div class="title">Informe Tecnico</div>
-            <div>Novitecnologia Cia. Ltda.</div>
+        <div class="header-info">
+            <div class="empresa">Novitecnologia Cia. Ltda.</div>
+            <div><b>Telefonos:</b></div>
+            <div><b>GYE:</b> 04-6031337 / 0960500158 &nbsp;&nbsp; <b>UIO:</b> 02-6001635 / 0960500156</div>
+            <div>https://www.novitec.com.ec</div>
         </div>
-        <div class="meta">
-            <div><strong>Orden {{ $orden?->nro_orden ?? $ordenEmpresa?->nro_orden ?? '-' }}</strong></div>
-            <div>Fecha: {{ $informe->fecha_informe ? \Carbon\Carbon::parse($informe->fecha_informe)->format('d/m/Y') : '-' }}</div>
-            <div>Tecnico: {{ $tecnico?->nombre_tecnico ?? '-' }}</div>
-        </div>
+        <img src="{{ asset('Novitecpdf.png') }}" alt="Novitec">
     </div>
 
-    <div class="sec">
-        <h3>Resumen</h3>
-        <table>
+    <div class="orden-header">
+        <div class="nro">{{ $nroOrden }} - INFORME TECNICO</div>
+        <div class="meta">Fecha: {{ $fFmt }}<br>Tecnico: {{ $tecnico?->nombre_tecnico ?? '-' }}</div>
+    </div>
+
+    <div class="sec-titulo">Datos del Cliente</div>
+    <table class="datos">
+        <tr>
+            <td width="50%"><span class="lbl">Cliente</span>{{ $clienteNombre }}</td>
+            <td width="50%"><span class="lbl">Identificacion / RUC</span>{{ $identificacion !== '' ? $identificacion : '—' }}</td>
+        </tr>
+        <tr>
+            <td width="50%"><span class="lbl">Telefono</span>{{ $telefono !== '' ? $telefono : '—' }}</td>
+            <td width="50%"><span class="lbl">Correo</span>{{ $correo !== '' ? $correo : '—' }}</td>
+        </tr>
+        @if($direccion !== '')
             <tr>
-                <td width="33%"><span class="lbl">Cliente</span>{{ trim(($cliente->nombres ?? '') . ' ' . ($cliente->apellidos ?? '')) ?: ($empresa->nombre ?? '-') }}</td>
-                <td width="33%"><span class="lbl">Equipo</span>{{ trim(($equipo->tipo ?? '') . ' ' . ($equipo->marca ?? '') . ' ' . ($equipo->modelo ?? '')) ?: '-' }}</td>
-                <td width="34%"><span class="lbl">Estado Final</span>{{ $informe->estado_equipo ?: '-' }}</td>
+                <td colspan="2"><span class="lbl">Direccion</span>{{ $direccion }}</td>
             </tr>
-        </table>
-    </div>
+        @endif
+    </table>
 
-    @if($repuestosUsados->isNotEmpty())
-    <div class="sec">
-        <h3>Repuestos Utilizados</h3>
-        <table>
-            @foreach($repuestosUsados as $item)
+    <div class="sec-titulo">Datos de la Orden</div>
+    <table class="datos">
+        <tr>
+            <td width="50%"><span class="lbl">Nro. de Orden</span>{{ $nroOrden }}</td>
+            <td width="50%"><span class="lbl">Nro. Factura</span>{{ $nroFactura !== '' ? $nroFactura : ($nroFactura2 !== '' ? '' : '—') }}{{ $nroFactura2 !== '' ? (' / ' . $nroFactura2) : '' }}</td>
+        </tr>
+        <tr>
+            <td><span class="lbl">Estado de la Orden</span>{{ $estadoOrden }}</td>
+            <td><span class="lbl">Estado Final del Equipo</span><span class="estado-badge" style="background:{{ $colorEstado }};">{{ $estadoEquipo }}</span></td>
+        </tr>
+        @if($repuestos->isNotEmpty())
+            <tr>
+                <td colspan="2">
+                    <span class="lbl">Repuestos Utilizados</span>
+                    @foreach($repuestos as $r)
+                        <div style="margin-bottom:3px;">
+                            @if($r->codigo !== '')<strong>{{ $r->codigo }}</strong> &mdash; @endif{{ $r->nombre }}@if($r->nro_parte !== '') <span style="color:#64748b;font-size:9pt;">(Nro. Parte: {{ $r->nro_parte }})</span>@endif
+                        </div>
+                    @endforeach
+                </td>
+            </tr>
+        @endif
+    </table>
+
+    <div class="sec-titulo">Datos del Equipo</div>
+    <table class="datos">
+        <tr>
+            <td width="25%"><span class="lbl">Tipo</span>{{ $equipo?->tipo ?? '—' }}</td>
+            <td width="25%"><span class="lbl">Marca</span>{{ $equipo?->marca ?? '—' }}</td>
+            <td width="25%"><span class="lbl">Codigo / Modelo</span>{{ $equipo?->modelo ?? '—' }}</td>
+            <td width="25%"><span class="lbl">Serie</span>{{ $equipo?->serie ?? '—' }}</td>
+        </tr>
+    </table>
+
+    <div class="sec-titulo">Antecedentes</div>
+    <div class="texto-campo">{{ $informe->antecedentes ?? '' }}</div>
+
+    <div class="sec-titulo">Proceso</div>
+    <div class="texto-campo">{{ $informe->proceso ?? '' }}</div>
+
+    @if(!empty($informe->conclusion))
+        <div class="sec-titulo">Conclusión</div>
+        <div class="texto-campo">{{ $informe->conclusion }}</div>
+    @endif
+
+    @if(!empty($informe->recomendaciones))
+        <div class="sec-titulo">Recomendaciones</div>
+        <div class="texto-campo">{{ $informe->recomendaciones }}</div>
+    @endif
+
+    @if($informe->fotos->isNotEmpty())
+        <div class="sec-titulo">Evidencia Fotográfica</div>
+        <table style="width:100%;border-collapse:collapse;">
+            @foreach($informe->fotos->chunk(2) as $fila)
                 <tr>
-                    <td width="25%"><span class="lbl">Código</span>{{ $item->repuesto?->codigo ?: '-' }}</td>
-                    <td width="45%"><span class="lbl">Nombre</span>{{ $item->repuesto?->nombre ?: '-' }}</td>
-                    <td width="20%"><span class="lbl">Nro. Parte</span>{{ $item->repuesto?->nro_parte ?: '-' }}</td>
-                    <td width="10%"><span class="lbl">Cant.</span>{{ (int) ($item->cantidad ?: 1) }}</td>
+                    @foreach($fila as $foto)
+                        @php
+                            $rutaFoto = (string) ($foto->foto_data ?? '');
+                            $src = str_starts_with($rutaFoto, 'data:') ? $rutaFoto : asset('storage/' . ltrim($rutaFoto, '/'));
+                        @endphp
+                        <td style="padding:6px;text-align:center;">
+                            <img src="{{ $src }}" style="max-width:220px;max-height:180px;border-radius:4px;border:1px solid #ddd;" alt="Foto">
+                            @if(!empty($foto->caption))
+                                <div style="font-size:8pt;color:#555;margin-top:4px;">{{ $foto->caption }}</div>
+                            @endif
+                        </td>
+                    @endforeach
+                    @if($fila->count() === 1)
+                        <td></td>
+                    @endif
                 </tr>
             @endforeach
         </table>
-    </div>
     @endif
 
-    <div class="sec">
-        <h3>Antecedentes</h3>
-        <div class="txt">{{ $informe->antecedentes ?: '-' }}</div>
+    <div class="firmas">
+        <div class="firma-box"><div class="firma-linea">Tecnico responsable</div></div>
+        <div class="firma-box"><div class="firma-linea">Recibido conforme</div></div>
     </div>
 
-    <div class="sec">
-        <h3>Proceso Tecnico</h3>
-        <div class="txt">{{ $informe->proceso ?: '-' }}</div>
+    <div style="text-align:center;margin-top:10px;font-size:7pt;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:6px;">
+        Novitecnologia Cia. Ltda. - Sistema de Gestion Novitec
     </div>
-
-    <div class="sec">
-        <h3>Conclusion</h3>
-        <div class="txt">{{ $informe->conclusion ?: '-' }}</div>
-    </div>
-
-    <div class="sec">
-        <h3>Recomendaciones</h3>
-        <div class="txt">{{ $informe->recomendaciones ?: '-' }}</div>
-    </div>
-
-    @if($informe->fotos->isNotEmpty())
-    <div class="sec">
-        <h3>Evidencia Fotografica</h3>
-        <div class="fotos">
-            @foreach($informe->fotos as $foto)
-                @php
-                    $rutaFoto = (string) ($foto->foto_data ?? '');
-                    $src = str_starts_with($rutaFoto, 'data:') ? $rutaFoto : asset('storage/' . ltrim($rutaFoto, '/'));
-                @endphp
-                <div class="foto-card">
-                    <img src="{{ $src }}" alt="Foto {{ $loop->iteration }}">
-                    <div class="foto-cap">{{ $foto->caption ?: ($foto->nombre_archivo ?: 'Foto ' . $loop->iteration) }}</div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
 </div>
 </body>
 </html>

@@ -2,14 +2,15 @@
 
 namespace App\Services\Operations;
 
-use App\Repositories\Operations\InformeRepository;
 use App\DTOs\Operations\InformeDTO;
 use App\Models\Operations\Informe;
 use App\Models\Operations\InformeFoto;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\Operations\InformeRepository;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class InformeService
 {
@@ -21,7 +22,8 @@ class InformeService
     }
 
     /**
-     * Crea un nuevo informe con fotos asociadas.
+     * Crea o actualiza el informe tecnico con sus evidencias.
+     *
      * @throws Exception
      */
     public function procesarInforme(
@@ -29,8 +31,7 @@ class InformeService
         bool $esAdmin,
         bool $esMaster,
         int $sucursalSesion
-    ): void
-    {
+    ): void {
         $ordenValida = $this->repository->buscarOrdenValidaParaInforme(
             $dto->orden_id,
             $dto->tecnico_id,
@@ -51,66 +52,84 @@ class InformeService
         $informeExistente = $this->repository->buscarPorOrdenId($dto->orden_id);
 
         try {
-            DB::transaction(function () use ($dto, $informeExistente) {
+            DB::transaction(function () use ($dto, $informeExistente): void {
                 $fechaActual = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
                 $informe = $informeExistente ?: new Informe();
-                $informe->orden_id        = $dto->orden_id;
-                // Mantener el tecnico propietario original cuando se actualiza un informe.
-                $informe->tecnico_id      = $informeExistente ? (int) $informeExistente->tecnico_id : $dto->tecnico_id;
-                $informe->antecedentes    = trim($dto->antecedentes);
-                $informe->proceso         = trim($dto->proceso);
-                $informe->conclusion      = trim($dto->conclusion);
-                $informe->recomendaciones = trim($dto->recomendaciones);
-                $informe->estado_equipo   = $this->normalizarEstadoEquipo($dto->estado_equipo);
-                $informe->fecha_informe   = Carbon::now('America/Guayaquil')->format('Y-m-d');
+                $informe->orden_id = $dto->orden_id;
+                // Si ya existe informe, conserva el tecnico propietario original.
+                $informe->tecnico_id = $informeExistente ? (int) $informeExistente->tecnico_id : $dto->tecnico_id;
+                $informe->antecedentes = trim($dto->antecedentes);
+                $informe->proceso = trim($dto->proceso);
+                $informe->conclusion = trim($dto->conclusion);
+                $informe->recomendaciones = trim((string) ($dto->recomendaciones ?? ''));
+                $informe->estado_equipo = $this->normalizarEstadoEquipo($dto->estado_equipo);
+                $informe->fecha_informe = $dto->fecha_informe
+                    ? Carbon::parse($dto->fecha_informe, 'America/Guayaquil')->format('Y-m-d')
+                    : Carbon::now('America/Guayaquil')->format('Y-m-d');
+
                 if (!$informeExistente) {
                     $informe->fecha_creacion = $fechaActual;
                 }
                 $informe->save();
 
-                // Procesamiento de fotografias adjuntas
                 if (!empty($dto->fotos)) {
-                    $ordenFoto = 1;
-                    foreach ($dto->fotos as $foto) {
-                        // Se almacena en la ruta storage/app/public/informes
-                        $ruta = $foto->store('informes', 'public');
-                        
-                        $informeFoto = new InformeFoto();
-                        $informeFoto->informe_id     = $informe->id;
-                        $informeFoto->nombre_archivo = $foto->getClientOriginalName();
-                        $informeFoto->tipo_mime      = $foto->getMimeType();
-                        // Guardamos la ruta relativa en el campo foto_data o la columna destinada para la ruta
-                        $informeFoto->foto_data      = $ruta; 
-                        $informeFoto->orden_foto     = $ordenFoto;
-                        $informeFoto->save();
-                        
-                        $ordenFoto++;
-                    }
+                    $this->reemplazarFotosInforme($informe->id, $dto->fotos, $dto->captions);
                 }
 
                 Log::info('Informe tecnico guardado.', [
                     'informe_id' => $informe->id,
-                    'orden_id'   => $dto->orden_id,
+                    'orden_id' => $dto->orden_id,
                     'tecnico_id' => $dto->tecnico_id,
-                    'accion' => $informeExistente ? 'actualizar' : 'crear'
+                    'accion' => $informeExistente ? 'actualizar' : 'crear',
                 ]);
             });
         } catch (Exception $e) {
             Log::error('Error transaccional al generar informe tecnico.', ['error' => $e->getMessage()]);
-            throw new Exception('Ocurrió un error al procesar el informe. Verifique los datos adjuntos.');
+            throw new Exception('Ocurrio un error al procesar el informe. Verifique los datos adjuntos.');
+        }
+    }
+
+    private function reemplazarFotosInforme(int $informeId, array $fotos, array $captions): void
+    {
+        $anteriores = InformeFoto::query()->where('informe_id', $informeId)->get();
+        foreach ($anteriores as $anterior) {
+            $rutaAnterior = (string) ($anterior->foto_data ?? '');
+            if ($rutaAnterior !== '' && !str_starts_with($rutaAnterior, 'data:') && Storage::disk('public')->exists($rutaAnterior)) {
+                Storage::disk('public')->delete($rutaAnterior);
+            }
+        }
+
+        InformeFoto::query()->where('informe_id', $informeId)->delete();
+
+        $ordenFoto = 1;
+        foreach ($fotos as $foto) {
+            $ruta = $foto->store('informes', 'public');
+            $caption = trim((string) ($captions[$ordenFoto - 1] ?? ''));
+
+            $informeFoto = new InformeFoto();
+            $informeFoto->informe_id = $informeId;
+            $informeFoto->nombre_archivo = $foto->getClientOriginalName();
+            $informeFoto->tipo_mime = $foto->getMimeType();
+            $informeFoto->foto_data = $ruta;
+            $informeFoto->caption = $caption;
+            $informeFoto->orden_foto = $ordenFoto;
+            $informeFoto->save();
+
+            $ordenFoto++;
         }
     }
 
     private function normalizarEstadoEquipo(string $estado): string
     {
         $valor = trim($estado);
+
         return match (mb_strtoupper($valor)) {
             'OPERATIVO', 'OPERATIVO / REPARADO' => 'Operativo',
             'REPARADO PARCIALMENTE', 'OPERATIVO PARCIAL', 'OPERATIVO PARCIAL / FUNCIONES LIMITADAS' => 'Reparado parcialmente',
-            'DESGUACE', 'NO OPERATIVO', 'NO OPERATIVO / DAÑO IRREPARABLE', 'NO OPERATIVO / DA?O IRREPARABLE' => 'Desguace',
+            'SIN REPARACION POSIBLE', 'SIN REPARACIÓN POSIBLE', 'DESGUACE', 'NO OPERATIVO', 'NO OPERATIVO / DANO IRREPARABLE', 'NO OPERATIVO / DAÑO IRREPARABLE' => 'Sin reparación posible',
             'EN ESPERA DE REPUESTO' => 'En espera de repuesto',
-            default => $valor
+            default => $valor,
         };
     }
 }

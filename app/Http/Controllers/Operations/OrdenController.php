@@ -183,8 +183,24 @@ class OrdenController extends Controller
             'sucursal',
             'cas',
             'usuarioIngreso',
+            'repuestoInventario',
         ]);
 
-        return view('operations.ordenes.imprimir', compact('orden'));
+        $nombreSucursalCliente = '-';
+        $nroSucursalCliente = (int) ($orden->nro_sucursal_cliente ?? 0);
+        if ($nroSucursalCliente > 0) {
+            if ($nroSucursalCliente === 999) {
+                $nombreSucursalCliente = '999 - SERVICIO EXTERNO';
+            } else {
+                $suc = $this->sucursalClienteRepo
+                    ->obtenerTodas()
+                    ->firstWhere('numero', $nroSucursalCliente);
+                $nombreSucursalCliente = $suc
+                    ? str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT) . ' - ' . (string) $suc->nombre
+                    : 'Nro. ' . str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return view('operations.ordenes.imprimir', compact('orden', 'nombreSucursalCliente'));
     }
 }
