@@ -33,7 +33,7 @@ class UsuarioRepository
      * Lista tecnicos activos con su carga operativa actual.
      * Carga = ordenes en estado Pendiente o En proceso.
      */
-    public function obtenerTecnicosConCargaActual(bool $verTodos = true, ?int $sucursalId = null): Collection
+    public function obtenerTecnicosConCargaActual(bool $verTodos = true, ?int $sucursalId = null, ?int $tecnicoActualId = null): Collection
     {
         return Usuario::query()
             ->from('usuarios as u')
@@ -41,8 +41,14 @@ class UsuarioRepository
             ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
             ->where('u.activo', 1)
             ->whereNotNull('u.nombre_tecnico')
-            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId) {
-                $query->where('u.sucursal_id', $sucursalId);
+            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId, $tecnicoActualId) {
+                // Filtrar por sucursal, pero SIEMPRE incluir al técnico que crea la orden
+                $query->where(function ($q) use ($sucursalId, $tecnicoActualId) {
+                    $q->where('u.sucursal_id', $sucursalId);
+                    if ($tecnicoActualId) {
+                        $q->orWhere('u.id', $tecnicoActualId);
+                    }
+                });
             })
             ->selectRaw(
                 "u.id, u.nombre_tecnico,
