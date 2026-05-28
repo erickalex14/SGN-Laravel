@@ -216,7 +216,10 @@ class InformeController extends Controller
         $tecnicos = $this->repository->obtenerTecnicosActivos($contexto['sucursal_id'], $contexto['es_master']);
         $estados  = ['Operativo', 'Reparado parcialmente', 'Sin reparación posible', 'Desguace', 'En espera de repuesto'];
 
-        return view('operations.informes.buscar', compact('tecnicos', 'estados'));
+        $esAdmin  = $contexto['es_admin'];
+        $esMaster = $contexto['es_master'];
+
+        return view('operations.informes.buscar', compact('tecnicos', 'estados', 'esAdmin', 'esMaster'));
     }
 
     public function buscarInformes(Request $request): JsonResponse
@@ -260,8 +263,12 @@ class InformeController extends Controller
         $sucursalSesion = (int)  session('sucursal_id',   0);
         $esSuperadmin   = (bool) session('es_superadmin', false);
         $grupoNombre    = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $rolNombre      = mb_strtolower(trim((string) (auth()->user()?->rol?->rol ?? '')));
 
-        $esAdmin = $esSuperadmin || in_array($grupoNombre, ['admin', 'master'], true);
+        $rolesAdmin = ['admin', 'administrador', 'master', 'admin master', 'administrador master', 'tecnico master'];
+        $esAdmin = $esSuperadmin
+            || in_array($grupoNombre, $rolesAdmin, true)
+            || in_array($rolNombre, $rolesAdmin, true);
 
         return [
             'tecnico_id'    => $tecnicoId,

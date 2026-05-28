@@ -19,6 +19,10 @@ class VerificarPermisoLegacy
             return $next($request);
         }
 
+        if ($this->puedeBuscarInformesPorRol($request, $modulo, $accion)) {
+            return $next($request);
+        }
+
         $permisos = (array) session('permisos', []);
         $tienePermiso = $this->tienePermiso($permisos, $modulo, $accion);
 
@@ -84,6 +88,29 @@ class VerificarPermisoLegacy
         }
 
         return false;
+    }
+
+    private function puedeBuscarInformesPorRol(Request $request, string $modulo, string $accion): bool
+    {
+        if ($this->norm($modulo) !== 'informes' || $this->norm($accion) !== 'ver') {
+            return false;
+        }
+
+        $ruta = (string) ($request->route()?->getName() ?? '');
+        if (!in_array($ruta, ['informes.buscar', 'informes.buscar.listar'], true)) {
+            return false;
+        }
+
+        $usuario = $request->user();
+        $roles = [
+            $this->norm((string) session('grupo_nombre', '')),
+            $this->norm((string) ($usuario?->grupo?->nombre ?? '')),
+            $this->norm((string) ($usuario?->rol?->rol ?? '')),
+        ];
+
+        $permitidos = ['admin', 'administrador', 'master', 'admin master', 'administrador master', 'tecnico master'];
+
+        return count(array_intersect($roles, $permitidos)) > 0;
     }
 
     private function norm(string $value): string
