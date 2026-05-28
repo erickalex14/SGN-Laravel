@@ -23,6 +23,10 @@ class VerificarPermisoLegacy
             return $next($request);
         }
 
+        if ($this->puedeAccederRutasTecnicoInformes($request, $modulo, $accion)) {
+            return $next($request);
+        }
+
         $permisos = (array) session('permisos', []);
         $tienePermiso = $this->tienePermiso($permisos, $modulo, $accion);
 
@@ -111,6 +115,36 @@ class VerificarPermisoLegacy
         $permitidos = ['admin', 'administrador', 'master', 'admin master', 'administrador master', 'tecnico master'];
 
         return count(array_intersect($roles, $permitidos)) > 0;
+    }
+
+    /**
+     * Permite a cualquier usuario autenticado acceder a las rutas de técnico del módulo informes
+     * (crear informe, mis informes, guardar informe, buscar órdenes para informe e imprimir).
+     * El acceso real a los datos ya está restringido internamente en el controller por tecnico_id.
+     */
+    private function puedeAccederRutasTecnicoInformes(Request $request, string $modulo, string $accion): bool
+    {
+        if ($this->norm($modulo) !== 'informes') {
+            return false;
+        }
+
+        $accionNorm = $this->norm($accion);
+        if (!in_array($accionNorm, ['crear', 'ver'], true)) {
+            return false;
+        }
+
+        $rutasTecnico = [
+            'informes.crear',
+            'informes.crear.buscar',
+            'informes.mis',
+            'informes.store',
+            'informes.imprimir',
+            'informes.ver',
+        ];
+
+        $ruta = (string) ($request->route()?->getName() ?? '');
+
+        return in_array($ruta, $rutasTecnico, true) && $request->user() !== null;
     }
 
     private function norm(string $value): string
