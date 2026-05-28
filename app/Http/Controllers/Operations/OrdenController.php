@@ -68,7 +68,11 @@ class OrdenController extends Controller
         $sucursalSesion = (int) session('sucursal_id');
 
         // Tecnicos activos con carga actual (pendientes/en proceso), ordenados por menor carga
-        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual($verTodosTecnicos, $sucursalSesion);
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual(
+            $verTodosTecnicos,
+            $sucursalSesion,
+            (int) session('tecnico_id')
+        );
         $tiposServicio = $this->tipoServicioRepo->obtenerTodos()->where('activo', 1);
         $marcas = $this->marcaRepo->obtenerTodas();
         $tiposDispositivo = $this->tipoDispositivoRepo->obtenerTodos();

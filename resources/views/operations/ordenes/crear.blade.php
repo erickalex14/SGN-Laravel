@@ -37,10 +37,14 @@
     margin-bottom: 28px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    overflow: hidden;
+    overflow: visible;
     background: #fff;
     box-shadow: none;
+    position: relative;
 }
+/* Mantener bordes redondeados en header e hijo final aunque overflow sea visible */
+.seccion-hdr { border-radius: 10px 10px 0 0; }
+.seccion-form > :last-child { border-radius: 0 0 10px 10px; overflow: hidden; }
 .seccion-hdr {
     display: flex;
     align-items: center;
@@ -163,8 +167,13 @@
 .tec-trigger-stats { font-size: 11px; color: #94a3b8; }
 .tec-trigger-arrow { color: #94a3b8; font-size: 13px; transition: transform .2s; }
 .tec-trigger.open .tec-trigger-arrow { transform: rotate(180deg); }
-.tec-dropdown-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #2563eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 320px; overflow-y: auto; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.tec-dropdown-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #2563eb; border-top: none; border-radius: 0 0 8px 8px; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,.15); overflow: hidden; }
 .tec-dropdown-list.open { display: block; }
+.tec-search-wrap { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+.tec-search-inp { width: 100%; padding: 7px 10px 7px 30px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 12.5px; outline: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16'%3E%3Cpath fill='%2394a3b8' d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E") no-repeat 9px center; box-sizing: border-box; transition: border-color .15s; }
+.tec-search-inp:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.1); }
+.tec-search-empty { padding: 14px 12px; font-size: 12.5px; color: #94a3b8; text-align: center; display: none; }
+.tec-items-scroll { max-height: 260px; overflow-y: auto; }
 .tec-item { display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer; transition: background .12s; border-bottom: 1px solid #f1f5f9; }
 .tec-item:last-child { border-bottom: none; }
 .tec-item:hover { background: #f0f7ff; }
@@ -173,6 +182,8 @@
 .tec-item-nombre { flex: 1; font-size: 12.5px; font-weight: 600; color: #0f172a; }
 .tec-item-stats { font-size: 11px; color: #94a3b8; white-space: nowrap; }
 .tec-item-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; margin-left: 6px; }
+.tec-yo-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 20px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; margin-left: 4px; flex-shrink: 0; }
+.tec-trigger-yo { font-size: 10px; color: #2563eb; font-weight: 700; margin-left: 4px; }
 @media (max-width: 768px) {
     .modulo { padding: 16px; }
     .orden-container { padding: 22px; }
@@ -356,13 +367,67 @@
             <div class="seccion-body">
                 <div class="grid-2">
                     <div class="campo">
-                        <label>Tecnico Asignado <span class="req">*</span></label>
-                        <select id="ord_tecnico_id_empresa_ui" name="ord_tecnico_id">
+                        <label>Tecnico Asignado <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;">ordenado por menor carga</span></label>
+                        {{-- Select nativo oculto (sincronizado) --}}
+                        <select id="ord_tecnico_id_empresa" name="ord_tecnico_id" class="tec-native-sr">
                             <option value="">-- Seleccione un Tecnico --</option>
                             @foreach($tecnicos as $tec)
-                                <option value="{{ $tec->id }}">{{ $tec->nombre_tecnico }}</option>
+                                @php
+                                    $pendientes = (int) ($tec->pendientes ?? 0);
+                                    $enProceso  = (int) ($tec->en_proceso ?? 0);
+                                @endphp
+                                <option value="{{ $tec->id }}" data-pend="{{ $pendientes }}" data-proc="{{ $enProceso }}">
+                                    {{ $tec->nombre_tecnico }}
+                                </option>
                             @endforeach
                         </select>
+                        {{-- Dropdown custom empresa --}}
+                        <div class="tec-dropdown" id="tec-dropdown-emp">
+                            <div class="tec-trigger" id="tec-trigger-emp" onclick="toggleTecDropdownEmp()">
+                                <div class="tec-trigger-avatar" id="tec-trigger-avatar-emp">?</div>
+                                <div class="tec-trigger-info">
+                                    <div class="tec-trigger-nombre" id="tec-trigger-nombre-emp">-- Seleccionar tecnico --</div>
+                                    <div class="tec-trigger-stats" id="tec-trigger-stats-emp"></div>
+                                </div>
+                                <i class="bi bi-chevron-down tec-trigger-arrow"></i>
+                            </div>
+                            <div class="tec-dropdown-list" id="tec-dropdown-list-emp">
+                                <div class="tec-search-wrap">
+                                    <input type="text" class="tec-search-inp" placeholder="Buscar técnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list-emp')" autocomplete="off">
+                                </div>
+                                <div class="tec-search-empty" id="tec-empty-emp">Sin coincidencias</div>
+                                <div class="tec-items-scroll" id="tec-items-emp">
+                                @php
+                                    $tecnicoSesionId = (int) session('tecnico_id', 0);
+                                    $maxCargaEmp = 0;
+                                    foreach ($tecnicos as $t) {
+                                        $maxCargaEmp = max($maxCargaEmp, (int)($t->pendientes ?? 0) + (int)($t->en_proceso ?? 0));
+                                    }
+                                    $umbralRojoEmp = max(2, (int) ceil($maxCargaEmp * 0.7));
+                                @endphp
+                                @foreach($tecnicos as $tec)
+                                    @php
+                                        $pendientes = (int) ($tec->pendientes ?? 0);
+                                        $enProceso  = (int) ($tec->en_proceso ?? 0);
+                                        $total = $pendientes + $enProceso;
+                                        $esTuMismo = ($tec->id === $tecnicoSesionId);
+                                        if ($total === 0)       { $color = '#10b981'; $etiqueta = 'Libre'; }
+                                        elseif ($total <= $umbralRojoEmp) { $color = '#f59e0b'; $etiqueta = 'Normal'; }
+                                        else                    { $color = '#ef4444'; $etiqueta = 'Cargado'; }
+                                    @endphp
+                                    <div class="tec-item {{ $esTuMismo ? 'tec-item-yo' : '' }}"
+                                         data-tec-id="{{ $tec->id }}"
+                                         onclick="seleccionarTecnicoEmp(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
+                                        <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
+                                        <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
+                                        @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
+                                        <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
+                                        <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
+                                    </div>
+                                @endforeach
+                                </div>{{-- /tec-items-scroll --}}
+                            </div>
+                        </div>
                     </div>
                     <div class="campo">
                         <label>Fecha Prometido <span class="req">*</span></label>
@@ -545,7 +610,13 @@
                                 <i class="bi bi-chevron-down tec-trigger-arrow"></i>
                             </div>
                             <div class="tec-dropdown-list" id="tec-dropdown-list">
+                                <div class="tec-search-wrap">
+                                    <input type="text" class="tec-search-inp" placeholder="Buscar técnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list')" autocomplete="off">
+                                </div>
+                                <div class="tec-search-empty" id="tec-empty-per">Sin coincidencias</div>
+                                <div class="tec-items-scroll" id="tec-items-per">
                                 @php
+                                    $tecnicoSesionId = (int) session('tecnico_id', 0);
                                     $maxCarga = 0;
                                     foreach ($tecnicos as $t) {
                                         $maxCarga = max($maxCarga, (int)($t->pendientes ?? 0) + (int)($t->en_proceso ?? 0));
@@ -557,6 +628,7 @@
                                         $pendientes = (int) ($tec->pendientes ?? 0);
                                         $enProceso = (int) ($tec->en_proceso ?? 0);
                                         $total = $pendientes + $enProceso;
+                                        $esTuMismo = ($tec->id === $tecnicoSesionId);
                                         if ($total === 0) {
                                             $color = '#10b981';
                                             $etiqueta = 'Libre';
@@ -568,15 +640,17 @@
                                             $etiqueta = 'Cargado';
                                         }
                                     @endphp
-                                    <div class="tec-item"
+                                    <div class="tec-item {{ $esTuMismo ? 'tec-item-yo' : '' }}"
                                          data-tec-id="{{ $tec->id }}"
-                                         onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }})">
-                                        <div class="tec-item-avatar" style="background:{{ $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
+                                         onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $esTuMismo ? '#2563eb' : $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
+                                        <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
                                         <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
-                                        <span class="tec-item-stats">{{ $pendientes }}P Â· {{ $enProceso }}EP</span>
+                                        @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
+                                        <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
                                         <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
                                     </div>
                                 @endforeach
+                                </div>{{-- /tec-items-scroll --}}
                             </div>
                         </div>
                     </div>
@@ -696,30 +770,116 @@ function mostrarMensaje(isError, texto) {
 
 function toggleTecDropdown() {
     const trigger = document.getElementById('tec-trigger');
-    const list = document.getElementById('tec-dropdown-list');
+    const list    = document.getElementById('tec-dropdown-list');
     if (!trigger || !list) return;
+    // Cerrar el otro dropdown si está abierto
+    _cerrarDropdownEmp();
     const open = list.classList.contains('open');
     trigger.classList.toggle('open', !open);
     list.classList.toggle('open', !open);
+    if (!open) {
+        // Al abrir: limpiar buscador y enfocar
+        const inp = list.querySelector('.tec-search-inp');
+        if (inp) { inp.value = ''; filtrarTecnicos(inp, 'tec-dropdown-list'); setTimeout(() => inp.focus(), 50); }
+    }
 }
 
-function seleccionarTecnico(item, tecId, nombre, color, _etiqueta, pend, enproc) {
+function toggleTecDropdownEmp() {
+    const trigger = document.getElementById('tec-trigger-emp');
+    const list    = document.getElementById('tec-dropdown-list-emp');
+    if (!trigger || !list) return;
+    // Cerrar el otro dropdown si está abierto
+    _cerrarDropdownPer();
+    const open = list.classList.contains('open');
+    trigger.classList.toggle('open', !open);
+    list.classList.toggle('open', !open);
+    if (!open) {
+        const inp = list.querySelector('.tec-search-inp');
+        if (inp) { inp.value = ''; filtrarTecnicos(inp, 'tec-dropdown-list-emp'); setTimeout(() => inp.focus(), 50); }
+    }
+}
+
+function _cerrarDropdownPer() {
+    document.getElementById('tec-dropdown-list')?.classList.remove('open');
+    document.getElementById('tec-trigger')?.classList.remove('open');
+}
+function _cerrarDropdownEmp() {
+    document.getElementById('tec-dropdown-list-emp')?.classList.remove('open');
+    document.getElementById('tec-trigger-emp')?.classList.remove('open');
+}
+
+// Filtrado en tiempo real por nombre
+function filtrarTecnicos(inp, listId) {
+    const q = (inp.value || '').toLowerCase().trim();
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const items = list.querySelectorAll('.tec-items-scroll .tec-item');
+    let visibles = 0;
+    items.forEach(item => {
+        const nombre = (item.querySelector('.tec-item-nombre')?.textContent || '').toLowerCase();
+        const mostrar = q === '' || nombre.includes(q);
+        item.style.display = mostrar ? '' : 'none';
+        if (mostrar) visibles++;
+    });
+    // Mostrar/ocultar mensaje de sin resultados
+    const emptyEl = list.querySelector('.tec-search-empty');
+    if (emptyEl) emptyEl.style.display = visibles === 0 ? 'block' : 'none';
+}
+
+// Cerrar dropdowns al hacer click fuera
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#tec-dropdown') && !e.target.closest('#tec-dropdown-emp')) {
+        _cerrarDropdownPer();
+        _cerrarDropdownEmp();
+    }
+});
+
+
+function seleccionarTecnico(item, tecId, nombre, color, _etiqueta, pend, enproc, esTu = false) {
     const sel = document.getElementById('ord_tecnico_id');
-    const av = document.getElementById('tec-trigger-avatar');
-    const nm = document.getElementById('tec-trigger-nombre');
-    const st = document.getElementById('tec-trigger-stats');
+    const av  = document.getElementById('tec-trigger-avatar');
+    const nm  = document.getElementById('tec-trigger-nombre');
+    const st  = document.getElementById('tec-trigger-stats');
     const trigger = document.getElementById('tec-trigger');
-    const list = document.getElementById('tec-dropdown-list');
+    const list    = document.getElementById('tec-dropdown-list');
 
     if (sel) sel.value = String(tecId);
     if (av) {
         av.style.background = color;
         av.textContent = (nombre || '?').substring(0, 1).toUpperCase();
     }
-    if (nm) nm.textContent = nombre || '-- Seleccionar tÃ©cnico --';
-    if (st) st.textContent = `${pend} pend. Â· ${enproc} en proc.`;
+    if (nm) {
+        nm.innerHTML = escHtml(nombre || '-- Seleccionar técnico --')
+            + (esTu ? ' <span class="tec-trigger-yo">★ Tú</span>' : '');
+    }
+    if (st) st.textContent = `${pend} pend. · ${enproc} en proc.`;
 
     document.querySelectorAll('#tec-dropdown-list .tec-item').forEach((el) => el.classList.remove('selected'));
+    if (item) item.classList.add('selected');
+    if (trigger) trigger.classList.remove('open');
+    if (list) list.classList.remove('open');
+}
+
+function seleccionarTecnicoEmp(item, tecId, nombre, color, _etiqueta, pend, enproc, esTu = false) {
+    const sel = document.getElementById('ord_tecnico_id_empresa');
+    const av  = document.getElementById('tec-trigger-avatar-emp');
+    const nm  = document.getElementById('tec-trigger-nombre-emp');
+    const st  = document.getElementById('tec-trigger-stats-emp');
+    const trigger = document.getElementById('tec-trigger-emp');
+    const list    = document.getElementById('tec-dropdown-list-emp');
+
+    if (sel) sel.value = String(tecId);
+    if (av) {
+        av.style.background = color;
+        av.textContent = (nombre || '?').substring(0, 1).toUpperCase();
+    }
+    if (nm) {
+        nm.innerHTML = escHtml(nombre || '-- Seleccionar técnico --')
+            + (esTu ? ' <span class="tec-trigger-yo">★ Tú</span>' : '');
+    }
+    if (st) st.textContent = `${pend} pend. · ${enproc} en proc.`;
+
+    document.querySelectorAll('#tec-dropdown-list-emp .tec-item').forEach((el) => el.classList.remove('selected'));
     if (item) item.classList.add('selected');
     if (trigger) trigger.classList.remove('open');
     if (list) list.classList.remove('open');
@@ -734,11 +894,8 @@ function sincronizarTecnicoDesdeSelect() {
         const nm = document.getElementById('tec-trigger-nombre');
         const st = document.getElementById('tec-trigger-stats');
         document.querySelectorAll('#tec-dropdown-list .tec-item').forEach((el) => el.classList.remove('selected'));
-        if (av) {
-            av.style.background = '#94a3b8';
-            av.textContent = '?';
-        }
-        if (nm) nm.textContent = '-- Seleccionar tÃ©cnico --';
+        if (av) { av.style.background = '#94a3b8'; av.textContent = '?'; }
+        if (nm) nm.textContent = '-- Seleccionar técnico --';
         if (st) st.textContent = '';
         return;
     }

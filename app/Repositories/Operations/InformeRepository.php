@@ -553,7 +553,6 @@ class InformeRepository
             ->leftJoin('empresas as emp', 'oe.empresa_id', '=', 'emp.id')
             ->leftJoin('equipos as eq', 'oe.equipo_id', '=', 'eq.id')
             ->leftJoin('usuarios as u', 'oe.tecnico_id', '=', 'u.id')
-            ->whereRaw("oe.subtipo COLLATE utf8mb4_0900_ai_ci = 'Autoconsumo'")
             ->selectRaw("
                 -CAST(oe.id AS SIGNED) as id,
                 'empresa' as tipo_orden,
@@ -587,7 +586,12 @@ class InformeRepository
                 $qEmpresas->whereRaw("emp.ruc COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
                 break;
             case 'factura':
-                $qEmpresas->whereRaw("oe.nro_ticket COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
+            case 'nro_ticket':
+                // Buscar por ticket de empresa O por nro_orden
+                $qEmpresas->where(function ($inner) use ($qLike) {
+                    $inner->whereRaw("oe.nro_ticket COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike])
+                          ->orWhereRaw("oe.nro_orden COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
+                });
                 break;
             default:
                 $qEmpresas->whereRaw("oe.nro_orden COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
