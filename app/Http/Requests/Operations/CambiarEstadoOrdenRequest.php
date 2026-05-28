@@ -15,9 +15,14 @@ class CambiarEstadoOrdenRequest extends FormRequest
 
     public function rules(): array
     {
+        $tipoOrden = $this->input('tipo_orden') === 'empresa' ? 'empresa' : 'personal';
+
         return [
-            'id' => ['required', 'integer', 'exists:ordenes,id'],
-            'estado' => ['required', 'string', 'in:Pendiente,En proceso,Finalizada,Entregada,Nota de Credito'],
+            'id' => ['required', 'integer', $tipoOrden === 'empresa' ? 'exists:ordenesempresas,id' : 'exists:ordenes,id'],
+            'tipo_orden' => ['nullable', 'string', 'in:personal,empresa'],
+            'estado' => ['required', 'string', $tipoOrden === 'empresa'
+                ? 'in:Pendiente,En proceso,Finalizada,Entregada'
+                : 'in:Pendiente,En proceso,Finalizada,Entregada,Nota de Credito'],
             'nc_asunto' => ['nullable', 'string', 'max:255', 'required_if:estado,Nota de Credito'],
             'nc_detalles' => ['nullable', 'string', 'max:5000', 'required_if:estado,Nota de Credito'],
         ];

@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 @section('titulo', 'Crear Orden de Servicio')
 
 @push('css_adicional')
@@ -215,9 +215,9 @@
                         <label>Motivo <span class="req">*</span></label>
                         <select id="motivo_ingreso" name="motivo_ingreso" required onchange="actualizarMotivo()">
                             <option value="">-- Seleccione --</option>
-                            <option value="Servicio Tecnico">Servicio Tecnico</option>
                             <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
                             <option value="Validacion de Garantia">Validacion de Garantia</option>
+                            <option value="Servicios a Empresas">Servicios a Empresas</option>
                         </select>
                     </div>
                     <div class="campo">
@@ -237,7 +237,142 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-empresa-flow hidden">
+            <div class="seccion-hdr"><i class="bi bi-building"></i> Empresa</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Seleccionar Empresa <span class="req">*</span></label>
+                        <select name="empresa_id" id="empresa_id" onchange="onEmpresaChange(this.value)">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($empresas as $empresa)
+                                <option value="{{ $empresa->id }}">{{ $empresa->nombre }} - {{ $empresa->ruc }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Tipo <span class="req">*</span></label>
+                        <div style="display:flex;gap:24px;margin-top:10px;">
+                            <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                                <input type="radio" name="subtipo_empresa" value="Autoconsumo" onchange="onSubtipoEmpresaChange(this.value)">
+                                Autoconsumo
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                                <input type="radio" name="subtipo_empresa" value="Servicios" onchange="onSubtipoEmpresaChange(this.value)">
+                                Servicios
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bloque-form-servicios-empresa" class="seccion-form bloque-empresa-detalle hidden">
+            <div class="seccion-hdr"><i class="bi bi-tools"></i> Datos del Servicio</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Tipo de Servicio <span class="req">*</span></label>
+                        <select name="emp_tipo_servicio" id="emp_tipo_servicio">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($tiposServicio as $ts)
+                                <option value="{{ $ts->nombre }}">{{ $ts->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Nro. Ticket <span class="req">*</span></label>
+                        <input type="text" name="emp_nro_ticket" id="emp_nro_ticket" autocomplete="off"
+                               placeholder="Ingrese el numero de ticket" oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                </div>
+                <div class="campo">
+                    <label>Descripcion <span class="req">*</span></label>
+                    <textarea name="emp_descripcion" id="emp_descripcion" rows="4" placeholder="Describa el servicio a brindar..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="bloque-equipo-empresa" class="seccion-form bloque-empresa-detalle hidden">
+            <div class="seccion-hdr"><i class="bi bi-hdd"></i> Datos del Equipo</div>
+            <div class="seccion-body">
+                <div class="grid-3">
+                    <div class="campo">
+                        <label>Codigo <span class="req">*</span></label>
+                        <input type="text" name="emp_modelo" id="emp_modelo" autocomplete="off" style="text-transform:uppercase;"
+                               oninput="this.value=this.value.toUpperCase(); buscarProductoEmpresa(this.value);">
+                        <span id="emp-prod-badge" class="prod-badge"></span>
+                    </div>
+                    <div class="campo">
+                        <label>Tipo de Equipo <span class="req">*</span></label>
+                        <select name="emp_tipo_equipo" id="emp_tipo_equipo">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($tiposDispositivo as $tipo)
+                                <option value="{{ $tipo->nombre }}">{{ $tipo->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Tipo de Servicio <span class="req">*</span></label>
+                        <select name="emp_tipo_servicio_id" id="emp_tipo_servicio_id">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($tiposServicio as $ts)
+                                <option value="{{ $ts->id }}">{{ $ts->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Marca <span class="req">*</span></label>
+                        <select name="emp_marca" id="emp_marca">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($marcas as $marca)
+                                <option value="{{ $marca->nombre }}">{{ $marca->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo" style="grid-column: span 2;">
+                        <label>Serie <span class="req">*</span></label>
+                        <div class="lista-lineas" id="series-empresa-container">
+                            <div class="linea-item">
+                                <input type="text" name="emp_series[]" id="emp_serie" oninput="this.value=this.value.toUpperCase()" placeholder="Serie principal">
+                                <button type="button" class="btn-mini" onclick="agregarSerieEmpresa()">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="campo">
+                    <label>Problema Reportado <span class="req">*</span></label>
+                    <textarea name="emp_falla" id="emp_falla" rows="4"></textarea>
+                </div>
+                <div class="campo">
+                    <label>Recepcion / detalles <span class="req">*</span></label>
+                    <textarea name="emp_observacion" id="emp_observacion" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="bloque-asignacion-empresa" class="seccion-form bloque-empresa-detalle hidden">
+            <div class="seccion-hdr"><i class="bi bi-person-gear"></i> Tecnico Responsable</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>Tecnico Asignado <span class="req">*</span></label>
+                        <select id="ord_tecnico_id_empresa_ui" name="ord_tecnico_id">
+                            <option value="">-- Seleccione un Tecnico --</option>
+                            @foreach($tecnicos as $tec)
+                                <option value="{{ $tec->id }}">{{ $tec->nombre_tecnico }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Fecha Prometido <span class="req">*</span></label>
+                        <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-person-badge"></i> Datos del Cliente</div>
             <div class="seccion-body">
                 <div class="grid-3">
@@ -278,7 +413,7 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-laptop"></i> Datos del Equipo</div>
             <div class="seccion-body">
                 <div class="grid-3">
@@ -343,13 +478,13 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantia y Facturacion</div>
             <div class="seccion-body">
                 <div id="bloque-facturacion" class="grid-3 hidden">
                     <div class="campo">
                         <label>Nro. Factura 1</label>
-                        <input type="text" id="nro_factura" name="nro_factura">
+                        <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)">
                     </div>
                     <div class="campo">
                         <label>Nro. Factura 2</label>
@@ -382,7 +517,7 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-person-workspace"></i> Asignacion y Servicio</div>
             <div class="seccion-body">
                 <div class="grid-2">
@@ -500,7 +635,7 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos</div>
             <div class="seccion-body">
                 <div class="grid-2">
@@ -513,7 +648,7 @@
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo hidden">
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-key"></i> Credenciales del Equipo</div>
             <div class="seccion-body">
                 <div class="lista-lineas" id="credenciales-container">
@@ -646,6 +781,12 @@ function escHtml(str) {
 
 function verificarPreorden() {
     if (_preordenIgnorada) return;
+
+    const motivo = document.getElementById('motivo_ingreso').value;
+    if (motivo === 'Servicios a Empresas') {
+        ocultarAvisoPreorden();
+        return;
+    }
 
     const ci = (document.getElementById('cli_identificacion').value || '').trim();
     const codigo = (document.getElementById('producto_inventario_codigo').value || '').trim();
@@ -908,28 +1049,175 @@ function actualizarMotivo() {
 
     const esGarantia = motivo === 'Validacion de Garantia';
     const esExterno = motivo === 'Servicio Cliente Externo';
+    const esEmpresa = motivo === 'Servicios a Empresas';
     const motivoSeleccionado = motivo !== '';
 
-    bloquesDependientes.forEach((el) => el.classList.toggle('hidden', !motivoSeleccionado));
+    bloquesDependientes.forEach((el) => el.classList.toggle('hidden', !motivoSeleccionado || esEmpresa));
+    document.querySelectorAll('.bloque-empresa-flow').forEach((el) => el.classList.toggle('hidden', !esEmpresa));
     if (acciones) acciones.classList.toggle('hidden', !motivoSeleccionado);
     if (lockMsg) lockMsg.classList.toggle('hidden', motivoSeleccionado);
 
-    bloqueFacturacion.classList.toggle('hidden', !esGarantia);
-    bloqueGarantia.classList.toggle('hidden', !esGarantia);
-    bloqueServicioExterno.classList.toggle('hidden', !esExterno);
+    bloqueFacturacion.classList.toggle('hidden', !esGarantia || esEmpresa);
+    bloqueGarantia.classList.toggle('hidden', !esGarantia || esEmpresa);
+    bloqueServicioExterno.classList.toggle('hidden', !esExterno || esEmpresa);
 
-    tipoServicioSelect.disabled = esGarantia || esExterno;
-    tipoServicioTexto.required = esExterno;
-    nroFactura.required = esGarantia;
-    fechaFacturacion.required = esGarantia;
+    document.querySelectorAll('.bloque-personal input, .bloque-personal select, .bloque-personal textarea').forEach((el) => {
+        el.disabled = esEmpresa;
+    });
+    document.querySelectorAll('.bloque-empresa-flow input, .bloque-empresa-flow select, .bloque-empresa-detalle input, .bloque-empresa-detalle select, .bloque-empresa-detalle textarea').forEach((el) => {
+        el.disabled = !esEmpresa;
+    });
+
+    tipoServicioSelect.disabled = esEmpresa || esGarantia || esExterno;
+    tipoServicioTexto.required = !esEmpresa && esExterno;
+    nroFactura.required = !esEmpresa && esGarantia;
+    fechaFacturacion.required = !esEmpresa && esGarantia;
 
     if (esExterno) {
         selectSucursal.value = '999';
     }
-    selectSucursal.disabled = esExterno;
+    selectSucursal.disabled = esEmpresa || esExterno;
+
+    if (!esEmpresa) {
+        document.querySelectorAll('input[name="subtipo_empresa"]').forEach((r) => r.checked = false);
+        document.querySelectorAll('.bloque-empresa-detalle').forEach((el) => el.classList.add('hidden'));
+        limpiarRequiredEmpresa();
+    }
 
     _preordenIgnorada = false;
     verificarPreorden();
+}
+
+function limpiarRequiredEmpresa() {
+    ['empresa_id','emp_tipo_servicio','emp_nro_ticket','emp_descripcion','emp_modelo','emp_tipo_equipo','emp_tipo_servicio_id','emp_marca','emp_serie','emp_falla','emp_observacion','ord_tecnico_id_empresa_ui','emp_fecha_prometido']
+        .forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.required = false;
+        });
+}
+
+function onEmpresaChange(val) {
+    const activo = Boolean(val);
+    document.querySelectorAll('input[name="subtipo_empresa"]').forEach((r) => {
+        r.disabled = !activo;
+        if (!activo) r.checked = false;
+    });
+    if (!activo) {
+        document.querySelectorAll('.bloque-empresa-detalle').forEach((el) => el.classList.add('hidden'));
+        limpiarRequiredEmpresa();
+    }
+}
+
+function onSubtipoEmpresaChange(valor) {
+    const esServicios = valor === 'Servicios';
+    const esAutoconsumo = valor === 'Autoconsumo';
+
+    document.getElementById('bloque-form-servicios-empresa').classList.toggle('hidden', !esServicios);
+    document.getElementById('bloque-equipo-empresa').classList.toggle('hidden', !esAutoconsumo);
+    document.getElementById('bloque-asignacion-empresa').classList.toggle('hidden', !(esServicios || esAutoconsumo));
+
+    limpiarRequiredEmpresa();
+    document.getElementById('empresa_id').required = true;
+    document.getElementById('ord_tecnico_id_empresa_ui').required = esServicios || esAutoconsumo;
+    document.getElementById('emp_fecha_prometido').required = esServicios || esAutoconsumo;
+
+    if (esServicios) {
+        document.getElementById('emp_tipo_servicio').required = true;
+        document.getElementById('emp_nro_ticket').required = true;
+        document.getElementById('emp_descripcion').required = true;
+    }
+
+    if (esAutoconsumo) {
+        document.getElementById('emp_modelo').required = true;
+        document.getElementById('emp_tipo_equipo').required = true;
+        document.getElementById('emp_tipo_servicio_id').required = true;
+        document.getElementById('emp_marca').required = true;
+        document.getElementById('emp_serie').required = true;
+        document.getElementById('emp_falla').required = true;
+        document.getElementById('emp_observacion').required = true;
+        document.getElementById('emp_nro_ticket').value = '';
+    }
+}
+
+function agregarSerieEmpresa() {
+    const container = document.getElementById('series-empresa-container');
+    const row = document.createElement('div');
+    row.className = 'linea-item';
+    row.innerHTML = `
+        <input type="text" name="emp_series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional">
+        <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
+    `;
+    container.appendChild(row);
+}
+
+function autoseleccionarSucursalPorFactura(valor) {
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
+    if (motivo !== 'Validacion de Garantia') {
+        return;
+    }
+
+    const select = document.getElementById('nro_sucursal_cliente');
+    if (!select) {
+        return;
+    }
+
+    const digitos = String(valor || '').replace(/\D/g, '');
+    if (digitos.length < 3) {
+        return;
+    }
+
+    const numero = String(parseInt(digitos.substring(0, 3), 10));
+    const opcion = Array.from(select.options).find((opt) => String(parseInt(opt.value || '0', 10)) === numero);
+
+    if (opcion) {
+        select.value = opcion.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+function buscarProductoEmpresa(codigo) {
+    clearTimeout(_productoTimer);
+    const badge = document.getElementById('emp-prod-badge');
+    const q = (codigo || '').trim();
+
+    if (q.length < 3) {
+        if (badge) {
+            badge.style.display = 'none';
+            badge.textContent = '';
+        }
+        return;
+    }
+
+    _productoTimer = setTimeout(async () => {
+        try {
+            const r = await fetch(_urlBuscarProductoOrden + '?codigo=' + encodeURIComponent(q), { cache: 'no-store' });
+            const d = await r.json();
+
+            if (!d.ok || !d.producto) {
+                if (badge) {
+                    badge.textContent = 'Codigo no encontrado. Complete los datos y se registrara como producto nuevo.';
+                    badge.style.background = '#fef9c3';
+                    badge.style.color = '#92400e';
+                    badge.style.border = '1px solid #fde68a';
+                    badge.style.display = 'inline-block';
+                }
+                return;
+            }
+
+            const p = d.producto;
+            seleccionarOpcionPorTexto('emp_tipo_equipo', p.tipo_nombre || '');
+            seleccionarOpcionPorTexto('emp_marca', p.marca || '');
+            if (badge) {
+                badge.textContent = 'Producto encontrado: ' + (p.descripcion || p.codigo);
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#166534';
+                badge.style.border = '1px solid #86efac';
+                badge.style.display = 'inline-block';
+            }
+        } catch {
+            if (badge) badge.style.display = 'none';
+        }
+    }, 450);
 }
 
 function agregarSerie() {
@@ -969,7 +1257,10 @@ async function guardarOrden() {
         const d = await r.json();
 
         if(d.ok) {
-            mostrarMensaje(false, `<strong>Â¡Ã‰xito!</strong> ${d.mensaje} <br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`);
+            const linkImprimir = d.tipo_orden === 'empresa'
+                ? `<br><br> <a href="/operaciones/ordenes-empresa/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`
+                : `<br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`;
+            mostrarMensaje(false, `<strong>Exito!</strong> ${d.mensaje}${linkImprimir}`);
             document.getElementById('form-orden').reset();
             actualizarMotivo();
             _preordenIgnorada = false;
@@ -1022,4 +1313,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+
 

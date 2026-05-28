@@ -86,7 +86,7 @@ class InformeController extends Controller
     public function verPorOrden(Request $request): JsonResponse
     {
         $ordenId = (int) $request->query('orden_id', 0);
-        if ($ordenId <= 0) {
+        if ($ordenId === 0) {
             return response()->json(['ok' => false, 'error' => 'Orden invalida.']);
         }
 

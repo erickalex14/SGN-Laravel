@@ -7,6 +7,7 @@ use App\Http\Requests\Operations\GuardarOrdenRequest;
 use App\Services\Operations\CrearOrdenService;
 use App\Repositories\Directory\ClienteRepository;
 use App\Repositories\Directory\CasRepository;
+use App\Repositories\Directory\EmpresaRepository;
 use App\Repositories\Directory\SucursalClienteRepository;
 use App\Repositories\Identity\UsuarioRepository;
 use App\Repositories\Inventory\MarcaRepository;
@@ -31,6 +32,7 @@ class OrdenController extends Controller
     protected TipoDispositivoRepository $tipoDispositivoRepo;
     protected CasRepository $casRepo;
     protected SucursalClienteRepository $sucursalClienteRepo;
+    protected EmpresaRepository $empresaRepo;
     protected ProductoRepository $productoRepo;
     protected OrdenRepository $ordenRepo;
 
@@ -43,6 +45,7 @@ class OrdenController extends Controller
         TipoDispositivoRepository $tipoDispositivoRepo,
         CasRepository $casRepo,
         SucursalClienteRepository $sucursalClienteRepo,
+        EmpresaRepository $empresaRepo,
         ProductoRepository $productoRepo,
         OrdenRepository $ordenRepo
     ) {
@@ -54,19 +57,24 @@ class OrdenController extends Controller
         $this->tipoDispositivoRepo = $tipoDispositivoRepo;
         $this->casRepo = $casRepo;
         $this->sucursalClienteRepo = $sucursalClienteRepo;
+        $this->empresaRepo = $empresaRepo;
         $this->productoRepo = $productoRepo;
         $this->ordenRepo = $ordenRepo;
     }
 
     public function create(): View
     {
+        $verTodosTecnicos = $this->puedeVerTodosTecnicos();
+        $sucursalSesion = (int) session('sucursal_id');
+
         // Tecnicos activos con carga actual (pendientes/en proceso), ordenados por menor carga
-        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual();
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual($verTodosTecnicos, $sucursalSesion);
         $tiposServicio = $this->tipoServicioRepo->obtenerTodos()->where('activo', 1);
         $marcas = $this->marcaRepo->obtenerTodas();
         $tiposDispositivo = $this->tipoDispositivoRepo->obtenerTodos();
         $cas = $this->casRepo->obtenerActivos();
         $sucursalesCliente = $this->sucursalClienteRepo->obtenerTodas();
+        $empresas = $this->empresaRepo->obtenerTodas();
         $productosInventario = $this->productoRepo->obtenerTodos();
 
         return view('operations.ordenes.crear', compact(
@@ -76,6 +84,7 @@ class OrdenController extends Controller
             'tiposDispositivo',
             'cas',
             'sucursalesCliente',
+            'empresas',
             'productosInventario'
         ));
     }
@@ -83,6 +92,32 @@ class OrdenController extends Controller
     public function store(GuardarOrdenRequest $request): JsonResponse
     {
         try {
+            $fechaIngreso = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            $this->validarTecnicoAsignable((int) $request->input('ord_tecnico_id'));
+
+            if ($request->input('motivo_ingreso') === 'Servicios a Empresas') {
+                $orden = $this->service->crearOrdenEmpresa(array_merge($request->validated(), [
+                    'sucursal_id' => (int) session('sucursal_id'),
+                    'ingresado_por' => (int) session('tecnico_id'),
+                    'fecha_ingreso' => $fechaIngreso,
+                ]));
+
+                return response()->json([
+                    'ok' => true,
+                    'mensaje' => 'Orden ' . $orden->nro_orden . ' generada con exito.',
+                    'nro_orden' => $orden->nro_orden,
+                    'orden_id' => $orden->id,
+                    'tipo_orden' => 'empresa'
+                ]);
+            }
+
+            $nroSucursalCliente = $request->input('nro_sucursal_cliente')
+                ? (int) $request->input('nro_sucursal_cliente')
+                : $this->resolverSucursalClienteDesdeFactura(
+                    (string) $request->input('motivo_ingreso'),
+                    (string) $request->input('nro_factura')
+                );
+
             $series = $request->input('series', []);
             if (!is_array($series)) {
                 $series = [$series];
@@ -129,13 +164,13 @@ class OrdenController extends Controller
                 session('sucursal_id'), // Extraido directo de la sesion del usuario logueado
                 (int) $request->input('ord_tecnico_id'),
                 session('tecnico_id'), // Usuario que registra
-                Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s'), // Forzamos timezone legacy
+                $fechaIngreso, // Forzamos timezone legacy
                 $request->input('motivo_ingreso'),
                 $request->input('nro_factura'),
                 $request->input('nro_factura_2'),
                 $request->input('fecha_facturacion'),
                 $request->input('fecha_prometido'),
-                $request->input('nro_sucursal_cliente') ? (int)$request->input('nro_sucursal_cliente') : null,
+                $nroSucursalCliente,
                 $request->input('estado_repuesto'),
                 $request->input('garantia_tipo'),
                 $request->input('cas_id') ? (int)$request->input('cas_id') : null,
@@ -154,6 +189,53 @@ class OrdenController extends Controller
         } catch (Exception $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    private function validarTecnicoAsignable(int $tecnicoId): void
+    {
+        if (!$this->usuarioRepo->tecnicoAsignable(
+            $tecnicoId,
+            $this->puedeVerTodosTecnicos(),
+            (int) session('sucursal_id')
+        )) {
+            throw new Exception('Solo puedes asignar tecnicos de tu sucursal.');
+        }
+    }
+
+    private function puedeVerTodosTecnicos(): bool
+    {
+        return (bool) session('es_superadmin', false)
+            || $this->tienePermisoSesion('usuarios_crear', 'ver')
+            || $this->tienePermisoSesion('usuarios', 'crear')
+            || $this->tienePermisoSesion('usuarios', 'ver');
+    }
+
+    private function tienePermisoSesion(string $modulo, string $accion): bool
+    {
+        $permisos = (array) session('permisos', []);
+        $acciones = (array) ($permisos[$modulo] ?? []);
+        return (bool) ($acciones[$accion] ?? false);
+    }
+
+    private function resolverSucursalClienteDesdeFactura(string $motivoIngreso, string $nroFactura): ?int
+    {
+        if ($motivoIngreso !== 'Validacion de Garantia') {
+            return null;
+        }
+
+        $digitos = preg_replace('/\D+/', '', $nroFactura);
+        if (strlen((string) $digitos) < 3) {
+            return null;
+        }
+
+        $numeroSucursal = (int) substr((string) $digitos, 0, 3);
+        if ($numeroSucursal <= 0) {
+            return null;
+        }
+
+        return $this->sucursalClienteRepo->existeNumero($numeroSucursal)
+            ? $numeroSucursal
+            : null;
     }
 
     // Endpoint AJAX para autocompletar datos del cliente al digitar la cedula
@@ -226,5 +308,13 @@ class OrdenController extends Controller
         }
 
         return view('operations.ordenes.imprimir', compact('orden', 'nombreSucursalCliente'));
+    }
+
+    public function imprimirEmpresa(int $id): View
+    {
+        $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
+        abort_if(!$orden, 404);
+
+        return view('operations.ordenes.imprimir_empresa', compact('orden'));
     }
 }

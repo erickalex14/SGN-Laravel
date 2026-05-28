@@ -13,6 +13,22 @@ use Carbon\Carbon;
 
 class OrdenRepository
 {
+    public function ejecutarConLockSecuencial(int $sucursalId, callable $callback): mixed
+    {
+        $lockName = 'orden_seq_lock_' . $sucursalId;
+        $lock = DB::selectOne('SELECT GET_LOCK(?, 10) AS ok', [$lockName]);
+
+        if (!$lock || (int) $lock->ok !== 1) {
+            throw new \RuntimeException('No se pudo obtener el lock de secuencial. Intente de nuevo.');
+        }
+
+        try {
+            return $callback();
+        } finally {
+            DB::select('SELECT RELEASE_LOCK(?)', [$lockName]);
+        }
+    }
+
     public function generarNumeroOrden(int $sucursalId): string
     {
         $sucursal = Sucursal::find($sucursalId);
@@ -29,13 +45,29 @@ class OrdenRepository
             ->max(DB::raw("CAST(SUBSTRING_INDEX(nro_orden, '-', -1) AS UNSIGNED)"));
 
         $siguienteNumero = max((int)$maxOrden, (int)$maxEmpresa) + 1;
+        $nroOrden = $prefijo . str_pad((string)$siguienteNumero, 6, '0', STR_PAD_LEFT);
 
-        return $prefijo . str_pad((string)$siguienteNumero, 6, '0', STR_PAD_LEFT);
+        $reservados = DB::table('preordenes')
+            ->whereNull('orden_id')
+            ->where('sucursal_id', $sucursalId)
+            ->where('nro_preorden', 'like', $prefijo . '%')
+            ->pluck('nro_preorden')
+            ->map(fn ($valor) => preg_replace('/^PRE-/i', '', (string) $valor))
+            ->all();
+
+        $intentos = 0;
+        while (in_array($nroOrden, $reservados, true) && $intentos < 500) {
+            $siguienteNumero++;
+            $nroOrden = $prefijo . str_pad((string)$siguienteNumero, 6, '0', STR_PAD_LEFT);
+            $intentos++;
+        }
+
+        return $nroOrden;
     }
 
-    public function obtenerOrdenesPorTecnico(int $tecnicoId): Collection
+    public function obtenerOrdenesPorTecnico(int $tecnicoId): BaseCollection
     {
-        return Orden::with([
+        $personales = Orden::with([
                 'cliente',
                 'equipo.credenciales',
                 'sucursal',
@@ -47,6 +79,25 @@ class OrdenRepository
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('id', 'desc')
             ->get();
+
+        $empresas = OrdenEmpresa::with([
+                'empresa',
+                'equipo',
+                'tecnico',
+                'sucursal',
+                'ingresadoPor',
+            ])
+            ->where('tecnico_id', $tecnicoId)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return $personales
+            ->concat($empresas)
+            ->sortByDesc(fn ($orden) => $orden instanceof OrdenEmpresa
+                ? (string) $orden->fecha_ingreso
+                : (string) $orden->fecha_de_ingreso
+            )
+            ->values();
     }
 
     public function buscarPorId(int $id): ?Orden
@@ -66,6 +117,18 @@ class OrdenRepository
             'usuarioIngreso',
             'usuarioModificacion',
             'cas',
+        ])->find($id);
+    }
+
+    public function obtenerOrdenEmpresaCompleta(int $id): ?OrdenEmpresa
+    {
+        return OrdenEmpresa::with([
+            'empresa',
+            'equipo.series',
+            'equipo.tipoServicio',
+            'tecnico',
+            'sucursal',
+            'ingresadoPor',
         ])->find($id);
     }
 

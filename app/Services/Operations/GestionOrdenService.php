@@ -11,6 +11,7 @@ use App\DTOs\Operations\CambiarEstadoGarantiaDTO;
 use App\DTOs\Operations\AsignarRepuestoOrdenDTO;
 use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
 use App\Models\Operations\Orden;
+use App\Models\Operations\OrdenEmpresa;
 use App\Models\Operations\SolicitudNc;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,36 @@ class GestionOrdenService
         $this->repository = $repository;
         $this->notaCreditoRepository = $notaCreditoRepository;
         $this->ordenRepuestoRepository = $ordenRepuestoRepository;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function actualizarEstadoEmpresa(int $ordenId, string $estado, int $usuarioId, bool $esAdmin = false): void
+    {
+        $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
+        if (!$orden) {
+            throw new Exception('La orden de empresa especificada no existe.');
+        }
+
+        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioId) {
+            throw new Exception('Sin permiso sobre esta orden.');
+        }
+
+        $estadoAnterior = (string) $orden->estado;
+        $estadoNormalizado = $this->normalizarEstado($estado);
+        $this->validarTransicionEmpresa($orden, $estadoNormalizado);
+
+        $orden->estado = $estadoNormalizado;
+        $orden->save();
+
+        Log::info('Estado de orden de empresa actualizado.', [
+            'orden_empresa_id' => $orden->id,
+            'nro_orden' => $orden->nro_orden,
+            'estado_anterior' => $estadoAnterior,
+            'nuevo_estado' => $orden->estado,
+            'usuario_id' => $usuarioId,
+        ]);
     }
 
     /**
@@ -188,6 +219,26 @@ class GestionOrdenService
             throw new Exception('Debe registrar un informe tecnico antes de solicitar la Nota de Credito.');
         }
 
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function validarTransicionEmpresa(OrdenEmpresa $orden, string $nuevoEstado): void
+    {
+        $estadoActual = trim((string) $orden->estado);
+
+        if (!in_array($nuevoEstado, ['Pendiente', 'En proceso', 'Finalizada', 'Entregada'], true)) {
+            throw new Exception('Estado no permitido para orden de empresa.');
+        }
+
+        if ($estadoActual === 'Entregada') {
+            throw new Exception('La orden ya fue entregada y no puede modificarse.');
+        }
+
+        if ($estadoActual === 'Finalizada' && $nuevoEstado !== 'Entregada') {
+            throw new Exception('Una orden finalizada solo puede cambiar a Entregada.');
+        }
     }
 
     /**

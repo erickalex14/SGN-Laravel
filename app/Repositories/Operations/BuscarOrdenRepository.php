@@ -11,9 +11,12 @@ class BuscarOrdenRepository
     public function buscar(BuscarOrdenDTO $dto): Collection
     {
         $query = DB::table('vista_ordenes as vo')
+            ->leftJoin('ordenesempresas as oe', function ($join) {
+                $join->on('oe.id', '=', 'vo.orden_id')
+                    ->where('vo.tipo_orden', '=', 'empresa');
+            })
             ->leftJoin('informes as inf', function ($join) {
-                $join->on('inf.orden_id', '=', 'vo.orden_id')
-                    ->where('vo.tipo_orden', '=', 'personal');
+                $join->on('inf.orden_id', '=', DB::raw("CASE WHEN vo.tipo_orden = 'empresa' THEN -vo.orden_id ELSE vo.orden_id END"));
             })
             ->select([
                 'vo.orden_id',
@@ -22,7 +25,7 @@ class BuscarOrdenRepository
                 'vo.estado_orden',
                 'vo.estado_repuesto',
                 'vo.estado_garantia',
-                'vo.nro_factura',
+                DB::raw("CASE WHEN vo.tipo_orden = 'empresa' THEN oe.nro_ticket ELSE vo.nro_factura END as nro_factura"),
                 'vo.nro_factura_2',
                 'vo.motivo_ingreso',
                 'vo.nro_sucursal_cliente',
@@ -84,7 +87,8 @@ class BuscarOrdenRepository
             case 'factura':
                 $query->where(function ($inner) use ($qLike) {
                     $inner->where('vo.nro_factura', 'like', $qLike)
-                        ->orWhere('vo.nro_factura_2', 'like', $qLike);
+                        ->orWhere('vo.nro_factura_2', 'like', $qLike)
+                        ->orWhere('oe.nro_ticket', 'like', $qLike);
                 });
                 break;
         }
@@ -99,4 +103,3 @@ class BuscarOrdenRepository
             ->get();
     }
 }
-

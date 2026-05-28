@@ -47,6 +47,7 @@
 .oa-meta { font-size: 11px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2px 8px; }
 .oa-actions { display: flex; gap: 8px; padding: 9px 12px 12px; border-top: 1px solid #f1f5f9; }
 .btn-det { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border-radius: 7px; padding: 7px 10px; font-size: 12px; font-weight: 700; text-decoration: none; border: 1px solid transparent; }
+.btn-det.ver { cursor: pointer; }
 .btn-det.ot { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .btn-det.ver { background: #f8fafc; color: #334155; border-color: #e2e8f0; }
 
@@ -158,8 +159,12 @@
                                     @if(!empty($o->motivo_ingreso))<span class="oa-meta">{{ $o->motivo_ingreso }}</span>@endif
                                 </div>
                                 <div class="oa-actions">
-                                    <a class="btn-det ot" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
-                                    <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
+                                    <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
+                                    @if(($o->tipo_orden ?? 'personal') === 'personal')
+                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
+                                    @else
+                                        <button type="button" class="btn-det ver" onclick="abrirDetalleDesdeCard(this.closest('[data-orden]'))"><i class="bi bi-eye"></i> Ver detalle</button>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -182,8 +187,12 @@
                                     <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
                                 </div>
                                 <div class="oa-actions">
-                                    <a class="btn-det ot" target="_blank" href="{{ route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
-                                    <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
+                                    <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
+                                    @if(($o->tipo_orden ?? 'personal') === 'personal')
+                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
+                                    @else
+                                        <button type="button" class="btn-det ver" onclick="abrirDetalleDesdeCard(this.closest('[data-orden]'))"><i class="bi bi-eye"></i> Ver detalle</button>
+                                    @endif
                                 </div>
                             </div>
                         @empty

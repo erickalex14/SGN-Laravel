@@ -296,6 +296,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
     // Reimpresion de comprobante OT (legacy: disponible para usuario autenticado)
     Route::get('/operaciones/ordenes/{id}/imprimir', [OrdenController::class, 'imprimir'])->name('ordenes.imprimir');
+    Route::get('/operaciones/ordenes-empresa/{id}/imprimir', [OrdenController::class, 'imprimirEmpresa'])->name('ordenes_empresa.imprimir');
 
     //-------------------------------------------------------
     //-----------------MODULO INFORMES-----------------------

@@ -171,44 +171,49 @@
 @section('contenido')
 @php
     $rows = $ordenes->map(function ($ord) {
-        $credenciales = collect($ord->equipo?->credenciales ?? [])->map(fn($c) => [
+        $esEmpresa = $ord instanceof \App\Models\Operations\OrdenEmpresa;
+        $credenciales = $esEmpresa ? collect() : collect($ord->equipo?->credenciales ?? [])->map(fn($c) => [
             'usuario' => (string) ($c->usuario ?? ''),
             'contrasena' => (string) ($c->contrasena ?? ''),
             'es_patron' => (bool) ($c->es_patron ?? false),
         ])->values();
 
-        $ultimoNc = collect($ord->solicitudesNc ?? [])->sortByDesc('id')->first();
-        $informe = collect($ord->informes ?? [])->sortByDesc('id')->first();
+        $ultimoNc = $esEmpresa ? null : collect($ord->solicitudesNc ?? [])->sortByDesc('id')->first();
+        $informe = $esEmpresa ? null : collect($ord->informes ?? [])->sortByDesc('id')->first();
 
         return [
             'id' => (int) $ord->id,
             'nro_orden' => (string) $ord->nro_orden,
-            'estado_orden' => (string) ($ord->estado_orden ?? ''),
-            'estado_repuesto' => (string) ($ord->estado_repuesto ?: 'No requerido'),
-            'fecha_de_ingreso' => (string) ($ord->fecha_de_ingreso ?? ''),
-            'fecha_entrega' => (string) ($ord->fecha_entrega ?? ''),
-            'motivo_ingreso' => (string) ($ord->motivo_ingreso ?? ''),
-            'estado_garantia' => (string) ($ord->estado_garantia ?? 'Pendiente'),
-            'cliente' => trim(((string) ($ord->cliente->nombres ?? '')) . ' ' . ((string) ($ord->cliente->apellidos ?? ''))),
-            'identificacion' => (string) ($ord->cliente->identificacion ?? ''),
-            'numero_contacto' => (string) ($ord->cliente->numero_contacto ?? ''),
-            'correo' => (string) ($ord->cliente->correo ?? ''),
+            'estado_orden' => (string) ($esEmpresa ? ($ord->estado ?? '') : ($ord->estado_orden ?? '')),
+            'estado_repuesto' => (string) ($esEmpresa ? 'No requerido' : ($ord->estado_repuesto ?: 'No requerido')),
+            'fecha_de_ingreso' => (string) ($esEmpresa ? ($ord->fecha_ingreso ?? '') : ($ord->fecha_de_ingreso ?? '')),
+            'fecha_entrega' => (string) ($esEmpresa ? '' : ($ord->fecha_entrega ?? '')),
+            'motivo_ingreso' => (string) ($esEmpresa ? ('Empresa - ' . ($ord->subtipo ?? '')) : ($ord->motivo_ingreso ?? '')),
+            'estado_garantia' => (string) ($esEmpresa ? '' : ($ord->estado_garantia ?? 'Pendiente')),
+            'cliente' => $esEmpresa
+                ? (string) ($ord->empresa->nombre ?? '')
+                : trim(((string) ($ord->cliente->nombres ?? '')) . ' ' . ((string) ($ord->cliente->apellidos ?? ''))),
+            'identificacion' => (string) ($esEmpresa ? ($ord->empresa->ruc ?? '') : ($ord->cliente->identificacion ?? '')),
+            'numero_contacto' => (string) ($esEmpresa ? ($ord->empresa->telefono ?? '') : ($ord->cliente->numero_contacto ?? '')),
+            'correo' => (string) ($esEmpresa ? ($ord->empresa->correo ?? '') : ($ord->cliente->correo ?? '')),
             'equipo_id' => (int) ($ord->equipo_id ?? 0),
             'tipo' => (string) ($ord->equipo->tipo ?? ''),
             'marca' => (string) ($ord->equipo->marca ?? ''),
             'modelo' => (string) ($ord->equipo->modelo ?? ''),
             'serie' => (string) ($ord->equipo->serie ?? ''),
-            'falla' => (string) ($ord->equipo->falla ?? ''),
+            'falla' => (string) ($esEmpresa ? ($ord->descripcion ?? $ord->equipo->falla ?? '') : ($ord->equipo->falla ?? '')),
             'observacion' => (string) ($ord->equipo->observacion ?? ''),
-            'tecnico' => (string) (session('nombre') ?? session('usuario') ?? ''),
+            'tecnico' => (string) ($esEmpresa ? ($ord->tecnico->nombre_tecnico ?? '') : (session('nombre') ?? session('usuario') ?? '')),
             'sucursal' => (string) ($ord->sucursal->ciudad ?? $ord->sucursal->nombre ?? ''),
-            'nro_factura' => (string) ($ord->nro_factura ?? ''),
-            'nro_sucursal_cliente' => (string) ($ord->nro_sucursal_cliente ?? ''),
-            'ingresado_por_nombre' => (string) ($ord->usuarioIngreso->nombre_tecnico ?? $ord->usuarioIngreso->usuario ?? ''),
-            'repuesto_inventario_id' => (int) ($ord->repuesto_inventario_id ?? 0),
-            'repuesto_codigo' => (string) ($ord->repuestoInventario->codigo ?? ''),
-            'repuesto_nombre' => (string) ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? ''),
-            'tipo_orden' => 'personal',
+            'nro_factura' => (string) ($esEmpresa ? ($ord->nro_ticket ?? '') : ($ord->nro_factura ?? '')),
+            'nro_sucursal_cliente' => (string) ($esEmpresa ? '' : ($ord->nro_sucursal_cliente ?? '')),
+            'ingresado_por_nombre' => (string) ($esEmpresa
+                ? ($ord->ingresadoPor->nombre_tecnico ?? $ord->ingresadoPor->usuario ?? '')
+                : ($ord->usuarioIngreso->nombre_tecnico ?? $ord->usuarioIngreso->usuario ?? '')),
+            'repuesto_inventario_id' => (int) ($esEmpresa ? 0 : ($ord->repuesto_inventario_id ?? 0)),
+            'repuesto_codigo' => (string) ($esEmpresa ? '' : ($ord->repuestoInventario->codigo ?? '')),
+            'repuesto_nombre' => (string) ($esEmpresa ? '' : ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? '')),
+            'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'credenciales' => $credenciales,
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
@@ -295,7 +300,7 @@
                         default => '#475569',
                     };
                 @endphp
-                <div class="orden-card" data-estado="{{ $o['estado_orden'] }}" id="card-{{ $o['id'] }}" data-orden='@json($o)'>
+                <div class="orden-card" data-estado="{{ $o['estado_orden'] }}" id="card-{{ $o['tipo_orden'] }}-{{ $o['id'] }}" data-orden='@json($o)'>
                     <div class="card-top" onclick="verDetalleOrden(this.parentElement)">
                         <span class="card-nro">{{ $o['nro_orden'] }}</span>
                         <span style="background:{{ $estadoBg }};color:{{ $estadoColor }};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">{{ $o['estado_orden'] }}</span>
@@ -320,11 +325,17 @@
 
                     <div class="card-actions">
                         <button class="btn-accion btn-detalle-orden" onclick="verDetalleOrden(this.closest('[data-orden]'))">
-                            <i class="bi bi-sliders"></i> Gestionar
+                            <i class="bi bi-sliders"></i> {{ $o['tipo_orden'] === 'empresa' ? 'Detalle' : 'Gestionar' }}
                         </button>
-                        <a class="btn-accion btn-imprimir-ot" href="{{ route('ordenes.imprimir', ['id' => $o['id']]) }}" target="_blank">
-                            <i class="bi bi-printer"></i> Reimprimir OT
-                        </a>
+                        @if($o['tipo_orden'] === 'personal')
+                            <a class="btn-accion btn-imprimir-ot" href="{{ route('ordenes.imprimir', ['id' => $o['id']]) }}" target="_blank">
+                                <i class="bi bi-printer"></i> Reimprimir OT
+                            </a>
+                        @else
+                            <a class="btn-accion btn-imprimir-ot" href="{{ route('ordenes_empresa.imprimir', ['id' => $o['id']]) }}" target="_blank">
+                                <i class="bi bi-printer"></i> Reimprimir OT
+                            </a>
+                        @endif
                         @if($o['estado_orden'] === 'Nota de Credito')
                             @if($o['nc_id'] && $o['nc_estado'] === 'Aprobada')
                                 <a class="btn-accion btn-imprimir-nc" href="{{ route('notas_credito.imprimir', ['id' => $o['nc_id']]) }}" target="_blank">
@@ -479,9 +490,9 @@ function filtrarOrdenes(estado) {
     if (active) active.classList.add('activo');
 }
 
-async function cambiarEstado(ordenId, nuevoEstado, nroOrden) {
+async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'personal') {
     if (!nuevoEstado) return;
-    if (nuevoEstado === 'Nota de Credito') {
+    if (tipoOrden !== 'empresa' && nuevoEstado === 'Nota de Credito') {
         abrirModalNC(ordenId);
         return;
     }
@@ -491,6 +502,7 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden) {
     fd.append('_token', _moCsrf);
     fd.append('id', ordenId);
     fd.append('estado', nuevoEstado);
+    fd.append('tipo_orden', tipoOrden);
 
     try {
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
@@ -765,6 +777,7 @@ function verDetalleOrden(cardEl) {
     if (!o || !o.id) return;
 
     const esGarantia = (o.motivo_ingreso || '') === 'Validacion de Garantia';
+    const esEmpresa = (o.tipo_orden || '') === 'empresa';
     const repSeleccionado = Number(o.repuesto_inventario_id || 0) > 0;
     const repTextoSeleccionado = [o.repuesto_codigo || '', o.repuesto_nombre || '']
         .filter(Boolean)
@@ -791,6 +804,7 @@ function verDetalleOrden(cardEl) {
                     <div class="det-campo"><label>Serie</label><span>${_h(o.serie || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal</label><span>${_h(o.sucursal || '-')}</span></div>
                     <div class="det-campo"><label>Motivo</label><span>${_h(o.motivo_ingreso || '-')}</span></div>
+                    ${esEmpresa ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
                 </div>
@@ -798,13 +812,34 @@ function verDetalleOrden(cardEl) {
 
             <hr class="det-sep">
 
+            ${esEmpresa ? `
+            <div class="gestion-panel">
+                <div class="gestion-panel-title"><i class="bi bi-sliders2"></i>Gestion de orden empresa</div>
+                <div class="gestion-row">
+                    <span class="gestion-icon"><i class="bi bi-activity"></i></span>
+                    <span class="gestion-label">Estado</span>
+                    <select class="gestion-select" onchange="cambiarEstado(${Number(o.id)}, this.value, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}', 'empresa')">
+                        <option value="">Cambiar a...</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Finalizada">Finalizada</option>
+                        <option value="Entregada">Entregada</option>
+                    </select>
+                    <span class="gestion-feedback">&#8635;</span>
+                </div>
+                <div class="gestion-actions-rep" style="margin-top:12px;">
+                    <button type="button" class="btn-mini-rep" onclick="abrirInformeDeOrden(${-1 * Number(o.id)})"><i class="bi bi-pencil-square me-1"></i>Gestionar informe</button>
+                    <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
+                </div>
+            </div>
+            ` : `
             <div class="gestion-panel">
                 <div class="gestion-panel-title"><i class="bi bi-sliders2"></i>Gestion de la orden</div>
 
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-activity"></i></span>
                     <span class="gestion-label">Estado</span>
-                    <select class="gestion-select" onchange="cambiarEstado(${Number(o.id)}, this.value, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}')">
+                    <select class="gestion-select" onchange="cambiarEstado(${Number(o.id)}, this.value, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}', 'personal')">
                         <option value="">Cambiar a...</option>
                         <option value="Pendiente">Pendiente</option>
                         <option value="En proceso">En proceso</option>
@@ -861,6 +896,7 @@ function verDetalleOrden(cardEl) {
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
                 </div>
             </div>
+            `}
         </div>
     `;
 

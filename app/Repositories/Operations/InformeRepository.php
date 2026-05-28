@@ -64,7 +64,6 @@ class InformeRepository
 
         $empresas = OrdenEmpresa::query()
             ->with(['empresa', 'equipo', 'tecnico', 'ingresadoPor'])
-            ->where('subtipo', 'Autoconsumo')
             ->when(!$esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
             ->when($esAdmin && !$esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
             ->orderByDesc('id')
@@ -77,25 +76,25 @@ class InformeRepository
                 $equipoNombre = trim($equipoTipo . ' ' . $equipoMarca . ' ' . $equipoModelo);
 
                 return (object) [
-                    'id' => $orden->id,
+                    'id' => -1 * (int) $orden->id,
                     'tipo_orden' => 'empresa',
                     'nro_orden' => (string) $orden->nro_orden,
                     'estado_orden' => (string) ($orden->estado ?? ''),
-                    'cliente_nombre' => (string) ($orden->empresa->nombre ?? 'EMPRESA'),
+                    'cliente_nombre' => trim((string) ($orden->empresa->nombre ?? 'EMPRESA') . ' - ' . (string) ($orden->subtipo ?? '')),
                     'cliente_identificacion' => (string) ($orden->empresa->ruc ?? ''),
                     'cliente_telefono' => (string) ($orden->empresa->telefono ?? ''),
                     'cliente_correo' => (string) ($orden->empresa->correo ?? ''),
                     'cliente_direccion' => (string) ($orden->empresa->direccion_empresa ?? ''),
-                    'equipo_nombre' => $equipoNombre,
+                    'equipo_nombre' => $equipoNombre !== '' ? $equipoNombre : (string) ($orden->tipo_servicio ?? 'Servicio'),
                     'equipo_tipo' => $equipoTipo,
                     'equipo_marca' => $equipoMarca,
                     'equipo_modelo' => $equipoModelo,
                     'equipo_serie' => $equipoSerie,
                     'tecnico' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'ingresado_por_nombre' => (string) ($orden->ingresadoPor->nombre_tecnico ?? ''),
-                    'nro_factura' => '',
+                    'nro_factura' => (string) ($orden->nro_ticket ?? ''),
                     'nro_factura_2' => '',
-                    'tiene_informe' => in_array((int) $orden->id, $idsConInforme, true),
+                    'tiene_informe' => in_array(-1 * (int) $orden->id, $idsConInforme, true),
                 ];
             });
 
@@ -115,7 +114,8 @@ class InformeRepository
             ->leftJoin('ordenes as o', 'i.orden_id', '=', 'o.id')
             ->leftJoin('clientes as c', 'o.cliente_id', '=', 'c.id')
             ->leftJoin('ordenesempresas as oe', function ($join) {
-                $join->on('i.orden_id', '=', 'oe.id')
+                $join->on(DB::raw('ABS(i.orden_id)'), '=', 'oe.id')
+                    ->where('i.orden_id', '<', 0)
                     ->whereNull('o.id');
             })
             ->leftJoin('empresas as emp', 'oe.empresa_id', '=', 'emp.id')
@@ -149,6 +149,26 @@ class InformeRepository
         bool $esMaster,
         int $sucursalSesion
     ): ?array {
+        if ($ordenId < 0) {
+            $ordenEmpresaId = abs($ordenId);
+            $ordenEmpresa = OrdenEmpresa::query()
+                ->select(['id', 'tecnico_id', 'sucursal_id', 'estado'])
+                ->where('id', $ordenEmpresaId)
+                ->when(!$esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
+                ->when($esAdmin && !$esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
+                ->first();
+
+            if (!$ordenEmpresa) {
+                return null;
+            }
+
+            return [
+                'id' => -1 * (int) $ordenEmpresa->id,
+                'tipo_orden' => 'empresa',
+                'estado' => (string) ($ordenEmpresa->estado ?? ''),
+            ];
+        }
+
         $ordenPersonal = Orden::query()
             ->select(['id', 'tecnico_id', 'sucursal_id', 'estado_orden'])
             ->where('id', $ordenId)
@@ -161,22 +181,6 @@ class InformeRepository
                 'id' => (int) $ordenPersonal->id,
                 'tipo_orden' => 'personal',
                 'estado' => (string) ($ordenPersonal->estado_orden ?? ''),
-            ];
-        }
-
-        $ordenEmpresa = OrdenEmpresa::query()
-            ->select(['id', 'tecnico_id', 'sucursal_id', 'estado'])
-            ->where('id', $ordenId)
-            ->where('subtipo', 'Autoconsumo')
-            ->when(!$esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
-            ->when($esAdmin && !$esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
-            ->first();
-
-        if ($ordenEmpresa) {
-            return [
-                'id' => (int) $ordenEmpresa->id,
-                'tipo_orden' => 'empresa',
-                'estado' => (string) ($ordenEmpresa->estado ?? ''),
             ];
         }
 
@@ -206,7 +210,7 @@ class InformeRepository
         if (!$informe->orden) {
             $ordenEmpresa = OrdenEmpresa::query()
                 ->with(['empresa', 'equipo'])
-                ->find($informe->orden_id);
+                ->find(abs((int) $informe->orden_id));
             $informe->setRelation('ordenEmpresa', $ordenEmpresa);
         }
 
@@ -219,6 +223,10 @@ class InformeRepository
 
     public function obtenerRepuestosUsados(int $ordenId): array
     {
+        if ($ordenId < 0) {
+            return [];
+        }
+
         $repuestos = [];
 
         if (Schema::hasTable('orden_repuestos')) {
