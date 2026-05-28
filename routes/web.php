@@ -303,12 +303,23 @@ Route::middleware('auth')->group(function () {
     //-------------------------------------------------------
 
     Route::middleware(['permiso:informes,ver'])->group(function () {
+        // Raíz → redirect inteligente según rol (ver controller)
         Route::get('/operaciones/informes', [InformeController::class, 'index'])->name('informes.index');
+
+        // Admin: buscar todos los informes
+        Route::get('/operaciones/informes/buscar', [InformeController::class, 'indexBuscar'])->name('informes.buscar');
+        Route::get('/operaciones/informes/buscar/listar', [InformeController::class, 'buscarInformes'])->name('informes.buscar.listar');
+
+        // Compartidos (autenticado + permiso ver)
         Route::get('/operaciones/informes/ver', [InformeController::class, 'verPorOrden'])->name('informes.ver');
         Route::get('/operaciones/informes/{id}/imprimir', [InformeController::class, 'imprimir'])->name('informes.imprimir');
     });
 
+    // Técnicos + Superadmin: crear y ver sus propios informes
     Route::middleware(['permiso:informes,crear'])->group(function () {
+        Route::get('/operaciones/informes/crear', [InformeController::class, 'indexCrear'])->name('informes.crear');
+        Route::get('/operaciones/informes/crear/buscar-orden', [InformeController::class, 'buscarOrdenesAjax'])->name('informes.crear.buscar');
+        Route::get('/operaciones/mis-informes', [InformeController::class, 'misInformes'])->name('informes.mis');
         Route::post('/operaciones/informes', [InformeController::class, 'store'])->name('informes.store');
     });
 

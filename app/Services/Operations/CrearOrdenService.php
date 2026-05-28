@@ -352,7 +352,9 @@ class CrearOrdenService
 
     private function asegurarProductoInventario(string $codigo, string $descripcion, string $marcaNombre, string $tipoNombre): void
     {
-        if (ProductoInventario::where('codigo', $codigo)->exists()) {
+        $codigoNormalizado = strtoupper(trim($codigo));
+
+        if (ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [$codigoNormalizado])->exists()) {
             return;
         }
 
@@ -371,8 +373,8 @@ class CrearOrdenService
         }
 
         ProductoInventario::create([
-            'codigo' => $codigo,
-            'descripcion' => strtoupper(trim($descripcion !== '' ? $descripcion : $codigo)),
+            'codigo' => $codigoNormalizado,
+            'descripcion' => strtoupper(trim($descripcion !== '' ? $descripcion : $codigoNormalizado)),
             'marca_id' => $marca->id,
             'tipo_dispositivo_id' => $tipo->id,
             'tipo_dispositivo_codigo' => $tipo->codigo,

@@ -32,6 +32,11 @@ class InformeService
         bool $esMaster,
         int $sucursalSesion
     ): void {
+        // Paridad vanilla: guardar_informe.php bloquea explícitamente a admin/master
+        if ($esAdmin) {
+            throw new Exception('Los administradores no pueden crear ni modificar informes técnicos.');
+        }
+
         $ordenValida = $this->repository->buscarOrdenValidaParaInforme(
             $dto->orden_id,
             $dto->tecnico_id,

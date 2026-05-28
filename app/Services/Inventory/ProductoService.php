@@ -24,7 +24,7 @@ class ProductoService
      */
     public function guardar(ProductoDTO $dto, string $accion): void
     {
-        $codigoNormalizado = strtoupper($dto->codigo);
+        $codigoNormalizado = strtoupper(trim($dto->codigo));
         if ($this->repository->existeCodigo($codigoNormalizado, $dto->id)) {
             Log::warning('Intento de registro de producto con código duplicado.', ['codigo' => $codigoNormalizado]);
             throw new Exception('Ya existe un producto con ese código.');

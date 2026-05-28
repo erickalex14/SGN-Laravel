@@ -10,7 +10,7 @@ class ProductoRepository
     public function obtenerTodos(): Collection
     {
         return ProductoInventario::with(['marca', 'tipoDispositivo'])
-            ->orderBy('descripcion', 'asc')
+            ->orderByDesc('id')
             ->get();
     }
 
@@ -21,17 +21,24 @@ class ProductoRepository
 
     public function buscarPorCodigo(string $codigo): ?ProductoInventario
     {
+        $codigoNormalizado = $this->normalizarCodigo($codigo);
+
         return ProductoInventario::with(['marca', 'tipoDispositivo'])
-            ->where('codigo', strtoupper(trim($codigo)))
+            ->whereRaw('UPPER(TRIM(codigo)) = ?', [$codigoNormalizado])
             ->first();
     }
 
     public function existeCodigo(string $codigo, ?int $excluirId = null): bool
     {
-        $query = ProductoInventario::where('codigo', $codigo);
+        $query = ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [$this->normalizarCodigo($codigo)]);
         if ($excluirId) {
             $query->where('id', '!=', $excluirId);
         }
         return $query->exists();
+    }
+
+    private function normalizarCodigo(string $codigo): string
+    {
+        return strtoupper(trim($codigo));
     }
 }
