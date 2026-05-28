@@ -418,7 +418,8 @@ class InformeRepository
         int    $tecnicoId,
         bool   $esAdmin,
         bool   $esMaster,
-        int    $sucursalSesion
+        int    $sucursalSesion,
+        bool   $esSuperadmin = false
     ): array {
         $qLike = '%' . $q . '%';
 
@@ -536,7 +537,10 @@ class InformeRepository
                 $qOrdenes->whereRaw("o.nro_orden COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
         }
 
-        if (!$esAdmin) {
+        // Filtro de alcance:
+        // - Superadmin: ve todas las órdenes
+        // - Cualquier otro (admin o técnico): solo sus órdenes asignadas al crear informe
+        if (!$esSuperadmin) {
             $qOrdenes->where('o.tecnico_id', $tecnicoId);
         } elseif (!$esMaster && $sucursalSesion > 0) {
             $qOrdenes->where('o.sucursal_id', $sucursalSesion);
@@ -589,7 +593,10 @@ class InformeRepository
                 $qEmpresas->whereRaw("oe.nro_orden COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
         }
 
-        if (!$esAdmin) {
+        // Filtro de alcance:
+        // - Superadmin: ve todas las órdenes
+        // - Cualquier otro (admin o técnico): solo sus órdenes asignadas al crear informe
+        if (!$esSuperadmin) {
             $qEmpresas->where('oe.tecnico_id', $tecnicoId);
         } elseif (!$esMaster && $sucursalSesion > 0) {
             $qEmpresas->where('oe.sucursal_id', $sucursalSesion);

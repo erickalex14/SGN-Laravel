@@ -54,9 +54,15 @@
         || $can('preordenes', 'ver');
 
     $hasDocTec = $can('informes', 'ver')
+        || $can('informes', 'crear')
         || $can('presupuestos', 'ver')
         || $can('notas_credito_tecnico', 'ver')
-        || $can('solicitar_repuesto', 'ver');
+        || $can('solicitar_repuesto', 'ver')
+        || auth()->check(); // Técnicos siempre tienen acceso a las rutas de informes
+
+    // Cualquier usuario autenticado puede crear informes y ver los suyos propios
+    // (el acceso real ya está filtrado por tecnico_id en el controller)
+    $puedeInformesTecnico = auth()->check();
 
     $hasDocAdm = $can('reportes', 'ver')
         || $can('notas_credito', 'ver')
@@ -145,25 +151,23 @@
                                 <i class="bi bi-chevron-down nav-sub-arrow"></i>
                             </div>
                             <div class="nav-submenu-2">
-                                @if ($can('informes', 'ver') || $can('informes', 'crear'))
-                                    {{-- Crear Informe: Técnicos + Superadmin (tienen permiso crear) --}}
-                                    @if ($can('informes', 'crear'))
-                                        <a data-tip="Crear Informe" href="{{ route('informes.crear') }}">
-                                            <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
-                                            <span class="nav-label" style="margin-left:10px;">Crear Informe</span>
-                                        </a>
-                                        <a data-tip="Mis Informes" href="{{ route('informes.mis') }}">
-                                            <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
-                                            <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
-                                        </a>
-                                    @endif
-                                    {{-- Buscar Informes: Admin (pueden ver pero no crear) + Superadmin --}}
-                                    @if ($sa || ($can('informes', 'ver') && !$can('informes', 'crear')))
-                                        <a data-tip="Buscar Informes" href="{{ route('informes.buscar') }}">
-                                            <i class="bi bi-file-earmark-medical" style="flex-shrink:0;"></i>
-                                            <span class="nav-label" style="margin-left:10px;">Buscar Informes</span>
-                                        </a>
-                                    @endif
+                                {{-- Crear Informe y Mis Informes: todos los usuarios autenticados --}}
+                                @if ($puedeInformesTecnico || $can('informes', 'crear'))
+                                    <a data-tip="Crear Informe" href="{{ route('informes.crear') }}">
+                                        <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Crear Informe</span>
+                                    </a>
+                                    <a data-tip="Mis Informes" href="{{ route('informes.mis') }}">
+                                        <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
+                                    </a>
+                                @endif
+                                {{-- Buscar Informes: Admin (tienen informes,ver) + Superadmin --}}
+                                @if ($sa || $can('informes', 'ver'))
+                                    <a data-tip="Buscar Informes" href="{{ route('informes.buscar') }}">
+                                        <i class="bi bi-file-earmark-medical" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Buscar Informes</span>
+                                    </a>
                                 @endif
                                 @if ($can('presupuestos', 'ver'))
                                     <a data-tip="Proformas" href="{{ route('presupuestos.index') }}">

@@ -28,19 +28,20 @@ class InformeService
      */
     public function procesarInforme(
         InformeDTO $dto,
-        bool $esAdmin,
+        bool $puedeEscribir,
         bool $esMaster,
         int $sucursalSesion
     ): void {
-        // Paridad vanilla: guardar_informe.php bloquea explícitamente a admin/master
-        if ($esAdmin) {
-            throw new Exception('Los administradores no pueden crear ni modificar informes técnicos.');
+        // Solo los admins puros (sin sufijo master) no pueden crear ni editar informes.
+        // Técnico, Técnico Master, Admin Master y Superadmin sí pueden.
+        if (!$puedeEscribir) {
+            throw new Exception('No tiene permiso para crear ni modificar informes técnicos.');
         }
 
         $ordenValida = $this->repository->buscarOrdenValidaParaInforme(
             $dto->orden_id,
             $dto->tecnico_id,
-            $esAdmin,
+            false,      // Al guardar, siempre validar que la orden es del técnico
             $esMaster,
             $sucursalSesion
         );

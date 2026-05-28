@@ -72,7 +72,8 @@ class InformeController extends Controller
                 $contexto['tecnico_id'],
                 $contexto['es_admin'],
                 $contexto['es_master'],
-                $contexto['sucursal_id']
+                $contexto['sucursal_id'],
+                $contexto['es_superadmin']
             );
 
             if (empty($ordenes)) {
@@ -122,7 +123,7 @@ class InformeController extends Controller
             );
 
             $contexto = $this->resolverContextoInformes();
-            $this->service->procesarInforme($dto, $contexto['es_admin'], $contexto['es_master'], $contexto['sucursal_id']);
+            $this->service->procesarInforme($dto, $contexto['puede_escribir_informe'], $contexto['es_master'], $contexto['sucursal_id']);
 
             return response()->json([
                 'ok'      => true,
@@ -265,17 +266,34 @@ class InformeController extends Controller
         $grupoNombre    = mb_strtolower(trim((string) session('grupo_nombre', '')));
         $rolNombre      = mb_strtolower(trim((string) (auth()->user()?->rol?->rol ?? '')));
 
+        // Roles que tienen acceso administrativo (pueden ver todos los informes,
+        // filtrar por sucursal, etc.) pero NO necesariamente pueden crear/editar.
         $rolesAdmin = ['admin', 'administrador', 'master', 'admin master', 'administrador master', 'tecnico master'];
         $esAdmin = $esSuperadmin
             || in_array($grupoNombre, $rolesAdmin, true)
             || in_array($rolNombre, $rolesAdmin, true);
 
+        // Roles que SOLO ven informes pero NO pueden crear ni editar.
+        // Admin puro: 'admin' / 'administrador' (sin sufijo master).
+        $rolesAdminSoloVer = ['admin', 'administrador'];
+        $esSoloAdmin = !$esSuperadmin
+            && (in_array($grupoNombre, $rolesAdminSoloVer, true) || in_array($rolNombre, $rolesAdminSoloVer, true))
+            && !in_array($grupoNombre, ['admin master', 'administrador master', 'tecnico master'], true)
+            && !in_array($rolNombre,   ['admin master', 'administrador master', 'tecnico master'], true);
+
+        // Puede escribir informes: cualquier usuario que NO sea admin-solo-ver.
+        // Técnico, Técnico Master, Admin Master, Superadmin => true.
+        // Admin puro => false.
+        $puedeEscribirInforme = !$esSoloAdmin;
+
         return [
-            'tecnico_id'    => $tecnicoId,
-            'sucursal_id'   => $sucursalSesion,
-            'es_admin'      => $esAdmin,
-            'es_master'     => $esAdmin,
-            'es_superadmin' => $esSuperadmin,
+            'tecnico_id'             => $tecnicoId,
+            'sucursal_id'            => $sucursalSesion,
+            'es_admin'               => $esAdmin,
+            'es_master'              => $esAdmin,
+            'es_superadmin'          => $esSuperadmin,
+            'puede_escribir_informe' => $puedeEscribirInforme,
         ];
     }
 }
+
