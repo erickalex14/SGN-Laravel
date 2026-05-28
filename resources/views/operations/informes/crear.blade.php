@@ -432,7 +432,7 @@ window.onerror = function(msg, url, line, col, error) {
             .catch(function () {
                 elBtn.disabled  = false;
                 elBtn.innerHTML = '<i class="bi bi-search"></i><span>Buscar</span>';
-                _msgGlobal('err', 'Error de conexiÃ³n. Intenta de nuevo.');
+                _msgGlobal('err', 'Error de conexion. Intenta de nuevo.');
             });
     }
 
@@ -489,7 +489,7 @@ window.onerror = function(msg, url, line, col, error) {
 
         if (_bloqueado) {
             elAlerta.className = 'ci-msg ci-msg-warn';
-            elAlerta.innerHTML = '<i class="bi bi-lock"></i>Informe de solo lectura â€” la orden estÃ¡ en estado <strong>' + _esc(o.estado_orden) + '</strong>.';
+            elAlerta.innerHTML = '<i class="bi bi-lock"></i>Informe de solo lectura, la orden esta en estado <strong>' + _esc(o.estado_orden) + '</strong>.';
             elAlerta.style.display = 'flex';
         } else {
             elAlerta.style.display = 'none';
@@ -575,7 +575,7 @@ window.onerror = function(msg, url, line, col, error) {
                 _msgForm('err', data.error || 'Error al guardar.');
             }
         } catch (e) {
-            _msgForm('err', 'Error de comunicaciÃ³n: ' + e.message);
+            _msgForm('err', 'Error de comunicacion: ' + e.message);
         } finally {
             elBtnG.disabled  = false;
             elBtnG.innerHTML = '<i class="bi bi-floppy"></i>Guardar Informe';
@@ -586,7 +586,7 @@ window.onerror = function(msg, url, line, col, error) {
     window._previsualizar = function (imprimir) {
         if (!_validar()) return;
         var win = window.open('', '_blank', 'width=950,height=760');
-        if (!win) { _msgForm('err', 'El navegador bloqueÃ³ la ventana emergente.'); return; }
+        if (!win) { _msgForm('err', 'El navegador bloqueo la ventana emergente.'); return; }
         win.document.write(_buildHtml(_datosActuales(), _fotos));
         win.document.close();
         if (imprimir) win.onload = function () { win.print(); };
@@ -628,7 +628,7 @@ window.onerror = function(msg, url, line, col, error) {
         var arr = Array.from(files);
         if (_fotos.length + arr.length > 10) {
             arr = arr.slice(0, 10 - _fotos.length);
-            _msgForm('err', 'MÃ¡ximo 10 fotos por informe.');
+            _msgForm('err', 'Maximo 10 fotos por informe.');
         }
         arr.forEach(function (file) {
             _comprimirFoto(file, function (url, blob) {
@@ -654,7 +654,7 @@ window.onerror = function(msg, url, line, col, error) {
                 (f.esExistente ? '<div class="foto-badge">Guardada</div>' : '') +
                 '<div class="foto-del" onclick="_elimFoto(' + i + ')"><i class="bi bi-x-lg"></i></div>' +
                 '<img src="' + _esc(f.dataUrl) + '" alt="foto">' +
-                '<input type="text" placeholder="DescripciÃ³n" value="' + _esc(f.caption || '') + '" oninput="_captFoto(' + i + ',this.value)">' +
+                '<input type="text" placeholder="Descripcion" value="' + _esc(f.caption || '') + '" oninput="_captFoto(' + i + ',this.value)">' +
                 '</div>';
         }).join('');
     }
@@ -694,7 +694,7 @@ window.onerror = function(msg, url, line, col, error) {
         if (!_orden) { _msgForm('err', 'Selecciona una orden primero.'); return false; }
         if (!_getVal('inf-antecedentes')) { _msgForm('err', 'Los antecedentes son obligatorios.'); return false; }
         if (!_getVal('inf-proceso'))      { _msgForm('err', 'El proceso es obligatorio.'); return false; }
-        if (!_getVal('inf-conclusion'))   { _msgForm('err', 'La conclusiÃ³n es obligatoria.'); return false; }
+        if (!_getVal('inf-conclusion'))   { _msgForm('err', 'La conclusion es obligatoria.'); return false; }
         return true;
     }
 
@@ -729,7 +729,7 @@ window.onerror = function(msg, url, line, col, error) {
         var mes = ['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var p = (inf.fecha_informe || '').split('-');
         var fFmt = p.length === 3 ? p[2]+' de '+(mes[parseInt(p[1])]||p[1])+' de '+p[0] : (inf.fecha_informe||'');
-        var clr = {'Operativo':'#10b981','Reparado parcialmente':'#f59e0b','Sin reparaciÃ³n posible':'#ef4444','Desguace':'#ef4444','En espera de repuesto':'#3b82f6'}[inf.estado_equipo]||'#64748b';
+        var clr = {'Operativo':'#10b981','Reparado parcialmente':'#f59e0b','Sin reparacion posible':'#ef4444','Desguace':'#ef4444','En espera de repuesto':'#3b82f6'}[inf.estado_equipo]||'#64748b';
         var fotH='';
         if (fotos&&fotos.length) {
             var f='';
@@ -738,7 +738,7 @@ window.onerror = function(msg, url, line, col, error) {
                 f+=fotos[i+1]?'<td style="padding:6px;text-align:center;"><img src="'+fotos[i+1].dataUrl+'" style="max-width:220px;max-height:180px;border-radius:4px;border:1px solid #ddd;">'+(fotos[i+1].caption?'<div style="font-size:8pt;color:#555;margin-top:4px;">'+fotos[i+1].caption+'</div>':'')+'</td>':'<td></td>';
                 f+='</tr>';
             }
-            fotH='<div class="s">Evidencia FotogrÃ¡fica</div><table style="width:100%;border-collapse:collapse;">'+f+'</table>';
+            fotH='<div class="s">Evidencia Fotografica</div><table style="width:100%;border-collapse:collapse;">'+f+'</table>';
         }
         var repH='';
         if(inf.repuestos_usados&&inf.repuestos_usados.length){
