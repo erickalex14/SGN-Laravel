@@ -18,6 +18,11 @@ class SucursalClienteRepository
         return SucursalCliente::where('numero', $numero)->exists();
     }
 
+    public function buscarPorNumero(int $numero): ?SucursalCliente
+    {
+        return SucursalCliente::where('numero', $numero)->first();
+    }
+
     //Buscar entidad por id
     public function buscarPorId(int $id): ?SucursalCliente
     {

@@ -16,7 +16,7 @@ class GuardarInformeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'orden_id'        => ['required', 'integer', 'min:1'],
+            'orden_id'        => ['required', 'integer', 'not_in:0'],
             'antecedentes'    => ['required', 'string'],
             'proceso'         => ['required', 'string'],
             'conclusion'      => ['required', 'string'],

@@ -33,13 +33,17 @@ class UsuarioRepository
      * Lista tecnicos activos con su carga operativa actual.
      * Carga = ordenes en estado Pendiente o En proceso.
      */
-    public function obtenerTecnicosConCargaActual(): Collection
+    public function obtenerTecnicosConCargaActual(bool $verTodos = true, ?int $sucursalId = null): Collection
     {
         return Usuario::query()
             ->from('usuarios as u')
+            ->leftJoin('roles as r', 'u.rol_id', '=', 'r.id')
             ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
             ->where('u.activo', 1)
             ->whereNotNull('u.nombre_tecnico')
+            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId) {
+                $query->where('u.sucursal_id', $sucursalId);
+            })
             ->selectRaw(
                 "u.id, u.nombre_tecnico,
                 SUM(CASE WHEN UPPER(TRIM(COALESCE(o.estado_orden, ''))) = 'PENDIENTE' THEN 1 ELSE 0 END) as pendientes,
@@ -49,6 +53,18 @@ class UsuarioRepository
             ->orderByRaw('(pendientes + en_proceso) ASC')
             ->orderBy('u.nombre_tecnico')
             ->get();
+    }
+
+    public function tecnicoAsignable(int $tecnicoId, bool $verTodos = true, ?int $sucursalId = null): bool
+    {
+        return Usuario::query()
+            ->from('usuarios as u')
+            ->where('u.id', $tecnicoId)
+            ->where('u.activo', 1)
+            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId) {
+                $query->where('u.sucursal_id', $sucursalId);
+            })
+            ->exists();
     }
 
     // Metodo para verificar si un nombre de usuario ya existe, excluyendo un ID específico (útil para actualizaciones)

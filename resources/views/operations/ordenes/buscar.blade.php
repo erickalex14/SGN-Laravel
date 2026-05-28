@@ -89,6 +89,7 @@
 (() => {
     const urlBuscar = '{{ route("ordenes_buscar.listar") }}';
     const urlImprimirOrdenBase = '/operaciones/ordenes/';
+    const urlImprimirOrdenEmpresaBase = '/operaciones/ordenes-empresa/';
     const urlImprimirInformeBase = '/operaciones/informes/';
     const urlEditarBase = '/operaciones/ordenes/editar/';
 
@@ -175,7 +176,10 @@
     }
 
     function renderDetalle(o) {
-        const facturas = [o.nro_factura, o.nro_factura_2].filter(Boolean).join(' / ') || '-';
+        const esEmpresa = o.tipo_orden === 'empresa';
+        const facturas = esEmpresa
+            ? (o.nro_factura || '-')
+            : ([o.nro_factura, o.nro_factura_2].filter(Boolean).join(' / ') || '-');
         const clienteNombre = [o.nombres, o.apellidos].filter(Boolean).join(' ') || o.cliente || '-';
         const btnInforme = o.informe_id
             ? '<button class="bo-print inf" id="btn-inf">Imprimir Informe</button>'
@@ -191,7 +195,7 @@
                     '<div><div class="bo-k">Tipo</div><div class="bo-v">' + (o.tipo_orden || '-') + '</div></div>' +
                     '<div><div class="bo-k">Ingreso</div><div class="bo-v">' + (o.fecha_de_ingreso || '-') + '</div></div>' +
                     '<div><div class="bo-k">Motivo</div><div class="bo-v">' + (o.motivo_ingreso || '-') + '</div></div>' +
-                    '<div><div class="bo-k">Factura</div><div class="bo-v">' + facturas + '</div></div>' +
+                    '<div><div class="bo-k">' + (esEmpresa ? 'Nro. Ticket' : 'Factura') + '</div><div class="bo-v">' + facturas + '</div></div>' +
                     '<div><div class="bo-k">Tecnico</div><div class="bo-v">' + (o.tecnico || '-') + '</div></div>' +
                     '<div><div class="bo-k">Sucursal</div><div class="bo-v">' + (o.sucursal || '-') + '</div></div>' +
                 '</div>' +
@@ -231,7 +235,10 @@
                 '</div>' +
             '</div></div>';
 
-        document.getElementById('btn-ot').onclick = () => window.open(urlImprimirOrdenBase + o.orden_id + '/imprimir', '_blank');
+        document.getElementById('btn-ot').onclick = () => {
+            const base = esEmpresa ? urlImprimirOrdenEmpresaBase : urlImprimirOrdenBase;
+            window.open(base + o.orden_id + '/imprimir', '_blank');
+        };
         if (o.informe_id) {
             document.getElementById('btn-inf').onclick = () => window.open(urlImprimirInformeBase + o.informe_id + '/imprimir', '_blank');
         }
@@ -314,4 +321,3 @@
 })();
 </script>
 @endpush
-

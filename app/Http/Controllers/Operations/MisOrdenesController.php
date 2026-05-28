@@ -59,6 +59,20 @@ class MisOrdenesController extends Controller
             $tecnicoNombre = (string) (session('nombre_tecnico') ?? session('nombre') ?? session('usuario') ?? '');
             $esAdmin = $this->resolverEsAdmin();
 
+            if ($request->input('tipo_orden') === 'empresa') {
+                $this->service->actualizarEstadoEmpresa(
+                    (int) $request->input('id'),
+                    (string) $request->input('estado'),
+                    $usuarioModificacionId,
+                    $esAdmin
+                );
+
+                return response()->json([
+                    'ok' => true,
+                    'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.'
+                ]);
+            }
+
             $this->service->actualizarEstado($dto, $usuarioModificacionId, $tecnicoNombre, $esAdmin);
 
             return response()->json([

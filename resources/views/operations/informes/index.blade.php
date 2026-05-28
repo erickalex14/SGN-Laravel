@@ -72,7 +72,7 @@
                                 <option value="">-- Seleccione una orden pendiente --</option>
                                 @foreach($ordenesPendientes as $ord)
                                     <option value="{{ $ord->id }}">
-                                        {{ $ord->nro_orden }} - {{ $ord->cliente_nombre }} ({{ $ord->equipo_nombre ?: 'Equipo no especificado' }})
+                                        {{ $ord->nro_orden }} - {{ $ord->cliente_nombre }} ({{ $ord->equipo_nombre ?: 'Equipo no especificado' }}){{ ($ord->tipo_orden ?? '') === 'empresa' && !empty($ord->nro_factura) ? ' - Ticket '.$ord->nro_factura : '' }}
                                     </option>
                                 @endforeach
                             </select>

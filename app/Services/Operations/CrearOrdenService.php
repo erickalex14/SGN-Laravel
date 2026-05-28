@@ -13,6 +13,7 @@ use App\Models\Operations\CredencialEquipo;
 use App\Models\Operations\Equipo;
 use App\Models\Operations\EquipoSerie;
 use App\Models\Operations\Orden;
+use App\Models\Operations\OrdenEmpresa;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -40,7 +41,8 @@ class CrearOrdenService
     public function crearOrden(CrearOrdenDTO $dto): Orden
     {
         try {
-            return DB::transaction(function () use ($dto) {
+            return $this->ordenRepo->ejecutarConLockSecuencial($dto->sucursal_id, function () use ($dto) {
+                return DB::transaction(function () use ($dto) {
                 $motivoIngreso = trim($dto->motivo_ingreso);
                 $esValidacionGarantia = $motivoIngreso === 'Validacion de Garantia';
                 $tipoServicioId = $dto->tipo_servicio_id;
@@ -185,11 +187,119 @@ class CrearOrdenService
                 ]);
 
                 return $orden;
+                });
             });
         } catch (Exception $e) {
             Log::error('Fallo transaccional al crear orden de servicio.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrió un error al generar la orden. Los cambios han sido revertidos.');
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function crearOrdenEmpresa(array $data): OrdenEmpresa
+    {
+        try {
+            $sucursalId = (int) $data['sucursal_id'];
+
+            return $this->ordenRepo->ejecutarConLockSecuencial($sucursalId, function () use ($data, $sucursalId) {
+                return DB::transaction(function () use ($data, $sucursalId) {
+                    $subtipo = trim((string) $data['subtipo_empresa']);
+                    $descripcion = trim((string) ($data['emp_descripcion'] ?? ''));
+
+                    if (!in_array($subtipo, ['Autoconsumo', 'Servicios'], true)) {
+                        throw new Exception('Selecciona el tipo (Autoconsumo o Servicios).');
+                    }
+
+                    if ($subtipo === 'Autoconsumo') {
+                        $series = $this->normalizarSeries((array) ($data['emp_series'] ?? []));
+                        $codigoProducto = strtoupper(trim((string) ($data['emp_modelo'] ?? '')));
+
+                        if ($codigoProducto !== '') {
+                            $this->asegurarProductoInventario(
+                                $codigoProducto,
+                                $codigoProducto,
+                                (string) $data['emp_marca'],
+                                (string) $data['emp_tipo_equipo']
+                            );
+                        }
+
+                        $equipo = $this->crearEquipoBase([
+                            'tipo' => $data['emp_tipo_equipo'],
+                            'marca' => $data['emp_marca'],
+                            'modelo' => $codigoProducto,
+                            'serie' => implode(', ', $series),
+                            'falla' => $data['emp_falla'],
+                            'observacion' => $data['emp_observacion'] ?? '',
+                            'tipo_servicio_id' => !empty($data['emp_tipo_servicio_id']) ? (int) $data['emp_tipo_servicio_id'] : null,
+                            'producto_inventario_codigo' => $codigoProducto !== '' ? $codigoProducto : null,
+                        ]);
+
+                        foreach ($series as $idx => $serie) {
+                            EquipoSerie::create([
+                                'equipo_id' => $equipo->id,
+                                'serie' => $serie,
+                                'orden' => $idx + 1
+                            ]);
+                        }
+                    } else {
+                        $equipo = $this->crearEquipoBase([
+                            'tipo' => 'Servicio',
+                            'marca' => '',
+                            'modelo' => '',
+                            'serie' => '',
+                            'falla' => $descripcion,
+                            'observacion' => '',
+                        ]);
+                    }
+
+                    $nroOrden = $this->ordenRepo->generarNumeroOrden($sucursalId);
+
+                    $orden = OrdenEmpresa::create([
+                        'nro_orden' => $nroOrden,
+                        'empresa_id' => (int) $data['empresa_id'],
+                        'subtipo' => $subtipo,
+                        'equipo_id' => $equipo->id,
+                        'tipo_servicio' => $subtipo === 'Servicios' ? trim((string) $data['emp_tipo_servicio']) : null,
+                        'nro_ticket' => $subtipo === 'Servicios' ? trim((string) $data['emp_nro_ticket']) : null,
+                        'descripcion' => $subtipo === 'Servicios' ? $descripcion : trim((string) $data['emp_falla']),
+                        'tecnico_id' => (int) $data['ord_tecnico_id'],
+                        'sucursal_id' => $sucursalId,
+                        'ingresado_por' => (int) $data['ingresado_por'],
+                        'fecha_prometido' => $data['emp_fecha_prometido'],
+                        'estado' => 'Pendiente',
+                        'fecha_ingreso' => $data['fecha_ingreso'],
+                    ]);
+
+                    Log::info('Orden de empresa creada exitosamente.', [
+                        'nro_orden' => $nroOrden,
+                        'empresa_id' => (int) $data['empresa_id']
+                    ]);
+
+                    return $orden;
+                });
+            });
+        } catch (Exception $e) {
+            Log::error('Fallo transaccional al crear orden de empresa.', ['error' => $e->getMessage()]);
+            throw new Exception('Ocurrio un error al generar la orden de empresa. Los cambios han sido revertidos.');
+        }
+    }
+
+    private function crearEquipoBase(array $data): Equipo
+    {
+        $equipo = new Equipo();
+        $equipo->tipo = strtoupper(trim((string) $data['tipo']));
+        $equipo->marca = strtoupper(trim((string) $data['marca']));
+        $equipo->modelo = strtoupper(trim((string) $data['modelo']));
+        $equipo->serie = strtoupper(trim((string) $data['serie']));
+        $equipo->falla = trim((string) $data['falla']);
+        $equipo->observacion = trim((string) ($data['observacion'] ?? ''));
+        $equipo->tipo_servicio_id = $data['tipo_servicio_id'] ?? null;
+        $equipo->producto_inventario_codigo = $data['producto_inventario_codigo'] ?? null;
+        $equipo->save();
+
+        return $equipo;
     }
 
     private function normalizarSeries(array $series): array
