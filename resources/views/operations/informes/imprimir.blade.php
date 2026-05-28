@@ -18,6 +18,7 @@
     $nroFactura = trim((string) ($orden?->nro_factura ?? $ordenEmpresa?->nro_ticket ?? ''));
     $nroFactura2 = trim((string) ($orden?->nro_factura_2 ?? ''));
     $estadoOrden = (string) ($orden?->estado_orden ?? $ordenEmpresa?->estado ?? '');
+    $estadoOrden = str_replace(['Credito', 'credito'], ['Crédito', 'crédito'], $estadoOrden);
     $estadoEquipo = (string) ($informe->estado_equipo ?? '');
 
     $colorEstado = '#64748b';
@@ -83,32 +84,32 @@ table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transfor
 <div class="wrap">
     <div class="header">
         <div class="header-info">
-            <div class="empresa">Novitecnologia Cia. Ltda.</div>
-            <div><b>Telefonos:</b></div>
-            <div><b>GYE:</b> 04-6031337 / 0960500158 &nbsp;&nbsp; <b>UIO:</b> 02-6001635 / 0960500156</div>
+            <div class="empresa">Novitecnología Cía. Ltda.</div>
+            <div><b>Teléfonos:</b></div>
+            <div><b>GYE:</b> 04-031337 / 0960500158 &nbsp;&nbsp; <b>UIO:</b> 02-600135 / 0960500156</div>
             <div>https://www.novitec.com.ec</div>
         </div>
         <img src="{{ asset('Novitecpdf.png') }}" alt="Novitec">
     </div>
 
     <div class="orden-header">
-        <div class="nro">{{ $nroOrden }} - INFORME TECNICO</div>
-        <div class="meta">Fecha: {{ $fFmt }}<br>Tecnico: {{ $tecnico?->nombre_tecnico ?? '-' }}</div>
+        <div class="nro">{{ $nroOrden }} - INFORME TÉCNICO</div>
+        <div class="meta">Fecha: {{ $fFmt }}<br>Técnico: {{ $tecnico?->nombre_tecnico ?? '-' }}</div>
     </div>
 
     <div class="sec-titulo">Datos del Cliente</div>
     <table class="datos">
         <tr>
             <td width="50%"><span class="lbl">Cliente</span>{{ $clienteNombre }}</td>
-            <td width="50%"><span class="lbl">Identificacion / RUC</span>{{ $identificacion !== '' ? $identificacion : '—' }}</td>
+            <td width="50%"><span class="lbl">Identificación / RUC</span>{{ $identificacion !== '' ? $identificacion : '—' }}</td>
         </tr>
         <tr>
-            <td width="50%"><span class="lbl">Telefono</span>{{ $telefono !== '' ? $telefono : '—' }}</td>
+            <td width="50%"><span class="lbl">Teléfono</span>{{ $telefono !== '' ? $telefono : '—' }}</td>
             <td width="50%"><span class="lbl">Correo</span>{{ $correo !== '' ? $correo : '—' }}</td>
         </tr>
         @if($direccion !== '')
             <tr>
-                <td colspan="2"><span class="lbl">Direccion</span>{{ $direccion }}</td>
+                <td colspan="2"><span class="lbl">Dirección</span>{{ $direccion }}</td>
             </tr>
         @endif
     </table>
@@ -142,7 +143,7 @@ table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transfor
         <tr>
             <td width="25%"><span class="lbl">Tipo</span>{{ $equipo?->tipo ?? '—' }}</td>
             <td width="25%"><span class="lbl">Marca</span>{{ $equipo?->marca ?? '—' }}</td>
-            <td width="25%"><span class="lbl">Codigo / Modelo</span>{{ $equipo?->modelo ?? '—' }}</td>
+            <td width="25%"><span class="lbl">Código / Modelo</span>{{ $equipo?->modelo ?? '—' }}</td>
             <td width="25%"><span class="lbl">Serie</span>{{ $equipo?->serie ?? '—' }}</td>
         </tr>
     </table>
@@ -189,12 +190,12 @@ table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transfor
     @endif
 
     <div class="firmas">
-        <div class="firma-box"><div class="firma-linea">Tecnico responsable</div></div>
+        <div class="firma-box"><div class="firma-linea">Técnico responsable</div></div>
         <div class="firma-box"><div class="firma-linea">Recibido conforme</div></div>
     </div>
 
     <div style="text-align:center;margin-top:10px;font-size:7pt;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:6px;">
-        Novitecnologia Cia. Ltda. - Sistema de Gestion Novitec
+        Novitecnología Cía. Ltda. - Sistema de Gestion Novitec
     </div>
 </div>
 </body>

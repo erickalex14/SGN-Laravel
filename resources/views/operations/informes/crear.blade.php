@@ -1,10 +1,10 @@
 @extends('layouts.app')
-@section('titulo', 'Crear Informe Tecnico')
+@section('titulo', 'Crear Informe Técnico')
 
 @push('css_adicional')
 <style>
 /*
-   CREAR INFORME TECNICO
+   CREAR INFORME TÉCNICO
  */
 .ci-wrap { max-width: 960px; margin: 0 auto; padding: 26px 20px; }
 
@@ -257,7 +257,7 @@
                     </div>
                     <div class="campo">
                         <label for="inf-proceso">Proceso <span class="req">*</span></label>
-                        <textarea id="inf-proceso" rows="4" placeholder="Detalla el proceso de diagnostico o reparacion..."></textarea>
+                        <textarea id="inf-proceso" rows="4" placeholder="Detalla el proceso de diagnóstico o reparación..."></textarea>
                     </div>
                 </div>
                 <div class="grid-2">
@@ -276,7 +276,7 @@
                         <select id="inf-estado-equipo">
                             <option value="Operativo">Operativo</option>
                             <option value="Reparado parcialmente">Reparado parcialmente</option>
-                            <option value="Sin reparacion posible">Sin reparacion posible</option>
+                            <option value="Sin reparación posible">Sin reparación posible</option>
                             <option value="Desguace">Desguace</option>
                             <option value="En espera de repuesto">En espera de repuesto</option>
                         </select>
@@ -293,7 +293,7 @@
         <div class="ci-card">
             <div class="ci-card-hd">
                 <span class="ci-step">3</span>
-                <h3>Evidencia Fotografica <small style="font-weight:400;font-size:12px;color:#64748b;">(opcional)</small></h3>
+                <h3>Evidencia Fotográfica <small style="font-weight:400;font-size:12px;color:#64748b;">(opcional)</small></h3>
             </div>
             <div class="ci-card-body">
                 <div id="upload-zone" class="upload-zone"
@@ -303,7 +303,7 @@
                     ondrop="_soltarFotos(event)">
                     <i class="bi bi-cloud-arrow-up"></i>
                     <p>Haz clic o arrastra fotos aqui</p>
-                    <small>JPG, PNG, WEBP â€” Maximo 10 fotos</small>
+                    <small>JPG, PNG, WEBP — Máximo 10 fotos</small>
                 </div>
                 <input type="file" id="inp-fotos" accept="image/*" multiple style="display:none"
                        onchange="_agregarFotos(this.files)">
@@ -352,7 +352,8 @@ window.onerror = function(msg, url, line, col, error) {
     var URL_GUARDAR  = @json(route('informes.store'));
     var URL_IMPRIMIR = @json(url('/operaciones/informes'));
     var CSRF         = @json(csrf_token());
-    var NOM_TEC      = @json((string)$nombreTecnico);
+    // Se añade soporte para evitar el error si el controlador no envía la variable, usando como respaldo el nombre del usuario autenticado
+    var NOM_TEC      = @json((string)($nombreTécnico ?? auth()->user()->name ?? ''));
     var LOGO_URL     = @json(asset('Novitecpdf.png'));
     var FECHA_HOY    = @json(date('Y-m-d'));
     var ORDEN_ID_PRECARGADO = @json((int)$ordenIdPrecargado);
@@ -439,7 +440,7 @@ window.onerror = function(msg, url, line, col, error) {
     function _renderResultados(items) {
         elRes.innerHTML = '';
         if (!items.length) {
-            elRes.innerHTML = '<div class="ci-empty">No se encontraron Ã³rdenes.</div>';
+            elRes.innerHTML = '<div class="ci-empty">No se encontraron órdenes.</div>';
             elRes.style.display = 'flex';
             return;
         }
@@ -449,7 +450,7 @@ window.onerror = function(msg, url, line, col, error) {
             card.innerHTML =
                 '<div class="ci-result-left">' +
                     '<span class="ci-result-nro">' + _esc(o.nro_orden) + '</span>' +
-                    '<span class="ci-result-sub">' + _esc(o.cliente_nombre || 'â€”') + ' Â· ' + _esc(o.equipo_nombre || 'â€”') + '</span>' +
+                    '<span class="ci-result-sub">' + _esc(o.cliente_nombre || '—') + ' · ' + _esc(o.equipo_nombre || '—') + '</span>' +
                 '</div>' +
                 '<div class="ci-result-right">' +
                     '<span class="ci-pill ' + (o.tipo_orden === 'empresa' ? 'ci-pill-emp' : 'ci-pill-pers') + '">' +
@@ -472,9 +473,9 @@ window.onerror = function(msg, url, line, col, error) {
         // UI
         document.getElementById('ci-titulo-orden').textContent = o.nro_orden;
         document.getElementById('ci-res-nro').textContent      = o.nro_orden;
-        document.getElementById('ci-res-cliente').textContent  = o.cliente_nombre || 'â€”';
-        document.getElementById('ci-res-equipo').textContent   = o.equipo_nombre  || 'â€”';
-        document.getElementById('ci-res-estado').textContent   = o.estado_orden   || 'â€”';
+        document.getElementById('ci-res-cliente').textContent  = o.cliente_nombre || '—';
+        document.getElementById('ci-res-equipo').textContent   = o.equipo_nombre  || '—';
+        document.getElementById('ci-res-estado').textContent   = o.estado_orden   || '—';
 
         // Bloquear campos si la orden esta cerrada
         CAMPOS.forEach(function (id) {
@@ -628,7 +629,7 @@ window.onerror = function(msg, url, line, col, error) {
         var arr = Array.from(files);
         if (_fotos.length + arr.length > 10) {
             arr = arr.slice(0, 10 - _fotos.length);
-            _msgForm('err', 'Maximo 10 fotos por informe.');
+            _msgForm('err', 'Máximo 10 fotos por informe.');
         }
         arr.forEach(function (file) {
             _comprimirFoto(file, function (url, blob) {
@@ -720,7 +721,7 @@ window.onerror = function(msg, url, line, col, error) {
             equipo_serie:           _orden ? _orden.equipo_serie : '',
             nro_factura:            _orden ? _orden.nro_factura : '',
             nro_factura_2:          _orden ? _orden.nro_factura_2 : '',
-            estado_orden:           _orden ? _orden.estado_orden : '',
+            estado_orden:           _orden ? _orden.estado_orden.replace(/Credito/g, 'Crédito').replace(/credito/g, 'crédito') : '',
             repuestos_usados:       _orden ? (_orden.repuestos_usados || []) : [],
         };
     }
@@ -729,7 +730,7 @@ window.onerror = function(msg, url, line, col, error) {
         var mes = ['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         var p = (inf.fecha_informe || '').split('-');
         var fFmt = p.length === 3 ? p[2]+' de '+(mes[parseInt(p[1])]||p[1])+' de '+p[0] : (inf.fecha_informe||'');
-        var clr = {'Operativo':'#10b981','Reparado parcialmente':'#f59e0b','Sin reparacion posible':'#ef4444','Desguace':'#ef4444','En espera de repuesto':'#3b82f6'}[inf.estado_equipo]||'#64748b';
+        var clr = {'Operativo':'#10b981','Reparado parcialmente':'#f59e0b','Sin reparación posible':'#ef4444','Desguace':'#ef4444','En espera de repuesto':'#3b82f6'}[inf.estado_equipo]||'#64748b';
         var fotH='';
         if (fotos&&fotos.length) {
             var f='';
@@ -738,13 +739,13 @@ window.onerror = function(msg, url, line, col, error) {
                 f+=fotos[i+1]?'<td style="padding:6px;text-align:center;"><img src="'+fotos[i+1].dataUrl+'" style="max-width:220px;max-height:180px;border-radius:4px;border:1px solid #ddd;">'+(fotos[i+1].caption?'<div style="font-size:8pt;color:#555;margin-top:4px;">'+fotos[i+1].caption+'</div>':'')+'</td>':'<td></td>';
                 f+='</tr>';
             }
-            fotH='<div class="s">Evidencia Fotografica</div><table style="width:100%;border-collapse:collapse;">'+f+'</table>';
+            fotH='<div class="s">Evidencia Fotográfica</div><table style="width:100%;border-collapse:collapse;">'+f+'</table>';
         }
         var repH='';
         if(inf.repuestos_usados&&inf.repuestos_usados.length){
             repH='<tr><td colspan="2"><span class="l">Repuestos Utilizados</span>'+inf.repuestos_usados.map(function(r){return'<div style="margin-bottom:3px;">'+(r.codigo?'<strong>'+r.codigo+'</strong> &mdash; ':'')+r.nombre+(r.nro_parte?' <span style="color:#64748b;font-size:9pt;">('+r.nro_parte+')</span>':'')+'</div>';}).join('')+'</td></tr>';
         }
-        return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe '+(inf.nro_orden||'')+'</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}@media print{@page{size:A4 portrait;margin:10mm}.np{display:none!important}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}.w{width:100%;max-width:190mm;margin:auto;padding:6mm}.h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:8px}.h .i{font-size:8.5pt;line-height:1.6}.h .i .e{font-size:11pt;font-weight:bold}.h img{height:42px}.oh{display:flex;justify-content:space-between;align-items:center;background:#1a56db;color:#fff;padding:5px 10px;border-radius:3px;margin-bottom:8px}.oh .n{font-size:13pt;font-weight:bold}.oh .m{font-size:8pt;text-align:right;line-height:1.7}.s{background:#dbeafe;font-weight:bold;font-size:7.5pt;text-transform:uppercase;padding:3px 8px;border-left:3px solid #1a56db;margin-bottom:1px;margin-top:6px}table.d{width:100%;border-collapse:collapse;margin-bottom:7px}table.d td{border:1px solid #d1d5db;padding:4px 7px;font-size:8.5pt;vertical-align:top}table.d td .l{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transform:uppercase;display:block;margin-bottom:1px}.tc{border:1px solid #d1d5db;padding:5px 8px;font-size:8.5pt;margin-bottom:7px;min-height:28px;white-space:pre-wrap;line-height:1.55}.b{display:inline-block;padding:2px 10px;border-radius:20px;font-size:8pt;font-weight:700;color:#fff}.fi{display:flex;justify-content:space-between;margin:10px 0}.fb{width:44%;text-align:center}.fl{border-top:1px solid #000;padding-top:4px;font-size:8.5pt;margin-top:28px}.bp{position:fixed;top:10px;right:10px;background:#1a56db;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:bold;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.2)}</style></he'+'ad><body><button class="bp np" onclick="window.print()">&#128424; Imprimir / Guardar PDF</button><div class="w"><div class="h"><div class="i"><div class="e">Novitecnologia Cia. Ltda.</div><div><b>TelÃ©fonos:</b></div><div><b>GYE:</b> 04-6031337 / 0960500158 &nbsp;&nbsp; <b>UIO:</b> 02-6001635 / 0960500156</div><div>https://www.novitec.com.ec</div></div><img src="'+LOGO_URL+'" alt="Novitec"></div><div class="oh"><div class="n">'+(inf.nro_orden||'')+' &mdash; INFORME TÃ‰CNICO</div><div class="m">Fecha: '+fFmt+'<br>TÃ©cnico: '+(inf.tecnico||NOM_TEC)+'</div></div><div class="s">Datos del Cliente</div><table class="d"><tr><td width="50%"><span class="l">Cliente</span>'+(inf.cliente||'')+'</td><td width="50%"><span class="l">IdentificaciÃ³n / RUC</span>'+(inf.cliente_identificacion||'â€”')+'</td></tr><tr><td><span class="l">TelÃ©fono</span>'+(inf.cliente_telefono||'â€”')+'</td><td><span class="l">Correo</span>'+(inf.cliente_correo||'â€”')+'</td></tr>'+(inf.cliente_direccion?'<tr><td colspan="2"><span class="l">DirecciÃ³n</span>'+inf.cliente_direccion+'</td></tr>':'')+'</table><div class="s">Datos de la Orden</div><table class="d"><tr><td width="50%"><span class="l">Nro. de Orden</span>'+(inf.nro_orden||'')+'</td><td width="50%"><span class="l">Nro. Factura</span>'+([inf.nro_factura,inf.nro_factura_2].filter(Boolean).join(' / ')||'â€”')+'</td></tr><tr><td><span class="l">Estado de la Orden</span>'+(inf.estado_orden||'')+'</td><td><span class="l">Estado Final del Equipo</span><span class="b" style="background:'+clr+';">'+(inf.estado_equipo||'')+'</span></td></tr>'+repH+'</table><div class="s">Datos del Equipo</div><table class="d"><tr><td width="25%"><span class="l">Tipo</span>'+(inf.equipo_tipo||'â€”')+'</td><td width="25%"><span class="l">Marca</span>'+(inf.equipo_marca||'â€”')+'</td><td width="25%"><span class="l">Modelo</span>'+(inf.equipo_modelo||'â€”')+'</td><td width="25%"><span class="l">Serie</span>'+(inf.equipo_serie||'â€”')+'</td></tr></table><div class="s">Antecedentes</div><div class="tc">'+(inf.antecedentes||'')+'</div><div class="s">Proceso</div><div class="tc">'+(inf.proceso||'')+'</div>'+(inf.conclusion?'<div class="s">ConclusiÃ³n</div><div class="tc">'+inf.conclusion+'</div>':'')+(inf.recomendaciones?'<div class="s">Recomendaciones</div><div class="tc">'+inf.recomendaciones+'</div>':'')+fotH+'<div class="fi"><div class="fb"><div class="fl">TÃ©cnico responsable</div></div><div class="fb"><div class="fl">Recibido conforme</div></div></div><div style="text-align:center;margin-top:10px;font-size:7pt;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:6px;">NovitecnologÃ­a CÃ­a. Ltda. â€” Sistema de GestiÃ³n Novitec</div></div></body></html>';
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe '+(inf.nro_orden||'')+'</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}@media print{@page{size:A4 portrait;margin:10mm}.np{display:none!important}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}.w{width:100%;max-width:190mm;margin:auto;padding:6mm}.h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:8px}.h .i{font-size:8.5pt;line-height:1.6}.h .i .e{font-size:11pt;font-weight:bold}.h img{height:42px}.oh{display:flex;justify-content:space-between;align-items:center;background:#1a56db;color:#fff;padding:5px 10px;border-radius:3px;margin-bottom:8px}.oh .n{font-size:13pt;font-weight:bold}.oh .m{font-size:8pt;text-align:right;line-height:1.7}.s{background:#dbeafe;font-weight:bold;font-size:7.5pt;text-transform:uppercase;padding:3px 8px;border-left:3px solid #1a56db;margin-bottom:1px;margin-top:6px}table.d{width:100%;border-collapse:collapse;margin-bottom:7px}table.d td{border:1px solid #d1d5db;padding:4px 7px;font-size:8.5pt;vertical-align:top}table.d td .l{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transform:uppercase;display:block;margin-bottom:1px}.tc{border:1px solid #d1d5db;padding:5px 8px;font-size:8.5pt;margin-bottom:7px;min-height:28px;white-space:pre-wrap;line-height:1.55}.b{display:inline-block;padding:2px 10px;border-radius:20px;font-size:8pt;font-weight:700;color:#fff}.fi{display:flex;justify-content:space-between;margin:10px 0}.fb{width:44%;text-align:center}.fl{border-top:1px solid #000;padding-top:4px;font-size:8.5pt;margin-top:28px}.bp{position:fixed;top:10px;right:10px;background:#1a56db;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:bold;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.2)}</style></he'+'ad><body><button class="bp np" onclick="window.print()">&#128424; Imprimir / Guardar PDF</button><div class="w"><div class="h"><div class="i"><div class="e">Novitecnología Cía. Ltda.</div><div><b>Teléfonos:</b></div><div><b>GYE:</b> 04-6031337 / 0960500158 &nbsp;&nbsp; <b>UIO:</b> 02-6001635 / 0960500156</div><div>https://www.novitec.com.ec</div></div><img src="'+LOGO_URL+'" alt="Novitec"></div><div class="oh"><div class="n">'+(inf.nro_orden||'')+' &mdash; INFORME TÉCNICO</div><div class="m">Fecha: '+fFmt+'<br>Técnico: '+(inf.tecnico||NOM_TEC)+'</div></div><div class="s">Datos del Cliente</div><table class="d"><tr><td width="50%"><span class="l">Cliente</span>'+(inf.cliente||'')+'</td><td width="50%"><span class="l">Identificación / RUC</span>'+(inf.cliente_identificacion||'—')+'</td></tr><tr><td><span class="l">Teléfono</span>'+(inf.cliente_telefono||'—')+'</td><td><span class="l">Correo</span>'+(inf.cliente_correo||'—')+'</td></tr>'+(inf.cliente_direccion?'<tr><td colspan="2"><span class="l">Dirección</span>'+inf.cliente_direccion+'</td></tr>':'')+'</table><div class="s">Datos de la Orden</div><table class="d"><tr><td width="50%"><span class="l">Nro. de Orden</span>'+(inf.nro_orden||'')+'</td><td width="50%"><span class="l">Nro. Factura</span>'+([inf.nro_factura,inf.nro_factura_2].filter(Boolean).join(' / ')||'—')+'</td></tr><tr><td><span class="l">Estado de la Orden</span>'+(inf.estado_orden||'')+'</td><td><span class="l">Estado Final del Equipo</span><span class="b" style="background:'+clr+';">'+(inf.estado_equipo||'')+'</span></td></tr>'+repH+'</table><div class="s">Datos del Equipo</div><table class="d"><tr><td width="25%"><span class="l">Tipo</span>'+(inf.equipo_tipo||'—')+'</td><td width="25%"><span class="l">Marca</span>'+(inf.equipo_marca||'—')+'</td><td width="25%"><span class="l">Modelo</span>'+(inf.equipo_modelo||'—')+'</td><td width="25%"><span class="l">Serie</span>'+(inf.equipo_serie||'—')+'</td></tr></table><div class="s">Antecedentes</div><div class="tc">'+(inf.antecedentes||'')+'</div><div class="s">Proceso</div><div class="tc">'+(inf.proceso||'')+'</div>'+(inf.conclusion?'<div class="s">Conclusión</div><div class="tc">'+inf.conclusion+'</div>':'')+(inf.recomendaciones?'<div class="s">Recomendaciones</div><div class="tc">'+inf.recomendaciones+'</div>':'')+fotH+'<div class="fi"><div class="fb"><div class="fl">Técnico responsable</div></div><div class="fb"><div class="fl">Recibido conforme</div></div></div><div style="text-align:center;margin-top:10px;font-size:7pt;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:6px;">Novitecnología Cía. Ltda. — Sistema de Gestión Novitec</div></div></body></html>';
     }
 
     /*  Helpers  */
@@ -765,4 +766,3 @@ window.onerror = function(msg, url, line, col, error) {
 }());
 </script>
 @endpush
-
