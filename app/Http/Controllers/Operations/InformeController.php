@@ -9,6 +9,7 @@ use App\Repositories\Operations\InformeRepository;
 use App\DTOs\Operations\InformeDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Exception;
 
@@ -19,37 +20,90 @@ class InformeController extends Controller
 
     public function __construct(InformeService $service, InformeRepository $repository)
     {
-        $this->service = $service;
+        $this->service    = $service;
         $this->repository = $repository;
     }
 
-    public function index(): View
+    /**
+     * Ruta raíz del módulo: redirige según el rol.
+     * Admin/Master → Buscar Informes
+     * Técnico/SA    → Crear Informe
+     */
+    public function index(): RedirectResponse
     {
         $contexto = $this->resolverContextoInformes();
-
-        $ordenesPendientes = $this->repository->obtenerOrdenesSinInforme(
-            $contexto['tecnico_id'],
-            $contexto['es_admin'],
-            $contexto['es_master'],
-            $contexto['sucursal_id']
-        );
-        $informesGenerados = $this->repository->obtenerInformesPorTecnico(
-            $contexto['tecnico_id'],
-            $contexto['es_admin'],
-            $contexto['es_master'],
-            $contexto['sucursal_id']
-        );
-
-        $esAdmin = $contexto['es_admin'];
-        $permisos = (array) session('permisos', []);
-        $puedeEditar = !$esAdmin && (
-            (($permisos['informes']['crear'] ?? false) === true)
-            || (($permisos['informes']['editar'] ?? false) === true)
-        );
-        $nombreTecnico = (string) session('nombre', session('usuario', ''));
-
-        return view('operations.informes.index', compact('ordenesPendientes', 'informesGenerados', 'esAdmin', 'puedeEditar', 'nombreTecnico'));
+        if ($contexto['es_admin'] && !$contexto['es_superadmin']) {
+            return redirect()->route('informes.buscar');
+        }
+        return redirect()->route('informes.crear');
     }
+
+    // ══════════════════════════════════════════════════════════════
+    //  VISTA: Crear / Editar Informe  (Técnicos + Superadmin)
+    // ══════════════════════════════════════════════════════════════
+
+    public function indexCrear(Request $request): View
+    {
+        $contexto          = $this->resolverContextoInformes();
+        $nombreTecnico     = (string) session('nombre', session('usuario', ''));
+        // Orden precargada desde "Mis Informes → Editar"
+        $ordenIdPrecargado = (int) $request->query('orden_id', 0);
+
+        return view('operations.informes.crear', compact('nombreTecnico', 'ordenIdPrecargado'));
+    }
+
+    /**
+     * Endpoint AJAX: buscar órdenes para el formulario de creación.
+     */
+    public function buscarOrdenesAjax(Request $request): JsonResponse
+    {
+        $contexto = $this->resolverContextoInformes();
+        $q        = trim((string) $request->query('q', ''));
+        $tipo     = (string) $request->query('tipo', 'nro_orden');
+
+        if ($tipo !== 'id' && strlen($q) < 2) {
+            return response()->json(['ok' => false, 'error' => 'Escribe al menos 2 caracteres.']);
+        }
+
+        try {
+            $ordenes = $this->repository->buscarOrdenesParaInforme(
+                $q,
+                $tipo,
+                $contexto['tecnico_id'],
+                $contexto['es_admin'],
+                $contexto['es_master'],
+                $contexto['sucursal_id']
+            );
+
+            if (empty($ordenes)) {
+                return response()->json(['ok' => false, 'error' => 'No se encontraron órdenes con ese criterio.']);
+            }
+
+            return response()->json(['ok' => true, 'ordenes' => $ordenes]);
+        } catch (Exception $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  VISTA: Mis Informes  (Técnicos + Superadmin)
+    // ══════════════════════════════════════════════════════════════
+
+    public function misInformes(): View
+    {
+        $contexto = $this->resolverContextoInformes();
+        $informes = $this->repository->obtenerMisInformes(
+            $contexto['tecnico_id'],
+            $contexto['es_master'],
+            $contexto['sucursal_id']
+        );
+
+        return view('operations.informes.mis', compact('informes'));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  GUARDAR (POST)
+    // ══════════════════════════════════════════════════════════════
 
     public function store(GuardarInformeRequest $request): JsonResponse
     {
@@ -68,29 +122,29 @@ class InformeController extends Controller
             );
 
             $contexto = $this->resolverContextoInformes();
-
             $this->service->procesarInforme($dto, $contexto['es_admin'], $contexto['es_master'], $contexto['sucursal_id']);
 
             return response()->json([
                 'ok'      => true,
-                'mensaje' => 'El informe técnico ha sido generado y adjuntado a la orden correctamente.'
+                'mensaje' => 'Informe técnico guardado correctamente.',
             ]);
         } catch (Exception $e) {
-            return response()->json([
-                'ok'    => false,
-                'error' => $e->getMessage()
-            ]);
+            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ENDPOINTS AJAX auxiliares
+    // ══════════════════════════════════════════════════════════════
 
     public function verPorOrden(Request $request): JsonResponse
     {
         $ordenId = (int) $request->query('orden_id', 0);
         if ($ordenId === 0) {
-            return response()->json(['ok' => false, 'error' => 'Orden invalida.']);
+            return response()->json(['ok' => false, 'error' => 'Orden inválida.']);
         }
 
-        $contexto = $this->resolverContextoInformes();
+        $contexto   = $this->resolverContextoInformes();
         $ordenValida = $this->repository->buscarOrdenValidaParaInforme(
             $ordenId,
             $contexto['tecnico_id'],
@@ -99,7 +153,7 @@ class InformeController extends Controller
             $contexto['sucursal_id']
         );
         if (!$ordenValida) {
-            return response()->json(['ok' => false, 'error' => 'No tiene permisos sobre la orden seleccionada.']);
+            return response()->json(['ok' => false, 'error' => 'No tiene permisos sobre esa orden.']);
         }
 
         $informe = $this->repository->buscarPorOrdenId($ordenId);
@@ -110,25 +164,25 @@ class InformeController extends Controller
         $repuestosUsados = $this->repository->obtenerRepuestosUsados($ordenId);
 
         return response()->json([
-            'ok' => true,
+            'ok'     => true,
             'existe' => true,
             'informe' => [
-                'id' => $informe->id,
-                'antecedentes' => (string) $informe->antecedentes,
-                'proceso' => (string) $informe->proceso,
-                'conclusion' => (string) $informe->conclusion,
+                'id'              => $informe->id,
+                'antecedentes'    => (string) $informe->antecedentes,
+                'proceso'         => (string) $informe->proceso,
+                'conclusion'      => (string) $informe->conclusion,
                 'recomendaciones' => (string) ($informe->recomendaciones ?? ''),
-                'estado_equipo' => (string) ($informe->estado_equipo ?? ''),
-                'fecha_informe' => (string) ($informe->fecha_informe ?? ''),
-                'repuestos_usados' => $repuestosUsados,
-                'fotos' => $informe->fotos->map(function ($foto) {
+                'estado_equipo'   => (string) ($informe->estado_equipo   ?? ''),
+                'fecha_informe'   => (string) ($informe->fecha_informe   ?? ''),
+                'repuestos_usados'=> $repuestosUsados,
+                'fotos'           => $informe->fotos->map(function ($foto) {
                     $ruta = (string) ($foto->foto_data ?? '');
-                    $src = str_starts_with($ruta, 'data:') ? $ruta : asset('storage/' . ltrim($ruta, '/'));
+                    $src  = str_starts_with($ruta, 'data:') ? $ruta : asset('storage/' . ltrim($ruta, '/'));
                     return [
-                        'id' => $foto->id,
-                        'src' => $src,
-                        'dataUrl' => $src,
-                        'caption' => (string) ($foto->caption ?? ''),
+                        'id'             => $foto->id,
+                        'src'            => $src,
+                        'dataUrl'        => $src,
+                        'caption'        => (string) ($foto->caption        ?? ''),
                         'nombre_archivo' => (string) ($foto->nombre_archivo ?? ''),
                     ];
                 })->values(),
@@ -136,34 +190,85 @@ class InformeController extends Controller
         ]);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    //  IMPRIMIR
+    // ══════════════════════════════════════════════════════════════
+
     public function imprimir(int $id): View
     {
         $informe = $this->repository->buscarPorId($id);
         abort_if(!$informe, 404);
 
-        $contexto = $this->resolverContextoInformes();
+        $contexto    = $this->resolverContextoInformes();
         $esPropietario = (int) ($informe->tecnico_id ?? 0) === $contexto['tecnico_id'];
         abort_unless($contexto['es_admin'] || $esPropietario, 403);
 
         return view('operations.informes.imprimir', compact('informe'));
     }
 
+    // ══════════════════════════════════════════════════════════════
+    //  VISTA: Buscar Informes  (Admin + Superadmin)
+    // ══════════════════════════════════════════════════════════════
+
+    public function indexBuscar(): View
+    {
+        $contexto = $this->resolverContextoInformes();
+        $tecnicos = $this->repository->obtenerTecnicosActivos($contexto['sucursal_id'], $contexto['es_master']);
+        $estados  = ['Operativo', 'Reparado parcialmente', 'Sin reparación posible', 'Desguace', 'En espera de repuesto'];
+
+        return view('operations.informes.buscar', compact('tecnicos', 'estados'));
+    }
+
+    public function buscarInformes(Request $request): JsonResponse
+    {
+        try {
+            $contexto = $this->resolverContextoInformes();
+            $filtros  = [
+                'q'           => (string) $request->query('q',           ''),
+                'tipo'        => (string) $request->query('tipo',        'nro_orden'),
+                'tecnico_id'  => (int)    $request->query('tecnico_id',  0),
+                'estado'      => (string) $request->query('estado',      ''),
+                'fecha_desde' => (string) $request->query('fecha_desde', ''),
+                'fecha_hasta' => (string) $request->query('fecha_hasta', ''),
+            ];
+
+            $informes = $this->repository->buscarInformes(
+                $filtros,
+                $contexto['tecnico_id'],
+                $contexto['es_admin'],
+                $contexto['es_master'],
+                $contexto['sucursal_id']
+            );
+
+            if ($informes->isEmpty()) {
+                return response()->json(['ok' => false, 'error' => 'No se encontraron informes.']);
+            }
+
+            return response()->json(['ok' => true, 'total' => $informes->count(), 'informes' => $informes]);
+        } catch (Exception $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  Helpers privados
+    // ══════════════════════════════════════════════════════════════
+
     private function resolverContextoInformes(): array
     {
-        $tecnicoId = (int) session('tecnico_id', 0);
-        $sucursalSesion = (int) session('sucursal_id', 0);
-        $esSuperadmin = (bool) session('es_superadmin', false);
-        $grupoNombre = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $tecnicoId      = (int)  session('tecnico_id',    0);
+        $sucursalSesion = (int)  session('sucursal_id',   0);
+        $esSuperadmin   = (bool) session('es_superadmin', false);
+        $grupoNombre    = mb_strtolower(trim((string) session('grupo_nombre', '')));
 
-        // Paridad legacy: modo admin solo para admin/master.
         $esAdmin = $esSuperadmin || in_array($grupoNombre, ['admin', 'master'], true);
 
         return [
-            'tecnico_id' => $tecnicoId,
-            'sucursal_id' => $sucursalSesion,
-            'es_admin' => $esAdmin,
-            // En este modulo, admin debe listar todos los informes.
-            'es_master' => $esAdmin,
+            'tecnico_id'    => $tecnicoId,
+            'sucursal_id'   => $sucursalSesion,
+            'es_admin'      => $esAdmin,
+            'es_master'     => $esAdmin,
+            'es_superadmin' => $esSuperadmin,
         ];
     }
 }
