@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'groq'),
+        'groq' => [
+            'key' => env('GROQ_API_KEY'),
+            'url' => 'https://api.groq.com/openai/v1/chat/completions',
+            'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+        ],
+        'openrouter' => [
+            'key' => env('OPENROUTER_API_KEY'),
+            'url' => 'https://openrouter.ai/api/v1/chat/completions',
+            'model' => env('OPENROUTER_MODEL', 'meta-llama/llama-3-8b-instruct:free'),
+        ],
+    ],
+
 ];
+
