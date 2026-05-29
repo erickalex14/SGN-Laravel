@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operations;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\GuardarInformeRequest;
 use App\Services\Operations\InformeService;
+use App\Services\Operations\InformeAiService;
 use App\Repositories\Operations\InformeRepository;
 use App\DTOs\Operations\InformeDTO;
 use Illuminate\Http\Request;
@@ -251,6 +252,48 @@ class InformeController extends Controller
             return response()->json(['ok' => true, 'total' => $informes->count(), 'informes' => $informes]);
         } catch (Exception $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Endpoint AJAX para procesar notas y estructurar el borrador del informe mediante Inteligencia Artificial.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Services\Operations\InformeAiService $aiService
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generarConIa(Request $request, InformeAiService $aiService): JsonResponse
+    {
+        $contexto = $this->resolverContextoInformes();
+
+        if (!$contexto['puede_escribir_informe']) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'No tiene los permisos necesarios para redactar o modificar informes técnicos.',
+            ]);
+        }
+
+        $notas = trim((string) $request->input('notas'));
+
+        if (strlen($notas) < 10) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'La descripción provista es demasiado corta. Ingrese más detalles de la revisión.',
+            ]);
+        }
+
+        try {
+            $borrador = $aiService->generarBorradorInforme($notas);
+
+            return response()->json([
+                'ok' => true,
+                'borrador' => $borrador,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

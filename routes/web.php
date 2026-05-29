@@ -321,6 +321,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/informes/crear/buscar-orden', [InformeController::class, 'buscarOrdenesAjax'])->name('informes.crear.buscar');
         Route::get('/operaciones/mis-informes', [InformeController::class, 'misInformes'])->name('informes.mis');
         Route::post('/operaciones/informes', [InformeController::class, 'store'])->name('informes.store');
+        Route::post('/operaciones/informes/generar-con-ia', [InformeController::class, 'generarConIa'])->name('informes.generar.ia');
     });
 
     //-------------------------------------------------------
