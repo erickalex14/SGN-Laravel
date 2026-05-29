@@ -24,6 +24,7 @@ use App\Http\Controllers\Operations\PresupuestoController;
 use App\Http\Controllers\Operations\NotaCreditoController;
 use App\Http\Controllers\Operations\SolicitudRepuestoController;
 use App\Http\Controllers\Operations\ReporteController;
+use App\Http\Controllers\Operations\AsistenteIaController;
 use App\Http\Controllers\Inventory\ListaCompraController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Identity\AuthController; // Controlador de autenticación heredado
@@ -50,6 +51,9 @@ Route::middleware('auth')->group(function () {
 
     // Cerrar sesion
     Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+
+    // Asistente de Inteligencia Artificial Conversacional
+    Route::post('/operaciones/asistente-ia/preguntar', [AsistenteIaController::class, 'preguntar'])->name('asistente.preguntar');
 
     // Rutas de acceso rapido usadas por el layout
     Route::middleware(['permiso:ordenes_crear,ver'])->group(function () {

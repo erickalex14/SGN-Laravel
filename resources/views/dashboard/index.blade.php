@@ -337,3 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+
+@include('layouts.asistente_widget')
+
