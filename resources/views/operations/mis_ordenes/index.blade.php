@@ -411,6 +411,24 @@
         </div>
     </div>
 </div>
+
+<div id="modal-alert" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarAlerta(false)">
+    <div style="background:#fff;border-radius:18px;padding:32px 30px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center;animation:modalIn .2s ease;position:relative;">
+        <div id="alert-icon-container" style="border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border: 1.5px solid #fca5a5;background:#fef2f2;">
+            <!-- Icono dinámico -->
+        </div>
+        <h4 style="margin:0 0 10px;font-size:17px;font-weight:800;color:#0f172a;" id="alert-title">Acción Requerida</h4>
+        <p style="margin:0 0 24px;font-size:13.5px;color:#475569;line-height:1.6;" id="alert-message"></p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+            <button id="alert-btn-confirm" onclick="cerrarAlerta(true)" style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:9px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;transition:background .15s;outline:none;">
+                Entendido
+            </button>
+            <button id="alert-btn-cancel" onclick="cerrarAlerta(false)" style="background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0;border-radius:9px;padding:11px 18px;font-size:13.5px;font-weight:600;cursor:pointer;display:none;outline:none;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('js_adicional')
@@ -429,6 +447,80 @@ const _moUrlBuscarRepuestos = @json(route('mis_ordenes.repuestos.buscar'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
+let _resolveAlertPromise = null;
+
+function mostrarAlertaEstetica(mensaje, tipo = 'error', titulo = '', esConfirmacion = false) {
+    return new Promise((resolve) => {
+        const box = document.getElementById('modal-alert');
+        const titleEl = document.getElementById('alert-title');
+        const msgEl = document.getElementById('alert-message');
+        const iconContainer = document.getElementById('alert-icon-container');
+        const btnConfirm = document.getElementById('alert-btn-confirm');
+        const btnCancel = document.getElementById('alert-btn-cancel');
+
+        if (!titulo) {
+            if (tipo === 'success') titulo = 'Éxito';
+            else if (tipo === 'warning') titulo = 'Advertencia';
+            else if (tipo === 'confirm') titulo = 'Confirmación';
+            else titulo = 'Acción Requerida';
+        }
+
+        titleEl.textContent = titulo;
+        msgEl.innerHTML = mensaje;
+
+        // Reset default styles
+        iconContainer.style.background = '';
+        iconContainer.style.borderColor = '';
+        btnConfirm.style.background = '';
+        btnConfirm.style.color = '#fff';
+        btnCancel.style.display = 'none';
+
+        if (tipo === 'success') {
+            iconContainer.innerHTML = '<i class="bi bi-check-circle" style="font-size:24px;color:#16a34a;"></i>';
+            iconContainer.style.background = '#f0fdf4';
+            iconContainer.style.borderColor = '#86efac';
+            btnConfirm.style.background = '#10b981';
+            btnConfirm.textContent = 'Aceptar';
+        } else if (tipo === 'warning') {
+            iconContainer.innerHTML = '<i class="bi bi-exclamation-triangle" style="font-size:24px;color:#d97706;"></i>';
+            iconContainer.style.background = '#fffbeb';
+            iconContainer.style.borderColor = '#fde68a';
+            btnConfirm.style.background = '#f59e0b';
+            btnConfirm.textContent = 'Entendido';
+        } else if (tipo === 'confirm') {
+            iconContainer.innerHTML = '<i class="bi bi-question-circle" style="font-size:24px;color:#2563eb;"></i>';
+            iconContainer.style.background = '#eff6ff';
+            iconContainer.style.borderColor = '#93c5fd';
+            btnConfirm.style.background = '#2563eb';
+            btnConfirm.textContent = 'Confirmar';
+            btnCancel.style.display = 'block';
+            btnCancel.textContent = 'Cancelar';
+        } else {
+            // error
+            iconContainer.innerHTML = '<i class="bi bi-exclamation-circle" style="font-size:24px;color:#dc2626;"></i>';
+            iconContainer.style.background = '#fef2f2';
+            iconContainer.style.borderColor = '#fca5a5';
+            btnConfirm.style.background = '#ef4444';
+            btnConfirm.textContent = 'Cerrar';
+        }
+
+        if (esConfirmacion) {
+            btnCancel.style.display = 'block';
+        }
+
+        box.style.display = 'flex';
+        _resolveAlertPromise = resolve;
+    });
+}
+
+function cerrarAlerta(confirmado) {
+    const box = document.getElementById('modal-alert');
+    if (box) box.style.display = 'none';
+    if (_resolveAlertPromise) {
+        _resolveAlertPromise(!!confirmado);
+        _resolveAlertPromise = null;
+    }
+}
 
 function _h(v) {
     return String(v ?? '').replace(/[&<>"']/g, (s) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[s]));
@@ -496,7 +588,8 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         abrirModalNC(ordenId);
         return;
     }
-    if (!confirm(`Confirma la actualizacion de la orden ${nroOrden} a estado: ${nuevoEstado}?`)) return;
+    const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
+    if (!verificado) return;
 
     const fd = new FormData();
     fd.append('_token', _moCsrf);
@@ -508,12 +601,12 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
-            alert(d.error || 'No se pudo actualizar el estado.');
+            await mostrarAlertaEstetica(d.error || 'No se pudo actualizar el estado.', 'error', 'Error de Operación');
             return;
         }
         location.reload();
     } catch {
-        alert('Error de conexion.');
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
 }
 
@@ -527,12 +620,12 @@ async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
         const r = await fetch(_moUrlGarEstado, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
-            alert(d.error || 'No se pudo actualizar garantia.');
+            await mostrarAlertaEstetica(d.error || 'No se pudo actualizar la garantía.', 'error', 'Error de Garantía');
             return;
         }
         location.reload();
     } catch {
-        alert('Error de conexion.');
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
 }
 
@@ -546,12 +639,12 @@ async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
         const r = await fetch(_moUrlRepEstado, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
-            alert(d.error || 'No se pudo actualizar repuesto.');
+            await mostrarAlertaEstetica(d.error || 'No se pudo actualizar el repuesto.', 'error', 'Error de Repuesto');
             return;
         }
         location.reload();
     } catch {
-        alert('Error de conexion.');
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
 }
 
@@ -648,7 +741,7 @@ function onInputBuscarRepuestoMisOrdenes(ordenId, q) {
 async function asignarRepuesto(ordenId) {
     const sel = document.getElementById('rep-inv-' + ordenId);
     if (!sel || !sel.value) {
-        alert('Seleccione un repuesto.');
+        await mostrarAlertaEstetica('Por favor, <b>seleccione un repuesto</b> del listado de búsqueda antes de continuar.', 'warning', 'Selección Requerida');
         return;
     }
     const fd = new FormData();
@@ -659,17 +752,19 @@ async function asignarRepuesto(ordenId) {
         const r = await fetch(_moUrlRepAsignar, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
-            alert(d.error || 'No se pudo asignar repuesto.');
+            await mostrarAlertaEstetica(d.error || 'No se pudo asignar el repuesto.', 'error', 'Error de Asignación');
             return;
         }
         location.reload();
     } catch {
-        alert('Error de conexion.');
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
 }
 
 async function revertirRepuesto(ordenId) {
-    if (!confirm('Confirma revertir el repuesto y devolver stock a inventario?')) return;
+    const verificado = await mostrarAlertaEstetica('¿Confirma revertir el repuesto y devolver el stock correspondiente al inventario?', 'confirm', 'Revertir Asignación');
+    if (!verificado) return;
+
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
@@ -677,24 +772,24 @@ async function revertirRepuesto(ordenId) {
         const r = await fetch(_moUrlRepRevertir, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
-            alert(d.error || 'No se pudo revertir repuesto.');
+            await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación del repuesto.', 'error', 'Error al Revertir');
             return;
         }
         location.reload();
     } catch {
-        alert('Error de conexion.');
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
 }
 
-function abrirModalNC(ordenId) {
+async function abrirModalNC(ordenId) {
     const row = _moRows.find((x) => Number(x.id) === Number(ordenId));
     if (!row) return;
     if ((row.estado_garantia || 'Pendiente') !== 'Aceptada') {
-        alert('La garantia debe estar en estado Aceptada para solicitar una Nota de Credito.');
+        await mostrarAlertaEstetica('La garantía de esta orden debe estar en estado <b>Aceptada</b> para poder solicitar una Nota de Crédito.', 'warning', 'Requisito de Garantía');
         return;
     }
     if (!row.informe_id) {
-        alert('Esta orden no tiene informe tecnico registrado. Debe crear el informe antes de solicitar NC.');
+        await mostrarAlertaEstetica('Esta orden no tiene un informe técnico registrado. Debe <b>crear el informe técnico</b> antes de poder solicitar una Nota de Crédito.', 'warning', 'Informe Requerido');
         return;
     }
     _ncOrdenId = Number(ordenId);
@@ -761,12 +856,12 @@ async function verPdfInforme(ordenId) {
         const r = await fetch(_moUrlInformeVer + '?orden_id=' + encodeURIComponent(String(ordenId)), { cache: 'no-store' });
         const d = await r.json();
         if (!d.ok || !d.informe || !d.informe.id) {
-            alert('Esta orden aun no tiene informe.');
+            await mostrarAlertaEstetica('Esta orden aún no cuenta con un informe técnico registrado.', 'warning', 'Sin Informe Técnico');
             return;
         }
         window.open(_moUrlInformePrintBase + '/' + d.informe.id + '/imprimir', '_blank');
     } catch {
-        alert('No se pudo consultar el informe.');
+        await mostrarAlertaEstetica('No se pudo consultar el informe técnico debido a un error en el servidor.', 'error', 'Error de Consulta');
     }
 }
 
@@ -966,6 +1061,7 @@ document.addEventListener('keydown', (e) => {
         cerrarCreds();
         cerrarModal();
         cerrarModalNC();
+        cerrarAlerta(false);
     }
 });
 document.addEventListener('click', (e) => {
