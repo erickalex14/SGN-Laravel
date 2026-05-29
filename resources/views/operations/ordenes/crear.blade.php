@@ -44,7 +44,7 @@
 }
 /* Mantener bordes redondeados en header e hijo final aunque overflow sea visible */
 .seccion-hdr { border-radius: 10px 10px 0 0; }
-.seccion-form > :last-child { border-radius: 0 0 10px 10px; overflow: hidden; }
+.seccion-form > :last-child { border-radius: 0 0 10px 10px; }
 .seccion-hdr {
     display: flex;
     align-items: center;
