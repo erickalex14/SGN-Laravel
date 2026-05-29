@@ -294,6 +294,7 @@ class OrdenController extends Controller
             'cas',
             'usuarioIngreso',
             'repuestoInventario',
+            'preciosOrden', // Carga automática de los cargos personalizados de la orden
         ]);
 
         $nombreSucursalCliente = '-';

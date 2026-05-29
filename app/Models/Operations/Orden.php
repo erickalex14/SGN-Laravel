@@ -117,4 +117,9 @@ class Orden extends Model
     {
         return $this->hasMany(OrdenRepuesto::class, 'orden_id', 'id');
     }
+
+    public function preciosOrden()
+    {
+        return $this->hasMany(PrecioOrden::class, 'orden_id', 'id');
+    }
 }
