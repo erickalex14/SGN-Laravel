@@ -412,6 +412,62 @@
     </div>
 </div>
 
+<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarModalSR()">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
+            <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+        </div>
+        <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="sr-nro-orden-lbl"></b></p>
+        <p style="margin:0 0 20px;font-size:11.5px;color:#64748b;line-height:1.4;"><i class="bi bi-info-circle me-1"></i>Ingresa los detalles del repuesto requerido. Se creará un ticket en bodega y el estado de la orden pasará a <b>Requerido</b>.</p>
+        
+        <input type="hidden" id="sr-orden-id" value="">
+        
+        <div style="margin-bottom:14px;">
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Nombre del Repuesto <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="sr-repuesto-nombre" maxlength="255" placeholder="Ej: Pantalla A123"
+                   style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;">
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-bottom:14px;">
+            <div>
+                <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Cantidad <span style="color:#ef4444;">*</span></label>
+                <input type="number" id="sr-cantidad" min="1" value="1"
+                       style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Nro de Parte</label>
+                <input type="text" id="sr-nro-parte" maxlength="100" placeholder="Ej: PN-987654"
+                       style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;">
+            </div>
+        </div>
+        
+        <div style="margin-bottom:14px;">
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Link de Compra</label>
+            <input type="url" id="sr-link-compra" placeholder="https://..."
+                   style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;">
+        </div>
+        
+        <div style="margin-bottom:14px;">
+            <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Descripción / Notas Adicionales <span style="color:#ef4444;">*</span></label>
+            <textarea id="sr-descripcion" rows="3" placeholder="Detalles técnicos adicionales..."
+                      style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
+        
+        <div id="sr-error" style="display:none;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:13px;font-weight:600;margin-bottom:14px;"></div>
+        
+        <div style="display:flex;gap:10px;">
+            <button onclick="confirmarSR()" id="btn-confirmar-sr"
+                    style="flex:1;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:9px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;">
+                <i class="bi bi-send me-2"></i>Enviar Solicitud
+            </button>
+            <button onclick="cerrarModalSR()" style="background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0;border-radius:9px;padding:11px 18px;font-size:13.5px;font-weight:600;cursor:pointer;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="modal-alert" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarAlerta(false)">
     <div style="background:#fff;border-radius:18px;padding:32px 30px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center;animation:modalIn .2s ease;position:relative;">
         <div id="alert-icon-container" style="border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border: 1.5px solid #fca5a5;background:#fef2f2;">
@@ -442,8 +498,9 @@ const _moUrlRepAsignar = @json(route('mis_ordenes.repuesto_asignar'));
 const _moUrlRepRevertir = @json(route('mis_ordenes.repuesto_revertir'));
 const _moUrlInformeVer = @json(route('informes.ver'));
 const _moUrlInformePrintBase = @json(url('/operaciones/informes'));
-const _moUrlInformesIndex = @json(route('informes.index'));
+const _moUrlInformesCrear = @json(route('informes.crear'));
 const _moUrlBuscarRepuestos = @json(route('mis_ordenes.repuestos.buscar'));
+const _moUrlSolicitarRepuesto = @json(route('solicitudes_repuestos.solicitar'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -631,6 +688,10 @@ async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
 
 async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
     if (!nuevoEstado) return;
+    if (nuevoEstado === 'Requerido') {
+        abrirModalSR(ordenId);
+        return;
+    }
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
@@ -808,6 +869,84 @@ function cerrarModalNC() {
     _ncOrdenId = 0;
 }
 
+/*  Solicitud de Repuesto Modal  */
+function abrirModalSR(ordenId) {
+    const row = _moRows.find((x) => Number(x.id) === Number(ordenId));
+    if (!row) return;
+
+    document.getElementById('sr-orden-id').value = ordenId;
+    document.getElementById('sr-nro-orden-lbl').textContent = row.nro_orden || '-';
+    document.getElementById('sr-repuesto-nombre').value = '';
+    document.getElementById('sr-cantidad').value = '1';
+    document.getElementById('sr-nro-parte').value = '';
+    document.getElementById('sr-link-compra').value = '';
+    document.getElementById('sr-descripcion').value = '';
+    document.getElementById('sr-error').style.display = 'none';
+    document.getElementById('modal-solicitud-repuesto').style.display = 'flex';
+    document.getElementById('sr-repuesto-nombre').focus();
+}
+
+function cerrarModalSR() {
+    document.getElementById('modal-solicitud-repuesto').style.display = 'none';
+    
+    // Restaurar el select del modal de gestión si el usuario canceló
+    const ordenId = document.getElementById('sr-orden-id').value;
+    const row = _moRows.find((x) => Number(x.id) === Number(ordenId));
+    if (row) {
+        const sel = document.querySelector('.gestion-row.repuesto-row select');
+        if (sel) {
+            sel.value = row.estado_repuesto || 'No requerido';
+        }
+    }
+}
+
+async function confirmarSR() {
+    const ordenId = document.getElementById('sr-orden-id').value;
+    const repNombre = document.getElementById('sr-repuesto-nombre').value.trim();
+    const cantidad = document.getElementById('sr-cantidad').value.trim();
+    const nroParte = document.getElementById('sr-nro-parte').value.trim();
+    const linkCompra = document.getElementById('sr-link-compra').value.trim();
+    const descripcion = document.getElementById('sr-descripcion').value.trim();
+    const err = document.getElementById('sr-error');
+    
+    err.style.display = 'none';
+    if (!repNombre) { err.textContent = 'El nombre del repuesto es obligatorio.'; err.style.display = 'block'; return; }
+    if (!cantidad || Number(cantidad) < 1) { err.textContent = 'La cantidad debe ser al menos 1.'; err.style.display = 'block'; return; }
+    if (!descripcion) { err.textContent = 'La descripción es obligatoria.'; err.style.display = 'block'; return; }
+
+    const btn = document.getElementById('btn-confirmar-sr');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Enviando...';
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('orden_id', ordenId);
+    fd.append('cantidad', cantidad);
+    fd.append('repuesto_nombre', repNombre);
+    fd.append('nro_parte', nroParte);
+    fd.append('link_compra', linkCompra);
+    fd.append('descripcion', descripcion);
+
+    try {
+        const r = await fetch(_moUrlSolicitarRepuesto, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            err.textContent = d.error || 'No se pudo registrar la solicitud.';
+            err.style.display = 'block';
+            return;
+        }
+        cerrarModalSR();
+        location.reload();
+    } catch {
+        err.textContent = 'Error de conexión con el servidor.';
+        err.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-2"></i>Enviar Solicitud';
+    }
+}
+
+
 async function confirmarNC() {
     const asunto = document.getElementById('nc-asunto').value.trim();
     const detalles = document.getElementById('nc-detalles').value.trim();
@@ -848,7 +987,7 @@ async function confirmarNC() {
 
 function abrirInformeDeOrden(ordenId) {
     try { localStorage.setItem('sgn_informe_orden_id', String(ordenId)); } catch {}
-    window.location.href = _moUrlInformesIndex + '?orden_id=' + encodeURIComponent(String(ordenId));
+    window.location.href = _moUrlInformesCrear + '?orden_id=' + encodeURIComponent(String(ordenId));
 }
 
 async function verPdfInforme(ordenId) {
@@ -1061,6 +1200,7 @@ document.addEventListener('keydown', (e) => {
         cerrarCreds();
         cerrarModal();
         cerrarModalNC();
+        cerrarModalSR();
         cerrarAlerta(false);
     }
 });

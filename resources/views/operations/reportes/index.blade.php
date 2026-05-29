@@ -1219,3 +1219,6 @@ async function exportarXLSX() {
 })();
 </script>
 @endpush
+
+@include('layouts.asistente_widget')
+
