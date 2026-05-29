@@ -140,18 +140,19 @@ class AsistenteIaService
 
         // 1. Consultar órdenes por Técnico (estadísticas de rendimiento)
         if (preg_match('/tecnico|tecnicos|rendimiento|asignadas/i', $consulta)) {
-            $query = Orden::select('tecnico_nombre')
-                ->selectRaw('count(*) as total')
-                ->selectRaw('sum(case when estado_orden in ("Entregada", "Finalizada", "Entregado", "Finalizado") then 1 else 0 end) as finalizadas')
-                ->selectRaw('sum(case when estado_orden not in ("Entregada", "Finalizada", "Entregado", "Finalizado") then 1 else 0 end) as pendientes')
-                ->whereNotNull('tecnico_nombre')
-                ->where('tecnico_nombre', '!=', '');
+            $query = Orden::join('usuarios', 'ordenes.tecnico_id', '=', 'usuarios.id')
+                ->select('usuarios.nombre_tecnico as tecnico_nombre')
+                ->selectRaw('count(ordenes.id) as total')
+                ->selectRaw('sum(case when ordenes.estado_orden in ("Entregada", "Finalizada", "Entregado", "Finalizado") then 1 else 0 end) as finalizadas')
+                ->selectRaw('sum(case when ordenes.estado_orden not in ("Entregada", "Finalizada", "Entregado", "Finalizado") then 1 else 0 end) as pendientes')
+                ->whereNotNull('usuarios.nombre_tecnico')
+                ->where('usuarios.nombre_tecnico', '!=', '');
 
             if ($sucursalId > 0 && $esAdmin) {
-                $query->where('sucursal_id', $sucursalId);
+                $query->where('ordenes.sucursal_id', $sucursalId);
             }
 
-            $datos['estadisticas_ordenes_por_tecnico'] = $query->groupBy('tecnico_nombre')->get();
+            $datos['estadisticas_ordenes_por_tecnico'] = $query->groupBy('usuarios.nombre_tecnico')->get();
         }
 
         // 2. Consultar órdenes por Fecha (hoy, meses o rangos)
