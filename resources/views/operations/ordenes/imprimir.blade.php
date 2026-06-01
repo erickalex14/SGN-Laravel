@@ -225,6 +225,57 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         </tr>
     </table>
 
+    @php
+        $solicitudNc = $solicitudNc ?? $orden->solicitudesNc->first();
+    @endphp
+    @if ($solicitudNc)
+        @php
+            $estadoNc = strtoupper((string) $solicitudNc->estado);
+            $bgColor = '#f1f5f9'; $fgColor = '#475569';
+            if ($estadoNc === 'APROBADA') {
+                $bgColor = '#dcfce7'; $fgColor = '#166534';
+            } elseif ($estadoNc === 'RECHAZADA') {
+                $bgColor = '#fee2e2'; $fgColor = '#991b1b';
+            }
+        @endphp
+        <div class="sec-titulo">Información de Nota de Crédito</div>
+        <table class="datos">
+            <tr>
+                <td width="25%"><span class="lbl">Nro. Solicitud</span><strong>{{ $solicitudNc->nro_solicitud }}</strong></td>
+                <td width="25%"><span class="lbl">Fecha Solicitud</span>{{ \Carbon\Carbon::parse($solicitudNc->creado_en)->format('d/m/Y') }}</td>
+                <td width="25%">
+                    <span class="lbl">Estado Solicitud</span>
+                    <span class="badge" style="background: {{ $bgColor }}; color: {{ $fgColor }}; border: 1px solid {{ $fgColor }}44;">
+                        {{ $solicitudNc->estado }}
+                    </span>
+                </td>
+                <td width="25%">
+                    @if ($estadoNc === 'APROBADA')
+                        <span class="lbl">Aprobado Por</span>{{ $solicitudNc->nombre_admin ?: 'Administrador' }}
+                    @elseif ($estadoNc === 'RECHAZADA')
+                        <span class="lbl">Rechazado Por</span>{{ $solicitudNc->nombre_admin ?: 'Administrador' }}
+                    @else
+                        <span class="lbl">Procesado Por</span>-
+                    @endif
+                </td>
+            </tr>
+            @if ($solicitudNc->asunto || $solicitudNc->detalles || $solicitudNc->motivo_rechazo)
+                <tr>
+                    <td colspan="2">
+                        <span class="lbl">Asunto / Razón de Solicitud</span>
+                        {{ $solicitudNc->asunto }}@if($solicitudNc->detalles) — {{ $solicitudNc->detalles }}@endif
+                    </td>
+                    <td colspan="2">
+                        @if ($estadoNc === 'RECHAZADA' && $solicitudNc->motivo_rechazo)
+                            <span class="lbl" style="color: #ef4444;">Motivo del Rechazo</span>
+                            <span style="color: #b91c1c; font-weight: 600;">{{ $solicitudNc->motivo_rechazo }}</span>
+                        @endif
+                    </td>
+                </tr>
+            @endif
+        </table>
+    @endif
+
     @if ($hayPrecios)
         <!-- ══ TABLA DE VALORES ══ -->
         <div class="sec-titulo">Valores del Servicio</div>

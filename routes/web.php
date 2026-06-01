@@ -190,6 +190,7 @@ Route::middleware('auth')->group(function () {
         // Endpoints AJAX puros
         Route::get('/usuarios/{id}/permisos', [UsuarioController::class, 'getPermisos']);
         Route::get('/usuarios/{id}/sucursales', [UsuarioController::class, 'getSucursales']);
+        Route::get('/usuarios/{id}/cas', [UsuarioController::class, 'getCas']);
     });
 
 
@@ -234,6 +235,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:inv_repuestos,ver'])->group(function () {
         Route::get('/inventario/repuestos', [RepuestoController::class, 'index'])->name('repuestos.index');
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
+        Route::get('/inventario/repuestos/auditoria', [RepuestoController::class, 'auditoria'])->name('repuestos.auditoria');
     });
 
     // Guardar / Modificar / Eliminar repuestos
@@ -279,6 +281,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/mis-ordenes/garantia/estado', [MisOrdenesController::class, 'cambiarEstadoGarantia'])->name('mis_ordenes.garantia_estado');
         Route::post('/operaciones/mis-ordenes/repuesto/asignar', [MisOrdenesController::class, 'asignarRepuesto'])->name('mis_ordenes.repuesto_asignar');
         Route::post('/operaciones/mis-ordenes/repuesto/revertir', [MisOrdenesController::class, 'revertirRepuesto'])->name('mis_ordenes.repuesto_revertir');
+        Route::post('/operaciones/mis-ordenes/reasignar', [MisOrdenesController::class, 'reasignarTecnico'])->name('mis_ordenes.reasignar');
     });
 
     Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {

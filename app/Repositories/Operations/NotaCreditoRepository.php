@@ -10,12 +10,12 @@ class NotaCreditoRepository
 {
     public function obtenerTodas(): Collection
     {
-        return SolicitudNc::with('orden')->orderBy('creado_en', 'desc')->get();
+        return SolicitudNc::with(['orden.informes', 'tecnico'])->orderBy('creado_en', 'desc')->get();
     }
 
     public function obtenerPorTecnico(int $tecnicoId): Collection
     {
-        return SolicitudNc::with('orden')
+        return SolicitudNc::with(['orden.informes', 'tecnico'])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('creado_en', 'desc')
             ->get();

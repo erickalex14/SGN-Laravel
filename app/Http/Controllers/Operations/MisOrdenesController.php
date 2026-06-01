@@ -23,14 +23,17 @@ class MisOrdenesController extends Controller
 {
     protected GestionOrdenService $service;
     protected OrdenRepository $repository;
+    protected \App\Repositories\Identity\UsuarioRepository $usuarioRepo;
 
     public function __construct(
         GestionOrdenService $service,
-        OrdenRepository $repository
+        OrdenRepository $repository,
+        \App\Repositories\Identity\UsuarioRepository $usuarioRepo
     )
     {
         $this->service = $service;
         $this->repository = $repository;
+        $this->usuarioRepo = $usuarioRepo;
     }
 
     public function index(): View
@@ -42,7 +45,16 @@ class MisOrdenesController extends Controller
         }
 
         $ordenes = $this->repository->obtenerOrdenesPorTecnico($tecnicoId);
-        return view('operations.mis_ordenes.index', compact('ordenes'));
+
+        // Cargar los técnicos del mismo CAS o sucursal del técnico en sesión
+        $verTodosTecnicos = $this->resolverEsAdmin();
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual(
+            $verTodosTecnicos,
+            (int) session('sucursal_id'),
+            $tecnicoId
+        );
+
+        return view('operations.mis_ordenes.index', compact('ordenes', 'tecnicos'));
     }
 
     public function cambiarEstado(CambiarEstadoOrdenRequest $request): JsonResponse
@@ -182,6 +194,45 @@ class MisOrdenesController extends Controller
             return response()->json([
                 'ok' => true,
                 'mensaje' => 'Repuesto revertido correctamente.'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function reasignarTecnico(\Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $ordenId = (int) $request->input('orden_id');
+            $nuevoTecnicoId = (int) $request->input('tecnico_id');
+            $tipoOrden = $request->input('tipo_orden', 'personal');
+
+            if ($ordenId <= 0 || $nuevoTecnicoId <= 0) {
+                throw new Exception('ID de orden o técnico inválido.');
+            }
+
+            // Validar que el nuevo técnico es asignable (pertenece al mismo CAS o sucursal del creador/logueado)
+            $tecnicoActualId = (int) session('tecnico_id');
+            $esAdmin = $this->resolverEsAdmin();
+
+            if (!$this->usuarioRepo->tecnicoAsignable(
+                $nuevoTecnicoId,
+                $esAdmin,
+                (int) session('sucursal_id'),
+                $tecnicoActualId
+            )) {
+                throw new Exception('No puedes asignar esta orden a ese técnico.');
+            }
+
+            // Reasignar la orden
+            $this->service->reasignarTecnico($ordenId, $nuevoTecnicoId, $tipoOrden);
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'La orden ha sido reasignada correctamente.'
             ]);
         } catch (Exception $e) {
             return response()->json([

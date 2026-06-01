@@ -4,6 +4,7 @@ namespace App\Models\Directory;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Operations\Orden;
+use App\Models\Identity\Usuario;
 
 class Cas extends Model
 {
@@ -17,6 +18,7 @@ class Cas extends Model
 
     protected $fillable = [
         'nombre',
+        'prefijo',
         'marca',
         'telefono',
         'correo',
@@ -35,5 +37,10 @@ class Cas extends Model
     public function ordenes()
     {
         return $this->hasMany(Orden::class, 'cas_id', 'id');
+    }
+
+    public function usuariosAsignados()
+    {
+        return $this->belongsToMany(Usuario::class, 'usuariocas', 'cas_id', 'usuario_id');
     }
 }

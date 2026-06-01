@@ -697,12 +697,23 @@
                                style="width:100%;padding:9px 12px;border:1.5px solid #bbf7d0;border-radius:7px;font-size:13px;outline:none;box-sizing:border-box;"
                                oninput="buscarRepuestoStock(this.value)">
                         <div id="repuesto-resultados" class="rep-resultados"></div>
-                        <div id="repuesto-seleccionado-badge" class="rep-badge">
-                            <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
-                            <span id="repuesto-seleccionado-texto" class="rep-badge-txt"></span>
-                            <button type="button" onclick="limpiarRepuestoSeleccionado()" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:15px;padding:0;">
-                                <i class="bi bi-x-circle-fill"></i>
-                            </button>
+                        <div id="repuestos-seleccionados-container" style="display:none; margin-top:12px;">
+                            <div style="font-size:12px; font-weight:700; color:#15803d; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                <i class="bi bi-check2-all"></i> Repuestos Seleccionados:
+                            </div>
+                            <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+                                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:12.5px;">
+                                    <thead>
+                                        <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0; color:#64748b; font-weight:700;">
+                                            <th style="padding:8px 10px;">Código</th>
+                                            <th style="padding:8px 10px;">Nombre</th>
+                                            <th style="padding:8px 10px; width:50px; text-align:center;">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-repuestos-cuerpo">
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -713,25 +724,32 @@
             <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos</div>
             <div class="seccion-body">
                 <div class="grid-2">
-                    <div class="campo">
-                        <label>Repuesto Seleccionado</label>
-                        <input type="text" id="repuesto_inventario_preview" value="Sin seleccionar" readonly style="background:#f8fafc;">
+                    <div class="campo" style="grid-column: 1 / -1;">
+                        <label>Repuestos Seleccionados en Stock</label>
+                        <div id="repuestos-ocultos-inputs">
+                            <!-- Los inputs ocultos se inyectarán dinámicamente aquí -->
+                        </div>
                         <input type="hidden" id="repuesto_inventario_id" name="repuesto_inventario_id" value="">
+                        <div id="repuestos-lista-visual-resumen" style="font-size:13px; color:#475569; padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; font-style:italic;">
+                            Ningún repuesto de stock seleccionado.
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="seccion-form bloque-motivo bloque-personal hidden">
-            <div class="seccion-hdr"><i class="bi bi-key"></i> Credenciales del Equipo</div>
-            <div class="seccion-body">
-                <div class="lista-lineas" id="credenciales-container">
-                    <div class="linea-item">
-                        <input type="text" name="cred_usuario[]" placeholder="Usuario (opcional)">
-                        <input type="text" name="cred_contrasena[]" placeholder="Contraseña / PIN">
-                        <input type="hidden" name="cred_es_patron[]" value="0">
-                        <button type="button" class="btn-mini" onclick="agregarCredencial()">+</button>
-                    </div>
+            <div class="seccion-hdr" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-key"></i> Credenciales del Equipo
+                </span>
+                <button type="button" class="rep-btn rep-btn-primary rep-btn-sm" style="background: #2563eb; color: #fff; font-size: 11.5px; font-weight: 700; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="agregarCredencial()">
+                    <i class="bi bi-plus-circle"></i> Agregar credencial
+                </button>
+            </div>
+            <div class="seccion-body" style="padding: 20px;">
+                <div id="credenciales-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Se llenará dinámicamente con tarjetas -->
                 </div>
             </div>
         </div>
@@ -1152,36 +1170,101 @@ function renderRepuestosResultado(repuestos) {
     lista.style.display = 'block';
 }
 
+let _repuestosSeleccionados = [];
+
+function actualizarTablaRepuestos() {
+    const cuerpo = document.getElementById('tabla-repuestos-cuerpo');
+    const container = document.getElementById('repuestos-seleccionados-container');
+    const inputsDiv = document.getElementById('repuestos-ocultos-inputs');
+    const visualResumen = document.getElementById('repuestos-lista-visual-resumen');
+    const hiddenLegacy = document.getElementById('repuesto_inventario_id');
+
+    if (!cuerpo) return;
+
+    cuerpo.innerHTML = '';
+    inputsDiv.innerHTML = '';
+
+    if (_repuestosSeleccionados.length === 0) {
+        if (container) container.style.display = 'none';
+        if (visualResumen) {
+            visualResumen.textContent = 'Ningún repuesto de stock seleccionado.';
+            visualResumen.style.fontStyle = 'italic';
+        }
+        if (hiddenLegacy) hiddenLegacy.value = '';
+        return;
+    }
+
+    if (container) container.style.display = 'block';
+
+    let listadoNombres = [];
+    _repuestosSeleccionados.forEach((r) => {
+        // Render rows
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e2e8f0';
+        tr.innerHTML = `
+            <td style="padding:8px 10px; font-family:monospace; font-weight:700; color:#b45309;">${escHtml(r.codigo)}</td>
+            <td style="padding:8px 10px; color:#1e293b;">${escHtml(r.nombre)}</td>
+            <td style="padding:8px 10px; text-align:center;">
+                <button type="button" style="background:none; border:none; color:#dc2626; font-size:15px; cursor:pointer;" onclick="eliminarRepuestoDeSeleccion(${r.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        cuerpo.appendChild(tr);
+
+        // Render hidden inputs
+        const hiddenInp = document.createElement('input');
+        hiddenInp.type = 'hidden';
+        hiddenInp.name = 'repuestos_seleccionados[]';
+        hiddenInp.value = r.id;
+        inputsDiv.appendChild(hiddenInp);
+
+        listadoNombres.push((r.codigo || '-') + ' - ' + (r.nombre || '-'));
+    });
+
+    if (visualResumen) {
+        visualResumen.textContent = listadoNombres.join(' | ');
+        visualResumen.style.fontStyle = 'normal';
+    }
+
+    // legacy fallback
+    if (hiddenLegacy) {
+        hiddenLegacy.value = _repuestosSeleccionados[0].id;
+    }
+}
+
+function eliminarRepuestoDeSeleccion(id) {
+    _repuestosSeleccionados = _repuestosSeleccionados.filter(x => Number(x.id) !== Number(id));
+    actualizarTablaRepuestos();
+}
+
 function seleccionarRepuesto(r) {
-    const hiddenId = document.getElementById('repuesto_inventario_id');
-    const preview = document.getElementById('repuesto_inventario_preview');
-    const badge = document.getElementById('repuesto-seleccionado-badge');
-    const badgeText = document.getElementById('repuesto-seleccionado-texto');
     const lista = document.getElementById('repuesto-resultados');
     const inp = document.getElementById('inp-buscar-repuesto');
 
-    if (hiddenId) hiddenId.value = r.id;
-    if (preview) preview.value = (r.codigo || '-') + ' - ' + (r.nombre || '-');
-    if (badgeText) badgeText.textContent = (r.codigo || '-') + ' - ' + (r.nombre || '-');
-    if (badge) badge.style.display = 'flex';
+    const existe = _repuestosSeleccionados.some(x => Number(x.id) === Number(r.id));
+    if (!existe) {
+        _repuestosSeleccionados.push(r);
+    } else {
+        alert('Este repuesto ya fue seleccionado.');
+    }
+
+    actualizarTablaRepuestos();
+
     if (lista) lista.style.display = 'none';
     if (inp) {
-        inp.value = r.codigo || '';
-        inp.style.borderColor = '#f59e0b';
-        inp.style.background = '#fffbeb';
+        inp.value = '';
+        inp.style.borderColor = '#15803d';
+        inp.style.background = '#f0fdf4';
     }
 }
 
 function limpiarRepuestoSeleccionado() {
-    const hiddenId = document.getElementById('repuesto_inventario_id');
-    const preview = document.getElementById('repuesto_inventario_preview');
-    const badge = document.getElementById('repuesto-seleccionado-badge');
+    _repuestosSeleccionados = [];
+    actualizarTablaRepuestos();
+
     const lista = document.getElementById('repuesto-resultados');
     const inp = document.getElementById('inp-buscar-repuesto');
-
-    if (hiddenId) hiddenId.value = '';
-    if (preview) preview.value = 'Sin seleccionar';
-    if (badge) badge.style.display = 'none';
     if (lista) lista.style.display = 'none';
     if (inp) {
         inp.value = '';
@@ -1390,15 +1473,303 @@ function agregarSerie() {
 
 function agregarCredencial() {
     const container = document.getElementById('credenciales-container');
-    const row = document.createElement('div');
-    row.className = 'linea-item';
-    row.innerHTML = `
-        <input type="text" name="cred_usuario[]" placeholder="Usuario (opcional)">
-        <input type="text" name="cred_contrasena[]" placeholder="ContraseÃ±a / PIN">
-        <input type="hidden" name="cred_es_patron[]" value="0">
-        <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
+    if (!container) return;
+
+    const cardId = 'cred-card-' + Date.now() + Math.random().toString(36).substr(2, 9);
+
+    const card = document.createElement('div');
+    card.className = 'cred-card-item';
+    card.id = cardId;
+    card.style.cssText = 'background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s;';
+
+    card.innerHTML = `
+        <!-- Inputs principales para enviar al servidor en un solo arreglo -->
+        <input type="hidden" name="cred_es_patron[]" class="cred-es-patron-inp" value="0">
+        <input type="hidden" name="cred_contrasena[]" class="cred-hidden-pwd-actual" value="">
+
+        <!-- Usuario (opcional) -->
+        <div class="campo" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em;">Usuario (opcional)</label>
+            <input type="text" name="cred_usuario[]" placeholder="ej: admin" style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #0f172a; background: #fff; font-family: inherit; outline: none; transition: border-color .2s;" onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#cbd5e1';">
+        </div>
+
+        <!-- Tipo de credencial -->
+        <div class="campo" style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em;">Tipo de credencial *</label>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1e293b; user-select: none;">
+                    <input type="radio" name="tipo_tipo_${cardId}" value="texto" checked onchange="toggleCredCardType('${cardId}', 'texto')" style="cursor: pointer; width: 16px; height: 16px;">
+                    Texto / PIN
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1e293b; user-select: none;">
+                    <input type="radio" name="tipo_tipo_${cardId}" value="patron" onchange="toggleCredCardType('${cardId}', 'patron')" style="cursor: pointer; width: 16px; height: 16px;">
+                    Patrón de dibujo
+                </label>
+            </div>
+        </div>
+
+        <!-- Bloque Texto / PIN -->
+        <div class="campo input-texto-wrap" id="texto-wrap-${cardId}" style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em;">Contraseña / PIN *</label>
+            <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                <input type="text" class="pwd-text-visual" placeholder="PIN o contraseña" style="flex: 1; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #0f172a; background: #fff; outline: none; transition: border-color .2s;" oninput="sincronizarPwdActual('${cardId}', this.value)" onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#cbd5e1';">
+                <button type="button" onclick="eliminarCredencialCard('${cardId}')" style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #dc2626; font-size: 16px; transition: all 0.15s;" onmouseover="this.style.background='#fca5a5'; this.style.color='#fff';" onmouseout="this.style.background='#fee2e2'; this.style.color='#dc2626';" title="Eliminar credencial">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bloque Patrón de dibujo -->
+        <div class="campo input-patron-wrap" id="patron-wrap-${cardId}" style="display: none; flex-direction: column; gap: 8px;">
+            <label style="font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em;">Dibuja el patrón</label>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+                <div style="position: relative; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <canvas class="patron-canvas" id="canvas-${cardId}" width="180" height="180" style="display: block; cursor: crosshair; touch-action: none; background: #fff; border-radius: 8px;"></canvas>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 15px; width: 100%;">
+                    <button type="button" class="btn-limpiar-patron" onclick="clearPatronLock('${cardId}')" style="background: #f1f5f9; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #475569; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s;" onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                        <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                    </button>
+                    <span class="status-patron" id="status-${cardId}" style="font-size: 12.5px; font-weight: 700; color: #64748b; display: flex; align-items: center; gap: 4px;">
+                        <i class="bi bi-info-circle"></i> Sin dibujar
+                    </span>
+                </div>
+            </div>
+
+            <!-- Botón Eliminar abajo estilo mockup 2 -->
+            <div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 12px; display: flex; justify-content: center; width: 100%;">
+                <button type="button" onclick="eliminarCredencialCard('${cardId}')" style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; width: 100%; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #dc2626; font-size: 13px; transition: all 0.15s; font-weight: 700; gap: 6px;" onmouseover="this.style.background='#fca5a5'; this.style.color='#fff';" onmouseout="this.style.background='#fee2e2'; this.style.color='#dc2626';">
+                    <i class="bi bi-trash"></i> Eliminar credencial
+                </button>
+            </div>
+        </div>
     `;
-    container.appendChild(row);
+
+    container.appendChild(card);
+    
+    // Inicializar el canvas de patrón para esta tarjeta
+    initPatternLock(cardId);
+}
+
+function toggleCredCardType(cardId, type) {
+    const textoWrap = document.getElementById('texto-wrap-' + cardId);
+    const patronWrap = document.getElementById('patron-wrap-' + cardId);
+    const isPatronInp = document.querySelector('#' + cardId + ' .cred-es-patron-inp');
+    const hiddenPwdInp = document.querySelector('#' + cardId + ' .cred-hidden-pwd-actual');
+
+    if (type === 'patron') {
+        if (textoWrap) textoWrap.style.display = 'none';
+        if (patronWrap) patronWrap.style.display = 'flex';
+        if (isPatronInp) isPatronInp.value = '1';
+        
+        // Reset or initialize to the canvas pattern lock state
+        if (window.patternLocks && window.patternLocks[cardId]) {
+            window.patternLocks[cardId].clear();
+        }
+    } else {
+        if (textoWrap) textoWrap.style.display = 'flex';
+        if (patronWrap) patronWrap.style.display = 'none';
+        if (isPatronInp) isPatronInp.value = '0';
+        
+        // Sincronizar con el valor visual de texto
+        const textVal = document.querySelector('#' + cardId + ' .pwd-text-visual')?.value || '';
+        if (hiddenPwdInp) hiddenPwdInp.value = textVal;
+    }
+}
+
+function sincronizarPwdActual(cardId, val) {
+    const isPatron = document.querySelector('#' + cardId + ' .cred-es-patron-inp')?.value === '1';
+    if (!isPatron) {
+        const hiddenPwdInp = document.querySelector('#' + cardId + ' .cred-hidden-pwd-actual');
+        if (hiddenPwdInp) hiddenPwdInp.value = val;
+    }
+}
+
+function clearPatronLock(cardId) {
+    if (window.patternLocks && window.patternLocks[cardId]) {
+        window.patternLocks[cardId].clear();
+    }
+}
+
+function eliminarCredencialCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (card) {
+        card.remove();
+    }
+    // Clean up locks
+    if (window.patternLocks && window.patternLocks[cardId]) {
+        delete window.patternLocks[cardId];
+    }
+}
+
+function drawPattern(canvasId, selectedDots, currentPos) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Coordenadas fijas para la grilla de 3x3
+    const dots = [
+        {x: 30, y: 30}, {x: 90, y: 30}, {x: 150, y: 30},
+        {x: 30, y: 90}, {x: 90, y: 90}, {x: 150, y: 90},
+        {x: 30, y: 150}, {x: 90, y: 150}, {x: 150, y: 150}
+    ];
+
+    // 1. Dibujar líneas conectadas
+    if (selectedDots.length > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#2563eb'; // Elegante azul premium
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(dots[selectedDots[0]].x, dots[selectedDots[0]].y);
+        for (let i = 1; i < selectedDots.length; i++) {
+            ctx.lineTo(dots[selectedDots[i]].x, dots[selectedDots[i]].y);
+        }
+        if (currentPos) {
+            ctx.lineTo(currentPos.x, currentPos.y);
+        }
+        ctx.stroke();
+    }
+
+    // 2. Dibujar puntos de la grilla
+    dots.forEach((dot, idx) => {
+        const isSelected = selectedDots.includes(idx);
+        ctx.beginPath();
+        if (isSelected) {
+            // Anillo exterior translúcido
+            ctx.arc(dot.x, dot.y, 16, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+            ctx.fill();
+
+            // Punto interior activo
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#2563eb';
+            ctx.fill();
+        } else {
+            // Punto inactivo normal
+            ctx.arc(dot.x, dot.y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fill();
+        }
+    });
+}
+
+function initPatternLock(cardId) {
+    const canvas = document.getElementById('canvas-' + cardId);
+    if (!canvas) return;
+
+    let selectedDots = [];
+    let isDrawing = false;
+
+    const dots = [
+        {x: 30, y: 30}, {x: 90, y: 30}, {x: 150, y: 30},
+        {x: 30, y: 90}, {x: 90, y: 90}, {x: 150, y: 90},
+        {x: 30, y: 150}, {x: 90, y: 150}, {x: 150, y: 150}
+    ];
+
+    // Renderizado del estado inicial vacío
+    drawPattern('canvas-' + cardId, [], null);
+
+    function getCanvasCoords(canvas, event) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        if (event.touches && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else {
+            clientX = event.clientX;
+            clientY = event.clientY;
+        }
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    function getClosestDot(pos) {
+        const hitRadius = 22;
+        for (let i = 0; i < dots.length; i++) {
+            const dx = pos.x - dots[i].x;
+            const dy = pos.y - dots[i].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < hitRadius) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    function handleStart(e) {
+        e.preventDefault();
+        const pos = getCanvasCoords(canvas, e);
+        const dotIdx = getClosestDot(pos);
+        if (dotIdx !== -1) {
+            isDrawing = true;
+            selectedDots = [dotIdx];
+            drawPattern('canvas-' + cardId, selectedDots, pos);
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+    }
+
+    function handleMove(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const pos = getCanvasCoords(canvas, e);
+        const dotIdx = getClosestDot(pos);
+        if (dotIdx !== -1 && !selectedDots.includes(dotIdx)) {
+            selectedDots.push(dotIdx);
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+        drawPattern('canvas-' + cardId, selectedDots, pos);
+    }
+
+    function handleEnd(e) {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        if (selectedDots.length > 1) {
+            drawPattern('canvas-' + cardId, selectedDots, null);
+            const base64 = canvas.toDataURL('image/png');
+            document.querySelector('#' + cardId + ' .cred-hidden-pwd-actual').value = base64;
+            
+            const statusEl = document.getElementById('status-' + cardId);
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#10b981;"></i> Patrón dibujado';
+                statusEl.style.color = '#10b981';
+            }
+        } else {
+            clearPatronLock(cardId);
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    
+    // MouseUp se añade al window para robustez en arrastres fuera del canvas
+    window.addEventListener('mouseup', handleEnd);
+
+    canvas.addEventListener('touchstart', handleStart);
+    canvas.addEventListener('touchmove', handleMove);
+    canvas.addEventListener('touchend', handleEnd);
+
+    window.patternLocks = window.patternLocks || {};
+    window.patternLocks[cardId] = {
+        clear: function() {
+            selectedDots = [];
+            isDrawing = false;
+            drawPattern('canvas-' + cardId, [], null);
+            document.querySelector('#' + cardId + ' .cred-hidden-pwd-actual').value = '';
+            const statusEl = document.getElementById('status-' + cardId);
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-check-circle"></i> Sin dibujar';
+                statusEl.style.color = '#64748b';
+            }
+        }
+    };
 }
 
 async function guardarOrden() {

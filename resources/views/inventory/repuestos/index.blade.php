@@ -62,8 +62,11 @@
         <div class="rep-card">
             <div class="rep-card-hdr">
                 <h3><i class="bi bi-list-ul me-2" style="color:#64748b;"></i>Repuestos en Bodega (<span id="count-rep">{{ count($repuestos) }}</span>)</h3>
-                <div style="display:flex; gap:12px; align-items:center;">
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                     <input type="text" id="buscador" class="input-search" placeholder="Buscar por código, nombre, parte..." oninput="filtrarTabla()">
+                    <a href="{{ route('repuestos.auditoria') }}" class="btn-nuevo" style="background:#4f46e5; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="bi bi-journal-text"></i> Historial de Auditoría
+                    </a>
                     <button class="btn-nuevo" onclick="abrirModal()">
                         <i class="bi bi-plus-circle"></i> Nuevo Repuesto
                     </button>

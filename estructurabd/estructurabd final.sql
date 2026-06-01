@@ -1,8 +1,7 @@
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
--- Host: YOUR_SERVER_IP    Database: novitecdb_pruebas
 -- ------------------------------------------------------
--- Server version	8.0.45
+-- Server version	9.4.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -26,8 +25,8 @@ CREATE TABLE `cas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nombre` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `marca` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `telefono` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `correo` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `telefono` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `correo` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `direccion` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ciudad` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `contacto` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -38,7 +37,7 @@ CREATE TABLE `cas` (
   PRIMARY KEY (`id`),
   KEY `idx_cas_nombre` (`nombre`),
   KEY `idx_cas_activo` (`activo`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -58,7 +57,7 @@ CREATE TABLE `clientes` (
   `direccion_clientes` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `identificacion` (`identificacion`)
-) ENGINE=InnoDB AUTO_INCREMENT=392 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1198 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -77,7 +76,7 @@ CREATE TABLE `credencialesequipo` (
   PRIMARY KEY (`id`),
   KEY `equipo_id` (`equipo_id`),
   CONSTRAINT `credencialesequipo_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -124,7 +123,7 @@ CREATE TABLE `equipos` (
   KEY `fk_equipos_tipo_servicio` (`tipo_servicio_id`),
   KEY `idx_eq_prod_inv` (`producto_inventario_codigo`),
   CONSTRAINT `fk_equipos_tipo_servicio` FOREIGN KEY (`tipo_servicio_id`) REFERENCES `tiposservicio` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=585 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1635 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -142,7 +141,7 @@ CREATE TABLE `equiposseries` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_equipo_id` (`equipo_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=742 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1903 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -154,8 +153,8 @@ DROP TABLE IF EXISTS `gruposacceso`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `gruposacceso` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nombre` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descripcion` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `es_superadmin` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -173,7 +172,7 @@ DROP TABLE IF EXISTS `informefotos`;
 CREATE TABLE `informefotos` (
   `id` int NOT NULL AUTO_INCREMENT,
   `informe_id` int NOT NULL,
-  `foto_data` longtext NOT NULL,
+  `foto_data` longblob,
   `caption` varchar(255) DEFAULT NULL,
   `nombre_archivo` varchar(255) DEFAULT NULL,
   `tipo_mime` varchar(100) DEFAULT 'image/jpeg',
@@ -181,7 +180,7 @@ CREATE TABLE `informefotos` (
   PRIMARY KEY (`id`),
   KEY `informe_id` (`informe_id`),
   CONSTRAINT `informefotos_ibfk_1` FOREIGN KEY (`informe_id`) REFERENCES `informes` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=358 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -195,19 +194,19 @@ CREATE TABLE `informes` (
   `id` int NOT NULL AUTO_INCREMENT,
   `orden_id` int NOT NULL,
   `tecnico_id` int NOT NULL,
-  `antecedentes` text NOT NULL,
-  `proceso` text NOT NULL,
-  `conclusion` text,
-  `recomendaciones` text,
+  `antecedentes` longtext,
+  `proceso` longtext,
+  `conclusion` longtext,
+  `recomendaciones` longtext,
   `estado_equipo` varchar(60) DEFAULT 'Operativo',
-  `fecha_informe` date NOT NULL,
+  `fecha_informe` date NOT NULL DEFAULT (curdate()),
   `fecha_creacion` datetime DEFAULT CURRENT_TIMESTAMP,
   `presupuesto_json` mediumtext,
   PRIMARY KEY (`id`),
   KEY `orden_id` (`orden_id`),
   KEY `tecnico_id` (`tecnico_id`),
   CONSTRAINT `informes_ibfk_2` FOREIGN KEY (`tecnico_id`) REFERENCES `usuarios` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=264 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1166 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -219,12 +218,12 @@ DROP TABLE IF EXISTS `listascompra`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `listascompra` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `nro_lista` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `creado_por` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `nro_lista` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `creado_por` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `creado_por_id` int DEFAULT NULL,
   `fecha_creacion` date NOT NULL,
-  `estado` enum('Pendiente','Completada','Cancelada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pendiente',
-  `observacion` text COLLATE utf8mb4_unicode_ci,
+  `estado` enum('Pendiente','Completada','Cancelada') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pendiente',
+  `observacion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -241,7 +240,7 @@ CREATE TABLE `marcas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -264,7 +263,27 @@ CREATE TABLE `notificaciones` (
   PRIMARY KEY (`id`),
   KEY `idx_usuario_leida` (`usuario_id`,`leida`),
   KEY `idx_created` (`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=114 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=831 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `orden_repuestos`
+--
+
+DROP TABLE IF EXISTS `orden_repuestos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `orden_repuestos` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `orden_id` int unsigned NOT NULL,
+  `repuesto_id` int unsigned NOT NULL,
+  `cantidad` int NOT NULL DEFAULT '1',
+  `fecha` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `usuario_id` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `orden_id` (`orden_id`),
+  KEY `repuesto_id` (`repuesto_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -279,7 +298,7 @@ CREATE TABLE `ordenes` (
   `nro_orden` varchar(20) DEFAULT NULL,
   `nro_factura` varchar(20) DEFAULT NULL,
   `nro_factura_2` varchar(17) DEFAULT NULL,
-  `motivo_ingreso` enum('Validacion de Garantia','Servicio Cliente Externo','Servicio Tecnico','Servicios a Empresa') NOT NULL DEFAULT 'Servicio Cliente Externo',
+  `motivo_ingreso` enum('Validacion de Garantia','Servicio Cliente Externo','Servicio Tecnico','Servicios a Empresas') NOT NULL DEFAULT 'Servicio Cliente Externo',
   `nro_sucursal_cliente` char(5) DEFAULT NULL,
   `cliente_id` int NOT NULL,
   `equipo_id` int NOT NULL,
@@ -302,7 +321,7 @@ CREATE TABLE `ordenes` (
   `fecha_entrega` datetime DEFAULT NULL,
   `fecha_finalizacion` datetime DEFAULT NULL,
   `valor_estandar_id` int DEFAULT NULL,
-  `repuesto_inventario_id` int DEFAULT NULL COMMENT 'FK opcional a ProductosInventario.id — repuesto asignado a la orden',
+  `repuesto_inventario_id` int DEFAULT NULL COMMENT 'FK opcional a ProductosInventario.id ΓÇö repuesto asignado a la orden',
   `observacion` text,
   `tipo_servicio_id` int unsigned DEFAULT NULL,
   `tipo_servicio_texto` varchar(255) DEFAULT NULL,
@@ -324,7 +343,7 @@ CREATE TABLE `ordenes` (
   CONSTRAINT `ordenes_ibfk_4` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id`),
   CONSTRAINT `ordenes_ibfk_5` FOREIGN KEY (`ingresado_por`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ordenes_ibfk_6` FOREIGN KEY (`modificado_por`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1563 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -355,7 +374,7 @@ CREATE TABLE `ordenesempresas` (
   KEY `idx_equipo` (`equipo_id`),
   KEY `idx_tecnico` (`tecnico_id`),
   KEY `idx_sucursal` (`sucursal_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=40072 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -368,14 +387,14 @@ DROP TABLE IF EXISTS `permisosgrupo`;
 CREATE TABLE `permisosgrupo` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `grupo_id` int unsigned NOT NULL,
-  `modulo` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `accion` enum('ver','crear','editar','eliminar') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `modulo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `accion` enum('ver','crear','editar','eliminar') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `permitido` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_permiso` (`grupo_id`,`modulo`,`accion`),
   KEY `idx_permisos_grupo_modulo` (`grupo_id`,`modulo`,`accion`),
   CONSTRAINT `fk_pg_grupo` FOREIGN KEY (`grupo_id`) REFERENCES `gruposacceso` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=583 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=718 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -386,16 +405,16 @@ DROP TABLE IF EXISTS `permisosusuario`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `permisosusuario` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `id` int NOT NULL AUTO_INCREMENT,
   `usuario_id` int NOT NULL,
-  `modulo` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `accion` enum('ver','crear','editar','eliminar') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `permitido` tinyint(1) NOT NULL DEFAULT '0',
+  `modulo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `accion` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ver',
+  `permitido` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_perm_usuario` (`usuario_id`,`modulo`,`accion`),
-  KEY `idx_pu_usuario_modulo` (`usuario_id`,`modulo`,`accion`),
-  CONSTRAINT `fk_pu_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `uk_usuario_mod_acc` (`usuario_id`,`modulo`,`accion`),
+  KEY `idx_usuario` (`usuario_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -475,7 +494,7 @@ CREATE TABLE `preordenes` (
   UNIQUE KEY `nro_preorden` (`nro_preorden`),
   KEY `idx_nro_sucursal_cliente` (`nro_sucursal_cliente`),
   KEY `idx_preordenes_orden_id` (`orden_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -499,7 +518,7 @@ CREATE TABLE `productosinventario` (
   KEY `idx_prod_codigo` (`codigo`),
   CONSTRAINT `fk_pi_marca` FOREIGN KEY (`marca_id`) REFERENCES `marcas` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_prod_tipo_dispositivo` FOREIGN KEY (`tipo_dispositivo_id`) REFERENCES `tiposdispositivo` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=736 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=781 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -511,20 +530,20 @@ DROP TABLE IF EXISTS `repuestos`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `repuestos` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `codigo` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nro_parte` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `nombre` varchar(180) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stock` int NOT NULL DEFAULT '0',
-  `costo` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `bodega` int NOT NULL DEFAULT '1',
-  `descripcion` varchar(400) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `marca_id` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tipo_dispositivo_id` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nombre` varchar(180) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descripcion` varchar(400) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `marca_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tipo_dispositivo_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
   `modificado_en` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `stock` int NOT NULL DEFAULT '0',
+  `costo` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `bodega` tinyint NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_rep_codigo` (`codigo`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `codigo` (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=2086 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -569,7 +588,7 @@ CREATE TABLE `solicitudesnc` (
   KEY `tecnico_id` (`tecnico_id`),
   CONSTRAINT `solicitudesnc_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `solicitudesnc_ibfk_2` FOREIGN KEY (`tecnico_id`) REFERENCES `usuarios` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=229 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -581,21 +600,21 @@ DROP TABLE IF EXISTS `solicitudesrepuesto`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `solicitudesrepuesto` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `nro_solicitud` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nro_solicitud` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `orden_id` int NOT NULL,
   `tecnico_id` int NOT NULL,
-  `tecnico_nombre` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `repuesto_nombre` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `nro_parte` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tecnico_nombre` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `repuesto_nombre` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `nro_parte` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `nro_parte_inv_id` int DEFAULT NULL,
-  `repuesto_codigo` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `repuesto_codigo` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `repuesto_inv_id` int DEFAULT NULL,
-  `link_compra` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `link_compra` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `cantidad` int NOT NULL DEFAULT '1',
-  `descripcion` text COLLATE utf8mb4_unicode_ci,
-  `estado` enum('Pendiente','Aprobada','Rechazada') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pendiente',
-  `motivo_rechazo` text COLLATE utf8mb4_unicode_ci,
-  `aprobado_por` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `descripcion` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `estado` enum('Pendiente','Aprobada','Rechazada') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pendiente',
+  `motivo_rechazo` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `aprobado_por` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `repuesto_id` int DEFAULT NULL,
   `lista_compra_id` int DEFAULT NULL,
   `fecha_solicitud` date NOT NULL,
@@ -606,7 +625,7 @@ CREATE TABLE `solicitudesrepuesto` (
   KEY `idx_estado` (`estado`),
   KEY `idx_tecnico` (`tecnico_id`),
   KEY `idx_created` (`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -636,8 +655,8 @@ DROP TABLE IF EXISTS `sucursalescliente`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sucursalescliente` (
   `id` smallint unsigned NOT NULL AUTO_INCREMENT,
-  `codigo` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Código interno (N001, E001, 999)',
-  `numero` smallint unsigned NOT NULL COMMENT 'Número de sucursal',
+  `codigo` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'C├│digo interno (N001, E001, 999)',
+  `numero` smallint unsigned NOT NULL COMMENT 'N├║mero de sucursal',
   `nombre` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nombre de la sucursal',
   `provincia` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Provincia del Ecuador',
   `novitec_sucursal` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Sucursal Novitec responsable: UIO / GYE / MTA',
@@ -648,7 +667,7 @@ CREATE TABLE `sucursalescliente` (
   KEY `idx_provincia` (`provincia`),
   KEY `idx_novitec_sucursal` (`novitec_sucursal`),
   KEY `idx_activa` (`activa`)
-) ENGINE=InnoDB AUTO_INCREMENT=159 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=160 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -701,18 +720,17 @@ CREATE TABLE `usuarios` (
   `correo_tec` varchar(100) DEFAULT NULL,
   `acceso_nc` tinyint(1) NOT NULL DEFAULT '0',
   `rol_id` int NOT NULL,
-  `grupo_id` int unsigned DEFAULT NULL,
   `sucursal_id` int NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `session_token` varchar(64) DEFAULT NULL,
+  `grupo_id` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `usuario` (`usuario`),
   KEY `rol_id` (`rol_id`),
   KEY `sucursal_id` (`sucursal_id`),
-  KEY `idx_usuarios_grupo` (`grupo_id`),
-  CONSTRAINT `fk_usuario_grupo` FOREIGN KEY (`grupo_id`) REFERENCES `gruposacceso` (`id`) ON DELETE SET NULL,
   CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`),
   CONSTRAINT `usuarios_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -732,7 +750,7 @@ CREATE TABLE `usuariosucursales` (
   KEY `idx_us_usuario` (`usuario_id`),
   CONSTRAINT `fk_us_sucursal` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_us_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -795,7 +813,7 @@ SET character_set_client = @saved_cs_client;
 /*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`%` SQL SECURITY DEFINER */
-/*!50001 VIEW `vista_ordenes` AS select `o`.`id` AS `orden_id`,`o`.`nro_orden` AS `nro_orden`,'personal' AS `tipo_orden`,`o`.`estado_orden` AS `estado_orden`,`o`.`estado_repuesto` AS `estado_repuesto`,`o`.`estado_garantia` AS `estado_garantia`,`o`.`motivo_ingreso` AS `motivo_ingreso`,`o`.`fecha_de_ingreso` AS `fecha_de_ingreso`,`o`.`fecha_entrega` AS `fecha_entrega`,`o`.`nro_factura` AS `nro_factura`,`o`.`nro_factura_2` AS `nro_factura_2`,`o`.`nro_sucursal_cliente` AS `nro_sucursal_cliente`,`o`.`tecnico_id` AS `tecnico_id`,`o`.`sucursal_id` AS `sucursal_id`,`o`.`ingresado_por` AS `ingresado_por`,`o`.`cliente_id` AS `cliente_id`,NULL AS `empresa_id`,`o`.`equipo_id` AS `equipo_id`,concat(`c`.`nombres`,' ',`c`.`apellidos`) AS `cliente`,`c`.`nombres` AS `nombres`,`c`.`apellidos` AS `apellidos`,`c`.`identificacion` AS `identificacion`,`c`.`numero_contacto` AS `numero_contacto`,`c`.`correo` AS `correo`,`c`.`direccion_clientes` AS `direccion`,`e`.`tipo` AS `tipo`,`e`.`marca` AS `marca`,`e`.`modelo` AS `modelo`,`e`.`serie` AS `serie`,`e`.`falla` AS `falla`,`e`.`observacion` AS `observacion`,date_format(`e`.`fecha_facturacion`,'%Y-%m-%d') AS `fecha_facturacion`,`u`.`nombre_tecnico` AS `tecnico`,`s`.`ciudad` AS `sucursal`,date_format(`o`.`fecha_de_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,date_format(`o`.`fecha_entrega`,'%d/%m/%Y') AS `fecha_entrega_fmt` from ((((`ordenes` `o` join `clientes` `c` on((`o`.`cliente_id` = `c`.`id`))) join `equipos` `e` on((`o`.`equipo_id` = `e`.`id`))) join `usuarios` `u` on((`o`.`tecnico_id` = `u`.`id`))) join `sucursales` `s` on((`o`.`sucursal_id` = `s`.`id`))) union all select `oe`.`id` AS `orden_id`,(`oe`.`nro_orden` collate utf8mb4_0900_ai_ci) AS `nro_orden`,'empresa' AS `tipo_orden`,(`oe`.`estado` collate utf8mb4_0900_ai_ci) AS `estado_orden`,'No requerido' AS `estado_repuesto`,NULL AS `estado_garantia`,(concat('Empresa · ',`oe`.`subtipo`) collate utf8mb4_0900_ai_ci) AS `motivo_ingreso`,`oe`.`fecha_ingreso` AS `fecha_de_ingreso`,NULL AS `fecha_entrega`,NULL AS `nro_factura`,NULL AS `nro_factura_2`,NULL AS `nro_sucursal_cliente`,`oe`.`tecnico_id` AS `tecnico_id`,`oe`.`sucursal_id` AS `sucursal_id`,`oe`.`ingresado_por` AS `ingresado_por`,NULL AS `cliente_id`,`oe`.`empresa_id` AS `empresa_id`,`oe`.`equipo_id` AS `equipo_id`,(`emp`.`nombre` collate utf8mb4_0900_ai_ci) AS `cliente`,(`emp`.`nombre` collate utf8mb4_0900_ai_ci) AS `nombres`,'' AS `apellidos`,(`emp`.`ruc` collate utf8mb4_0900_ai_ci) AS `identificacion`,(`emp`.`telefono` collate utf8mb4_0900_ai_ci) AS `numero_contacto`,(`emp`.`correo` collate utf8mb4_0900_ai_ci) AS `correo`,(`emp`.`direccion_empresa` collate utf8mb4_0900_ai_ci) AS `direccion`,`e`.`tipo` AS `tipo`,`e`.`marca` AS `marca`,`e`.`modelo` AS `modelo`,`e`.`serie` AS `serie`,(`oe`.`descripcion` collate utf8mb4_0900_ai_ci) AS `falla`,(`oe`.`descripcion` collate utf8mb4_0900_ai_ci) AS `observacion`,NULL AS `fecha_facturacion`,`u`.`nombre_tecnico` AS `tecnico`,`s`.`ciudad` AS `sucursal`,date_format(`oe`.`fecha_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,NULL AS `fecha_entrega_fmt` from ((((`ordenesempresas` `oe` join `empresas` `emp` on((`oe`.`empresa_id` = `emp`.`id`))) join `equipos` `e` on((`oe`.`equipo_id` = `e`.`id`))) join `usuarios` `u` on((`oe`.`tecnico_id` = `u`.`id`))) join `sucursales` `s` on((`oe`.`sucursal_id` = `s`.`id`))) */;
+/*!50001 VIEW `vista_ordenes` AS select `o`.`id` AS `orden_id`,`o`.`nro_orden` AS `nro_orden`,'personal' AS `tipo_orden`,`o`.`estado_orden` AS `estado_orden`,`o`.`estado_repuesto` AS `estado_repuesto`,`o`.`estado_garantia` AS `estado_garantia`,`o`.`motivo_ingreso` AS `motivo_ingreso`,`o`.`fecha_de_ingreso` AS `fecha_de_ingreso`,`o`.`fecha_entrega` AS `fecha_entrega`,`o`.`nro_factura` AS `nro_factura`,`o`.`nro_factura_2` AS `nro_factura_2`,`o`.`nro_sucursal_cliente` AS `nro_sucursal_cliente`,`o`.`tecnico_id` AS `tecnico_id`,`o`.`sucursal_id` AS `sucursal_id`,`o`.`ingresado_por` AS `ingresado_por`,`o`.`cliente_id` AS `cliente_id`,NULL AS `empresa_id`,`o`.`equipo_id` AS `equipo_id`,concat(`c`.`nombres`,' ',`c`.`apellidos`) AS `cliente`,`c`.`nombres` AS `nombres`,`c`.`apellidos` AS `apellidos`,`c`.`identificacion` AS `identificacion`,`c`.`numero_contacto` AS `numero_contacto`,`c`.`correo` AS `correo`,`c`.`direccion_clientes` AS `direccion`,`e`.`tipo` AS `tipo`,`e`.`marca` AS `marca`,`e`.`modelo` AS `modelo`,`e`.`serie` AS `serie`,`e`.`falla` AS `falla`,`e`.`observacion` AS `observacion`,date_format(`e`.`fecha_facturacion`,'%Y-%m-%d') AS `fecha_facturacion`,`u`.`nombre_tecnico` AS `tecnico`,`s`.`ciudad` AS `sucursal`,date_format(`o`.`fecha_de_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,date_format(`o`.`fecha_entrega`,'%d/%m/%Y') AS `fecha_entrega_fmt` from ((((`ordenes` `o` join `clientes` `c` on((`o`.`cliente_id` = `c`.`id`))) join `equipos` `e` on((`o`.`equipo_id` = `e`.`id`))) join `usuarios` `u` on((`o`.`tecnico_id` = `u`.`id`))) join `sucursales` `s` on((`o`.`sucursal_id` = `s`.`id`))) union all select `oe`.`id` AS `orden_id`,(`oe`.`nro_orden` collate utf8mb4_0900_ai_ci) AS `nro_orden`,'empresa' AS `tipo_orden`,(`oe`.`estado` collate utf8mb4_0900_ai_ci) AS `estado_orden`,'No requerido' AS `estado_repuesto`,NULL AS `estado_garantia`,(concat('Empresa ┬╖ ',`oe`.`subtipo`) collate utf8mb4_0900_ai_ci) AS `motivo_ingreso`,`oe`.`fecha_ingreso` AS `fecha_de_ingreso`,NULL AS `fecha_entrega`,NULL AS `nro_factura`,NULL AS `nro_factura_2`,NULL AS `nro_sucursal_cliente`,`oe`.`tecnico_id` AS `tecnico_id`,`oe`.`sucursal_id` AS `sucursal_id`,`oe`.`ingresado_por` AS `ingresado_por`,NULL AS `cliente_id`,`oe`.`empresa_id` AS `empresa_id`,`oe`.`equipo_id` AS `equipo_id`,(`emp`.`nombre` collate utf8mb4_0900_ai_ci) AS `cliente`,(`emp`.`nombre` collate utf8mb4_0900_ai_ci) AS `nombres`,'' AS `apellidos`,(`emp`.`ruc` collate utf8mb4_0900_ai_ci) AS `identificacion`,(`emp`.`telefono` collate utf8mb4_0900_ai_ci) AS `numero_contacto`,(`emp`.`correo` collate utf8mb4_0900_ai_ci) AS `correo`,(`emp`.`direccion_empresa` collate utf8mb4_0900_ai_ci) AS `direccion`,`e`.`tipo` AS `tipo`,`e`.`marca` AS `marca`,`e`.`modelo` AS `modelo`,`e`.`serie` AS `serie`,(`oe`.`descripcion` collate utf8mb4_0900_ai_ci) AS `falla`,(`oe`.`descripcion` collate utf8mb4_0900_ai_ci) AS `observacion`,NULL AS `fecha_facturacion`,`u`.`nombre_tecnico` AS `tecnico`,`s`.`ciudad` AS `sucursal`,date_format(`oe`.`fecha_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,NULL AS `fecha_entrega_fmt` from ((((`ordenesempresas` `oe` join `empresas` `emp` on((`oe`.`empresa_id` = `emp`.`id`))) join `equipos` `e` on((`oe`.`equipo_id` = `e`.`id`))) join `usuarios` `u` on((`oe`.`tecnico_id` = `u`.`id`))) join `sucursales` `s` on((`oe`.`sucursal_id` = `s`.`id`))) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -809,4 +827,4 @@ SET character_set_client = @saved_cs_client;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-15 16:03:54
+-- Dump completed on 2026-06-01 10:53:34

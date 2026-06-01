@@ -53,4 +53,9 @@ class SolicitudRepuesto extends Model
         // RELATION_REQUIRES_CONFIRMATION: repuesto_id apunta previsiblemente a 'repuestos'
         return $this->belongsTo(Repuesto::class, 'repuesto_id', 'id');
     }
+
+    public function listaCompra()
+    {
+        return $this->belongsTo(\App\Models\Inventory\ListaCompra::class, 'lista_compra_id', 'id');
+    }
 }

@@ -9,7 +9,7 @@ class CasRepository
     //Obtiene todos los CAS, incluyendo los inactivos, ordenados por nombre
     public function obtenerTodOs(): Collection
     {
-        return Cas::select('id', 'nombre', 'marca', 'telefono', 'correo', 'direccion', 'ciudad', 'contacto', 'notas', 'activo')
+        return Cas::select('id', 'nombre', 'prefijo', 'marca', 'telefono', 'correo', 'direccion', 'ciudad', 'contacto', 'notas', 'activo')
             ->orderBy('nombre', 'asc')
             ->get();
     }
@@ -17,7 +17,7 @@ class CasRepository
     //Obtiene solo los CAS activos, ordenados por nombre
     public function obtenerActivos(): Collection
     {
-        return Cas::select('id', 'nombre', 'marca', 'telefono', 'correo', 'ciudad', 'contacto')
+        return Cas::select('id', 'nombre', 'prefijo', 'marca', 'telefono', 'correo', 'ciudad', 'contacto')
             ->where('activo', 1)
             ->orderBy('nombre', 'asc')
             ->get();

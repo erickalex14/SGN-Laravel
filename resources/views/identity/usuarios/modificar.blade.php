@@ -149,6 +149,18 @@
             </div>
 
             <div class="cu-seccion">
+                <h3><i class="bi bi-tools"></i>Centros de Asistencia Técnica (CAS)</h3>
+                <div class="chk-grid">
+                    @foreach($casList as $c)
+                        <label class="chk-item">
+                            <input type="checkbox" class="chk-cas" value="{{ $c->id }}" id="cas_{{ $c->id }}">
+                            {{ $c->nombre }} ({{ $c->ciudad ?? 'N/A' }})
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="cu-seccion">
                 <h3><i class="bi bi-shield-lock"></i>Permisos Adicionales</h3>
                 <table class="perm-table">
                     <thead><tr><th>Módulo</th><th>Ver</th><th>Crear</th><th>Editar</th><th>Eliminar</th></tr></thead>
@@ -212,6 +224,11 @@
                 .then(r => r.json())
                 .then(d => { if(d.ok) d.sucursales.forEach(sId => { const c = document.getElementById('suc_'+sId); if(c) c.checked = true; }); });
 
+            document.querySelectorAll('.chk-cas').forEach(cb => cb.checked = false);
+            fetch('{{ url("/usuarios") }}/' + u.id + '/cas')
+                .then(r => r.json())
+                .then(d => { if(d.ok) d.cas.forEach(cId => { const c = document.getElementById('cas_'+cId); if(c) c.checked = true; }); });
+
             document.querySelectorAll('.chk-mod').forEach(cb => cb.checked = false);
             fetch('{{ url("/usuarios") }}/' + u.id + '/permisos')
                 .then(r => r.json())
@@ -241,6 +258,7 @@
             fd.append('acceso_nc', document.getElementById('mu-nc').checked ? 1 : 0);
 
             document.querySelectorAll('.chk-suc:checked').forEach(cb => fd.append('sucursales[]', cb.value));
+            document.querySelectorAll('.chk-cas:checked').forEach(cb => fd.append('cas[]', cb.value));
             document.querySelectorAll('.chk-mod:checked').forEach(cb => fd.append(`permisos[${cb.dataset.mod}][${cb.dataset.acc}]`, '1'));
 
             try {

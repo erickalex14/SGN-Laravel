@@ -97,4 +97,30 @@ class RepuestoController extends Controller
             ]);
         }
     }
+
+    public function auditoria(\Illuminate\Http\Request $request): \Illuminate\View\View
+    {
+        $query = \App\Models\Operations\OrdenRepuesto::with(['repuesto', 'orden.tecnico', 'orden.sucursal', 'usuario'])
+            ->orderBy('fecha', 'desc');
+
+        if ($request->filled('repuesto_id')) {
+            $query->where('repuesto_id', $request->input('repuesto_id'));
+        }
+        if ($request->filled('usuario_id')) {
+            $query->where('usuario_id', $request->input('usuario_id'));
+        }
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('fecha', '>=', $request->input('fecha_desde'));
+        }
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('fecha', '<=', $request->input('fecha_hasta'));
+        }
+
+        $auditorias = $query->get();
+
+        $repuestosList = \App\Models\Inventory\Repuesto::orderBy('nombre', 'asc')->get();
+        $tecnicosList = \App\Models\Identity\Usuario::orderBy('nombre_tecnico', 'asc')->get();
+
+        return view('inventory.repuestos.auditoria', compact('auditorias', 'repuestosList', 'tecnicosList'));
+    }
 }

@@ -14,6 +14,7 @@ readonly class CasDTO
         public ?string $direccion,
         public ?string $contacto,
         public ?string $notas,
-        public int $activo
+        public int $activo,
+        public ?string $prefijo = null
     ){}
 }

@@ -178,7 +178,8 @@ class OrdenController extends Controller
                 $request->input('estado_repuesto'),
                 $request->input('garantia_tipo'),
                 $request->input('cas_id') ? (int)$request->input('cas_id') : null,
-                $request->input('repuesto_inventario_id') ? (int)$request->input('repuesto_inventario_id') : null
+                $request->input('repuesto_inventario_id') ? (int)$request->input('repuesto_inventario_id') : null,
+                $request->input('repuestos_seleccionados', [])
             );
 
             $orden = $this->service->crearOrden($dto);
@@ -200,9 +201,10 @@ class OrdenController extends Controller
         if (!$this->usuarioRepo->tecnicoAsignable(
             $tecnicoId,
             $this->puedeVerTodosTecnicos(),
-            (int) session('sucursal_id')
+            (int) session('sucursal_id'),
+            (int) session('tecnico_id')
         )) {
-            throw new Exception('Solo puedes asignar tecnicos de tu sucursal.');
+            throw new Exception('Solo puedes asignar tecnicos de tu sucursal o CAS.');
         }
     }
 
@@ -295,6 +297,7 @@ class OrdenController extends Controller
             'usuarioIngreso',
             'repuestoInventario',
             'preciosOrden', // Carga automática de los cargos personalizados de la orden
+            'solicitudesNc',
         ]);
 
         $nombreSucursalCliente = '-';

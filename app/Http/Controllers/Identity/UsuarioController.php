@@ -8,6 +8,7 @@ use App\Services\Identity\UsuarioService;
 use App\Repositories\Identity\UsuarioRepository;
 use App\Repositories\Identity\GrupoAccesoRepository;
 use App\Repositories\Directory\SucursalRepository;
+use App\Repositories\Directory\CasRepository;
 use App\Models\Identity\Rol; // Usamos el modelo directo para los roles por simplicidad
 use App\DTOs\Identity\UsuarioDTO;
 use Illuminate\Http\Request;
@@ -21,17 +22,20 @@ class UsuarioController extends Controller
     protected UsuarioRepository $repository;
     protected GrupoAccesoRepository $grupoRepository;
     protected SucursalRepository $sucursalRepository;
+    protected CasRepository $casRepository;
 
     public function __construct(
         UsuarioService $service,
         UsuarioRepository $repository,
         GrupoAccesoRepository $grupoRepository,
-        SucursalRepository $sucursalRepository
+        SucursalRepository $sucursalRepository,
+        CasRepository $casRepository
     ) {
         $this->service = $service;
         $this->repository = $repository;
         $this->grupoRepository = $grupoRepository;
         $this->sucursalRepository = $sucursalRepository;
+        $this->casRepository = $casRepository;
     }
 
     // Renderiza modulo-crear-usuario.php
@@ -40,8 +44,9 @@ class UsuarioController extends Controller
         $roles = Rol::all();
         $grupos = $this->grupoRepository->obtenerTodos();
         $sucursales = $this->sucursalRepository->obtenerTodas();
+        $casList = $this->casRepository->obtenerTodOs();
 
-        return view('identity.usuarios.crear', compact('roles', 'grupos', 'sucursales'));
+        return view('identity.usuarios.crear', compact('roles', 'grupos', 'sucursales', 'casList'));
     }
 
     // Renderiza modulo-modificar-usuario.php
@@ -51,8 +56,9 @@ class UsuarioController extends Controller
         $roles = Rol::all();
         $grupos = $this->grupoRepository->obtenerTodos();
         $sucursales = $this->sucursalRepository->obtenerTodas();
+        $casList = $this->casRepository->obtenerTodOs();
 
-        return view('identity.usuarios.modificar', compact('usuarios', 'roles', 'grupos', 'sucursales'));
+        return view('identity.usuarios.modificar', compact('usuarios', 'roles', 'grupos', 'sucursales', 'casList'));
     }
 
     //Endpoint unificado para guardar o actualizar un usuario
@@ -71,6 +77,7 @@ class UsuarioController extends Controller
                 (int) $request->input('sucursal_id'),
                 (bool) $request->input('acceso_nc', false),
                 $request->input('sucursales', []), // Arrays vienen limpios desde FormRequest
+                $request->input('cas', []),
                 $request->input('permisos', [])
             );
 
@@ -110,6 +117,15 @@ class UsuarioController extends Controller
         return response()->json([
             'ok' => true,
             'sucursales' => $usuario ? $usuario->sucursalesAsignadas->pluck('id') : []
+        ]);
+    }
+
+    public function getCas(int $id): JsonResponse
+    {
+        $usuario = $this->repository->buscarPorId($id);
+        return response()->json([
+            'ok' => true,
+            'cas' => $usuario ? $usuario->casAsignados->pluck('id') : []
         ]);
     }
 }

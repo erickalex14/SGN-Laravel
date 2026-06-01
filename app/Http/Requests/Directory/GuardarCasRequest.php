@@ -18,6 +18,7 @@ class GuardarCasRequest extends FormRequest
             'accion'    => ['required', 'string', 'in:crear,editar'],
             'id'        => ['required_if:accion,editar', 'nullable', 'integer'],
             'nombre'    => ['required', 'string', 'max:120'],
+            'prefijo'   => ['nullable', 'string', 'max:10'],
             'marca'     => ['nullable', 'string'],
             'telefono'  => ['nullable', 'string', 'max:30'],
             'correo'    => ['nullable', 'email', 'max:120'],

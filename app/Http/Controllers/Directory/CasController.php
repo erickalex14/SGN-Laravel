@@ -46,7 +46,8 @@ class CasController extends Controller
                 $request->input('direccion'),
                 $request->input('contacto'),
                 $request->input('notas'),
-                $request->has('activo') ? (int) $request->input('activo') : 1
+                $request->has('activo') ? (int) $request->input('activo') : 1,
+                $request->input('prefijo')
             );
 
             $mensaje = $this->casService->guardar($dto, $accion);

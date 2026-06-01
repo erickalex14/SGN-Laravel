@@ -9,6 +9,7 @@ use App\Models\Operations\Equipo;
 use App\Models\Operations\Orden;
 use App\Models\Operations\OrdenEmpresa;
 use App\Repositories\Directory\SucursalRepository;
+use App\Repositories\Directory\CasRepository;
 use App\Repositories\Identity\UsuarioRepository;
 use App\Services\Operations\ReporteService;
 use Exception;
@@ -21,15 +22,18 @@ class ReporteController extends Controller
     protected ReporteService $service;
     protected UsuarioRepository $usuarioRepo;
     protected SucursalRepository $sucursalRepo;
+    protected CasRepository $casRepo;
 
     public function __construct(
         ReporteService $service,
         UsuarioRepository $usuarioRepo,
-        SucursalRepository $sucursalRepo
+        SucursalRepository $sucursalRepo,
+        CasRepository $casRepo
     ) {
         $this->service = $service;
         $this->usuarioRepo = $usuarioRepo;
         $this->sucursalRepo = $sucursalRepo;
+        $this->casRepo = $casRepo;
     }
 
     public function index(): View
@@ -44,9 +48,11 @@ class ReporteController extends Controller
             $sucursalSesion
         );
 
-        $sucursales = $esMaster
-            ? $this->sucursalRepo->obtenerTodas()
-            : $this->sucursalRepo->obtenerTodas()->where('id', $sucursalSesion)->values();
+        // Permitir ver todas las sucursales de Novitec universalmente en reportes
+        $sucursales = $this->sucursalRepo->obtenerTodas();
+
+        // Obtener todos los CAS activos para el filtrado en reportes
+        $cas = $this->casRepo->obtenerActivos();
 
         $estadosOrdenPersonal = Orden::select('estado_orden')
             ->distinct()
@@ -117,6 +123,7 @@ class ReporteController extends Controller
         return view('operations.reportes.index', compact(
             'tecnicos',
             'sucursales',
+            'cas',
             'estados',
             'estadosRepuesto',
             'estadosGarantia',
@@ -141,7 +148,8 @@ class ReporteController extends Controller
                 $request->input('tipo_equipo'),
                 $request->input('tipo_orden'),
                 $request->input('tecnico_id') ? (int) $request->input('tecnico_id') : null,
-                $request->input('sucursal_id') ? (int) $request->input('sucursal_id') : null
+                $request->input('sucursal_id') ? (int) $request->input('sucursal_id') : null,
+                $request->input('cas_id') ? (int) $request->input('cas_id') : null
             );
 
             $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));

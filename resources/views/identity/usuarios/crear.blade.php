@@ -111,6 +111,18 @@
         </div>
 
         <div class="cu-seccion">
+            <h3><i class="bi bi-tools"></i>Centros de Asistencia Técnica (CAS) Asignados</h3>
+            <div class="chk-grid">
+                @foreach($casList as $c)
+                    <label class="chk-item">
+                        <input type="checkbox" class="chk-cas" value="{{ $c->id }}">
+                        {{ $c->nombre }} ({{ $c->ciudad ?? 'N/A' }})
+                    </label>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="cu-seccion">
             <h3><i class="bi bi-shield-lock"></i>Permisos Específicos Adicionales</h3>
             <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Se sumarán a los permisos que ya tiene su Grupo de Acceso.</p>
             <table class="perm-table">
@@ -174,6 +186,7 @@
             fd.append('acceso_nc', document.getElementById('cu-nc').checked ? 1 : 0);
 
             document.querySelectorAll('.chk-suc:checked').forEach(cb => { fd.append('sucursales[]', cb.value); });
+            document.querySelectorAll('.chk-cas:checked').forEach(cb => { fd.append('cas[]', cb.value); });
 
             document.querySelectorAll('.chk-mod:checked').forEach(cb => {
                 fd.append(`permisos[${cb.dataset.mod}][${cb.dataset.acc}]`, '1');

@@ -20,8 +20,8 @@ return new class extends Migration
             $table->timestamp('fecha')->useCurrent();
             $table->unsignedInteger('usuario_id')->nullable();
 
-            $table->index('orden_id', 'idx_orden_id');
-            $table->index('repuesto_id', 'idx_repuesto_id');
+            $table->index('orden_id', 'orden_id');
+            $table->index('repuesto_id', 'repuesto_id');
         });
     }
 

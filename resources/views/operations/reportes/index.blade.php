@@ -156,6 +156,36 @@
         </div>
     </div>
 
+    @if(session('es_superadmin') || !empty(session('permisos')['inv_repuestos']['ver']))
+    {{-- ════ BANNER AUDITORÍA DE REPUESTOS ════ --}}
+    <div class="rep-card" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25); position: relative; overflow: hidden; margin-bottom: 18px;">
+        <div style="position: absolute; right: -50px; bottom: -50px; font-size: 220px; color: rgba(255, 255, 255, 0.05); pointer-events: none; line-height: 1;">
+            <i class="bi bi-shield-check"></i>
+        </div>
+        <div style="padding: 24px 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; position: relative; z-index: 2;">
+            <div style="display: flex; align-items: center; gap: 20px; flex: 1; min-width: 280px;">
+                <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.25); flex-shrink: 0;">
+                    <i class="bi bi-clock-history" style="font-size: 28px; color: #ffffff;"></i>
+                </div>
+                <div>
+                    <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 2px 10px; font-size: 10px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                        <i class="bi bi-stars"></i> Nuevo Módulo
+                    </div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                        Historial de Auditoría de Repuestos
+                    </h3>
+                    <p style="margin: 6px 0 0; color: rgba(255, 255, 255, 0.85); font-size: 13px; line-height: 1.5; max-width: 800px;">
+                        Consulte el registro histórico detallado de asignación y consumo de repuestos en bodega. Visualice los costos financieros en tiempo real, filtre por técnicos responsables y exporte en formatos CSV o Excel Enterprise.
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('repuestos.auditoria') }}" class="rep-btn" style="background: #ffffff; color: #4f46e5; border: none; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 0, 0, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 0, 0, 0.1)';">
+                <i class="bi bi-journal-text" style="font-size: 16px;"></i> Ir a Auditoría de Stock <i class="bi bi-arrow-right" style="font-size: 14px;"></i>
+            </a>
+        </div>
+    </div>
+    @endif
+
     {{-- ════ FILTROS ════ --}}
     <div class="rep-card">
         <div class="rep-card-head">
@@ -180,9 +210,8 @@
                     </select>
                 </div>
 
-                @if($esMaster)
                 <div class="rep-campo">
-                    <label>Sucursal</label>
+                    <label>Sucursal Novitec</label>
                     <select name="sucursal_id" id="f-sucursal">
                         <option value="">Todas</option>
                         @foreach($sucursales as $s)
@@ -190,9 +219,16 @@
                         @endforeach
                     </select>
                 </div>
-                @else
-                <input type="hidden" id="f-sucursal" name="sucursal_id" value="">
-                @endif
+
+                <div class="rep-campo">
+                    <label>CAS Asignado</label>
+                    <select name="cas_id" id="f-cas">
+                        <option value="">Todos</option>
+                        @foreach($cas as $c)
+                            <option value="{{ $c->id }}">{{ $c->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 <div class="rep-campo">
                     <label>Estado orden</label>
@@ -402,7 +438,8 @@
                         <th onclick="sortTabla(8,'tipo_equipo')">Tipo</th>
                         <th onclick="sortTabla(9,'motivo_ingreso')">Motivo</th>
                         <th onclick="sortTabla(10,'tecnico_nombre')">Técnico</th>
-                        @if($esMaster)<th onclick="sortTabla(11,'sucursal_nombre')">Sucursal</th>@endif
+                        <th onclick="sortTabla(11,'sucursal_nombre')">Sucursal</th>
+                        <th onclick="sortTabla(19,'cas_nombre')">CAS</th>
                         <th onclick="sortTabla(12,'tipo_orden')">Tipo orden</th>
                         <th onclick="sortTabla(13,'estado_repuesto')">Repuesto</th>
                         <th onclick="sortTabla(14,'estado_garantia')">Garantía</th>
@@ -486,6 +523,7 @@ function normalizeRow(raw) {
         estado_orden      : raw.estado_orden || '-',
         tecnico_nombre    : raw.tecnico_nombre || raw.tecnico?.nombre_tecnico || '-',
         sucursal_nombre   : raw.sucursal_nombre || raw.sucursal?.ciudad || '-',
+        cas_nombre        : raw.cas_nombre || '-',
         dias_transcurridos: raw.dias_transcurridos ?? '-',
         vencida           : raw.vencida || false,
     };
@@ -494,7 +532,8 @@ function normalizeRow(raw) {
 /* ═══════════ PILLS FILTROS ═══════════ */
 const FILTROS = [
     { id:'f-tecnico',   label:'Técnico',     sel:true  },
-    { id:'f-sucursal',  label:'Sucursal',    sel:true, hidden:!ES_MASTER },
+    { id:'f-sucursal',  label:'Sucursal',    sel:true  },
+    { id:'f-cas',       label:'CAS',         sel:true  },
     { id:'f-estado',    label:'Estado',      sel:true  },
     { id:'f-tipo-orden',label:'Tipo orden',  sel:true  },
     { id:'f-marca',     label:'Marca',       sel:true  },
@@ -686,7 +725,8 @@ function renderTabla() {
             : '<span class="tipo-badge personal">Personal</span>';
         const dC = +r.dias_transcurridos > 14 ? '#dc2626' : +r.dias_transcurridos > 7 ? '#d97706' : '#475569';
         const vR = r.vencida ? 'class="vencida-row"' : '';
-        const suc = ES_MASTER ? `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>` : '';
+        const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
+        const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
         return `<tr ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_de_ingreso)}</td>
@@ -700,6 +740,7 @@ function renderTabla() {
             <td style="font-size:11px;color:#475569;">${esc(r.motivo_ingreso)}</td>
             <td style="font-size:11px;">${esc(r.tecnico_nombre)}</td>
             ${suc}
+            ${casCol}
             <td>${tB}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_garantia)}</td>
@@ -790,7 +831,7 @@ function generarPDFEnterprise() {
     const mT5 = topN(countBy(_filtered, 'marca'), 5);
     const tT5 = topN(countBy(_filtered, 'tecnico_nombre'), 5);
     const fTxt = getFiltrosTxt();
-    const sH = ES_MASTER ? '<th>Sucursal</th>' : '';
+    const sH = '<th>Sucursal</th><th>CAS</th>';
     const now = new Date().toLocaleString('es-EC');
 
     /* Filas tabla */
@@ -799,7 +840,7 @@ function generarPDFEnterprise() {
         const tB = r.tipo_orden === 'empresa' ? 'Empresa' : 'Personal';
         const tBg = r.tipo_orden === 'empresa' ? '#eff6ff' : '#f0fdf4';
         const tFg = r.tipo_orden === 'empresa' ? '#1e40af' : '#166534';
-        const sC = ES_MASTER ? `<td>${r.sucursal_nombre}</td>` : '';
+        const sC = `<td>${r.sucursal_nombre}</td><td>${r.cas_nombre}</td>`;
         const dC = +r.dias_transcurridos > 14 ? '#dc2626' : '#374151';
         return `<tr>
             <td style="font-family:monospace;font-weight:700;color:#1a56db;white-space:nowrap;">${r.nro_orden}</td>
@@ -939,13 +980,13 @@ function exportarCSV() {
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Técnico','Sucursal','Días Transcurridos','F. Prometido','F. Entrega','Vencida'
+        'Técnico','Sucursal','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida'
     ];
     const rows = _filtered.map(r => [
         r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.cliente_nombre, r.identificacion,
         r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
         r.tipo_equipo, r.motivo_ingreso, r.estado_repuesto, r.estado_garantia,
-        r.estado_orden, r.tecnico_nombre, r.sucursal_nombre,
+        r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.cas_nombre,
         r.dias_transcurridos, r.fecha_prometido || '', r.fecha_entrega || '',
         r.vencida ? 'Sí' : 'No'
     ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
@@ -1031,14 +1072,13 @@ async function exportarXLSX() {
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Técnico','Ingresado por'
+        'Técnico','Ingresado por',
+        'Sucursal',
+        'CAS',
+        'Tipo Orden'
     ];
-    if (ES_MASTER) cols1.push('Sucursal');
-    cols1.push('Tipo Orden');
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20];
-    if (ES_MASTER) widths1.push(16);
-    widths1.push(12);
+    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,16,12];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ state:'frozen', ySplit:20 }],
@@ -1144,13 +1184,14 @@ async function exportarXLSX() {
             r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
             r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
-            r.tecnico_nombre, ''
+            r.tecnico_nombre, '',
+            r.sucursal_nombre,
+            r.cas_nombre,
+            r.tipo_orden
         ];
-        if (ES_MASTER) vals.push(r.sucursal_nombre);
-        vals.push(r.tipo_orden);
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = (ES_MASTER ? 22 : 21);
+        const estadoIdx = 19;
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }

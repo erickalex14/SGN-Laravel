@@ -16,6 +16,7 @@ readonly class UsuarioDTO
         public int $sucursal_id,
         public bool $acceso_nc,
         public array $sucursales_secundarias, // Array de IDs
+        public array $cas, // Array de IDs de CAS
         public array $permisos // Array estructurado: [modulo][accion] => 1|0
     ) {}
 }

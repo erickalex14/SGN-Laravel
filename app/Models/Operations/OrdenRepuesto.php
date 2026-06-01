@@ -29,4 +29,9 @@ class OrdenRepuesto extends Model
     {
         return $this->belongsTo(Repuesto::class, 'repuesto_id', 'id');
     }
+
+    public function usuario()
+    {
+        return $this->belongsTo(\App\Models\Identity\Usuario::class, 'usuario_id', 'id');
+    }
 }

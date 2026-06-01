@@ -25,6 +25,7 @@ class GuardarUsuarioRequest extends FormRequest
             'sucursal_id'    => ['required', 'integer'],
             'acceso_nc'      => ['nullable', 'boolean'],
             'sucursales'     => ['nullable', 'array'],
+            'cas'            => ['nullable', 'array'],
             'permisos'       => ['nullable', 'array'],
         ];
 
