@@ -36,7 +36,8 @@ class Preorden extends Model
         'foto_4',
         'estado',
         'nro_sucursal_cliente',
-        'fecha_facturacion'
+        'fecha_facturacion',
+        'ciudad_procedencia'
     ];
 
     public function orden()

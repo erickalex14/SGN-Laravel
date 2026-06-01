@@ -66,7 +66,7 @@ class PreordenService
                     throw new Exception('No se pudo obtener el lock. Intente de nuevo.');
                 }
 
-                $nroOrdenCandidato = preg_replace('/^PRE-/i', '', (string) ($preorden->nro_preorden ?? ''));
+                $nroOrdenCandidato = preg_replace('/^PRE(OR)?-/i', '', (string) ($preorden->nro_preorden ?? ''));
                 $nroOrdenCandidato = trim((string) $nroOrdenCandidato);
                 $nroOrden = $this->ordenRepository->generarNumeroOrden($sucursalOrdenId);
                 if ($nroOrdenCandidato !== '' && !$this->repository->existeNumeroOrden($nroOrdenCandidato)) {

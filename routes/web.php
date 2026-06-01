@@ -267,7 +267,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/ordenes', [OrdenController::class, 'store'])->name('ordenes.store');
         
         // Endpoint AJAX para autocompletar
-        Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente']);
+        Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente'])->name('ordenes.buscar_cliente');
         Route::get('/operaciones/ordenes/buscar-producto', [OrdenController::class, 'buscarProducto'])->name('ordenes.productos.buscar');
         Route::get('/operaciones/ordenes/repuestos/buscar', [RepuestoController::class, 'buscarParaOrden'])->name('ordenes.repuestos.buscar');
         Route::get('/operaciones/preordenes/verificar', [PreordenController::class, 'verificar'])->name('preordenes.verificar');

@@ -67,7 +67,7 @@ class OrdenRepository
             ->where('sucursal_id', $sucursalId)
             ->where('nro_preorden', 'like', $prefijo . '%')
             ->pluck('nro_preorden')
-            ->map(fn ($valor) => preg_replace('/^PRE-/i', '', (string) $valor))
+            ->map(fn ($valor) => preg_replace('/^PRE(OR)?-/i', '', (string) $valor))
             ->all();
 
         $intentos = 0;
