@@ -243,24 +243,6 @@
         {{-- Alerta (bloqueo / info) --}}
         <div id="ci-alerta" style="display:none;" class="ci-msg ci-msg-warn" role="alert"></div>
 
-        {{-- Asistente de Redacción con Inteligencia Artificial --}}
-        <div style="background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 1.5px dashed #8b5cf6; border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.05); animation: fadeUp 0.3s ease;">
-            <h4 style="font-size: 14px; font-weight: 800; color: #6d28d9; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
-                <i class="bi bi-cpu" style="font-size: 16px;"></i> Asistente de Redacción con IA
-            </h4>
-            <p style="font-size: 12.5px; color: #5b21b6; margin: 0 0 14px 0; line-height: 1.4;">
-                Escribe notas rápidas e informales sobre las revisiones realizadas. Nuestro asistente de inteligencia artificial estructurará automáticamente el diagnóstico, antecedentes y conclusiones técnicas profesionales por ti.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <textarea id="ai-notas" class="ci-input" style="padding: 12px; font-family: inherit; font-size: 13.5px; height: 75px; resize: vertical;" placeholder="Ej: Equipo no prende. Diagnóstico revela capacitor cerámico en cortocircuito en línea de 19V principal. Se reemplaza componente dañado y se realiza limpieza física general. Equipo encendiendo y cargando operativo."></textarea>
-                <div style="display: flex; justify-content: flex-end;">
-                    <button type="button" id="btn-generar-ai" class="ci-btn-buscar" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; border: none; font-size: 13px; padding: 10px 18px; border-radius: 10px; cursor: pointer; transition: all 0.2s;" onclick="_generarInformeConIa()">
-                        <i class="bi bi-magic"></i> <span style="font-weight: 700;">Procesar Notas con IA</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         {{-- Paso 2: Redactar --}}
         <div class="ci-card">
             <div class="ci-card-hd">
@@ -549,58 +531,6 @@ window.onerror = function(msg, url, line, col, error) {
             })
             .catch(function () {});
     }
-
-    /*  Asistente IA  */
-    window._generarInformeConIa = function () {
-        var notasInput = document.getElementById('ai-notas');
-        var btnAi = document.getElementById('btn-generar-ai');
-        if (!notasInput || !btnAi) return;
-
-        var notasTxt = notasInput.value.trim();
-
-        if (notasTxt.length < 10) {
-            _msgForm('err', 'Debe ingresar una descripción de al menos 10 caracteres para que la IA la procese.');
-            return;
-        }
-
-        btnAi.disabled = true;
-        btnAi.innerHTML = '<span class="spin"></span> <span>Procesando...</span>';
-
-        fetch('/operaciones/informes/generar-con-ia', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF,
-            },
-            body: JSON.stringify({ notas: notasTxt }),
-        })
-            .then(function (res) {
-                return res.json();
-            })
-            .then(function (data) {
-                btnAi.disabled = false;
-                btnAi.innerHTML = '<i class="bi bi-magic"></i> <span>Procesar Notas con IA</span>';
-
-                if (!data.ok) {
-                    _msgForm('err', data.error || 'Ocurrió un error inesperado al procesar el texto con la IA.');
-                    return;
-                }
-
-                // Poblar el formulario
-                _setVal('inf-antecedentes', data.borrador.antecedentes || '');
-                _setVal('inf-proceso', data.borrador.proceso || '');
-                _setVal('inf-conclusion', data.borrador.conclusion || '');
-                _setVal('inf-recomendaciones', data.borrador.recomendaciones || '');
-                _setVal('inf-estado-equipo', data.borrador.estado_equipo || 'Operativo');
-
-                _msgForm('ok', 'Borrador estructurado con éxito por la IA. Revise el contenido generado antes de guardar.');
-            })
-            .catch(function () {
-                btnAi.disabled = false;
-                btnAi.innerHTML = '<i class="bi bi-magic"></i> <span>Procesar Notas con IA</span>';
-                _msgForm('err', 'Error de red o comunicación al conectar con el servidor de asistencia.');
-            });
-    };
 
     /*  Guardar  */
     window._guardar = async function () {

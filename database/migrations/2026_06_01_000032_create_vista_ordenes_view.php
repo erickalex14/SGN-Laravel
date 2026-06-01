@@ -18,6 +18,7 @@ return new class extends Migration
                 `o`.`estado_garantia` AS `estado_garantia`,
                 `o`.`motivo_ingreso` AS `motivo_ingreso`,
                 `o`.`fecha_de_ingreso` AS `fecha_de_ingreso`,
+                `o`.`fecha_prometido` AS `fecha_prometido`,
                 `o`.`fecha_entrega` AS `fecha_entrega`,
                 `o`.`nro_factura` AS `nro_factura`,
                 `o`.`nro_factura_2` AS `nro_factura_2`,
@@ -45,6 +46,7 @@ return new class extends Migration
                 `u`.`nombre_tecnico` AS `tecnico`,
                 `s`.`ciudad` AS `sucursal`,
                 date_format(`o`.`fecha_de_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,
+                date_format(`o`.`fecha_prometido`,'%d/%m/%Y') AS `fecha_prometido_fmt`,
                 date_format(`o`.`fecha_entrega`,'%d/%m/%Y') AS `fecha_entrega_fmt` 
             from ((((`ordenes` `o` 
                 join `clientes` `c` on((`o`.`cliente_id` = `c`.`id`))) 
@@ -61,6 +63,7 @@ return new class extends Migration
                 NULL AS `estado_garantia`,
                 (concat('Empresa · ',`oe`.`subtipo`) collate utf8mb4_0900_ai_ci) AS `motivo_ingreso`,
                 `oe`.`fecha_ingreso` AS `fecha_de_ingreso`,
+                `oe`.`fecha_prometido` AS `fecha_prometido`,
                 NULL AS `fecha_entrega`,
                 NULL AS `nro_factura`,
                 NULL AS `nro_factura_2`,
@@ -88,6 +91,7 @@ return new class extends Migration
                 `u`.`nombre_tecnico` AS `tecnico`,
                 `s`.`ciudad` AS `sucursal`,
                 date_format(`oe`.`fecha_ingreso`,'%d/%m/%Y %H:%i') AS `fecha_de_ingreso_fmt`,
+                date_format(`oe`.`fecha_prometido`,'%d/%m/%Y') AS `fecha_prometido_fmt`,
                 NULL AS `fecha_entrega_fmt` 
             from ((((`ordenesempresas` `oe` 
                 join `empresas` `emp` on((`oe`.`empresa_id` = `emp`.`id`))) 

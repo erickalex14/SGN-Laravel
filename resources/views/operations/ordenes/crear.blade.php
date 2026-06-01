@@ -221,28 +221,16 @@
         <div class="seccion-form motivo-base">
             <div class="seccion-hdr"><i class="bi bi-clipboard-check"></i> Motivo de Ingreso</div>
             <div class="seccion-body">
-                <div class="grid-2">
-                    <div class="campo">
-                        <label>Motivo <span class="req">*</span></label>
-                        <select id="motivo_ingreso" name="motivo_ingreso" required onchange="actualizarMotivo()">
-                            <option value="">-- Seleccione --</option>
-                            <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
-                            <option value="Validacion de Garantia">Validacion de Garantia</option>
-                            <option value="Servicios a Empresas">Servicios a Empresas</option>
-                        </select>
-                    </div>
-                    <div class="campo">
-                        <label>Sucursal Cliente</label>
-                        <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
-                            <option value="">-- Seleccione --</option>
-                            @foreach($sucursalesCliente as $suc)
-                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
-                            @endforeach
-                            <option value="999">999 - EXTERNO</option>
-                        </select>
-                    </div>
+                <div class="campo">
+                    <label>Motivo <span class="req">*</span></label>
+                    <select id="motivo_ingreso" name="motivo_ingreso" required onchange="actualizarMotivo()">
+                        <option value="">-- Seleccione --</option>
+                        <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
+                        <option value="Validacion de Garantia">Validacion de Garantia</option>
+                        <option value="Servicios a Empresas">Servicios a Empresas</option>
+                    </select>
                 </div>
-                <div id="motivo-lock-msg" class="motivo-lock-msg">
+                <div id="motivo-lock-msg" class="motivo-lock-msg" style="margin-top: 12px;">
                     Seleccione el motivo de ingreso para habilitar el resto del formulario.
                 </div>
             </div>
@@ -437,57 +425,164 @@
             </div>
         </div>
 
+        <!-- SECCIÓN 1: DATOS DEL CLIENTE -->
         <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-person-badge"></i> Datos del Cliente</div>
             <div class="seccion-body">
-                <div class="grid-3">
-                    <div class="campo" style="grid-column: span 2;">
-                        <label>Cedula / RUC <span class="req">*</span></label>
-                        <div style="display:flex; gap:10px;">
-                            <input type="text" id="cli_identificacion" name="cli_identificacion" style="flex:1;" maxlength="20" required>
-                            <button type="button" class="btn-buscar" onclick="buscarClienteAjax()">
-                                <i class="bi bi-search"></i> Buscar
-                            </button>
-                        </div>
+                <div class="grid-3" style="margin-bottom: 18px;">
+                    <div class="campo">
+                        <label>C.I / RUC <span class="req">*</span></label>
+                        <input type="text" id="cli_identificacion" name="cli_identificacion" maxlength="20" required placeholder="Ingrese C.I / RUC">
+                        <span id="cli-buscar-status" style="font-size: 11px; display: none; margin-top: 2px; font-weight: 600;"></span>
                     </div>
                     <div class="campo">
-                        <label>Telefono de Contacto <span class="req">*</span></label>
-                        <input type="text" id="cli_telefono" name="cli_telefono" maxlength="20" required>
-                    </div>
-                </div>
-                <div class="grid-2">
-                    <div class="campo">
-                        <label>Nombres <span class="req">*</span></label>
+                        <label>Nombre <span class="req">*</span></label>
                         <input type="text" id="cli_nombres" name="cli_nombres" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
                     </div>
                     <div class="campo">
-                        <label>Apellidos <span class="req">*</span></label>
+                        <label>Apellido <span class="req">*</span></label>
                         <input type="text" id="cli_apellidos" name="cli_apellidos" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
-                <div class="grid-2">
+                <div class="grid-3" style="margin-bottom: 18px;">
                     <div class="campo">
-                        <label>Correo Electronico</label>
+                        <label>Teléfono <span class="req">*</span></label>
+                        <input type="text" id="cli_telefono" name="cli_telefono" maxlength="20" required>
+                    </div>
+                    <div class="campo">
+                        <label>Correo <span class="req">*</span></label>
                         <input type="email" id="cli_correo" name="cli_correo" maxlength="100">
                     </div>
                     <div class="campo">
-                        <label>Direccion</label>
+                        <label>Direccion <span class="req">*</span></label>
                         <input type="text" id="cli_direccion" name="cli_direccion" maxlength="200" oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="campo">
+                        <label>Sucursal Cliente <span class="req">*</span></label>
+                        <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($sucursalesCliente as $suc)
+                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
+                            @endforeach
+                            <option value="999">999 - SERVICIO EXTERNO</option>
+                        </select>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- SECCIÓN DE GARANTÍA Y FACTURACIÓN (SE MUESTRA SOLO EN VALIDACIÓN DE GARANTÍA) -->
+        <div id="bloque-garantia-facturacion" class="seccion-form bloque-motivo bloque-personal hidden">
+            <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantia y Facturacion</div>
+            <div class="seccion-body">
+                <div id="bloque-facturacion" class="grid-3 hidden" style="margin-bottom: 18px;">
+                    <div class="campo">
+                        <label>Nro. Factura 1</label>
+                        <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)">
+                    </div>
+                    <div class="campo">
+                        <label>Nro. Factura 2</label>
+                        <input type="text" id="nro_factura_2" name="nro_factura_2">
+                    </div>
+                    <div class="campo">
+                        <label>Fecha de Facturacion</label>
+                        <input type="date" id="fecha_facturacion" name="fecha_facturacion">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: TÉCNICO RESPONSABLE -->
+        <div class="seccion-form bloque-motivo bloque-personal hidden">
+            <div class="seccion-hdr"><i class="bi bi-person-badge-fill"></i> Técnico Responsable</div>
+            <div class="seccion-body">
+                <div class="campo">
+                    <label>Técnico Asignado <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;">ordenados por menor carga</span></label>
+                    <select id="ord_tecnico_id" name="ord_tecnico_id" required class="tec-native-sr">
+                        <option value="">-- Seleccione un Técnico --</option>
+                        @foreach($tecnicos as $tec)
+                            @php
+                                $pendientes = (int) ($tec->pendientes ?? 0);
+                                $enProceso = (int) ($tec->en_proceso ?? 0);
+                            @endphp
+                            <option value="{{ $tec->id }}" data-pend="{{ $pendientes }}" data-proc="{{ $enProceso }}">
+                                {{ $tec->nombre_tecnico }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="tec-dropdown" id="tec-dropdown">
+                        <div class="tec-trigger" id="tec-trigger" onclick="toggleTecDropdown()">
+                            <div class="tec-trigger-avatar" id="tec-trigger-avatar">?</div>
+                            <div class="tec-trigger-info">
+                                <div class="tec-trigger-nombre" id="tec-trigger-nombre">-- Seleccionar técnico --</div>
+                                <div class="tec-trigger-stats" id="tec-trigger-stats"></div>
+                            </div>
+                            <i class="bi bi-chevron-down tec-trigger-arrow"></i>
+                        </div>
+                        <div class="tec-dropdown-list" id="tec-dropdown-list">
+                            <div class="tec-search-wrap">
+                                <input type="text" class="tec-search-inp" placeholder="Buscar técnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list')" autocomplete="off">
+                            </div>
+                            <div class="tec-search-empty" id="tec-empty-per">Sin coincidencias</div>
+                            <div class="tec-items-scroll" id="tec-items-per">
+                            @php
+                                $tecnicoSesionId = (int) session('tecnico_id', 0);
+                                $maxCarga = 0;
+                                foreach ($tecnicos as $t) {
+                                    $maxCarga = max($maxCarga, (int)($t->pendientes ?? 0) + (int)($t->en_proceso ?? 0));
+                                }
+                                $umbralRojo = max(2, (int) ceil($maxCarga * 0.7));
+                            @endphp
+                            @foreach($tecnicos as $tec)
+                                @php
+                                    $pendientes = (int) ($tec->pendientes ?? 0);
+                                    $enProceso = (int) ($tec->en_proceso ?? 0);
+                                    $total = $pendientes + $enProceso;
+                                    $esTuMismo = ($tec->id === $tecnicoSesionId);
+                                    if ($total === 0) {
+                                        $color = '#10b981';
+                                        $etiqueta = 'Libre';
+                                    } elseif ($total <= $umbralRojo) {
+                                        $color = '#f59e0b';
+                                        $etiqueta = 'Normal';
+                                    } else {
+                                        $color = '#ef4444';
+                                        $etiqueta = 'Cargado';
+                                    }
+                                @endphp
+                                <div class="tec-item {{ $esTuMismo ? 'tec-item-yo' : '' }}"
+                                     data-tec-id="{{ $tec->id }}"
+                                     onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $esTuMismo ? '#2563eb' : $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
+                                    <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
+                                    <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
+                                    @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
+                                    <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
+                                    <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
+                                </div>
+                            @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 3: DATOS DEL EQUIPO -->
         <div class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-laptop"></i> Datos del Equipo</div>
             <div class="seccion-body">
-                <div class="grid-3">
+                <!-- Modelo oculto requerido por base de datos / validación -->
+                <input type="hidden" id="eq_modelo" name="eq_modelo" value="">
+
+                <div class="grid-3" style="margin-bottom: 18px;">
                     <div class="campo">
-                        <label>Codigo <span class="req">*</span></label>
+                        <label>Código <span class="req">*</span></label>
                         <div style="position:relative;">
                             <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo" required
                                    autocomplete="off" style="width:100%;text-transform:uppercase;"
-                                   oninput="this.value=this.value.toUpperCase(); buscarProductoPorCodigo(this.value);">
+                                   oninput="this.value=this.value.toUpperCase(); buscarProductoPorCodigo(this.value); sincronizarModelo();">
                             <span id="prod-spinner" class="prod-spinner">
                                 <i class="bi bi-arrow-repeat" style="animation:spin .7s linear infinite;display:inline-block;"></i>
                             </span>
@@ -504,6 +599,24 @@
                         </select>
                     </div>
                     <div class="campo">
+                        <label>Tipo de Servicio <span class="req">*</span></label>
+                        <div id="wrapper-tipo-servicio">
+                            <!-- Input para Cliente Externo -->
+                            <input type="text" id="tipo_servicio_texto" name="tipo_servicio_texto" placeholder="INGRESE EL TIPO DE SERVICIO" oninput="this.value=this.value.toUpperCase()" style="width:100%;">
+                            
+                            <!-- Select para otros motivos (Garantía, etc.) -->
+                            <select id="eq_tipo_servicio" name="eq_tipo_servicio" style="width:100%;">
+                                <option value="">-- Seleccione (Opcional) --</option>
+                                @foreach($tiposServicio as $ts)
+                                    <option value="{{ $ts->id }}">{{ $ts->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-3" style="margin-bottom: 18px;">
+                    <div class="campo">
                         <label>Marca <span class="req">*</span></label>
                         <select id="eq_marca" name="eq_marca" required>
                             <option value="">-- Seleccione --</option>
@@ -512,171 +625,21 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="campo">
-                        <label>Modelo <span class="req">*</span></label>
-                        <input type="text" id="eq_modelo" name="eq_modelo" required placeholder="Ej: INSPIRON 15" oninput="this.value=this.value.toUpperCase()">
-                    </div>
                 </div>
-                <div class="grid-2">
-                    <div class="campo">
-                        <label>Numero de Serie (S/N) <span class="req">*</span></label>
-                        <div class="lista-lineas" id="series-container">
-                            <div class="linea-item">
-                                <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Serie principal">
-                                <button type="button" class="btn-mini" onclick="agregarSerie()">+</button>
-                            </div>
+
+                <div class="campo" style="margin-bottom: 18px;">
+                    <label>Serie</label>
+                    <div class="lista-lineas" id="series-container">
+                        <div class="linea-item" style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                            <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Número de serie" style="flex: 1;">
+                            <button type="button" class="btn-mini" onclick="agregarSerie()" style="height: 38px; padding: 0 14px;">+</button>
                         </div>
                     </div>
-                    <div class="campo">
-                        <label>Contraseña / PIN de acceso</label>
-                        <input type="text" id="eq_contrasena" name="eq_contrasena" placeholder="Si aplica...">
-                    </div>
                 </div>
-                <div class="campo">
-                    <label>Falla Reportada por el Cliente <span class="req">*</span></label>
-                    <textarea id="eq_falla" name="eq_falla" rows="3" required></textarea>
-                </div>
-                <div class="campo">
-                    <label>Observaciones del Estado fisico (Rayones, golpes, etc.)</label>
-                    <textarea id="eq_observacion" name="eq_observacion" rows="2"></textarea>
-                </div>
-            </div>
-        </div>
 
-        <div class="seccion-form bloque-motivo bloque-personal hidden">
-            <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantia y Facturacion</div>
-            <div class="seccion-body">
-                <div id="bloque-facturacion" class="grid-3 hidden">
+                <div class="grid-3" style="margin-bottom: 18px;">
                     <div class="campo">
-                        <label>Nro. Factura 1</label>
-                        <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)">
-                    </div>
-                    <div class="campo">
-                        <label>Nro. Factura 2</label>
-                        <input type="text" id="nro_factura_2" name="nro_factura_2">
-                    </div>
-                    <div class="campo">
-                        <label>Fecha de Facturacion</label>
-                        <input type="date" id="fecha_facturacion" name="fecha_facturacion">
-                    </div>
-                </div>
-                <div id="bloque-garantia" class="grid-2 hidden">
-                    <div class="campo">
-                        <label>Tipo de Garantia</label>
-                        <select id="garantia_tipo" name="garantia_tipo">
-                            <option value="">-- Seleccione --</option>
-                            <option value="propia">INTERNA</option>
-                            <option value="externa">EXTERNA</option>
-                        </select>
-                    </div>
-                    <div class="campo">
-                        <label>CAS (solo garantia externa)</label>
-                        <select id="cas_id" name="cas_id">
-                            <option value="">-- Seleccione --</option>
-                            @foreach($cas as $c)
-                                <option value="{{ $c->id }}">{{ $c->nombre }} ({{ $c->marca }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="seccion-form bloque-motivo bloque-personal hidden">
-            <div class="seccion-hdr"><i class="bi bi-person-workspace"></i> Asignacion y Servicio</div>
-            <div class="seccion-body">
-                <div class="grid-2">
-                    <div class="campo">
-                        <label>Tecnico Asignado <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;">ordenado por menor carga</span></label>
-                        <select id="ord_tecnico_id" name="ord_tecnico_id" required class="tec-native-sr">
-                            <option value="">-- Seleccione un Tecnico --</option>
-                            @foreach($tecnicos as $tec)
-                                @php
-                                    $pendientes = (int) ($tec->pendientes ?? 0);
-                                    $enProceso = (int) ($tec->en_proceso ?? 0);
-                                @endphp
-                                <option value="{{ $tec->id }}" data-pend="{{ $pendientes }}" data-proc="{{ $enProceso }}">
-                                    {{ $tec->nombre_tecnico }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="tec-dropdown" id="tec-dropdown">
-                            <div class="tec-trigger" id="tec-trigger" onclick="toggleTecDropdown()">
-                                <div class="tec-trigger-avatar" id="tec-trigger-avatar">?</div>
-                                <div class="tec-trigger-info">
-                                    <div class="tec-trigger-nombre" id="tec-trigger-nombre">-- Seleccionar tecnico --</div>
-                                    <div class="tec-trigger-stats" id="tec-trigger-stats"></div>
-                                </div>
-                                <i class="bi bi-chevron-down tec-trigger-arrow"></i>
-                            </div>
-                            <div class="tec-dropdown-list" id="tec-dropdown-list">
-                                <div class="tec-search-wrap">
-                                    <input type="text" class="tec-search-inp" placeholder="Buscar técnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list')" autocomplete="off">
-                                </div>
-                                <div class="tec-search-empty" id="tec-empty-per">Sin coincidencias</div>
-                                <div class="tec-items-scroll" id="tec-items-per">
-                                @php
-                                    $tecnicoSesionId = (int) session('tecnico_id', 0);
-                                    $maxCarga = 0;
-                                    foreach ($tecnicos as $t) {
-                                        $maxCarga = max($maxCarga, (int)($t->pendientes ?? 0) + (int)($t->en_proceso ?? 0));
-                                    }
-                                    $umbralRojo = max(2, (int) ceil($maxCarga * 0.7));
-                                @endphp
-                                @foreach($tecnicos as $tec)
-                                    @php
-                                        $pendientes = (int) ($tec->pendientes ?? 0);
-                                        $enProceso = (int) ($tec->en_proceso ?? 0);
-                                        $total = $pendientes + $enProceso;
-                                        $esTuMismo = ($tec->id === $tecnicoSesionId);
-                                        if ($total === 0) {
-                                            $color = '#10b981';
-                                            $etiqueta = 'Libre';
-                                        } elseif ($total <= $umbralRojo) {
-                                            $color = '#f59e0b';
-                                            $etiqueta = 'Normal';
-                                        } else {
-                                            $color = '#ef4444';
-                                            $etiqueta = 'Cargado';
-                                        }
-                                    @endphp
-                                    <div class="tec-item {{ $esTuMismo ? 'tec-item-yo' : '' }}"
-                                         data-tec-id="{{ $tec->id }}"
-                                         onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $esTuMismo ? '#2563eb' : $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
-                                        <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
-                                        <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
-                                        @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
-                                        <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
-                                        <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
-                                    </div>
-                                @endforeach
-                                </div>{{-- /tec-items-scroll --}}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="campo">
-                        <label>Tipo de Servicio Sugerido</label>
-                        <select id="eq_tipo_servicio" name="eq_tipo_servicio">
-                            <option value="">-- Seleccione (Opcional) --</option>
-                            @foreach($tiposServicio as $ts)
-                                <option value="{{ $ts->id }}">{{ $ts->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div id="bloque-servicio-externo" class="grid-2 hidden">
-                    <div class="campo" style="grid-column: span 2;">
-                        <label>Tipo de Servicio (Cliente Externo)</label>
-                        <input type="text" id="tipo_servicio_texto" name="tipo_servicio_texto" placeholder="Ej: INSTALACION / REVISION" oninput="this.value=this.value.toUpperCase()">
-                    </div>
-                </div>
-                <div class="grid-2">
-                    <div class="campo">
-                        <label>Fecha Prometido <span class="req">*</span></label>
-                        <input type="date" id="fecha_prometido" name="fecha_prometido" required>
-                    </div>
-                    <div class="campo">
-                        <label>Estado de Repuesto</label>
+                        <label>Estado Repuesto</label>
                         <select id="estado_repuesto" name="estado_repuesto" onchange="onEstadoRepuestoChange(this.value)">
                             <option value="No requerido">No requerido</option>
                             <option value="Requerido">Requerido</option>
@@ -684,7 +647,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="campo" id="bloque-repuesto-stock-aviso" style="display:none;">
+
+                <!-- Panel de stock anidado -->
+                <div class="campo" id="bloque-repuesto-stock-aviso" style="display:none; margin-bottom: 18px;">
                     <div id="panel-repuesto-aviso" style="display:none;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:9px;background:#fffbeb;border:1.5px solid #fde68a;">
                         <i class="bi bi-info-circle-fill" style="color:#d97706;font-size:17px;flex-shrink:0;margin-top:1px;"></i>
                         <div style="font-size:13px;color:#78350f;line-height:1.5;">
@@ -717,49 +682,56 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="seccion-form bloque-motivo bloque-personal hidden">
-            <div class="seccion-hdr"><i class="bi bi-gear"></i> Repuestos</div>
-            <div class="seccion-body">
-                <div class="grid-2">
-                    <div class="campo" style="grid-column: 1 / -1;">
-                        <label>Repuestos Seleccionados en Stock</label>
-                        <div id="repuestos-ocultos-inputs">
-                            <!-- Los inputs ocultos se inyectarán dinámicamente aquí -->
-                        </div>
-                        <input type="hidden" id="repuesto_inventario_id" name="repuesto_inventario_id" value="">
-                        <div id="repuestos-lista-visual-resumen" style="font-size:13px; color:#475569; padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; font-style:italic;">
-                            Ningún repuesto de stock seleccionado.
-                        </div>
+                <!-- Repuestos Seleccionados list -->
+                <div class="campo" style="margin-bottom: 18px; display: none;" id="bloque-repuestos-seleccionados-visual">
+                    <label>Repuestos Seleccionados en Stock</label>
+                    <div id="repuestos-ocultos-inputs"></div>
+                    <input type="hidden" id="repuesto_inventario_id" name="repuesto_inventario_id" value="">
+                    <div id="repuestos-lista-visual-resumen" style="font-size:13px; color:#475569; padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; font-style:italic;">
+                        Ningún repuesto de stock seleccionado.
+                    </div>
+                </div>
+
+                <!-- Credenciales del Equipo Divider / Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 24px; margin-bottom: 16px; border-top: 1px solid #f1f5f9; padding-top: 18px;">
+                    <span style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase;">
+                        Credenciales del Equipo
+                    </span>
+                    <button type="button" class="btn-crear" style="background: #2563eb; color: #fff; font-size: 12.5px; font-weight: 700; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="agregarCredencial()">
+                        <i class="bi bi-plus-circle"></i> Agregar credencial
+                    </button>
+                </div>
+
+                <div id="credenciales-container" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
+                    <!-- Tarjetas dinámicas se agregarán aquí -->
+                </div>
+
+                <div class="campo" style="margin-bottom: 18px;">
+                    <label>Problema Reportado <span class="req">*</span></label>
+                    <textarea id="eq_falla" name="eq_falla" rows="3" required placeholder="Describa el problema reportado por el cliente..."></textarea>
+                </div>
+                
+                <div class="campo" style="margin-bottom: 18px;">
+                    <label>Recepción / detalles <span class="req">*</span></label>
+                    <textarea id="eq_observacion" name="eq_observacion" rows="3" required placeholder="Recepción y detalles al recibir el equipo..."></textarea>
+                </div>
+
+                <div class="grid-3">
+                    <div class="campo">
+                        <label>Fecha Prometido <span class="req">*</span></label>
+                        <input type="date" id="fecha_prometido" name="fecha_prometido" required>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="seccion-form bloque-motivo bloque-personal hidden">
-            <div class="seccion-hdr" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <span style="display: flex; align-items: center; gap: 8px;">
-                    <i class="bi bi-key"></i> Credenciales del Equipo
-                </span>
-                <button type="button" class="rep-btn rep-btn-primary rep-btn-sm" style="background: #2563eb; color: #fff; font-size: 11.5px; font-weight: 700; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" onclick="agregarCredencial()">
-                    <i class="bi bi-plus-circle"></i> Agregar credencial
-                </button>
-            </div>
-            <div class="seccion-body" style="padding: 20px;">
-                <div id="credenciales-container" style="display: flex; flex-direction: column; gap: 16px;">
-                    <!-- Se llenará dinámicamente con tarjetas -->
-                </div>
-            </div>
-        </div>
-
-        <div id="acciones-orden" class="botones hidden">
-            <button type="button" class="btn-limpiar" onclick="document.getElementById('form-orden').reset(); actualizarMotivo(); limpiarBadgeProducto();">
-                Limpiar
-            </button>
+        <div id="acciones-orden" class="botones hidden" style="display: flex; gap: 12px; justify-content: flex-end; width: 100%;">
             <button type="submit" id="btn-guardar" class="btn-crear">
-                <i class="bi bi-floppy"></i> Generar Orden de Ingreso
+                <i class="bi bi-file-earmark-check"></i> Crear Orden
+            </button>
+            <button type="button" class="btn-limpiar" onclick="document.getElementById('form-orden').reset(); actualizarMotivo(); limpiarBadgeProducto();">
+                <i class="bi bi-x-circle"></i> Limpiar
             </button>
         </div>
     </form>
@@ -784,6 +756,14 @@ function mostrarMensaje(isError, texto) {
     box.innerHTML = texto;
     box.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function sincronizarModelo() {
+    const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim();
+    const modelInp = document.getElementById('eq_modelo');
+    if (modelInp) {
+        modelInp.value = cod || 'GENERICO';
+    }
 }
 
 function toggleTecDropdown() {
@@ -924,11 +904,18 @@ function sincronizarTecnicoDesdeSelect() {
 }
 
 async function buscarClienteAjax() {
-    const iden = document.getElementById('cli_identificacion').value.trim();
-    if(!iden) { alert('Ingrese una identificaciÃ³n vÃ¡lida para buscar.'); return; }
+    const iden = (document.getElementById('cli_identificacion')?.value || '').trim();
+    if(!iden) { return; }
+
+    const statusEl = document.getElementById('cli-buscar-status');
+    if (statusEl) {
+        statusEl.textContent = '⏳ Buscando cliente...';
+        statusEl.style.color = '#2563eb';
+        statusEl.style.display = 'inline-block';
+    }
 
     try {
-        const r = await fetch('{{ url("/operaciones/ordenes/buscar-cliente") }}?identificacion=' + iden);
+        const r = await fetch('{{ route("ordenes.buscar_cliente") }}?identificacion=' + iden);
         const d = await r.json();
 
         if(d.ok && d.cliente) {
@@ -937,12 +924,22 @@ async function buscarClienteAjax() {
             document.getElementById('cli_telefono').value = d.cliente.numero_contacto;
             document.getElementById('cli_correo').value = d.cliente.correo || '';
             document.getElementById('cli_direccion').value = d.cliente.direccion_clientes || '';
-            alert('Cliente encontrado y datos cargados.');
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-check-circle-fill"></i> Cliente encontrado';
+                statusEl.style.color = '#166534';
+            }
         } else {
-            alert('Cliente no encontrado. Por favor, registre los datos manualmente.');
-            document.getElementById('cli_nombres').focus();
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-info-circle-fill"></i> Cliente nuevo (registro manual)';
+                statusEl.style.color = '#d97706';
+            }
         }
-    } catch(e) { alert('Error al buscar cliente.'); }
+    } catch(e) {
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Error al buscar';
+            statusEl.style.color = '#ef4444';
+        }
+    }
 }
 
 function escHtml(str) {
@@ -1274,7 +1271,9 @@ function limpiarRepuestoSeleccionado() {
 }
 
 function actualizarMotivo() {
-    const motivo = document.getElementById('motivo_ingreso').value;
+    const motivoEl = document.getElementById('motivo_ingreso');
+    const motivo = motivoEl ? motivoEl.value : '';
+    
     const bloqueFacturacion = document.getElementById('bloque-facturacion');
     const bloqueGarantia = document.getElementById('bloque-garantia');
     const bloqueServicioExterno = document.getElementById('bloque-servicio-externo');
@@ -1297,9 +1296,9 @@ function actualizarMotivo() {
     if (acciones) acciones.classList.toggle('hidden', !motivoSeleccionado);
     if (lockMsg) lockMsg.classList.toggle('hidden', motivoSeleccionado);
 
-    bloqueFacturacion.classList.toggle('hidden', !esGarantia || esEmpresa);
-    bloqueGarantia.classList.toggle('hidden', !esGarantia || esEmpresa);
-    bloqueServicioExterno.classList.toggle('hidden', !esExterno || esEmpresa);
+    if (bloqueFacturacion) bloqueFacturacion.classList.toggle('hidden', !esGarantia || esEmpresa);
+    if (bloqueGarantia) bloqueGarantia.classList.toggle('hidden', !esGarantia || esEmpresa);
+    if (bloqueServicioExterno) bloqueServicioExterno.classList.toggle('hidden', !esExterno || esEmpresa);
 
     document.querySelectorAll('.bloque-personal input, .bloque-personal select, .bloque-personal textarea').forEach((el) => {
         el.disabled = esEmpresa;
@@ -1308,15 +1307,15 @@ function actualizarMotivo() {
         el.disabled = !esEmpresa;
     });
 
-    tipoServicioSelect.disabled = esEmpresa || esGarantia || esExterno;
-    tipoServicioTexto.required = !esEmpresa && esExterno;
-    nroFactura.required = !esEmpresa && esGarantia;
-    fechaFacturacion.required = !esEmpresa && esGarantia;
+    if (tipoServicioSelect) tipoServicioSelect.disabled = esEmpresa || esGarantia || esExterno;
+    if (tipoServicioTexto) tipoServicioTexto.required = !esEmpresa && esExterno;
+    if (nroFactura) nroFactura.required = !esEmpresa && esGarantia;
+    if (fechaFacturacion) fechaFacturacion.required = !esEmpresa && esGarantia;
 
     if (esExterno) {
-        selectSucursal.value = '999';
+        if (selectSucursal) selectSucursal.value = '999';
     }
-    selectSucursal.disabled = esEmpresa || esExterno;
+    if (selectSucursal) selectSucursal.disabled = esEmpresa || esExterno;
 
     if (!esEmpresa) {
         document.querySelectorAll('input[name="subtipo_empresa"]').forEach((r) => r.checked = false);
@@ -1538,10 +1537,10 @@ function agregarCredencial() {
                 </div>
             </div>
 
-            <!-- Botón Eliminar abajo estilo mockup 2 -->
-            <div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 12px; display: flex; justify-content: center; width: 100%;">
-                <button type="button" onclick="eliminarCredencialCard('${cardId}')" style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; width: 100%; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #dc2626; font-size: 13px; transition: all 0.15s; font-weight: 700; gap: 6px;" onmouseover="this.style.background='#fca5a5'; this.style.color='#fff';" onmouseout="this.style.background='#fee2e2'; this.style.color='#dc2626';">
-                    <i class="bi bi-trash"></i> Eliminar credencial
+            <!-- Botón Eliminar abajo estilo mockup 2 (barra roja con tacho centrado) -->
+            <div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 12px; width: 100%;">
+                <button type="button" onclick="eliminarCredencialCard('${cardId}')" style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; width: 100%; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #dc2626; font-size: 16px; transition: all 0.15s;" onmouseover="this.style.background='#fca5a5'; this.style.color='#fff';" onmouseout="this.style.background='#fee2e2'; this.style.color='#dc2626';" title="Eliminar credencial">
+                    <i class="bi bi-trash"></i>
                 </button>
             </div>
         </div>
@@ -1773,6 +1772,12 @@ function initPatternLock(cardId) {
 }
 
 async function guardarOrden() {
+    const modelInp = document.getElementById('eq_modelo');
+    const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim();
+    if (modelInp && !modelInp.value) {
+        modelInp.value = cod || 'GENERICO';
+    }
+
     const form = document.getElementById('form-orden');
     const fd = new FormData(form);
 
@@ -1781,7 +1786,49 @@ async function guardarOrden() {
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
 
     try {
-        const r = await fetch('{{ route("ordenes.store") }}', { method:'POST', body:fd });
+        const r = await fetch('{{ route("ordenes.store") }}', {
+            method: 'POST',
+            body: fd,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const contentType = r.headers.get('content-type') || '';
+        if (!r.ok) {
+            let errorText = '';
+            try {
+                errorText = await r.text();
+            } catch (_) {}
+            
+            console.error('Response error details:', r.status, errorText);
+
+            if (r.status === 419) {
+                mostrarMensaje(true, 'La sesión ha expirado (Error 419). Por favor, recarga la página e intenta de nuevo.');
+                return;
+            }
+
+            if (contentType.includes('application/json')) {
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    mostrarMensaje(true, errorJson.error || `Error del servidor (${r.status}): ${r.statusText}`);
+                    return;
+                } catch (_) {}
+            }
+
+            const match = errorText.match(/<title>(.*?)<\/title>/i);
+            const title = match ? match[1] : '';
+            mostrarMensaje(true, `Error del servidor (${r.status})${title ? ': ' + title : ''}. Por favor, contacte a soporte.`);
+            return;
+        }
+
+        if (!contentType.includes('application/json')) {
+            const text = await r.text();
+            console.error('Unexpected non-JSON response:', text);
+            mostrarMensaje(true, 'El servidor retornó una respuesta inesperada (no JSON).');
+            return;
+        }
+
         const d = await r.json();
 
         if(d.ok) {
@@ -1801,10 +1848,11 @@ async function guardarOrden() {
             mostrarMensaje(true, d.error);
         }
     } catch(e) {
-        mostrarMensaje(true, 'OcurriÃ³ un error crÃ­tico de conexiÃ³n.');
+        console.error('Connection/JavaScript critical error:', e);
+        mostrarMensaje(true, 'Ocurrió un error crítico de conexión o de red: ' + e.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-floppy"></i> Generar Orden de Ingreso';
+        btn.innerHTML = '<i class="bi bi-file-earmark-check"></i> Crear Orden';
     }
 }
 
@@ -1819,6 +1867,29 @@ document.addEventListener('DOMContentLoaded', () => {
         inpCi.addEventListener('input', () => {
             _preordenIgnorada = false;
             verificarPreorden();
+
+            const val = inpCi.value.trim();
+            if (val === '') {
+                document.getElementById('cli_nombres').value = '';
+                document.getElementById('cli_apellidos').value = '';
+                document.getElementById('cli_telefono').value = '';
+                document.getElementById('cli_correo').value = '';
+                document.getElementById('cli_direccion').value = '';
+                const statusEl = document.getElementById('cli-buscar-status');
+                if (statusEl) {
+                    statusEl.style.display = 'none';
+                    statusEl.textContent = '';
+                }
+            } else if (val.length === 10 || val.length === 13) {
+                buscarClienteAjax();
+            }
+        });
+        inpCi.addEventListener('blur', buscarClienteAjax);
+        inpCi.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarClienteAjax();
+            }
         });
     }
     if (inpCod) {

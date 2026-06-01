@@ -57,8 +57,28 @@
         <p>Ingresa las pre-ordenes del portal de garantias como ordenes de trabajo en el SGN</p>
     </div>
 
+    @php
+        $ciudadesUnicas = [];
+        foreach($preordenes as $po) {
+            if (!empty($po->ciudad_procedencia)) {
+                $ciudadesUnicas[] = trim(strtoupper($po->ciudad_procedencia));
+            }
+            if (!empty($po->sucursal_ciudad)) {
+                $ciudadesUnicas[] = trim(strtoupper($po->sucursal_ciudad));
+            }
+        }
+        $ciudadesUnicas = array_unique($ciudadesUnicas);
+        sort($ciudadesUnicas);
+    @endphp
+
     <div class="po-toolbar">
         <input type="text" class="po-search" id="po-buscar" placeholder="Buscar por nro, cliente, factura, codigo..." oninput="poBuscar()">
+        <select class="po-search" id="po-filtro-ciudad" onchange="poBuscar()" style="width: 180px;">
+            <option value="">-- Ciudad --</option>
+            @foreach($ciudadesUnicas as $ciudad)
+                <option value="{{ strtolower($ciudad) }}">{{ $ciudad }}</option>
+            @endforeach
+        </select>
         <span class="po-count-badge" id="po-count">{{ count($preordenes) }} pendiente(s)</span>
         <button class="po-refresh" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
     </div>
@@ -71,7 +91,7 @@
             <table class="po-table">
                 <thead>
                     <tr>
-                        <th>Pre-Orden</th><th>Cliente</th><th>Factura</th><th>Equipo</th><th>Suc. Cliente</th><th>Ingresado</th><th>Fotos</th><th>Accion</th>
+                        <th>Pre-Orden</th><th>Cliente</th><th>Factura</th><th>Equipo</th><th>Suc. Cliente</th><th>Ingresado / Procedencia</th><th>Fotos</th><th>Accion</th>
                     </tr>
                 </thead>
                 <tbody id="po-tbody">
@@ -83,20 +103,28 @@
                             'codigo_producto' => $po->codigo_producto, 'desc_producto' => $po->desc_producto, 'marca_producto' => $po->marca_producto,
                             'tipo_producto' => $po->tipo_producto, 'detalle_equipo' => $po->detalle_equipo, 'sucursal_id' => $po->sucursal_id,
                             'nro_sucursal_cliente' => $po->nro_sucursal_cliente, 'sucursal_cliente_nombre' => $po->sucursal_cliente_nombre,
-                            'sucursal_cliente_numero' => $po->sucursal_cliente_numero, 'sucursal_ciudad' => $po->sucursal_ciudad
+                            'sucursal_cliente_numero' => $po->sucursal_cliente_numero, 'sucursal_ciudad' => $po->sucursal_ciudad,
+                            'ciudad_procedencia' => $po->ciudad_procedencia
                         ];
                         $fotos = [$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4];
                     @endphp
                     <tr data-nro="{{ strtolower($po->nro_preorden) }}"
                         data-cliente="{{ strtolower(trim($po->nombres.' '.$po->apellidos)) }}"
                         data-fac="{{ strtolower($po->nro_factura ?? '') }}"
-                        data-cod="{{ strtolower($po->codigo_producto ?? '') }}">
+                        data-cod="{{ strtolower($po->codigo_producto ?? '') }}"
+                        data-ciudad-proc="{{ strtolower($po->ciudad_procedencia ?? '') }}"
+                        data-ciudad-suc="{{ strtolower($po->sucursal_ciudad ?? '') }}">
                         <td><div class="po-nro">{{ $po->nro_preorden }}</div><div class="po-sub">{{ $po->fecha_registro ? \Carbon\Carbon::parse($po->fecha_registro)->format('d/m/Y H:i') : '-' }}</div></td>
                         <td><div class="po-cliente">{{ $po->nombres }} {{ $po->apellidos }}</div><div class="po-sub">{{ $po->telefono }}</div></td>
                         <td><div>{{ $po->nro_factura ?: '-' }}</div><div class="po-sub">{{ $po->fecha_facturacion ? \Carbon\Carbon::parse($po->fecha_facturacion)->format('d/m/Y') : '-' }}</div></td>
                         <td><span class="po-codigo">{{ $po->codigo_producto ?: '-' }}</span><div class="po-sub">{{ trim(($po->tipo_producto ?? '').' '.($po->marca_producto ?? '').' - '.($po->desc_producto ?? '')) }}</div></td>
                         <td>{{ $po->sucursal_cliente_numero ? str_pad((int)$po->sucursal_cliente_numero, 3, '0', STR_PAD_LEFT).' - '.$po->sucursal_cliente_nombre : '-' }}</td>
-                        <td><div class="po-sub">{{ $po->sucursal_ciudad ?: '-' }}</div></td>
+                        <td>
+                            @if(!empty($po->ciudad_procedencia))
+                                <div class="po-sub" style="font-weight: 700; color: #0f172a;"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ strtoupper($po->ciudad_procedencia) }}</div>
+                            @endif
+                            <div class="po-sub" style="font-size: 11px;"><i class="bi bi-shop text-primary me-1"></i>{{ $po->sucursal_ciudad ?: '-' }}</div>
+                        </td>
                         <td>
                             <button class="btn-ver-fotos" onclick='poVerFotos(@json($fotos))'><i class="bi bi-images me-1"></i>Fotos</button>
                             <button class="btn-ver-fotos" onclick="poImprimirPreorden({{ $po->id }})"><i class="bi bi-printer me-1"></i>Comprobante</button>
@@ -152,11 +180,18 @@
 var _poActual = null;
 function poBuscar() {
     var q = document.getElementById('po-buscar').value.toLowerCase().trim();
+    var ciudad = document.getElementById('po-filtro-ciudad').value.toLowerCase().trim();
     var filas = document.querySelectorAll('#po-tbody tr[data-nro]');
     var vis = 0;
     filas.forEach(function(tr){
-        var match = !q || tr.dataset.nro.includes(q) || tr.dataset.cliente.includes(q) || tr.dataset.fac.includes(q) || tr.dataset.cod.includes(q);
-        tr.style.display = match ? '' : 'none'; if (match) vis++;
+        var matchQ = !q || tr.dataset.nro.includes(q) || tr.dataset.cliente.includes(q) || tr.dataset.fac.includes(q) || tr.dataset.cod.includes(q);
+        var matchCiudad = !ciudad || 
+            (tr.dataset.ciudadProc && tr.dataset.ciudadProc.includes(ciudad)) || 
+            (tr.dataset.ciudadSuc && tr.dataset.ciudadSuc.includes(ciudad));
+        
+        var match = matchQ && matchCiudad;
+        tr.style.display = match ? '' : 'none'; 
+        if (match) vis++;
     });
     document.getElementById('po-count').textContent = vis + ' pendiente(s)';
 }
@@ -176,7 +211,7 @@ function poVerFotos(fotos) {
 function pofCerrar(e){ if(e.target===document.getElementById('pof-overlay')) document.getElementById('pof-overlay').classList.remove('open'); }
 function poAbrirModal(po) {
     _poActual = po;
-    var nroOrden = String(po.nro_preorden || '').replace(/^PRE-/i, '');
+    var nroOrden = String(po.nro_preorden || '').replace(/^PRE(OR)?-/i, '');
     document.getElementById('pm-sub').textContent = 'Pre-orden: ' + po.nro_preorden + ' -> Orden: ' + nroOrden;
     var rows = [
         ['Nro. Orden', '<strong style="color:#1d4ed8">' + nroOrden + '</strong>'],
@@ -188,7 +223,8 @@ function poAbrirModal(po) {
         ['Codigo', po.codigo_producto || '-'],
         ['Equipo', ((po.tipo_producto || '') + ' ' + (po.marca_producto || '') + ' - ' + (po.desc_producto || '')).trim()],
         ['Problema', po.detalle_equipo || '-'],
-        ['Suc. Cliente', po.sucursal_cliente_numero ? String(po.sucursal_cliente_numero).padStart(3, '0') + ' - ' + (po.sucursal_cliente_nombre || '') : '-']
+        ['Suc. Cliente', po.sucursal_cliente_numero ? String(po.sucursal_cliente_numero).padStart(3, '0') + ' - ' + (po.sucursal_cliente_nombre || '') : '-'],
+        ['Procedencia', po.ciudad_procedencia || '-']
     ];
     var html = '';
     rows.forEach(function(r){ html += '<div class="po-resumen-row"><span class="po-rl">' + r[0] + '</span><span class="po-rv">' + r[1] + '</span></div>'; });

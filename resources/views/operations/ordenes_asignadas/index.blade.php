@@ -93,11 +93,66 @@
         $maxCargaTecnico = count($cargasTecnicos) > 0 ? max($cargasTecnicos) : 0;
     @endphp
 
+    <!-- BARRA DE FILTROS PREMIUM -->
+    <div style="background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.02);">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+            <div class="campo" style="margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.35px;">Buscar</label>
+                <div style="position: relative;">
+                    <input type="text" id="oa-buscar" oninput="aplicarFiltros()" placeholder="Nro orden, cliente, equipo, marca, serie..." 
+                           style="width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.15s ease-in-out;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
+                </div>
+            </div>
+            <div class="campo" style="margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.35px;">Estado Orden</label>
+                <select id="oa-filtro-estado" onchange="aplicarFiltros()" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; background-color: #fff; outline: none;">
+                    <option value="">-- Todos --</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En proceso">En proceso</option>
+                    <option value="Finalizada">Finalizada</option>
+                    <option value="Entregada">Entregada</option>
+                </select>
+            </div>
+            <div class="campo" style="margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.35px;">Motivo Ingreso</label>
+                <select id="oa-filtro-motivo" onchange="aplicarFiltros()" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; background-color: #fff; outline: none;">
+                    <option value="">-- Todos --</option>
+                    <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
+                    <option value="Validacion de Garantia">Validacion de Garantia</option>
+                    <option value="Servicios a Empresas">Servicios a Empresas</option>
+                </select>
+            </div>
+            <div class="campo" style="margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.35px;">Repuestos</label>
+                <select id="oa-filtro-repuesto" onchange="aplicarFiltros()" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; background-color: #fff; outline: none;">
+                    <option value="">-- Todos --</option>
+                    <option value="No requerido">No requerido</option>
+                    <option value="Con stock">Con stock</option>
+                    <option value="Sin stock">Sin stock</option>
+                    <option value="Solicitado">Solicitado</option>
+                    <option value="Por solicitar">Por solicitar</option>
+                </select>
+            </div>
+            <button type="button" onclick="limpiarFiltros()" 
+                    style="height: 38px; padding: 0 16px; background: #f1f5f9; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                    onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="bi bi-x-circle"></i> Limpiar
+            </button>
+        </div>
+    </div>
+
     <div class="oa-kpis">
         <div class="oa-kpi"><div class="oa-kpi-lbl">Técnicos con carga</div><div class="oa-kpi-val">{{ $kpiTecnicos }}</div></div>
         <div class="oa-kpi"><div class="oa-kpi-lbl">Órdenes en curso</div><div class="oa-kpi-val">{{ $kpiEnCurso }}</div></div>
         <div class="oa-kpi"><div class="oa-kpi-lbl">Entregadas</div><div class="oa-kpi-val">{{ $kpiEntregadas }}</div></div>
         <div class="oa-kpi"><div class="oa-kpi-lbl">Pendientes</div><div class="oa-kpi-val">{{ $kpiPendientes }}</div></div>
+    </div>
+
+    <div id="oa-busqueda-empty" class="oa-global-empty" style="display: none; padding: 60px 40px;">
+        <i class="bi bi-search" style="font-size: 38px; color: #94a3b8; display: block; margin-bottom: 12px;"></i>
+        <div style="font-weight: 700; color: #334155; font-size: 15px;">No se encontraron órdenes</div>
+        <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Intenta ajustar los criterios de búsqueda o limpiar los filtros.</div>
     </div>
 
     @if(count($porTecnico) === 0)
@@ -154,9 +209,12 @@
                                 <div class="oa-cliente">{{ $o->cliente }}</div>
                                 <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
                                 <div class="oa-meta-row">
-                                    <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
+                                    <span class="oa-meta"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
                                     <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
                                     @if(!empty($o->motivo_ingreso))<span class="oa-meta">{{ $o->motivo_ingreso }}</span>@endif
+                                    @if(!empty($o->fecha_prometido))
+                                        <span class="oa-meta" style="color: #b45309; background: #fffbeb; border-color: #fde68a;" title="Fecha Prometida"><i class="bi bi-calendar-check me-1"></i>Prometido: {{ \Carbon\Carbon::parse($o->fecha_prometido)->format('d/m/Y') }}</span>
+                                    @endif
                                 </div>
                                 <div class="oa-actions">
                                     <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
@@ -183,8 +241,11 @@
                                 <div class="oa-cliente">{{ $o->cliente }}</div>
                                 <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
                                 <div class="oa-meta-row">
-                                    <span class="oa-meta">{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
+                                    <span class="oa-meta"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
                                     <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
+                                    @if(!empty($o->fecha_prometido))
+                                        <span class="oa-meta" style="color: #b45309; background: #fffbeb; border-color: #fde68a;" title="Fecha Prometida"><i class="bi bi-calendar-check me-1"></i>Prometido: {{ \Carbon\Carbon::parse($o->fecha_prometido)->format('d/m/Y') }}</span>
+                                    @endif
                                 </div>
                                 <div class="oa-actions">
                                     <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
@@ -223,6 +284,113 @@ function esc(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function aplicarFiltros() {
+    const q = document.getElementById('oa-buscar').value.toLowerCase().trim();
+    const estado = document.getElementById('oa-filtro-estado').value.toLowerCase().trim();
+    const motivo = document.getElementById('oa-filtro-motivo').value.toLowerCase().trim();
+    const repuesto = document.getElementById('oa-filtro-repuesto').value.toLowerCase().trim();
+
+    const bloques = document.querySelectorAll('.oa-tecnico-bloque');
+    let totalVisibles = 0;
+
+    bloques.forEach((bloque) => {
+        let visibleEnCurso = 0;
+        let visibleEntregadas = 0;
+
+        const cards = bloque.querySelectorAll('.oa-card');
+        cards.forEach((card) => {
+            const raw = card.getAttribute('data-orden') || '{}';
+            let o = {};
+            try { o = JSON.parse(raw); } catch (_) {}
+
+            const matchQ = !q || 
+                (o.nro_orden || '').toLowerCase().includes(q) || 
+                (o.cliente || '').toLowerCase().includes(q) || 
+                (o.marca || '').toLowerCase().includes(q) || 
+                (o.modelo || '').toLowerCase().includes(q) || 
+                (o.serie || '').toLowerCase().includes(q) ||
+                (o.tipo || '').toLowerCase().includes(q);
+                
+            const matchEstado = !estado || (o.estado_orden || '').toLowerCase() === estado;
+            const matchMotivo = !motivo || (o.motivo_ingreso || '').toLowerCase() === motivo;
+            const matchRepuesto = !repuesto || (o.estado_repuesto || 'no requerido').toLowerCase() === repuesto;
+
+            const match = matchQ && matchEstado && matchMotivo && matchRepuesto;
+            card.style.display = match ? '' : 'none';
+            if (match) {
+                if ((o.estado_orden || '').toLowerCase() === 'entregada' || (o.estado_orden || '').toLowerCase() === 'entregado') {
+                    visibleEntregadas++;
+                } else {
+                    visibleEnCurso++;
+                }
+            }
+        });
+
+        // Toggle local empty states inside this technician block
+        const enCursoGrid = bloque.querySelector('.oa-cards-grid:first-of-type');
+        const entregadasGrid = bloque.querySelector('.oa-cards-grid:last-of-type');
+
+        if (enCursoGrid) {
+            let emptyEl = enCursoGrid.querySelector('.oa-empty-filter');
+            if (visibleEnCurso === 0 && enCursoGrid.querySelectorAll('.oa-card[style=""]').length === 0) {
+                if (!emptyEl) {
+                    emptyEl = document.createElement('div');
+                    emptyEl.className = 'oa-empty oa-empty-filter';
+                    emptyEl.textContent = 'Sin coincidencias en esta sección.';
+                    enCursoGrid.appendChild(emptyEl);
+                }
+                const defaultEmpty = enCursoGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
+                if (defaultEmpty) defaultEmpty.style.display = 'none';
+            } else {
+                if (emptyEl) emptyEl.remove();
+                const defaultEmpty = enCursoGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
+                if (defaultEmpty) defaultEmpty.style.display = '';
+            }
+        }
+
+        if (entregadasGrid) {
+            let emptyEl = entregadasGrid.querySelector('.oa-empty-filter');
+            if (visibleEntregadas === 0 && entregadasGrid.querySelectorAll('.oa-card[style=""]').length === 0) {
+                if (!emptyEl) {
+                    emptyEl = document.createElement('div');
+                    emptyEl.className = 'oa-empty oa-empty-filter';
+                    emptyEl.textContent = 'Sin coincidencias en esta sección.';
+                    entregadasGrid.appendChild(emptyEl);
+                }
+                const defaultEmpty = entregadasGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
+                if (defaultEmpty) defaultEmpty.style.display = 'none';
+            } else {
+                if (emptyEl) emptyEl.remove();
+                const defaultEmpty = entregadasGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
+                if (defaultEmpty) defaultEmpty.style.display = '';
+            }
+        }
+
+        // Update badges dynamically in the DOM
+        const badgeCurso = bloque.querySelector('.oa-badge-asig');
+        const badgeEntregadas = bloque.querySelector('.oa-badge-entr');
+        if (badgeCurso) badgeCurso.textContent = `${visibleEnCurso} en curso`;
+        if (badgeEntregadas) badgeEntregadas.textContent = `${visibleEntregadas} entregadas`;
+
+        const totalBloque = visibleEnCurso + visibleEntregadas;
+        bloque.style.display = totalBloque > 0 ? '' : 'none';
+        if (totalBloque > 0) totalVisibles++;
+    });
+
+    const emptyGlobal = document.getElementById('oa-busqueda-empty');
+    if (emptyGlobal) {
+        emptyGlobal.style.display = totalVisibles === 0 ? 'block' : 'none';
+    }
+}
+
+function limpiarFiltros() {
+    document.getElementById('oa-buscar').value = '';
+    document.getElementById('oa-filtro-estado').value = '';
+    document.getElementById('oa-filtro-motivo').value = '';
+    document.getElementById('oa-filtro-repuesto').value = '';
+    aplicarFiltros();
 }
 
 function toggleTecnico(id, chevId) {

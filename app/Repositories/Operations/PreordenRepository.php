@@ -47,7 +47,7 @@ class PreordenRepository
                 'po.id, po.nro_preorden, po.nombres, po.apellidos, po.telefono, po.correo,' .
                 'po.nro_factura, po.fecha_facturacion, po.codigo_producto, po.desc_producto,' .
                 'po.marca_producto, po.tipo_producto, po.detalle_equipo, po.foto_1, po.foto_2, po.foto_3, po.foto_4,' .
-                'po.nro_sucursal_cliente, po.sucursal_id, po.fecha_registro, po.orden_id,' .
+                'po.nro_sucursal_cliente, po.sucursal_id, po.fecha_registro, po.orden_id, po.ciudad_procedencia,' .
                 's.secuencial, s.ciudad AS sucursal_ciudad, sc.nombre AS sucursal_cliente_nombre, sc.numero AS sucursal_cliente_numero'
             )
             ->whereNull('po.orden_id')
