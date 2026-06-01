@@ -412,13 +412,6 @@
                 <i class="bi bi-table"></i> Detalle — <strong id="rep-count">0</strong>&nbsp;órdenes
                 <div class="ch-right">
                     <input type="text" class="rep-search-box" id="rep-buscar" placeholder="🔍 Buscar…" oninput="filtrarTabla(this.value)">
-                    <div class="rep-divider-v"></div>
-                    <select id="pag-perpage" onchange="_perPage=+this.value;_page=1;renderTabla()" style="border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 8px;font-size:12px;background:#fff;font-family:inherit;">
-                        <option value="25">25/pág</option>
-                        <option value="50" selected>50/pág</option>
-                        <option value="100">100/pág</option>
-                        <option value="999999">Todos</option>
-                    </select>
                 </div>
             </div>
 
@@ -452,10 +445,7 @@
                 </table>
             </div>
 
-            <div class="rep-pagination" id="rep-pag">
-                <span id="pag-info">Mostrando 0 – 0 de 0</span>
-                <div class="rep-pag-btns" id="pag-btns"></div>
-            </div>
+            <div id="reportes-pager" style="padding: 10px 20px 20px;" class="no-print"></div>
         </div>
 
         <div id="rep-empty" style="display:none;" class="rep-empty">
@@ -475,7 +465,8 @@
 
 /* === ESTADO === */
 let _all = [], _filtered = [], _charts = {};
-let _sortCol = -1, _sortDir = 1, _page = 1, _perPage = 50;
+let _sortCol = -1, _sortDir = 1;
+let _reportesPager = null;
 let _chartJsLoaded = false;
 const ES_MASTER = @json($esMaster);
 const RUTA_FILTRAR = @json(route('reportes.filtrar'));
@@ -620,7 +611,7 @@ async function generarReporte() {
         if (!d.ok) throw new Error(d.error || 'Error desconocido');
         _all = (d.data || []).map(normalizeRow);
         _filtered = _all.slice();
-        _sortCol = -1; _sortDir = 1; _page = 1;
+        _sortCol = -1; _sortDir = 1;
         const buscar = document.getElementById('rep-buscar'); if (buscar) buscar.value = '';
         document.getElementById('rep-resultados').style.display = 'block';
         renderKpis();
@@ -712,13 +703,16 @@ function renderTabla() {
         document.getElementById('rep-tabla-card').style.display = 'none';
         document.getElementById('rep-empty').style.display = 'flex';
         renderStatsRow();
+        if (_reportesPager) {
+            _reportesPager.destroy();
+            _reportesPager = null;
+        }
         return;
     }
     document.getElementById('rep-empty').style.display = 'none';
     document.getElementById('rep-tabla-card').style.display = 'block';
-    const start = (_page - 1) * _perPage, end = start + _perPage;
-    const slice = _filtered.slice(start, end);
-    document.getElementById('rep-tbody').innerHTML = slice.map(r => {
+    
+    document.getElementById('rep-tbody').innerHTML = _filtered.map(r => {
         const ec = ESTADO_C[r.estado_orden] || { bg:'#f1f5f9', fg:'#475569' };
         const tB = r.tipo_orden === 'empresa'
             ? '<span class="tipo-badge empresa">Empresa</span>'
@@ -727,7 +721,7 @@ function renderTabla() {
         const vR = r.vencida ? 'class="vencida-row"' : '';
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
-        return `<tr ${vR}>
+        return `<tr data-row="reporte" ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_de_ingreso)}</td>
             <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(r.cliente_nombre)}</td>
@@ -750,8 +744,18 @@ function renderTabla() {
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_entrega || '—')}</td>
         </tr>`;
     }).join('');
+    
     renderStatsRow();
-    renderPaginacion();
+    
+    if (_reportesPager) {
+        _reportesPager.destroy();
+    }
+    _reportesPager = new SgnPager({
+        containerSelector: '#rep-tbody',
+        itemSelector: 'tr[data-row="reporte"]',
+        pagerContainerSelector: '#reportes-pager',
+        pageSize: 15
+    });
 }
 
 function renderStatsRow() {
@@ -767,23 +771,12 @@ function renderStatsRow() {
     document.getElementById('rep-stats-row').innerHTML = html;
 }
 
-function renderPaginacion() {
-    const total = _filtered.length, pages = Math.ceil(total / _perPage);
-    const s = (_page - 1) * _perPage + 1, e = Math.min(_page * _perPage, total);
-    document.getElementById('pag-info').textContent = `Mostrando ${s} – ${e} de ${total}`;
-    let html = `<button class="rep-pag-btn" ${_page <= 1 ? 'disabled' : ''} onclick="goPage(${_page-1})">‹</button>`;
-    const f = Math.max(1, _page - 2), t = Math.min(pages, _page + 2);
-    for (let i = f; i <= t; i++) html += `<button class="rep-pag-btn${_page === i ? ' active' : ''}" onclick="goPage(${i})">${i}</button>`;
-    html += `<button class="rep-pag-btn" ${_page >= pages ? 'disabled' : ''} onclick="goPage(${_page+1})">›</button>`;
-    document.getElementById('pag-btns').innerHTML = html;
-}
-
-window.goPage = function(p) { _page = p; renderTabla(); };
 window.filtrarTabla = function(q) {
     q = q.toLowerCase();
     _filtered = q ? _all.filter(r => Object.values(r).join(' ').toLowerCase().includes(q)) : _all.slice();
-    _page = 1; renderTabla();
+    renderTabla();
 };
+
 window.sortTabla = function(col, key) {
     if (_sortCol === col) _sortDir *= -1; else { _sortCol = col; _sortDir = 1; }
     _filtered.sort((a, b) => String(a[key] || '').localeCompare(String(b[key] || ''), 'es') * _sortDir);
@@ -791,7 +784,7 @@ window.sortTabla = function(col, key) {
         th.classList.remove('sort-asc', 'sort-desc');
         if (i === col) th.classList.add(_sortDir === 1 ? 'sort-asc' : 'sort-desc');
     });
-    _page = 1; renderTabla();
+    renderTabla();
 };
 
 /* ═══════════ LIMPIAR ═══════════ */
@@ -801,6 +794,7 @@ window.limpiarFiltros = function() {
     document.getElementById('badge-filtros').style.display = 'none';
     document.getElementById('rep-resultados').style.display = 'none';
     _all = []; _filtered = [];
+    if (_reportesPager) { _reportesPager.destroy(); _reportesPager = null; }
     Object.keys(_charts).forEach(k => { _charts[k].destroy(); delete _charts[k]; });
     ['btn-pdf','btn-xlsx','btn-csv'].forEach(id => document.getElementById(id).disabled = true);
 };

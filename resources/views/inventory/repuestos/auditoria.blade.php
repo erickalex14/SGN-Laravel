@@ -326,7 +326,7 @@
                                     $badgeStyle = 'background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff;';
                                 }
                             @endphp
-                            <tr data-fila="{{ json_encode([
+                            <tr data-row="auditoria" data-fila="{{ json_encode([
                                 'fecha' => $a->fecha,
                                 'codigo' => $a->repuesto->codigo ?? '',
                                 'nombre' => $a->repuesto->nombre ?? '',
@@ -364,10 +364,7 @@
                 </table>
             </div>
 
-            <div class="aud-pagination" id="aud-pag">
-                <span id="pag-info">Mostrando 0 – 0 de 0 movimientos</span>
-                <div class="aud-pag-btns" id="pag-btns"></div>
-            </div>
+            <div id="auditoria-pager" style="padding: 10px 20px 20px;"></div>
         @else
             <div class="aud-empty">
                 <i class="bi bi-journal-x" style="color:#cbd5e1;"></i>
@@ -383,10 +380,9 @@
 <script>
     let _allRows = [];
     let _filteredRows = [];
-    let _page = 1;
-    const _perPage = 50;
     let _sortCol = -1;
     let _sortDir = 1;
+    let _audPager = null;
 
     function escHtml(str) {
         return (str || '').toString()
@@ -401,7 +397,7 @@
         const tbody = document.getElementById('aud-tbody');
         if (!tbody) return;
 
-        const trs = tbody.querySelectorAll('tr');
+        const trs = tbody.querySelectorAll('tr[data-row="auditoria"]');
         _allRows = Array.from(trs).map(tr => {
             const data = JSON.parse(tr.getAttribute('data-fila') || '{}');
             return {
@@ -410,53 +406,14 @@
             };
         });
         _filteredRows = _allRows.slice();
-        renderTablaLocal();
-    }
-
-    function renderTablaLocal() {
-        const total = _filteredRows.length;
-        const infoEl = document.getElementById('pag-info');
-        const pagBtnsEl = document.getElementById('pag-btns');
-        const tbody = document.getElementById('aud-tbody');
-
-        if (!tbody || !infoEl || !pagBtnsEl) return;
-
-        // Ocultar todas las filas primero
-        _allRows.forEach(r => r.element.style.display = 'none');
-
-        if (total === 0) {
-            infoEl.textContent = 'Mostrando 0 - 0 de 0 movimientos';
-            pagBtnsEl.innerHTML = '';
-            return;
-        }
-
-        const start = (_page - 1) * _perPage;
-        const end = Math.min(start + _perPage, total);
-
-        for (let i = start; i < end; i++) {
-            _filteredRows[i].element.style.display = '';
-        }
-
-        infoEl.textContent = `Mostrando ${start + 1} – ${end} de ${total} movimientos`;
-
-        // Render paginación
-        const pages = Math.ceil(total / _perPage);
-        let html = `<button class="aud-pag-btn" ${_page <= 1 ? 'disabled' : ''} onclick="goPage(${_page-1})">‹</button>`;
         
-        const f = Math.max(1, _page - 2);
-        const t = Math.min(pages, _page + 2);
-        for (let i = f; i <= t; i++) {
-            html += `<button class="aud-pag-btn${_page === i ? ' active' : ''}" onclick="goPage(${i})">${i}</button>`;
-        }
-        html += `<button class="aud-pag-btn" ${_page >= pages ? 'disabled' : ''} onclick="goPage(${_page+1})">›</button>`;
-        pagBtnsEl.innerHTML = html;
+        _audPager = new SgnPager({
+            containerSelector: '#aud-tbody',
+            itemSelector: 'tr[data-row="auditoria"]',
+            pagerContainerSelector: '#auditoria-pager',
+            pageSize: 15
+        });
     }
-
-    window.goPage = function(p) {
-        _page = p;
-        renderTablaLocal();
-        document.getElementById('buscador-container')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    };
 
     window.filtrarTablaLocal = function(q) {
         q = q.toLowerCase().trim();
@@ -467,8 +424,13 @@
                 return Object.values(r.data).join(' ').toLowerCase().includes(q);
             });
         }
-        _page = 1;
-        renderTablaLocal();
+        _allRows.forEach(r => {
+            if (_filteredRows.includes(r)) {
+                r.element.style.display = '';
+            } else {
+                r.element.style.display = 'none';
+            }
+        });
     };
 
     window.sortTablaLocal = function(col, key) {
@@ -503,8 +465,10 @@
             }
         });
 
-        _page = 1;
-        renderTablaLocal();
+        if (_audPager) {
+            _audPager.currentPage = 1;
+            _audPager.render();
+        }
     };
 
     // Exportador Nativo a CSV

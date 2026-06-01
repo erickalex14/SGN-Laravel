@@ -169,7 +169,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                     <th style="text-align:right;" class="no-print">Acción</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="nca-tbody">
                 @forelse($solicitudes as $nc)
                     @php
                         $estadoNC = strtoupper((string) $nc->estado);
@@ -228,6 +228,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                 <tr id="nc-empty-row-filtered" style="display:none;"><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8;">No se encontraron solicitudes con los filtros aplicados.</td></tr>
             </tbody>
         </table>
+        <div id="nca-pager" style="margin: 0 16px 16px;" class="no-print"></div>
     </div>
 </div>
 
@@ -438,8 +439,16 @@ window.exportarAuditoriaNC = function(tipo) {
     document.body.removeChild(link);
 }
 
+let _ncaPager = null;
 document.addEventListener('DOMContentLoaded', () => {
     initFiltros();
+    
+    _ncaPager = new SgnPager({
+        containerSelector: '#nca-tbody',
+        itemSelector: 'tr.nc-row',
+        pagerContainerSelector: '#nca-pager',
+        pageSize: 15
+    });
 });
 </script>
 @endpush

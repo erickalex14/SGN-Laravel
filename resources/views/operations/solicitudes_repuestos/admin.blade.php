@@ -64,45 +64,46 @@
                         <th style="text-align:right;">Accion</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @forelse($solicitudes as $sr)
-                        @php
-                            $estadoSR = strtoupper((string) $sr->estado);
-                            $esCompra = $estadoSR === 'COMPRA' || ($estadoSR === 'APROBADA' && empty($sr->repuesto_id));
-                            $clase = match(true) {
-                                $estadoSR === 'PENDIENTE' => 'st-pend',
-                                $estadoSR === 'RECHAZADA' => 'st-rech',
-                                $esCompra => 'st-comp',
-                                $estadoSR === 'APROBADA' => 'st-aprob',
-                                default => '',
-                            };
-                            $estadoLabel = $esCompra ? 'COMPRA' : ($sr->estado ?: '-');
-                        @endphp
-                        <tr>
-                            <td><span class="badge-sr">{{ $sr->nro_solicitud }}</span></td>
-                            <td>{{ \Carbon\Carbon::parse($sr->fecha_solicitud)->format('d/m/Y') }}</td>
-                            <td><strong>{{ $sr->orden->nro_orden }}</strong></td>
-                            <td>{{ $sr->tecnico_nombre }}</td>
-                            <td>
-                                <strong>{{ $sr->repuesto_nombre ?? ($sr->repuestoAsignado ? $sr->repuestoAsignado->nombre : 'Indefinido') }}</strong><br>
-                                <span style="font-size:11px;color:#64748b;">{{ $sr->nro_parte ? 'P/N: '.$sr->nro_parte : '' }}</span>
-                            </td>
-                            <td><strong>{{ $sr->cantidad }}</strong></td>
-                            <td><span class="st-badge {{ $clase }}">{{ $estadoLabel }}</span></td>
-                            <td style="text-align:right;">
-                                <a href="{{ route('solicitudes_repuestos.imprimir', ['id' => $sr->id]) }}" target="_blank" class="btn-print">Imprimir</a>
-                                @if($estadoSR === 'PENDIENTE')
-                                    <button class="btn-accion" onclick='abrirGestion(@json($sr))'>Atender</button>
-                                @else
-                                    <span style="font-size:11px;color:#94a3b8;"><i class="bi bi-check2-all"></i> Resuelto</span>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No hay solicitudes pendientes en bodega.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+            <tbody id="sra-tbody">
+                @forelse($solicitudes as $sr)
+                    @php
+                        $estadoSR = strtoupper((string) $sr->estado);
+                        $esCompra = $estadoSR === 'COMPRA' || ($estadoSR === 'APROBADA' && empty($sr->repuesto_id));
+                        $clase = match(true) {
+                            $estadoSR === 'PENDIENTE' => 'st-pend',
+                            $estadoSR === 'RECHAZADA' => 'st-rech',
+                            $esCompra => 'st-comp',
+                            $estadoSR === 'APROBADA' => 'st-aprob',
+                            default => '',
+                        };
+                        $estadoLabel = $esCompra ? 'COMPRA' : ($sr->estado ?: '-');
+                    @endphp
+                    <tr data-row="sra">
+                        <td><span class="badge-sr">{{ $sr->nro_solicitud }}</span></td>
+                        <td>{{ \Carbon\Carbon::parse($sr->fecha_solicitud)->format('d/m/Y') }}</td>
+                        <td><strong>{{ $sr->orden->nro_orden }}</strong></td>
+                        <td>{{ $sr->tecnico_nombre }}</td>
+                        <td>
+                            <strong>{{ $sr->repuesto_nombre ?? ($sr->repuestoAsignado ? $sr->repuestoAsignado->nombre : 'Indefinido') }}</strong><br>
+                            <span style="font-size:11px;color:#64748b;">{{ $sr->nro_parte ? 'P/N: '.$sr->nro_parte : '' }}</span>
+                        </td>
+                        <td><strong>{{ $sr->cantidad }}</strong></td>
+                        <td><span class="st-badge {{ $clase }}">{{ $estadoLabel }}</span></td>
+                        <td style="text-align:right;">
+                            <a href="{{ route('solicitudes_repuestos.imprimir', ['id' => $sr->id]) }}" target="_blank" class="btn-print">Imprimir</a>
+                            @if($estadoSR === 'PENDIENTE')
+                                <button class="btn-accion" onclick='abrirGestion(@json($sr))'>Atender</button>
+                            @else
+                                <span style="font-size:11px;color:#94a3b8;"><i class="bi bi-check2-all"></i> Resuelto</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No hay solicitudes pendientes en bodega.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        <div id="sra-pager" style="margin: 0 16px 16px;"></div>
         </div>
     </div>
 </div>
@@ -248,9 +249,17 @@ async function procesar(estado) {
     }
 }
 
+let _sraPager = null;
 document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('sr-repuesto-id');
     if (sel) sel.addEventListener('change', actualizarAyudaRepuesto);
+
+    _sraPager = new SgnPager({
+        containerSelector: '#sra-tbody',
+        itemSelector: 'tr[data-row="sra"]',
+        pagerContainerSelector: '#sra-pager',
+        pageSize: 15
+    });
 });
 </script>
 @endpush

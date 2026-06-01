@@ -84,7 +84,7 @@
                     <th style="text-align:right;">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="sr-tbody">
                 @forelse($solicitudes as $s)
                     @php
                         $estado = strtoupper((string)$s->estado);
@@ -92,7 +92,7 @@
                         $cls = $estado === 'RECHAZADA' ? 'b-r' : ($esCompra ? 'b-p' : ($estado === 'APROBADA' ? 'b-a' : 'b-p'));
                         $estadoLabel = $esCompra ? 'COMPRA' : ($s->estado ?: '-');
                     @endphp
-                    <tr>
+                    <tr data-row="sr">
                         <td>{{ $s->nro_solicitud }}</td>
                         <td>{{ $s->orden->nro_orden ?? ('#' . $s->orden_id) }}</td>
                         <td>{{ $s->repuesto_nombre }}</td>
@@ -109,6 +109,7 @@
                 @endforelse
             </tbody>
         </table>
+        <div id="sr-pager" style="margin-top:15px;"></div>
     </div>
 </div>
 @endsection
@@ -154,5 +155,15 @@ async function enviarSolicitudSR() {
         btn.textContent = 'Enviar Solicitud';
     }
 }
+
+let _srPager = null;
+document.addEventListener('DOMContentLoaded', () => {
+    _srPager = new SgnPager({
+        containerSelector: '#sr-tbody',
+        itemSelector: 'tr[data-row="sr"]',
+        pagerContainerSelector: '#sr-pager',
+        pageSize: 10
+    });
+});
 </script>
 @endpush

@@ -87,9 +87,9 @@
                             <th style="width:100px;text-align:right;">Acciones</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="precios-tbody">
                         @forelse($precios as $p)
-                            <tr>
+                            <tr data-row="precio">
                                 <td><strong>{{ $p->servicio }}</strong></td>
                                 <td><span class="desc-text" title="{{ $p->descripcion }}">{{ $p->descripcion ?: '-' }}</span></td>
                                 <td><strong>${{ number_format($p->precio, 2) }}</strong></td>
@@ -105,6 +105,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="precios-pager" style="padding: 10px 20px 20px;"></div>
             </div>
         </div>
 
@@ -127,9 +128,9 @@
                             <th style="width:100px;text-align:right;">Acciones</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tipos-tbody">
                         @forelse($tipos as $t)
-                            <tr>
+                            <tr data-row="tipo">
                                 <td><strong>{{ $t->nombre }}</strong></td>
                                 <td><span class="desc-text" title="{{ $t->descripcion }}">{{ $t->descripcion ?: '-' }}</span></td>
                                 <td><strong>${{ number_format($t->precio, 2) }}</strong></td>
@@ -145,6 +146,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="tipos-pager" style="padding: 10px 20px 20px;"></div>
             </div>
         </div>
     </div>
@@ -369,5 +371,22 @@
                 else alert(d.error);
             } catch(e) { alert('Error de conexión.'); }
         }
+
+        let _preciosPager = null;
+        let _tiposPager = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            _preciosPager = new SgnPager({
+                containerSelector: '#precios-tbody',
+                itemSelector: 'tr[data-row="precio"]',
+                pagerContainerSelector: '#precios-pager',
+                pageSize: 10
+            });
+            _tiposPager = new SgnPager({
+                containerSelector: '#tipos-tbody',
+                itemSelector: 'tr[data-row="tipo"]',
+                pagerContainerSelector: '#tipos-pager',
+                pageSize: 10
+            });
+        });
     </script>
 @endpush

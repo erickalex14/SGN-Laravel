@@ -361,6 +361,7 @@
             @endforelse
         </div>
         <div class="empty-msg" id="empty-filtro" style="display:none;">No hay ordenes con ese estado.</div>
+        <div id="mo-pager" style="margin: 0 16px 16px;"></div>
     </div>
 </div>
 </section>
@@ -1312,7 +1313,16 @@ function cerrarCreds() {
     if (modal) modal.classList.remove('open');
 }
 
-document.addEventListener('DOMContentLoaded', () => filtrarOrdenes('Pendiente'));
+var _moPager = null;
+document.addEventListener('DOMContentLoaded', () => {
+    filtrarOrdenes('Pendiente');
+    _moPager = new SgnPager({
+        containerSelector: '#cards-grid-principal',
+        itemSelector: '.orden-card',
+        pagerContainerSelector: '#mo-pager',
+        pageSize: 12
+    });
+});
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         cerrarCreds();

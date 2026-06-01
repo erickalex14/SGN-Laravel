@@ -137,6 +137,7 @@
         </div>
         @endif
     </div>
+    <div id="po-pager"></div>
 </div>
 </section>
 
@@ -300,5 +301,15 @@ function poImprimirPreorden(id) {
     f.appendChild(token); f.appendChild(inp); document.body.appendChild(f); f.submit(); document.body.removeChild(f);
 }
 document.getElementById('po-modal-overlay').addEventListener('click', function(e){ if (e.target === this) poCerrarModal(); });
+
+var _poPager = null;
+document.addEventListener('DOMContentLoaded', function() {
+    _poPager = new SgnPager({
+        containerSelector: '#po-tbody',
+        itemSelector: 'tr[data-nro]',
+        pagerContainerSelector: '#po-pager',
+        pageSize: 15
+    });
+});
 </script>
 @endpush
