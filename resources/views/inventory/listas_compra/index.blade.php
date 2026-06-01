@@ -131,13 +131,13 @@
                             <th style="text-align:right;">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="lc-historial-tbody">
                         @forelse($listas as $lst)
                             @php
                                 $estadoRaw = trim((string) ($lst->estado ?? ''));
                                 $estadoUi = $estadoRaw === 'Pendiente' ? 'GENERADA' : strtoupper($estadoRaw);
                             @endphp
-                            <tr>
+                            <tr data-row="lc-historial">
                                 <td><span class="badge-lc">{{ $lst->nro_lista }}</span></td>
                                 <td>{{ \Carbon\Carbon::parse($lst->fecha_creacion)->format('d/m/Y H:i') }}</td>
                                 <td>{{ $lst->creado_por }}</td>
@@ -155,6 +155,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="lc-historial-pager" style="padding: 10px 20px 20px;"></div>
         </div>
     </div>
 
@@ -291,7 +292,7 @@
                             <th style="text-align:right;" class="no-print">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="lc-auditoria-tbody">
                         @forelse($auditorias as $sol)
                             @php
                                 $nroLista = $sol->listaCompra->nro_lista ?? '-';
@@ -315,7 +316,7 @@
                                     $tecnicoNombre
                                 );
                             @endphp
-                            <tr class="audit-row" 
+                            <tr class="audit-row" data-row="lc-auditoria"
                                 data-search="{{ $searchStr }}" 
                                 data-tecnico="{{ strtolower($tecnicoNombre) }}" 
                                 data-creador="{{ strtolower($creador) }}" 
@@ -361,6 +362,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="lc-auditoria-pager" style="padding: 10px 20px 20px;"></div>
         </div>
     </div>
 </div>
@@ -512,5 +514,22 @@ function exportarAuditoria(tipo) {
     link.click();
     document.body.removeChild(link);
 }
+
+let _historialPager = null;
+let _auditoriaPager = null;
+document.addEventListener('DOMContentLoaded', () => {
+    _historialPager = new SgnPager({
+        containerSelector: '#lc-historial-tbody',
+        itemSelector: 'tr[data-row="lc-historial"]',
+        pagerContainerSelector: '#lc-historial-pager',
+        pageSize: 15
+    });
+    _auditoriaPager = new SgnPager({
+        containerSelector: '#lc-auditoria-tbody',
+        itemSelector: 'tr[data-row="lc-auditoria"]',
+        pagerContainerSelector: '#lc-auditoria-pager',
+        pageSize: 15
+    });
+});
 </script>
 @endpush

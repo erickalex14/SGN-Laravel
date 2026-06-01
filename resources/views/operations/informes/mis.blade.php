@@ -156,7 +156,7 @@
                 </thead>
                 <tbody id="mi-tbody">
                     @foreach($informes as $inf)
-                    <tr
+                    <tr data-row="informe"
                         data-nro="{{ strtolower($inf->nro_orden ?? '') }}"
                         data-cliente="{{ strtolower($inf->cliente_nombre ?? '') }}"
                         data-equipo="{{ strtolower($inf->equipo_nombre ?? '') }}"
@@ -203,6 +203,7 @@
                 </tbody>
             </table>
         </div>
+        <div id="informes-pager" style="padding: 10px 20px 20px;"></div>
     @endif
 
 </div>
@@ -211,10 +212,20 @@
 
 @push('js_adicional')
 <script>
+let _informesPager = null;
+document.addEventListener('DOMContentLoaded', () => {
+    _informesPager = new SgnPager({
+        containerSelector: '#mi-tbody',
+        itemSelector: 'tr[data-row="informe"]',
+        pagerContainerSelector: '#informes-pager',
+        pageSize: 15
+    });
+});
+
 function filtrar() {
     var texto  = (document.getElementById('flt-texto').value  || '').toLowerCase().trim();
     var estado = (document.getElementById('flt-estado').value || '').trim();
-    var filas  = document.querySelectorAll('#mi-tbody tr');
+    var filas  = document.querySelectorAll('#mi-tbody tr[data-row="informe"]');
     var visibles = 0;
 
     filas.forEach(function (tr) {

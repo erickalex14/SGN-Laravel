@@ -74,9 +74,9 @@
                         <th style="width:90px; text-align:right;">Acciones</th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="productos-tbody">
                     @forelse($productos as $p)
-                        <tr>
+                        <tr data-row="producto">
                             <td><strong>{{ $p->codigo }}</strong></td>
                             <td>{{ $p->descripcion }}</td>
                             <td>{{ $p->marca ? $p->marca->nombre : 'N/A' }}</td>
@@ -97,6 +97,7 @@
                     @endforelse
                     </tbody>
                 </table>
+                <div id="productos-pager" style="padding: 10px 20px 20px;"></div>
             </div>
         </div>
     </div>
@@ -265,5 +266,15 @@
 
             document.getElementById('count-prod').textContent = conteo;
         }
+
+        let _prodPager = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            _prodPager = new SgnPager({
+                containerSelector: '#productos-tbody',
+                itemSelector: 'tr[data-row="producto"]',
+                pagerContainerSelector: '#productos-pager',
+                pageSize: 15
+            });
+        });
     </script>
 @endpush

@@ -74,13 +74,13 @@
                     <th style="text-align:right;">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="nct-tbody">
                 @forelse($solicitudes as $s)
                     @php
                         $estado = strtoupper((string)$s->estado);
                         $cls = $estado === 'APROBADA' ? 'b-a' : ($estado === 'RECHAZADA' ? 'b-r' : 'b-p');
                     @endphp
-                    <tr>
+                    <tr data-row="nct">
                         <td>{{ $s->nro_solicitud }}</td>
                         <td>{{ $s->orden->nro_orden ?? ('#' . $s->orden_id) }}</td>
                         <td><span class="badge {{ $cls }}">{{ $s->estado }}</span></td>
@@ -101,6 +101,7 @@
                 @endforelse
             </tbody>
         </table>
+        <div id="nct-pager" style="margin-top:15px;"></div>
     </div>
 </div>
 
@@ -206,5 +207,15 @@ async function enviarSolicitudNC() {
         btn.textContent = 'Enviar Solicitud';
     }
 }
+
+let _nctPager = null;
+document.addEventListener('DOMContentLoaded', () => {
+    _nctPager = new SgnPager({
+        containerSelector: '#nct-tbody',
+        itemSelector: 'tr[data-row="nct"]',
+        pagerContainerSelector: '#nct-pager',
+        pageSize: 10
+    });
+});
 </script>
 @endpush
