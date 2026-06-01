@@ -59,6 +59,8 @@ class GuardarOrdenRequest extends FormRequest
             ],
             'cas_id'                   => ['required_if:garantia_tipo,externa,EXTERNA', 'nullable', 'integer', 'exists:cas,id'],
             'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
+            'repuestos_seleccionados'   => ['nullable', 'array'],
+            'repuestos_seleccionados.*' => ['integer', 'exists:repuestos,id'],
 
             'cred_usuario'             => ['nullable', 'array'],
             'cred_contrasena'          => ['nullable', 'array'],

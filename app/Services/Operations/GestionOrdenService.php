@@ -360,11 +360,46 @@ class GestionOrdenService
                 $dto->repuesto_id
             );
 
-            $orden->repuesto_inventario_id = null;
-            $orden->estado_repuesto = 'No requerido';
+            // Verificar si aún quedan repuestos asignados en la orden
+            $restantes = \App\Models\Operations\OrdenRepuesto::where('orden_id', $orden->id)->get();
+            if ($restantes->isNotEmpty()) {
+                $orden->repuesto_inventario_id = $restantes->first()->repuesto_id;
+                $orden->estado_repuesto = 'Con stock';
+            } else {
+                $orden->repuesto_inventario_id = null;
+                $orden->estado_repuesto = 'No requerido';
+            }
             $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
             $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
             $orden->save();
         });
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function reasignarTecnico(int $ordenId, int $nuevoTecnicoId, string $tipoOrden = 'personal'): void
+    {
+        if ($tipoOrden === 'empresa') {
+            $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
+            if (!$orden) {
+                throw new Exception('La orden de empresa especificada no existe.');
+            }
+            $orden->tecnico_id = $nuevoTecnicoId;
+            $orden->save();
+        } else {
+            $orden = $this->repository->buscarPorId($ordenId);
+            if (!$orden) {
+                throw new Exception('La orden especificada no existe.');
+            }
+            $orden->tecnico_id = $nuevoTecnicoId;
+            $orden->save();
+        }
+
+        Log::info('Orden reasignada a nuevo técnico.', [
+            'orden_id' => $ordenId,
+            'nuevo_tecnico_id' => $nuevoTecnicoId,
+            'tipo_orden' => $tipoOrden,
+        ]);
     }
 }

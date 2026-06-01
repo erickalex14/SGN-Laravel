@@ -15,6 +15,7 @@ readonly class ReporteFiltroDTO
         public ?string $tipo_equipo,
         public ?string $tipo_orden,
         public ?int $tecnico_id,
-        public ?int $sucursal_id
+        public ?int $sucursal_id,
+        public ?int $cas_id
     ) {}
 }

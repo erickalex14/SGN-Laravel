@@ -29,8 +29,23 @@ class OrdenRepository
         }
     }
 
-    public function generarNumeroOrden(int $sucursalId): string
+    public function generarNumeroOrden(int $sucursalId, ?int $casId = null): string
     {
+        if ($casId) {
+            $cas = \App\Models\Directory\Cas::find($casId);
+            if ($cas && $cas->prefijo) {
+                $prefijo = strtoupper($cas->prefijo) . '-';
+
+                // Obtener el maximo consecutivo en ordenes del respectivo CAS
+                $maxOrden = Orden::where('cas_id', $casId)
+                    ->where('nro_orden', 'like', $prefijo . '%')
+                    ->max(DB::raw("CAST(SUBSTRING_INDEX(nro_orden, '-', -1) AS UNSIGNED)"));
+
+                $siguienteNumero = (int)$maxOrden + 1;
+                return $prefijo . str_pad((string)$siguienteNumero, 6, '0', STR_PAD_LEFT);
+            }
+        }
+
         $sucursal = Sucursal::find($sucursalId);
         $secuencial = $sucursal ? strtoupper($sucursal->secuencial) : 'NOV';
         $prefijo = $secuencial . '-';
@@ -75,6 +90,7 @@ class OrdenRepository
                 'informes',
                 'usuarioIngreso',
                 'repuestoInventario',
+                'ordenRepuestos.repuesto',
             ])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('id', 'desc')
@@ -185,7 +201,7 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas']);
 
             if (!empty($filtro->fecha_inicio)) {
                 $queryPersonal->whereDate('fecha_de_ingreso', '>=', $filtro->fecha_inicio);
@@ -230,8 +246,9 @@ class OrdenRepository
             if (!empty($filtro->sucursal_id)) {
                 $queryPersonal->where('sucursal_id', $filtro->sucursal_id);
             }
-            if (!$esMaster && $sucursalSesion > 0) {
-                $queryPersonal->where('sucursal_id', $sucursalSesion);
+
+            if (!empty($filtro->cas_id)) {
+                $queryPersonal->where('cas_id', $filtro->cas_id);
             }
 
             $personales = $queryPersonal->get()->map(function (Orden $orden) {
@@ -265,6 +282,7 @@ class OrdenRepository
                     'serie' => (string) ($orden->equipo->serie ?? ''),
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
+                    'cas_nombre' => (string) ($orden->cas->nombre ?? ''),
                     'dias_transcurridos' => $fechaIngreso ? now()->diffInDays(Carbon::parse($fechaIngreso)) : null,
                     'vencida' => $fechaPrometida && !$fechaEntrega ? Carbon::parse($fechaPrometida)->isPast() : false,
                     'cliente' => $orden->cliente ? [
@@ -328,8 +346,9 @@ class OrdenRepository
             if (!empty($filtro->sucursal_id)) {
                 $queryEmpresa->where('sucursal_id', $filtro->sucursal_id);
             }
-            if (!$esMaster && $sucursalSesion > 0) {
-                $queryEmpresa->where('sucursal_id', $sucursalSesion);
+
+            if (!empty($filtro->cas_id)) {
+                $queryEmpresa->whereRaw('1 = 0');
             }
 
             if (!empty($filtro->estado_repuesto) && mb_strtolower(trim((string) $filtro->estado_repuesto)) !== 'no requerido') {
@@ -369,6 +388,7 @@ class OrdenRepository
                     'serie' => (string) ($orden->equipo->serie ?? ''),
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
+                    'cas_nombre' => '',
                     'dias_transcurridos' => $fechaIngreso ? now()->diffInDays(Carbon::parse($fechaIngreso)) : null,
                     'vencida' => $orden->fecha_prometido ? Carbon::parse($orden->fecha_prometido)->isPast() : false,
                     'cliente' => [

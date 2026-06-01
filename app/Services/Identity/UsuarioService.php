@@ -52,8 +52,8 @@ class UsuarioService
 
         $usuario->save();
 
-        // Sincronizar sucursales secundarias y permisos
-        $this->repository->sincronizarRelaciones($usuario, $dto->sucursales_secundarias, $dto->permisos);
+        // Sincronizar sucursales secundarias, permisos y CAS asignados
+        $this->repository->sincronizarRelaciones($usuario, $dto->sucursales_secundarias, $dto->permisos, $dto->cas);
 
         Log::info('Usuario gestionado', ['usuario_id' => $usuario->id, 'accion' => $dto->id ? 'editar' : 'crear']);
 

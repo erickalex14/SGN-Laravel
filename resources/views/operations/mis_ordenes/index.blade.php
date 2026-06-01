@@ -218,6 +218,13 @@
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
             'informe_id' => $informe ? (int) $informe->id : null,
+            'repuestos_asignados' => $esEmpresa ? collect() : collect($ord->ordenRepuestos ?? [])->map(fn($or) => [
+                'id' => (int) $or->id,
+                'repuesto_id' => (int) $or->repuesto_id,
+                'codigo' => (string) ($or->repuesto->codigo ?? ''),
+                'nombre' => (string) ($or->repuesto->nombre ?? $or->repuesto->descripcion ?? ''),
+                'cantidad' => (int) $or->cantidad,
+            ])->values(),
         ];
     })->values();
 
@@ -501,6 +508,8 @@ const _moUrlInformePrintBase = @json(url('/operaciones/informes'));
 const _moUrlInformesCrear = @json(route('informes.crear'));
 const _moUrlBuscarRepuestos = @json(route('mis_ordenes.repuestos.buscar'));
 const _moUrlSolicitarRepuesto = @json(route('solicitudes_repuestos.solicitar'));
+const _moUrlReasignar = @json(route('mis_ordenes.reasignar'));
+const _moTecnicos = @json($tecnicos);
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -667,6 +676,35 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     }
 }
 
+async function reasignarOrden(ordenId, nuevoTecnicoId, tipoOrden = 'personal') {
+    if (!nuevoTecnicoId) return;
+
+    const verificado = await mostrarAlertaEstetica(`¿Confirma reasignar esta orden al nuevo técnico seleccionado?`, 'confirm', 'Confirmar Reasignación');
+    if (!verificado) {
+        location.reload();
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('orden_id', ordenId);
+    fd.append('tecnico_id', nuevoTecnicoId);
+    fd.append('tipo_orden', tipoOrden);
+
+    try {
+        const r = await fetch(_moUrlReasignar, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            await mostrarAlertaEstetica(d.error || 'No se pudo reasignar la orden.', 'error', 'Error de Reasignación');
+            location.reload();
+            return;
+        }
+        location.reload();
+    } catch {
+        await mostrarAlertaEstetica('Error de conexión con el servidor.', 'error', 'Error de Conexión');
+    }
+}
+
 async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
     if (!nuevoEstado) return;
     const fd = new FormData();
@@ -823,7 +861,7 @@ async function asignarRepuesto(ordenId) {
 }
 
 async function revertirRepuesto(ordenId) {
-    const verificado = await mostrarAlertaEstetica('¿Confirma revertir el repuesto y devolver el stock correspondiente al inventario?', 'confirm', 'Revertir Asignación');
+    const verificado = await mostrarAlertaEstetica('¿Confirma revertir todos los repuestos asignados y devolver el stock correspondiente al inventario?', 'confirm', 'Revertir Todos los Repuestos');
     if (!verificado) return;
 
     const fd = new FormData();
@@ -834,6 +872,27 @@ async function revertirRepuesto(ordenId) {
         const d = await r.json();
         if (!d.ok) {
             await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación del repuesto.', 'error', 'Error al Revertir');
+            return;
+        }
+        location.reload();
+    } catch {
+        await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
+    }
+}
+
+async function revertirRepuestoIndividual(ordenId, repuestoId) {
+    const verificado = await mostrarAlertaEstetica('¿Confirma revertir este repuesto específico y devolver su stock correspondiente al inventario?', 'confirm', 'Revertir Asignación de Repuesto');
+    if (!verificado) return;
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('orden_id', ordenId);
+    fd.append('repuesto_id', repuestoId);
+    try {
+        const r = await fetch(_moUrlRepRevertir, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación de este repuesto.', 'error', 'Error al Revertir');
             return;
         }
         location.reload();
@@ -1061,6 +1120,15 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                <div class="gestion-row">
+                    <span class="gestion-icon"><i class="bi bi-person-gear"></i></span>
+                    <span class="gestion-label">Reasignar</span>
+                    <select class="gestion-select" onchange="reasignarOrden(${Number(o.id)}, this.value, 'empresa')">
+                        <option value="">Seleccionar técnico...</option>
+                        ${_moTecnicos.map(t => `<option value="${t.id}">${_h(t.nombre_tecnico)} (${t.pendientes + t.en_proceso} OT)</option>`).join('')}
+                    </select>
+                    <span class="gestion-feedback">&#8635;</span>
+                </div>
                 <div class="gestion-actions-rep" style="margin-top:12px;">
                     <button type="button" class="btn-mini-rep" onclick="abrirInformeDeOrden(${-1 * Number(o.id)})"><i class="bi bi-pencil-square me-1"></i>Gestionar informe</button>
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
@@ -1080,6 +1148,15 @@ function verDetalleOrden(cardEl) {
                         <option value="Finalizada">Finalizada</option>
                         <option value="Entregada">Entregada</option>
                         <option value="Nota de Credito">Nota de Credito</option>
+                    </select>
+                    <span class="gestion-feedback">&#8635;</span>
+                </div>
+                <div class="gestion-row">
+                    <span class="gestion-icon"><i class="bi bi-person-gear"></i></span>
+                    <span class="gestion-label">Reasignar</span>
+                    <select class="gestion-select" onchange="reasignarOrden(${Number(o.id)}, this.value, 'personal')">
+                        <option value="">Seleccionar técnico...</option>
+                        ${_moTecnicos.map(t => `<option value="${t.id}">${_h(t.nombre_tecnico)} (${t.pendientes + t.en_proceso} OT)</option>`).join('')}
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
@@ -1109,19 +1186,60 @@ function verDetalleOrden(cardEl) {
                 </div>
 
                 <div class="rep-picker">
-                    <input type="hidden" id="rep-inv-${Number(o.id)}" value="${repSeleccionado ? Number(o.repuesto_inventario_id) : ''}">
-                    <input type="text" class="rep-input" id="rep-inv-query-${Number(o.id)}" placeholder="Buscar repuesto por codigo o nombre..." autocomplete="off"
-                           value="${repSeleccionado ? _h(o.repuesto_codigo || o.repuesto_nombre || '') : ''}"
-                           oninput="onInputBuscarRepuestoMisOrdenes(${Number(o.id)}, this.value)"
-                           onfocus="buscarRepuestoMisOrdenes(${Number(o.id)}, this.value)">
-                    <div class="rep-resultados" id="rep-inv-resultados-${Number(o.id)}"></div>
-                    <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="${repSeleccionado ? 'display:flex;' : 'display:none;'}">
-                        <span id="rep-inv-selected-text-${Number(o.id)}">${_h(repTextoSeleccionado || 'Repuesto seleccionado')}</span>
-                        <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion">&times;</button>
+                    <div class="assigned-repuestos-list" style="margin-bottom:12px;">
+                        <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
+                            <i class="bi bi-box-seam me-1"></i>Repuestos Asignados en Stock:
+                        </span>
+                        ${o.repuestos_asignados && o.repuestos_asignados.length > 0 ? `
+                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden;">
+                                <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+                                    <thead>
+                                        <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">
+                                            <th style="padding:6px 8px;">Código</th>
+                                            <th style="padding:6px 8px;">Nombre</th>
+                                            <th style="padding:6px 8px; text-align:center; width:65px;">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${o.repuestos_asignados.map(ra => `
+                                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                                <td style="padding:6px 8px; font-family:monospace; font-weight:600; color:#b45309;">${_h(ra.codigo)}</td>
+                                                <td style="padding:6px 8px; color:var(--mo-slate);">${_h(ra.nombre)}</td>
+                                                <td style="padding:6px 8px; text-align:center;">
+                                                    <button type="button" class="btn-mini-rep danger" style="padding:2px 6px; font-size:10px; margin:0;"
+                                                            onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)})" title="Revertir este repuesto">
+                                                        <i class="bi bi-trash"></i> Revertir
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `
+                            <p style="margin:0 0 8px; font-size:12px; color:var(--mo-muted); font-style:italic;">Ningún repuesto de stock asignado actualmente.</p>
+                        `}
                     </div>
+
+                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                        <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
+                            <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
+                        </span>
+                        <input type="hidden" id="rep-inv-${Number(o.id)}" value="">
+                        <input type="text" class="rep-input" id="rep-inv-query-${Number(o.id)}" placeholder="Buscar repuesto por codigo o nombre..." autocomplete="off"
+                               value=""
+                               oninput="onInputBuscarRepuestoMisOrdenes(${Number(o.id)}, this.value)"
+                               onfocus="buscarRepuestoMisOrdenes(${Number(o.id)}, this.value)">
+                        <div class="rep-resultados" id="rep-inv-resultados-${Number(o.id)}"></div>
+                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none;">
+                            <span id="rep-inv-selected-text-${Number(o.id)}">Repuesto seleccionado</span>
+                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion">&times;</button>
+                        </div>
+                    </div>
+                    
                     <div class="gestion-actions-rep">
                         <button type="button" class="btn-mini-rep" onclick="asignarRepuesto(${Number(o.id)})">Asignar repuesto</button>
-                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto(${Number(o.id)})">Revertir repuesto</button>
+                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto(${Number(o.id)})">Revertir todos</button>
                     </div>
                 </div>
 

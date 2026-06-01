@@ -14,6 +14,7 @@
         .cas-card-body { padding: 22px; }
         .cas-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .cas-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .cas-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
         .campo { display: flex; flex-direction: column; gap: 6px; }
         .campo label.campo-lbl { font-size: 13px; font-weight: 600; color: #374151; }
         .campo input, .campo textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 13.5px; color: #0f172a; background: #f8fafc; font-family: inherit; transition: border-color .2s, box-shadow .2s; }
@@ -57,7 +58,7 @@
         .cas-overlay.visible { display: flex; }
         .cas-modal { background: #fff; border-radius: 16px; padding: 28px; width: 700px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
         .cas-modal h3 { font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 20px; }
-        @media(max-width:600px){ .cas-grid, .cas-grid-3 { grid-template-columns: 1fr; } }
+        @media(max-width:600px){ .cas-grid, .cas-grid-3, .cas-grid-4 { grid-template-columns: 1fr; } }
     </style>
 
     <script>
@@ -104,7 +105,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="cas-grid-3" style="margin-bottom:16px">
+                <div class="cas-grid-4" style="margin-bottom:16px">
+                    <div class="campo">
+                        <label class="campo-lbl">Prefijo Órdenes</label>
+                        <input type="text" id="cas-prefijo" placeholder="Ej: UIO, GYE" maxlength="10">
+                    </div>
                     <div class="campo">
                         <label class="campo-lbl">Teléfono</label>
                         <input type="text" id="cas-telefono" placeholder="02-XXX-XXXX" maxlength="30">
@@ -150,6 +155,7 @@
                         <thead>
                         <tr>
                             <th>Nombre</th>
+                            <th>Prefijo</th>
                             <th>Marcas que atiende</th>
                             <th>Ciudad</th>
                             <th>Teléfono</th>
@@ -176,6 +182,7 @@
                                 @endphp
                                 <tr>
                                     <td><strong>{{ $c->nombre }}</strong></td>
+                                    <td><code style="font-weight:bold;color:#16a34a">{{ $c->prefijo ?? '—' }}</code></td>
                                     <td>{!! $tags ?: '<span style="color:#94a3b8">—</span>' !!}</td>
                                     <td>{{ $c->ciudad ?? '—' }}</td>
                                     <td>{{ $c->telefono ?? '—' }}</td>
@@ -232,7 +239,11 @@
                     </div>
                 </div>
             </div>
-            <div class="cas-grid-3" style="margin-bottom:16px">
+            <div class="cas-grid-4" style="margin-bottom:16px">
+                <div class="campo">
+                    <label class="campo-lbl">Prefijo Órdenes</label>
+                    <input type="text" id="edit-cas-prefijo" maxlength="10">
+                </div>
                 <div class="campo">
                     <label class="campo-lbl">Teléfono</label>
                     <input type="text" id="edit-cas-telefono" maxlength="30">
@@ -322,6 +333,7 @@
             fd.append('_token',    '{{ csrf_token() }}');
             fd.append('accion',    'crear');
             fd.append('nombre',    nombre);
+            fd.append('prefijo',   document.getElementById('cas-prefijo').value.trim());
             fd.append('marca',     msGetIds('nuevo'));
             fd.append('telefono',  document.getElementById('cas-telefono').value.trim());
             fd.append('correo',    document.getElementById('cas-correo').value.trim());
@@ -336,7 +348,7 @@
                 mostrarMsg('cas-msg-nuevo', d.ok, d.mensaje || d.error);
                 if (d.ok) {
                     document.getElementById('cas-nombre').value = '';
-                    ['telefono','correo','ciudad','direccion','contacto','notas'].forEach(f => document.getElementById('cas-' + f).value = '');
+                    ['prefijo','telefono','correo','ciudad','direccion','contacto','notas'].forEach(f => document.getElementById('cas-' + f).value = '');
                     msClear('nuevo');
                     setTimeout(() => location.reload(), 1200);
                 }
@@ -346,6 +358,7 @@
         function editarCAS(data) {
             document.getElementById('edit-cas-id').value        = data.id;
             document.getElementById('edit-cas-nombre').value    = data.nombre || '';
+            document.getElementById('edit-cas-prefijo').value   = data.prefijo || '';
             document.getElementById('edit-cas-telefono').value  = data.telefono || '';
             document.getElementById('edit-cas-correo').value    = data.correo || '';
             document.getElementById('edit-cas-ciudad').value    = data.ciudad || '';
@@ -369,6 +382,7 @@
             fd.append('accion',    'editar');
             fd.append('id',        document.getElementById('edit-cas-id').value);
             fd.append('nombre',    nombre);
+            fd.append('prefijo',   document.getElementById('edit-cas-prefijo').value.trim());
             fd.append('marca',     msGetIds('edit'));
             fd.append('telefono',  document.getElementById('edit-cas-telefono').value.trim());
             fd.append('correo',    document.getElementById('edit-cas-correo').value.trim());

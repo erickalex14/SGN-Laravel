@@ -9,6 +9,7 @@ use App\Http\Requests\Operations\GestionarNcRequest;
 use App\Http\Requests\Operations\SolicitarNcRequest;
 use App\Repositories\Operations\NotaCreditoRepository;
 use App\Repositories\Operations\OrdenRepository;
+use App\Repositories\Directory\SucursalClienteRepository;
 use App\Services\Operations\NotaCreditoService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -19,15 +20,18 @@ class NotaCreditoController extends Controller
     protected NotaCreditoService $service;
     protected NotaCreditoRepository $ncRepository;
     protected OrdenRepository $ordenRepository;
+    protected SucursalClienteRepository $sucursalClienteRepo;
 
     public function __construct(
         NotaCreditoService $service,
         NotaCreditoRepository $ncRepository,
-        OrdenRepository $ordenRepository
+        OrdenRepository $ordenRepository,
+        SucursalClienteRepository $sucursalClienteRepo
     ) {
         $this->service = $service;
         $this->ncRepository = $ncRepository;
         $this->ordenRepository = $ordenRepository;
+        $this->sucursalClienteRepo = $sucursalClienteRepo;
     }
 
     public function indexAdmin(): View
@@ -123,6 +127,40 @@ class NotaCreditoController extends Controller
         $esPropietario = (int) $solicitud->tecnico_id === $tecnicoId;
         abort_unless($esAdmin || $esPropietario, 403);
 
-        return view('operations.notas_credito.imprimir', compact('solicitud'));
+        $orden = $this->ordenRepository->obtenerOrdenCompleta($solicitud->orden_id);
+        abort_if(!$orden, 404);
+
+        $orden->loadMissing([
+            'equipo.series',
+            'equipo.tipoServicio',
+            'tecnico',
+            'sucursal',
+            'cas',
+            'usuarioIngreso',
+            'repuestoInventario',
+            'preciosOrden',
+            'solicitudesNc',
+        ]);
+
+        $nombreSucursalCliente = '-';
+        $nroSucursalCliente = (int) ($orden->nro_sucursal_cliente ?? 0);
+        if ($nroSucursalCliente > 0) {
+            if ($nroSucursalCliente === 999) {
+                $nombreSucursalCliente = '999 - SERVICIO EXTERNO';
+            } else {
+                $suc = $this->sucursalClienteRepo
+                    ->obtenerTodas()
+                    ->firstWhere('numero', $nroSucursalCliente);
+                $nombreSucursalCliente = $suc
+                    ? str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT) . ' - ' . (string) $suc->nombre
+                    : 'Nro. ' . str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return view('operations.ordenes.imprimir', [
+            'orden' => $orden,
+            'nombreSucursalCliente' => $nombreSucursalCliente,
+            'solicitudNc' => $solicitud,
+        ]);
     }
 }

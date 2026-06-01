@@ -27,7 +27,31 @@ class ListaCompraController extends Controller
         $listas = $this->repository->obtenerTodas();
         $solicitudesPendientes = $this->repository->obtenerSolicitudesPendientesDeCompra();
 
-        return view('inventory.listas_compra.index', compact('listas', 'solicitudesPendientes'));
+        // Carga ansiosa para evitar consultas N+1 en la auditoría
+        $auditorias = \App\Models\Operations\SolicitudRepuesto::with([
+            'listaCompra',
+            'tecnico',
+            'orden',
+            'orden.cliente',
+            'orden.tecnico'
+        ])
+        ->whereNotNull('lista_compra_id')
+        ->orderBy('id', 'desc')
+        ->get();
+
+        $tecnicosList = \App\Models\Identity\Usuario::orderBy('nombre_tecnico', 'asc')->get();
+        $creadoresList = \App\Models\Inventory\ListaCompra::distinct()
+            ->whereNotNull('creado_por')
+            ->pluck('creado_por')
+            ->filter();
+
+        return view('inventory.listas_compra.index', compact(
+            'listas', 
+            'solicitudesPendientes', 
+            'auditorias', 
+            'tecnicosList', 
+            'creadoresList'
+        ));
     }
 
     public function store(GuardarListaCompraRequest $request): JsonResponse

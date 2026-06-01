@@ -40,6 +40,7 @@ class CasService
         }
 
         $cas->nombre    = $nombreMayusculas;
+        $cas->prefijo   = $dto->prefijo;
         $cas->marca     = $dto->marca;
         $cas->telefono  = $dto->telefono;
         $cas->correo    = $dto->correo;

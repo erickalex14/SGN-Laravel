@@ -4,6 +4,7 @@ namespace App\Models\Identity;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\Directory\Sucursal;
+use App\Models\Directory\Cas;
 use App\Models\Operations\Orden;
 
 class Usuario extends Authenticatable
@@ -52,6 +53,11 @@ class Usuario extends Authenticatable
     public function sucursalesAsignadas()
     {
         return $this->belongsToMany(Sucursal::class, 'usuariosucursales', 'usuario_id', 'sucursal_id');
+    }
+
+    public function casAsignados()
+    {
+        return $this->belongsToMany(Cas::class, 'usuariocas', 'usuario_id', 'cas_id');
     }
 
     public function permisos()

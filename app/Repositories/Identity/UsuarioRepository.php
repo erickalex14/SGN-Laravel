@@ -35,20 +35,64 @@ class UsuarioRepository
      */
     public function obtenerTecnicosConCargaActual(bool $verTodos = true, ?int $sucursalId = null, ?int $tecnicoActualId = null): Collection
     {
+        $casIds = [];
+        if ($tecnicoActualId) {
+            $casIds = DB::table('usuariocas')
+                ->where('usuario_id', $tecnicoActualId)
+                ->pluck('cas_id')
+                ->all();
+        }
+
         return Usuario::query()
             ->from('usuarios as u')
             ->leftJoin('roles as r', 'u.rol_id', '=', 'r.id')
             ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
             ->where('u.activo', 1)
             ->whereNotNull('u.nombre_tecnico')
-            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId, $tecnicoActualId) {
-                // Filtrar por sucursal, pero SIEMPRE incluir al técnico que crea la orden
-                $query->where(function ($q) use ($sucursalId, $tecnicoActualId) {
-                    $q->where('u.sucursal_id', $sucursalId);
-                    if ($tecnicoActualId) {
-                        $q->orWhere('u.id', $tecnicoActualId);
+            ->when(!$verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
+                if (!empty($casIds)) {
+                    $query->where(function ($q) use ($casIds, $tecnicoActualId) {
+                        $q->whereIn('u.id', function ($sub) use ($casIds) {
+                            $sub->select('usuario_id')
+                                ->from('usuariocas')
+                                ->whereIn('cas_id', $casIds);
+                        });
+                        if ($tecnicoActualId) {
+                            $q->orWhere('u.id', $tecnicoActualId);
+                        }
+                    });
+                } elseif ($sucursalId) {
+                    $query->where(function ($q) use ($sucursalId, $tecnicoActualId) {
+                        $q->where('u.sucursal_id', $sucursalId);
+                        if ($tecnicoActualId) {
+                            $q->orWhere('u.id', $tecnicoActualId);
+                        }
+                    });
+                }
+            })
+            ->when($verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
+                $esSuperadmin = (bool) session('es_superadmin', false);
+                if (!$esSuperadmin) {
+                    if (!empty($casIds)) {
+                        $query->where(function ($q) use ($casIds, $tecnicoActualId) {
+                            $q->whereIn('u.id', function ($sub) use ($casIds) {
+                                $sub->select('usuario_id')
+                                    ->from('usuariocas')
+                                    ->whereIn('cas_id', $casIds);
+                            });
+                            if ($tecnicoActualId) {
+                                $q->orWhere('u.id', $tecnicoActualId);
+                            }
+                        });
+                    } elseif ($sucursalId) {
+                        $query->where(function ($q) use ($sucursalId, $tecnicoActualId) {
+                            $q->where('u.sucursal_id', $sucursalId);
+                            if ($tecnicoActualId) {
+                                $q->orWhere('u.id', $tecnicoActualId);
+                            }
+                        });
                     }
-                });
+                }
             })
             ->selectRaw(
                 "u.id, u.nombre_tecnico,
@@ -61,14 +105,41 @@ class UsuarioRepository
             ->get();
     }
 
-    public function tecnicoAsignable(int $tecnicoId, bool $verTodos = true, ?int $sucursalId = null): bool
+    public function tecnicoAsignable(int $tecnicoId, bool $verTodos = true, ?int $sucursalId = null, ?int $tecnicoActualId = null): bool
     {
+        $casIds = [];
+        if ($tecnicoActualId) {
+            $casIds = DB::table('usuariocas')
+                ->where('usuario_id', $tecnicoActualId)
+                ->pluck('cas_id')
+                ->all();
+        }
+
         return Usuario::query()
             ->from('usuarios as u')
             ->where('u.id', $tecnicoId)
             ->where('u.activo', 1)
-            ->when(!$verTodos && $sucursalId, function ($query) use ($sucursalId) {
-                $query->where('u.sucursal_id', $sucursalId);
+            ->where(function ($query) use ($verTodos, $sucursalId, $tecnicoActualId, $casIds) {
+                $esSuperadmin = (bool) session('es_superadmin', false);
+                if ($esSuperadmin && $verTodos) {
+                    return;
+                }
+
+                if (!empty($casIds)) {
+                    $query->whereIn('u.id', function ($sub) use ($casIds) {
+                        $sub->select('usuario_id')
+                            ->from('usuariocas')
+                            ->whereIn('cas_id', $casIds);
+                    });
+                    if ($tecnicoActualId) {
+                        $query->orWhere('u.id', $tecnicoActualId);
+                    }
+                } elseif ($sucursalId) {
+                    $query->where('u.sucursal_id', $sucursalId);
+                    if ($tecnicoActualId) {
+                        $query->orWhere('u.id', $tecnicoActualId);
+                    }
+                }
             })
             ->exists();
     }
@@ -84,15 +155,18 @@ class UsuarioRepository
     // Metodo para buscar un usuario por su ID
     public function buscarPorId(int $id): ?Usuario
     {
-        return Usuario::with(['sucursalesAsignadas', 'permisos'])->find($id);
+        return Usuario::with(['sucursalesAsignadas', 'casAsignados', 'permisos'])->find($id);
     }
 
-    // Metodo para sincronizar relaciones con la tabla pivote
-    public function sincronizarRelaciones(Usuario $usuario, array $sucursalesIds, array $permisos): void
+    // Metodo para sincronizar relaciones con las tablas pivote
+    public function sincronizarRelaciones(Usuario $usuario, array $sucursalesIds, array $permisos, array $casIds = []): void
     {
-        DB::transaction(function () use ($usuario, $sucursalesIds, $permisos) {
+        DB::transaction(function () use ($usuario, $sucursalesIds, $permisos, $casIds) {
             // Sincronizar tabla pivote legacy: usuariosucursales
             $usuario->sucursalesAsignadas()->sync($sucursalesIds);
+
+            // Sincronizar tabla pivot: usuariocas
+            $usuario->casAsignados()->sync($casIds);
 
             // Sincronizar tabla: permisosusuario
             PermisoUsuario::where('usuario_id', $usuario->id)->delete();

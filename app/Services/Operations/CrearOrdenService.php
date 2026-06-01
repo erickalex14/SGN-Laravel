@@ -63,14 +63,18 @@ class CrearOrdenService
                 $seriePrincipal = $series[0] ?? '';
                 $nroSucursalCliente = $dto->nro_sucursal_cliente;
                 $estadoRepuesto = $this->normalizarEstadoRepuesto($dto->estado_repuesto);
-                $repuestoSeleccionadoId = $dto->repuesto_inventario_id ? (int) $dto->repuesto_inventario_id : 0;
+                
+                $repuestosSeleccionados = $dto->repuestos_seleccionados ?? [];
+                if (empty($repuestosSeleccionados) && $dto->repuesto_inventario_id) {
+                    $repuestosSeleccionados[] = $dto->repuesto_inventario_id;
+                }
 
                 if ($motivoIngreso === 'Servicio Cliente Externo') {
                     $nroSucursalCliente = 999;
                 }
 
-                if ($estadoRepuesto === 'Con stock' && $repuestoSeleccionadoId <= 0) {
-                    throw new Exception('Debe seleccionar un repuesto del inventario cuando el estado es Con stock.');
+                if ($estadoRepuesto === 'Con stock' && empty($repuestosSeleccionados)) {
+                    throw new Exception('Debe seleccionar al menos un repuesto del inventario cuando el estado es Con stock.');
                 }
 
                 if ($esValidacionGarantia && $garantiaTipo === null) {
@@ -148,8 +152,17 @@ class CrearOrdenService
                     ]);
                 }
 
+                // Identificar si el usuario creador pertenece a un CAS
+                $usuarioCreador = \App\Models\Identity\Usuario::find($dto->ingresado_por);
+                $casAsignado = $usuarioCreador ? $usuarioCreador->casAsignados()->first() : null;
+
+                $casIdParaCodigo = null;
+                if ($casAsignado) {
+                    $casIdParaCodigo = $casAsignado->id;
+                }
+
                 // 3. Generar Nro de Orden y Crear la Orden
-                $nroOrden = $this->ordenRepo->generarNumeroOrden($dto->sucursal_id);
+                $nroOrden = $this->ordenRepo->generarNumeroOrden($dto->sucursal_id, $casIdParaCodigo);
 
                 $orden = new Orden();
                 $orden->nro_orden        = $nroOrden;
@@ -168,17 +181,19 @@ class CrearOrdenService
                 $orden->estado_garantia  = $esValidacionGarantia ? 'Pendiente' : null;
                 $orden->fecha_prometido  = $dto->fecha_prometido;
                 $orden->garantia_tipo    = $garantiaTipo;
-                $orden->cas_id           = $casId;
-                $orden->repuesto_inventario_id = $repuestoSeleccionadoId > 0 ? $repuestoSeleccionadoId : null;
+                $orden->cas_id           = $casAsignado ? $casAsignado->id : $casId;
+                $orden->repuesto_inventario_id = !empty($repuestosSeleccionados) ? (int)$repuestosSeleccionados[0] : null;
                 
                 $orden->save();
 
-                if ($estadoRepuesto === 'Con stock' && $repuestoSeleccionadoId > 0) {
-                    $this->ordenRepuestoRepo->registrarDesdeCreacion(
-                        (int) $orden->id,
-                        $repuestoSeleccionadoId,
-                        (int) $dto->ingresado_por
-                    );
+                if ($estadoRepuesto === 'Con stock' && !empty($repuestosSeleccionados)) {
+                    foreach ($repuestosSeleccionados as $repId) {
+                        $this->ordenRepuestoRepo->registrarDesdeCreacion(
+                            (int) $orden->id,
+                            (int) $repId,
+                            (int) $dto->ingresado_por
+                        );
+                    }
                 }
 
                 Log::info('Orden de Servicio creada exitosamente.', [
