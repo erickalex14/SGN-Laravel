@@ -16,7 +16,7 @@
         [data-page-hidden="true"] {
             display: none !important;
         }
-        
+
         /* Estilos premium para sgn-pager */
         .sgn-pager-wrap {
             display: flex;
@@ -250,6 +250,10 @@
                                         <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
                                     </a>
+                                    <a data-tip="Reportes" href="{{ route('reportes.tecnico') }}">
+                                        <i class="bi bi-bar-chart-line" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Reportes</span>
+                                    </a>
                                 @endif
                                 {{-- Buscar Informes: Admin (tienen informes,ver) + Superadmin --}}
                                 @if ($sa || $can('informes', 'ver'))
@@ -385,13 +389,13 @@
                     @if ($can('sucursales', 'ver'))
                     <a data-tip="NONITEC" href="{{ route('sucursales.index') }}">
                         <i class="bi bi-shop" style="flex-shrink:0;"></i>
-                        <span class="nav-label" style="margin-left:10px;">NONITEC</span>
+                        <span class="nav-label" style="margin-left:10px;">Novitecnologia</span>
                     </a>
                     @endif
                     @if ($can('sucursales_cliente', 'ver'))
                         <a data-tip="NOVICOM PU" href="{{ route('sucursales_cliente.index') }}">
                             <i class="bi bi-building" style="flex-shrink:0;"></i>
-                            <span class="nav-label" style="margin-left:10px;">NOVICOM PU</span>
+                            <span class="nav-label" style="margin-left:10px;">Novicompu</span>
                         </a>
                     @endif
                 </div>
@@ -917,18 +921,18 @@
             this.observer = null;
             this.init();
         }
-        
+
         init() {
             this.setupPagerMarkup();
             this.bindEvents();
             this.render();
             this.setupObserver();
         }
-        
+
         setupPagerMarkup() {
             const container = document.querySelector(this.pagerContainerSelector);
             if (!container) return;
-            
+
             container.innerHTML = `
                 <div class="sgn-pager-wrap">
                     <div class="sgn-pager-info">Mostrando <span class="sgn-p-start">0</span> a <span class="sgn-p-end">0</span> de <span class="sgn-p-total">0</span> registros</div>
@@ -946,17 +950,17 @@
                     </div>
                 </div>
             `;
-            
+
             const select = container.querySelector('.sgn-pager-select');
             if (select) {
                 select.value = this.pageSize;
             }
         }
-        
+
         bindEvents() {
             const container = document.querySelector(this.pagerContainerSelector);
             if (!container) return;
-            
+
             const select = container.querySelector('.sgn-pager-select');
             if (select) {
                 select.addEventListener('change', (e) => {
@@ -965,13 +969,13 @@
                     this.render();
                 });
             }
-            
+
             const buttonsContainer = container.querySelector('.sgn-pager-buttons');
             if (buttonsContainer) {
                 buttonsContainer.addEventListener('click', (e) => {
                     const btn = e.target.closest('.sgn-pager-btn');
                     if (!btn || btn.disabled) return;
-                    
+
                     const page = btn.getAttribute('data-page');
                     if (page === 'prev') {
                         this.currentPage--;
@@ -984,11 +988,11 @@
                 });
             }
         }
-        
+
         setupObserver() {
             const container = document.querySelector(this.containerSelector);
             if (!container) return;
-            
+
             this.observer = new MutationObserver(() => {
                 this.observer.disconnect();
                 const newVisibleCount = this.getVisibleItemsCount();
@@ -999,52 +1003,52 @@
                     this.reObserve();
                 }
             });
-            
+
             this.reObserve();
         }
-        
+
         reObserve() {
             const container = document.querySelector(this.containerSelector);
             if (!container || !this.observer) return;
-            
+
             this.observer.observe(container, {
                 attributes: true,
                 attributeFilter: ['style', 'class'],
                 subtree: true
             });
         }
-        
+
         getVisibleItemsCount() {
             return this.getFilteredItems().length;
         }
-        
+
         getFilteredItems() {
             const container = document.querySelector(this.containerSelector);
             if (!container) return [];
-            
+
             const allItems = Array.from(container.querySelectorAll(this.itemSelector));
             return allItems.filter(item => {
                 return item.style.display !== 'none' && !item.classList.contains('sgn-hidden-by-search');
             });
         }
-        
+
         render() {
             const filteredItems = this.getFilteredItems();
             this.lastVisibleCount = filteredItems.length;
-            
+
             const totalItems = filteredItems.length;
             const totalPages = Math.max(1, Math.ceil(totalItems / this.pageSize));
-            
+
             if (this.currentPage > totalPages) {
                 this.currentPage = totalPages;
             }
             if (this.currentPage < 1) {
                 this.currentPage = 1;
             }
-            
+
             const start = (this.currentPage - 1) * this.pageSize;
             const end = Math.min(start + this.pageSize, totalItems);
-            
+
             const container = document.querySelector(this.containerSelector);
             if (container) {
                 const allItems = container.querySelectorAll(this.itemSelector);
@@ -1052,13 +1056,13 @@
                     item.setAttribute('data-page-hidden', 'true');
                 });
             }
-            
+
             for (let i = start; i < end; i++) {
                 if (filteredItems[i]) {
                     filteredItems[i].setAttribute('data-page-hidden', 'false');
                 }
             }
-            
+
             const pager = document.querySelector(this.pagerContainerSelector);
             if (pager) {
                 const wrap = pager.querySelector('.sgn-pager-wrap');
@@ -1072,7 +1076,7 @@
                         wrap.querySelector('.sgn-p-end').textContent = end;
                         wrap.querySelector('.sgn-p-total').textContent = totalItems;
                     }
-                    
+
                     const btnContainer = wrap.querySelector('.sgn-pager-buttons');
                     if (btnContainer) {
                         let btnHtml = `
@@ -1080,22 +1084,22 @@
                                 <i class="bi bi-chevron-left"></i>
                             </button>
                         `;
-                        
+
                         const maxButtons = 5;
                         let startPage = Math.max(1, this.currentPage - Math.floor(maxButtons / 2));
                         let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-                        
+
                         if (endPage - startPage + 1 < maxButtons) {
                             startPage = Math.max(1, endPage - maxButtons + 1);
                         }
-                        
+
                         if (startPage > 1) {
                             btnHtml += `<button class="sgn-pager-btn" data-page="1">1</button>`;
                             if (startPage > 2) {
                                 btnHtml += `<span style="color:#94a3b8;padding:0 4px;">...</span>`;
                             }
                         }
-                        
+
                         for (let p = startPage; p <= endPage; p++) {
                             btnHtml += `
                                 <button class="sgn-pager-btn ${p === this.currentPage ? 'activo' : ''}" data-page="${p}">
@@ -1103,31 +1107,31 @@
                                 </button>
                             `;
                         }
-                        
+
                         if (endPage < totalPages) {
                             if (endPage < totalPages - 1) {
                                 btnHtml += `<span style="color:#94a3b8;padding:0 4px;">...</span>`;
                             }
                             btnHtml += `<button class="sgn-pager-btn" data-page="${totalPages}">${totalPages}</button>`;
                         }
-                        
+
                         btnHtml += `
                             <button class="sgn-pager-btn" data-page="next" ${this.currentPage === totalPages ? 'disabled' : ''}>
                                 <i class="bi bi-chevron-right"></i>
                             </button>
                         `;
-                        
+
                         btnContainer.innerHTML = btnHtml;
                     }
                 }
             }
-            
+
             if (this.onPageChange) {
                 this.onPageChange(this.currentPage);
             }
             this.reObserve();
         }
-        
+
         destroy() {
             if (this.observer) {
                 this.observer.disconnect();

@@ -21,10 +21,10 @@ class GuardarEmpresaRequest extends FormRequest
         }
 
         return [
-            'nombre'    => ['required', 'string', 'max:200'],
-            'ruc'       => ['required', 'string', 'regex:/^[0-9]{13}$/'],
-            'telefono'  => ['nullable', 'string', 'max:15'],
-            'correo'    => ['nullable', 'email', 'max:200'],
+            'nombre'    => ['required', 'string', 'max:15'],
+            'ruc'       => ['required', 'numeric:', 'regex:/^[0-9]{13}$/', 'max:13'],
+            'telefono'  => ['nullable', 'string', 'max:10'],
+            'correo'    => ['nullable', 'email', 'max:30'],
             'direccion' => ['nullable', 'string', 'max:200'],
         ];
     }

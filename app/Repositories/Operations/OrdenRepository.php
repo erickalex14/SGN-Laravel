@@ -201,7 +201,11 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden']);
+
+            if (!empty($filtro->empresa_id)) {
+                $queryPersonal->whereRaw('1 = 0');
+            }
 
             if (!empty($filtro->fecha_inicio)) {
                 $queryPersonal->whereDate('fecha_de_ingreso', '>=', $filtro->fecha_inicio);
@@ -251,16 +255,23 @@ class OrdenRepository
                 $queryPersonal->where('cas_id', $filtro->cas_id);
             }
 
-            $personales = $queryPersonal->get()->map(function (Orden $orden) {
+             $personales = $queryPersonal->get()->map(function (Orden $orden) {
                 $fechaIngreso = $orden->fecha_de_ingreso ?: null;
                 $fechaPrometida = $orden->fecha_prometido ?: null;
                 $fechaEntrega = $orden->fecha_entrega ?: null;
                 $clienteNombre = trim((string) (($orden->cliente->nombres ?? '') . ' ' . ($orden->cliente->apellidos ?? '')));
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
+                $subtotalAdicionales = $orden->preciosOrden->sum('precio');
+                $subtotalTotal = $subtotalAdicionales + 28.00;
+                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
+                $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+
                 return [
                     'id' => $orden->id,
                     'tipo_orden' => 'personal',
+                    'informe_id' => $orden->informes->first()?->id ?? null,
+                    'valor_novicompu' => $valorNovicompu,
                     'nro_orden' => $orden->nro_orden,
                     'fecha_de_ingreso' => $orden->fecha_de_ingreso,
                     'fecha_prometido' => $fechaPrometida,
@@ -310,6 +321,10 @@ class OrdenRepository
 
         if ($incluirEmpresa) {
             $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'sucursal']);
+
+            if (!empty($filtro->empresa_id)) {
+                $queryEmpresa->where('empresa_id', $filtro->empresa_id);
+            }
 
             if (!empty($filtro->fecha_inicio)) {
                 $queryEmpresa->whereDate('fecha_ingreso', '>=', $filtro->fecha_inicio);
@@ -364,9 +379,15 @@ class OrdenRepository
                 $fechaIngreso = $orden->fecha_ingreso ?: null;
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
+                $subtotalTotal = 28.00;
+                $esGarantia = mb_strtolower(trim((string) $orden->subtipo)) === 'validacion de garantia';
+                $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+
                 return [
                     'id' => 'empresa-' . $orden->id,
                     'tipo_orden' => 'empresa',
+                    'informe_id' => null,
+                    'valor_novicompu' => $valorNovicompu,
                     'nro_orden' => $orden->nro_orden,
                     'fecha_de_ingreso' => $orden->fecha_ingreso,
                     'fecha_prometido' => $orden->fecha_prometido,

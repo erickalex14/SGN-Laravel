@@ -202,6 +202,11 @@ class DashboardRepository
         $totalSucursales = $esSuperadmin
             ? $this->scalar("SELECT COUNT(*) FROM sucursales")
             : 1;
+        $totalCas = $this->scalar("SELECT COUNT(*) FROM cas");
+        $totalOrdenesCas = $this->scalar(
+            "SELECT COUNT(*) FROM ordenes o WHERE o.cas_id IS NOT NULL AND {$filtroPersonal}",
+            $esSuperadmin ? [] : [$sucursalId]
+        );
 
         $rowsEstados = DB::select(
             "SELECT estado_ord, SUM(total) AS total FROM (
@@ -366,6 +371,24 @@ class DashboardRepository
             $sucursalesData[] = (int) ($row->total ?? 0);
         }
 
+        $filtroCas = $esSuperadmin ? '1=1' : 'o.sucursal_id = ?';
+        $rowsCas = DB::select(
+            "SELECT c.nombre AS cas_nombre, COUNT(o.id) AS total
+            FROM cas c
+            LEFT JOIN ordenes o ON o.cas_id = c.id AND {$filtroCas}
+            GROUP BY c.id, c.nombre
+            ORDER BY total DESC
+            LIMIT 5",
+            $esSuperadmin ? [] : [$sucursalId]
+        );
+
+        $casLabels = [];
+        $casData = [];
+        foreach ($rowsCas as $row) {
+            $casLabels[] = (string) ($row->cas_nombre ?? 'CAS');
+            $casData[] = (int) ($row->total ?? 0);
+        }
+
         return [
             'modo' => 'gestion',
             'kpis' => [
@@ -374,6 +397,8 @@ class DashboardRepository
                 'tecnicos_activos' => $totalTecnicos,
                 'clientes' => $totalClientes,
                 'sucursales' => $totalSucursales,
+                'cas_totales' => $totalCas,
+                'ordenes_cas' => $totalOrdenesCas,
             ],
             'charts' => [
                 'dias' => ['labels' => $diasLabels, 'data' => $diasData],
@@ -381,6 +406,7 @@ class DashboardRepository
                 'equipos' => ['labels' => $equiposLabels, 'data' => $equiposData],
                 'repuestos' => ['labels' => $repuestosLabels, 'data' => $repuestosData],
                 'sucursales' => ['labels' => $sucursalesLabels, 'data' => $sucursalesData],
+                'cas' => ['labels' => $casLabels, 'data' => $casData],
             ],
             'tecnicos' => $tecnicos,
         ];
