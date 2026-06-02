@@ -97,9 +97,24 @@ class OrdenController extends Controller
     {
         try {
             $fechaIngreso = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
-            $this->validarTecnicoAsignable((int) $request->input('ord_tecnico_id'));
 
-            if ($request->input('motivo_ingreso') === 'Servicios a Empresas') {
+            $isEmpresa = $request->input('motivo_ingreso') === 'Servicios a Empresas';
+            $subtipo = $request->input('subtipo_empresa');
+            $esServicioEmpresa = $isEmpresa && $subtipo === 'Servicios';
+
+            if ($esServicioEmpresa) {
+                $tecnicosAsignados = $request->input('tecnicos_asignados', []);
+                if (!is_array($tecnicosAsignados)) {
+                    $tecnicosAsignados = [$tecnicosAsignados];
+                }
+                foreach ($tecnicosAsignados as $tecId) {
+                    $this->validarTecnicoAsignable((int) $tecId);
+                }
+            } else {
+                $this->validarTecnicoAsignable((int) $request->input('ord_tecnico_id'));
+            }
+
+            if ($isEmpresa) {
                 $orden = $this->service->crearOrdenEmpresa(array_merge($request->validated(), [
                     'sucursal_id' => (int) session('sucursal_id'),
                     'ingresado_por' => (int) session('tecnico_id'),
@@ -323,6 +338,21 @@ class OrdenController extends Controller
         $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
         abort_if(!$orden, 404);
 
-        return view('operations.ordenes.imprimir_empresa', compact('orden'));
+        $nombreSucursalCliente = '-';
+        $nroSucursalCliente = (int) ($orden->nro_sucursal_cliente ?? 0);
+        if ($nroSucursalCliente > 0) {
+            if ($nroSucursalCliente === 999) {
+                $nombreSucursalCliente = '999 - SERVICIO EXTERNO';
+            } else {
+                $suc = $this->sucursalClienteRepo
+                    ->obtenerTodas()
+                    ->firstWhere('numero', $nroSucursalCliente);
+                $nombreSucursalCliente = $suc
+                    ? str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT) . ' - ' . (string) $suc->nombre
+                    : 'Nro. ' . str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return view('operations.ordenes.imprimir_empresa', compact('orden', 'nombreSucursalCliente'));
     }
 }

@@ -161,23 +161,37 @@ class GuardarOrdenRequest extends FormRequest
 
         if ($esEmpresa) {
             $subtipo = $this->input('subtipo_empresa');
+            $requiereEquipo = in_array($subtipo, ['Autoconsumo', 'Stock'], true);
+
+            $esNovisolutionsServicio = ($subtipo === 'Servicios');
 
             $reglas = array_merge($reglas, [
                 'empresa_id' => ['required', 'integer', 'exists:empresas,id'],
-                'subtipo_empresa' => ['required', Rule::in(['Autoconsumo', 'Servicios'])],
+                'subtipo_empresa' => ['required', Rule::in(['Autoconsumo', 'Servicios', 'Stock'])],
                 'emp_tipo_servicio' => [$subtipo === 'Servicios' ? 'required' : 'nullable', 'string', 'max:255'],
                 'emp_nro_ticket' => [$subtipo === 'Servicios' ? 'required' : 'nullable', 'string', 'max:100'],
                 'emp_descripcion' => [$subtipo === 'Servicios' ? 'required' : 'nullable', 'string'],
-                'emp_tipo_equipo' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'string', 'max:50'],
-                'emp_marca' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'string', 'max:50'],
-                'emp_modelo' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'string', 'max:100'],
-                'emp_series' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'array', 'min:1'],
+                'emp_tipo_equipo' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:50'],
+                'emp_marca' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:50'],
+                'emp_modelo' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:100'],
+                'emp_series' => [$requiereEquipo ? 'required' : 'nullable', 'array', 'min:1'],
                 'emp_series.*' => ['nullable', 'string', 'max:100'],
-                'emp_falla' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'string'],
-                'emp_observacion' => [$subtipo === 'Autoconsumo' ? 'required' : 'nullable', 'string'],
+                'emp_falla' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
+                'emp_observacion' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_tipo_servicio_id' => ['nullable', 'integer', 'exists:tiposservicio,id'],
                 'emp_fecha_prometido' => ['required', 'date'],
+                'nro_sucursal_cliente' => [$subtipo === 'Stock' ? 'required' : 'nullable', 'integer', 'exists:sucursalescliente,numero'],
+                
+                // Nuevas reglas para NOVISOLUTIONS
+                'valor_hora' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'numeric', 'min:0'],
+                'horas_trabajadas' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'numeric', 'min:0'],
+                'tecnicos_asignados' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
+                'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
             ]);
+
+            if ($esNovisolutionsServicio) {
+                $reglas['ord_tecnico_id'] = ['nullable', 'integer'];
+            }
         }
 
         return $reglas;

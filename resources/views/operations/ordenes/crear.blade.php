@@ -245,7 +245,7 @@
                         <select name="empresa_id" id="empresa_id" onchange="onEmpresaChange(this.value)">
                             <option value="">-- Seleccione --</option>
                             @foreach($empresas as $empresa)
-                                <option value="{{ $empresa->id }}">{{ $empresa->nombre }} - {{ $empresa->ruc }}</option>
+                                <option value="{{ $empresa->id }}" data-nombre="{{ $empresa->nombre }}">{{ $empresa->nombre }} - {{ $empresa->ruc }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -259,6 +259,10 @@
                             <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
                                 <input type="radio" name="subtipo_empresa" value="Servicios" onchange="onSubtipoEmpresaChange(this.value)">
                                 Servicios
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                                <input type="radio" name="subtipo_empresa" value="Stock" onchange="onSubtipoEmpresaChange(this.value)">
+                                Stock
                             </label>
                         </div>
                     </div>
@@ -327,6 +331,16 @@
                             @foreach($marcas as $marca)
                                 <option value="{{ $marca->nombre }}">{{ $marca->nombre }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    <div class="campo hidden" id="campo-sucursal-cliente-empresa">
+                        <label>Sucursal Cliente <span class="req">*</span></label>
+                        <select id="nro_sucursal_cliente_empresa" name="nro_sucursal_cliente">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($sucursalesCliente as $suc)
+                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
+                            @endforeach
+                            <option value="999">999 - SERVICIO EXTERNO</option>
                         </select>
                     </div>
                     <div class="campo" style="grid-column: span 2;">
@@ -417,9 +431,41 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Checklist de técnicos para NOVISOLUTIONS --}}
+                    <div class="campo hidden" id="bloque-multi-tecnicos" style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 13px; font-weight: 600; color: #475569;">Técnicos Asignados <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;text-transform:none;">(máximo 5 técnicos)</span></label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 8px; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; max-height: 250px; overflow-y: auto; background: #fff;">
+                            @foreach($tecnicos as $tec)
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; padding: 4px; color: #1e293b; font-size: 13px;">
+                                    <input type="checkbox" name="tecnicos_asignados[]" value="{{ $tec->id }}" class="chk-tecnico-emp" style="width: 16px; height: 16px; cursor: pointer;">
+                                    {{ $tec->nombre_tecnico }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
                     <div class="campo">
                         <label>Fecha Prometido <span class="req">*</span></label>
                         <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido">
+                    </div>
+                </div>
+
+                {{-- Bloque de cálculo para NOVISOLUTIONS --}}
+                <div id="bloque-calculo-novisolutions" class="hidden" style="margin-top: 20px; padding: 16px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; color: #166534; box-shadow: 0 2px 8px rgba(16,185,129,0.05);">
+                    <h4 style="margin: 0 0 14px; font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; color: #166534;"><i class="bi bi-calculator"></i> Desglose de Costo de Servicio Corporativo</h4>
+                    <div class="grid-2" style="margin-bottom: 14px; gap: 14px;">
+                        <div class="campo" style="margin-bottom: 0;">
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Tarifa por Hora ($) <span class="req">*</span></label>
+                            <input type="number" step="0.01" name="valor_hora" id="valor_hora" value="50.00" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
+                        </div>
+                        <div class="campo" style="margin-bottom: 0;">
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Horas Trabajadas <span class="req">*</span></label>
+                            <input type="number" step="0.25" name="horas_trabajadas" id="horas_trabajadas" value="1.00" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
+                        </div>
+                    </div>
+                    <div style="font-size: 14px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #86efac; padding-top: 12px; flex-wrap: wrap; gap: 10px;">
+                        <span>Fórmula: <span id="formula-lbl" style="font-family: monospace; font-size: 13px; color: #15803d;">0 técnicos * 1.00 horas * $50.00/hr</span></span>
+                        <span style="font-size: 16px; color: #14532d;">Subtotal Estimado: <strong id="cobro-total-lbl" style="font-size: 19px; color: #166534;">$0.00</strong></span>
                     </div>
                 </div>
             </div>
@@ -1328,7 +1374,7 @@ function actualizarMotivo() {
 }
 
 function limpiarRequiredEmpresa() {
-    ['empresa_id','emp_tipo_servicio','emp_nro_ticket','emp_descripcion','emp_modelo','emp_tipo_equipo','emp_tipo_servicio_id','emp_marca','emp_serie','emp_falla','emp_observacion','ord_tecnico_id_empresa_ui','emp_fecha_prometido']
+    ['empresa_id','emp_tipo_servicio','emp_nro_ticket','emp_descripcion','emp_modelo','emp_tipo_equipo','emp_tipo_servicio_id','emp_marca','emp_serie','emp_falla','emp_observacion','ord_tecnico_id_empresa','emp_fecha_prometido','nro_sucursal_cliente_empresa']
         .forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.required = false;
@@ -1345,28 +1391,48 @@ function onEmpresaChange(val) {
         document.querySelectorAll('.bloque-empresa-detalle').forEach((el) => el.classList.add('hidden'));
         limpiarRequiredEmpresa();
     }
+    verificarNovisolutions();
 }
 
 function onSubtipoEmpresaChange(valor) {
     const esServicios = valor === 'Servicios';
     const esAutoconsumo = valor === 'Autoconsumo';
+    const esStock = valor === 'Stock';
+    const requiereEquipo = esAutoconsumo || esStock;
 
     document.getElementById('bloque-form-servicios-empresa').classList.toggle('hidden', !esServicios);
-    document.getElementById('bloque-equipo-empresa').classList.toggle('hidden', !esAutoconsumo);
-    document.getElementById('bloque-asignacion-empresa').classList.toggle('hidden', !(esServicios || esAutoconsumo));
+    document.getElementById('bloque-equipo-empresa').classList.toggle('hidden', !requiereEquipo);
+    document.getElementById('bloque-asignacion-empresa').classList.toggle('hidden', !(esServicios || requiereEquipo));
+
+    const campoSucursal = document.getElementById('campo-sucursal-cliente-empresa');
+    if (campoSucursal) {
+        campoSucursal.classList.toggle('hidden', !esStock);
+        const selectSucursal = document.getElementById('nro_sucursal_cliente_empresa');
+        if (selectSucursal) {
+            selectSucursal.disabled = !esStock;
+        }
+    }
 
     limpiarRequiredEmpresa();
     document.getElementById('empresa_id').required = true;
-    document.getElementById('ord_tecnico_id_empresa_ui').required = esServicios || esAutoconsumo;
-    document.getElementById('emp_fecha_prometido').required = esServicios || esAutoconsumo;
+    document.getElementById('ord_tecnico_id_empresa').required = requiereEquipo;
+    document.getElementById('emp_fecha_prometido').required = esServicios || requiereEquipo;
 
     if (esServicios) {
         document.getElementById('emp_tipo_servicio').required = true;
+        
+        const inputTicket = document.getElementById('emp_nro_ticket');
+        if (inputTicket && (!inputTicket.value || inputTicket.value.trim() === '')) {
+            const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const seq = Date.now().toString().slice(-4);
+            inputTicket.value = `TK-${rand}-${seq}`;
+        }
+        
         document.getElementById('emp_nro_ticket').required = true;
         document.getElementById('emp_descripcion').required = true;
     }
 
-    if (esAutoconsumo) {
+    if (requiereEquipo) {
         document.getElementById('emp_modelo').required = true;
         document.getElementById('emp_tipo_equipo').required = true;
         document.getElementById('emp_tipo_servicio_id').required = true;
@@ -1375,7 +1441,13 @@ function onSubtipoEmpresaChange(valor) {
         document.getElementById('emp_falla').required = true;
         document.getElementById('emp_observacion').required = true;
         document.getElementById('emp_nro_ticket').value = '';
+        
+        if (esStock) {
+            document.getElementById('nro_sucursal_cliente_empresa').required = true;
+        }
     }
+
+    verificarNovisolutions();
 }
 
 function agregarSerieEmpresa() {
@@ -1909,7 +1981,92 @@ document.addEventListener('DOMContentLoaded', () => {
             list.classList.remove('open');
         }
     });
+
+    // Event listeners para NOVISOLUTIONS
+    const valorHoraInput = document.getElementById('valor_hora');
+    const horasInput = document.getElementById('horas_trabajadas');
+    if (valorHoraInput) valorHoraInput.addEventListener('input', calcularPrecioNovisolutions);
+    if (horasInput) horasInput.addEventListener('input', calcularPrecioNovisolutions);
+
+    document.querySelectorAll('.chk-tecnico-emp').forEach(chk => {
+        chk.addEventListener('change', () => {
+            const checked = document.querySelectorAll('.chk-tecnico-emp:checked');
+            if (checked.length > 5) {
+                chk.checked = false;
+                alert('Puedes asignar un máximo de 5 técnicos.');
+            }
+            calcularPrecioNovisolutions();
+        });
+    });
 });
+
+function verificarNovisolutions() {
+    const selectEmpresa = document.getElementById('empresa_id');
+    if (!selectEmpresa) return;
+    
+    const subtipoRadio = document.querySelector('input[name="subtipo_empresa"]:checked');
+    const subtipo = subtipoRadio ? subtipoRadio.value : '';
+    const esServicioEmpresa = subtipo === 'Servicios';
+    
+    const bloqueMultiTecnicos = document.getElementById('bloque-multi-tecnicos');
+    const defaultTecnicoDropdown = document.getElementById('tec-dropdown-emp')?.parentElement;
+    
+    if (bloqueMultiTecnicos && defaultTecnicoDropdown) {
+        if (esServicioEmpresa) {
+            bloqueMultiTecnicos.classList.remove('hidden');
+            defaultTecnicoDropdown.classList.add('hidden');
+            document.getElementById('ord_tecnico_id_empresa').disabled = true;
+            document.getElementById('ord_tecnico_id_empresa').required = false;
+            document.querySelectorAll('.chk-tecnico-emp').forEach(chk => chk.disabled = false);
+        } else {
+            bloqueMultiTecnicos.classList.add('hidden');
+            defaultTecnicoDropdown.classList.remove('hidden');
+            document.getElementById('ord_tecnico_id_empresa').disabled = false;
+            document.querySelectorAll('.chk-tecnico-emp').forEach(chk => {
+                chk.disabled = true;
+                chk.checked = false;
+            });
+        }
+    }
+    
+    const bloqueCalculo = document.getElementById('bloque-calculo-novisolutions');
+    if (bloqueCalculo) {
+        if (esServicioEmpresa) {
+            bloqueCalculo.classList.remove('hidden');
+            document.getElementById('valor_hora').disabled = false;
+            document.getElementById('horas_trabajadas').disabled = false;
+        } else {
+            bloqueCalculo.classList.add('hidden');
+            document.getElementById('valor_hora').disabled = true;
+            document.getElementById('horas_trabajadas').disabled = true;
+        }
+    }
+    
+    calcularPrecioNovisolutions();
+}
+
+function calcularPrecioNovisolutions() {
+    const chks = document.querySelectorAll('.chk-tecnico-emp:checked');
+    const numTecnicos = chks.length;
+    
+    const valorHoraInput = document.getElementById('valor_hora');
+    const horasInput = document.getElementById('horas_trabajadas');
+    if (!valorHoraInput || !horasInput) return;
+    
+    const valorHora = parseFloat(valorHoraInput.value) || 0;
+    const horas = parseFloat(horasInput.value) || 0;
+    const total = numTecnicos * horas * valorHora;
+    
+    const formulaLbl = document.getElementById('formula-lbl');
+    const totalLbl = document.getElementById('cobro-total-lbl');
+    
+    if (formulaLbl) {
+        formulaLbl.textContent = `${numTecnicos} técnico(s) * ${horas.toFixed(2)} hora(s) * $${valorHora.toFixed(2)}/hr`;
+    }
+    if (totalLbl) {
+        totalLbl.textContent = `$${total.toFixed(2)}`;
+    }
+}
 </script>
 @endpush
 

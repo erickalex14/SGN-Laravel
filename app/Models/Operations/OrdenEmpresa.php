@@ -28,8 +28,21 @@ class OrdenEmpresa extends Model
         'ingresado_por',
         'fecha_prometido',
         'estado',
-        'fecha_ingreso'
+        'fecha_ingreso',
+        'nro_sucursal_cliente',
+        'valor_hora',
+        'horas_trabajadas'
     ];
+
+    public function tecnicos()
+    {
+        return $this->belongsToMany(
+            \App\Models\Identity\Usuario::class,
+            'orden_empresa_tecnicos',
+            'orden_empresa_id',
+            'tecnico_id'
+        );
+    }
 
     public function empresa()
     {

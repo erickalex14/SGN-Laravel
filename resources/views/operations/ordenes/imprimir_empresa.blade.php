@@ -12,17 +12,45 @@
         $series = collect(explode(',', (string) $equipo->serie))->map(fn($s) => trim($s))->filter();
     }
 
+    // Concatenamos técnicos asignados si existen
+    $nombresTecnicos = '-';
+    $correosTecnicos = '-';
+    if ($orden->relationLoaded('tecnicos') && $orden->tecnicos->isNotEmpty()) {
+        $nombresTecnicos = $orden->tecnicos->pluck('nombre_tecnico')->implode(', ');
+        $correosTecnicos = $orden->tecnicos->pluck('correo_tec')->filter()->implode(', ');
+    } elseif ($tecnico) {
+        $nombresTecnicos = $tecnico->nombre_tecnico;
+        $correosTecnicos = $tecnico->correo_tec;
+    }
+
     // Cargamos los precios personalizados (para empresas no hay adicionales específicos en esta relación)
     $preciosAdicionales = collect();
     
-    // Por directiva del usuario, el precio estándar es fijo de revisión técnica ($28.00) para todas las órdenes
-    $preciosEstandar = collect([
-        (object)[
-            'servicio' => 'COSTO DE REVISION DEL EQUIPO',
-            'precio' => 28.00,
-            'descripcion' => 'COSTO DE REVISION TÉCNICA DEL EQUIPO'
-        ]
-    ]);
+    // Verificamos si es servicios para aplicar la fórmula
+    $esNovisolutionsServicio = $orden->subtipo === 'Servicios';
+
+    if ($esNovisolutionsServicio) {
+        $cantTecnicos = $orden->relationLoaded('tecnicos') && $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
+        $horas = (float) ($orden->horas_trabajadas ?? 0);
+        $valHora = (float) ($orden->valor_hora ?? 0);
+        $precioCalculado = $cantTecnicos * $horas * $valHora;
+
+        $preciosEstandar = collect([
+            (object)[
+                'servicio' => 'SERVICIO TÉCNICO CORPORATIVO',
+                'precio' => $precioCalculado,
+                'descripcion' => "CÁLCULO: {$cantTecnicos} técnico(s) * " . number_format($horas, 2) . " hora(s) * $" . number_format($valHora, 2) . "/hr"
+            ]
+        ]);
+    } else {
+        $preciosEstandar = collect([
+            (object)[
+                'servicio' => 'COSTO DE REVISION DEL EQUIPO',
+                'precio' => 28.00,
+                'descripcion' => 'COSTO DE REVISION TÉCNICA DEL EQUIPO'
+            ]
+        ]);
+    }
 
     // Cálculos de subtotal y totales
     $subtotalAdicionales = $preciosAdicionales->sum('precio');
@@ -127,15 +155,21 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         <tr>
             <td colspan="2"><span class="lbl">Direccion</span>{{ $empresa?->direccion_empresa ?? '-' }}</td>
             <td><span class="lbl">Subtipo</span><span class="badge">{{ $orden->subtipo }}</span></td>
-            <td><span class="lbl">Nro. Ticket</span>{{ $orden->nro_ticket ?: '-' }}</td>
+            <td>
+                @if ($orden->subtipo === 'Stock')
+                    <span class="lbl">Sucursal Cliente</span>{{ $nombreSucursalCliente ?? $orden->nro_sucursal_cliente ?? '-' }}
+                @else
+                    <span class="lbl">Nro. Ticket</span>{{ $orden->nro_ticket ?: '-' }}
+                @endif
+            </td>
         </tr>
     </table>
 
     <div class="sec-titulo">Tecnico Responsable</div>
     <table class="datos">
         <tr>
-            <td width="25%"><span class="lbl">Tecnico Asignado</span>{{ $tecnico?->nombre_tecnico ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Correo</span>{{ $tecnico?->correo_tec ?? '-' }}</td>
+            <td width="25%"><span class="lbl">Tecnico Asignado</span>{{ $nombresTecnicos }}</td>
+            <td width="25%"><span class="lbl">Correo</span>{{ $correosTecnicos }}</td>
             <td width="25%"><span class="lbl">Sucursal</span>{{ $sucursal?->ciudad ?? '-' }}</td>
             <td width="25%"><span class="lbl">Ingresado por</span>{{ $usuarioIngreso?->nombre_tecnico ?? $usuarioIngreso?->usuario ?? '-' }}</td>
         </tr>

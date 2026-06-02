@@ -100,10 +100,16 @@ class OrdenRepository
                 'empresa',
                 'equipo',
                 'tecnico',
+                'tecnicos',
                 'sucursal',
                 'ingresadoPor',
             ])
-            ->where('tecnico_id', $tecnicoId)
+            ->where(function ($q) use ($tecnicoId) {
+                $q->where('tecnico_id', $tecnicoId)
+                  ->orWhereHas('tecnicos', function ($sq) use ($tecnicoId) {
+                      $sq->where('usuarios.id', $tecnicoId);
+                  });
+            })
             ->orderBy('id', 'desc')
             ->get();
 
@@ -143,6 +149,7 @@ class OrdenRepository
             'equipo.series',
             'equipo.tipoServicio',
             'tecnico',
+            'tecnicos',
             'sucursal',
             'ingresadoPor',
         ])->find($id);
@@ -266,12 +273,14 @@ class OrdenRepository
                 $subtotalTotal = $subtotalAdicionales + 28.00;
                 $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
                 $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+                $valorOtraEmpresa = 0.00;
 
                 return [
                     'id' => $orden->id,
                     'tipo_orden' => 'personal',
                     'informe_id' => $orden->informes->first()?->id ?? null,
                     'valor_novicompu' => $valorNovicompu,
+                    'valor_otra_empresa' => $valorOtraEmpresa,
                     'nro_orden' => $orden->nro_orden,
                     'fecha_de_ingreso' => $orden->fecha_de_ingreso,
                     'fecha_prometido' => $fechaPrometida,
@@ -320,7 +329,7 @@ class OrdenRepository
         }
 
         if ($incluirEmpresa) {
-            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'sucursal']);
+            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryEmpresa->where('empresa_id', $filtro->empresa_id);
@@ -379,15 +388,33 @@ class OrdenRepository
                 $fechaIngreso = $orden->fecha_ingreso ?: null;
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
-                $subtotalTotal = 28.00;
-                $esGarantia = mb_strtolower(trim((string) $orden->subtipo)) === 'validacion de garantia';
-                $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+                $esNovisolutionsServicio = ($orden->subtipo === 'Servicios');
+                if ($esNovisolutionsServicio) {
+                    $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
+                    $horas = (float) ($orden->horas_trabajadas ?? 0);
+                    $valHora = (float) ($orden->valor_hora ?? 0);
+                    $subtotalTotal = $cantTecnicos * $horas * $valHora;
+                } else {
+                    $subtotalTotal = 28.00;
+                }
+
+                $esNovisolutions = (strtoupper(trim($nombreEmpresa)) === 'NOVISOLUTONS CIA. LTDA.');
+                
+                $valorNovicompu = 0.00;
+                $valorOtraEmpresa = 0.00;
+
+                if ($esNovisolutions) {
+                    $valorNovicompu = round($subtotalTotal, 2);
+                } else {
+                    $valorOtraEmpresa = round($subtotalTotal, 2);
+                }
 
                 return [
                     'id' => 'empresa-' . $orden->id,
                     'tipo_orden' => 'empresa',
                     'informe_id' => null,
                     'valor_novicompu' => $valorNovicompu,
+                    'valor_otra_empresa' => $valorOtraEmpresa,
                     'nro_orden' => $orden->nro_orden,
                     'fecha_de_ingreso' => $orden->fecha_ingreso,
                     'fecha_prometido' => $orden->fecha_prometido,

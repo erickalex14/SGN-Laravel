@@ -453,6 +453,7 @@
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
                         <th onclick="sortTabla(20,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(21,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>
@@ -533,6 +534,7 @@ function normalizeRow(raw) {
         dias_transcurridos: raw.dias_transcurridos ?? '-',
         vencida           : raw.vencida || false,
         valor_novicompu   : raw.valor_novicompu ?? 0.00,
+        valor_otra_empresa: raw.valor_otra_empresa ?? 0.00,
     };
 }
 
@@ -767,6 +769,7 @@ function renderTabla() {
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
         const valNovicompu = (r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? Number(r.valor_novicompu).toFixed(2) : '0.00';
+        const valOtraEmpresa = (r.valor_otra_empresa !== undefined && r.valor_otra_empresa !== null) ? Number(r.valor_otra_empresa).toFixed(2) : '0.00';
         return `<tr data-row="reporte" ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_de_ingreso)}</td>
@@ -791,6 +794,7 @@ function renderTabla() {
             ${pdfOrdenCol}
             ${pdfInformeCol}
             <td style="text-align:right;font-weight:700;font-family:monospace;color:${Number(valNovicompu) > 0 ? '#166534' : '#64748b'};">$${valNovicompu}</td>
+            <td style="text-align:right;font-weight:700;font-family:monospace;color:${Number(valOtraEmpresa) > 0 ? '#166534' : '#64748b'};">$${valOtraEmpresa}</td>
         </tr>`;
     }).join('');
     
@@ -898,7 +902,7 @@ function exportarCSV() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Estado Repuesto','Estado Garantía','Estado Orden',
         'Técnico','Sucursal','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida',
-        'Valor Cobro Novicompu', 'URL PDF Orden', 'URL PDF Informe'
+        'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
     const rows = _filtered.map(r => {
         const rawId = String(r.id).replace('empresa-', '');
@@ -916,6 +920,7 @@ function exportarCSV() {
             r.dias_transcurridos, r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
+            r.valor_otra_empresa,
             pdfOrdenUrl,
             pdfInformeUrl
         ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',');
@@ -1007,11 +1012,12 @@ async function exportarXLSX() {
         'CAS',
         'Tipo Orden',
         'Valor Cobro Novicompu',
+        'Valor Cobro RB-HEALTH',
         'Link PDF Orden',
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,16,12,22,18,18];
+    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,16,12,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ state:'frozen', ySplit:20 }],
@@ -1130,6 +1136,7 @@ async function exportarXLSX() {
             r.cas_nombre,
             r.tipo_orden,
             Number(r.valor_novicompu ?? 0),
+            Number(r.valor_otra_empresa ?? 0),
             '', // Link PDF Orden
             ''  // Link PDF Informe
         ];
@@ -1140,11 +1147,12 @@ async function exportarXLSX() {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 24) { 
+            else if (ci === 24 || ci === 25) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                if (Number(r.valor_novicompu) > 0) {
+                const val = ci === 24 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }
             }

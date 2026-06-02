@@ -221,7 +221,7 @@
                                     @if(($o->tipo_orden ?? 'personal') === 'personal')
                                         <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                     @else
-                                        <button type="button" class="btn-det ver" onclick="abrirDetalleDesdeCard(this.closest('[data-orden]'))"><i class="bi bi-eye"></i> Ver detalle</button>
+                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes-empresa/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                     @endif
                                 </div>
                             </div>
@@ -252,7 +252,7 @@
                                     @if(($o->tipo_orden ?? 'personal') === 'personal')
                                         <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                     @else
-                                        <button type="button" class="btn-det ver" onclick="abrirDetalleDesdeCard(this.closest('[data-orden]'))"><i class="bi bi-eye"></i> Ver detalle</button>
+                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes-empresa/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
                                     @endif
                                 </div>
                             </div>

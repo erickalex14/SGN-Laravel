@@ -274,17 +274,18 @@
             <tr>
                 <th style="width: 5.5%;">Nro. Orden</th>
                 <th style="width: 6.5%;">F. Ingreso</th>
-                <th style="width: 12.5%;">Cliente / Identificación</th>
-                <th style="width: 12.5%;">Equipo / Marca / Serie</th>
-                <th style="width: 9%;">Motivo</th>
-                <th style="width: 9%;">Técnico</th>
+                <th style="width: 11%;">Cliente / Identificación</th>
+                <th style="width: 11%;">Equipo / Marca / Serie</th>
+                <th style="width: 8%;">Motivo</th>
+                <th style="width: 8%;">Técnico</th>
                 <th style="width: 8%;">Sucursal / CAS</th>
                 <th style="width: 8%;">Repuesto / Garantía</th>
                 <th style="width: 6.5%;">Estado</th>
                 <th style="width: 3%;">Días</th>
                 <th style="width: 6.5%;">Prometido / Entrega</th>
                 <th style="width: 4%;">Doc.</th>
-                <th style="width: 9%; text-align: right;">Valor a cobrar a Novicompu</th>
+                <th style="width: 7%; text-align: right;">Cobro Novicompu</th>
+                <th style="width: 7%; text-align: right;">Cobro RB-HEALTH</th>
             </tr>
         </thead>
         <tbody>
@@ -352,10 +353,13 @@
                     <td style="text-align: right; font-weight: 700; font-family: monospace; font-size: 7.5pt; color: {{ (float)($r['valor_novicompu'] ?? 0) > 0 ? '#166534' : '#64748b' }};">
                         ${{ number_format($r['valor_novicompu'] ?? 0, 2) }}
                     </td>
+                    <td style="text-align: right; font-weight: 700; font-family: monospace; font-size: 7.5pt; color: {{ (float)($r['valor_otra_empresa'] ?? 0) > 0 ? '#166534' : '#64748b' }};">
+                        ${{ number_format($r['valor_otra_empresa'] ?? 0, 2) }}
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="13" style="text-align: center; color: #94a3b8; padding: 15px;">
+                    <td colspan="14" style="text-align: center; color: #94a3b8; padding: 15px;">
                         No se encontraron registros con los filtros aplicados.
                     </td>
                 </tr>
