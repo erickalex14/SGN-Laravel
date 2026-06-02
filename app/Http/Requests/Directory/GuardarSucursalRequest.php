@@ -18,7 +18,7 @@ class GuardarSucursalRequest extends FormRequest
         return [
             'id' => ['nullable', 'integer', 'min:1'],
             'nro_sucursal' => ['required', 'integer', 'min:1', 'max:999'],
-            'ciudad' => ['required', 'string', 'max:100'],
+            'ciudad' => ['required', 'string', 'max:15'],
             'secuencial' => ['required', 'string', 'min:2', 'max:10', 'regex:/^[A-Z0-9]+$/'],
             'nro_base'     => ['nullable', 'string', 'regex:/^09\d{8}$/'],
         ];

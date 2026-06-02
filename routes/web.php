@@ -395,7 +395,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:reportes,ver'])->group(function () {
         Route::get('/operaciones/reportes', [ReporteController::class, 'index'])->name('reportes.index');
         Route::get('/operaciones/reportes/filtrar', [ReporteController::class, 'filtrar'])->name('reportes.filtrar');
+        Route::get('/operaciones/reportes/imprimir', [ReporteController::class, 'imprimir'])->name('reportes.imprimir');
     });
+
+    // Reportes para técnicos (autenticados, sin requerir permiso general de reportes admin)
+    Route::get('/operaciones/informes/reportes', [ReporteController::class, 'indexTecnico'])->name('reportes.tecnico');
+    Route::get('/operaciones/informes/reportes/filtrar', [ReporteController::class, 'filtrarTecnico'])->name('reportes.tecnico.filtrar');
+    Route::get('/operaciones/informes/reportes/imprimir', [ReporteController::class, 'imprimirTecnico'])->name('reportes.tecnico.imprimir');
 
     //-------------------------------------------------------
     //-------------MODULO LISTAS COMPRA----------------------

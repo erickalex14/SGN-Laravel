@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('titulo', 'Reportes — SGN')
+@section('titulo', 'Reportes Técnicos — SGN')
 
 @push('css_adicional')
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7,8 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════
-   REPORTES ENTERPRISE — SGN Novitecnología
-═══════════════════════════════════════════════════ */
+   REPORTES ENTERPRISE — SGN Novitecnología (Técnicos)
+   ═══════════════════════════════════════════════════ */
 
 .rep-wrap { max-width: 1420px; margin: 0 auto; padding: 24px 20px; font-family: 'Inter', system-ui, sans-serif; }
 
@@ -34,6 +34,9 @@
 }
 .rep-campo select:focus, .rep-campo input[type=date]:focus {
   outline: none; border-color: #2563eb; background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.rep-campo select:disabled {
+  background: #e2e8f0 !important; color: #64748b !important; cursor: not-allowed;
 }
 .filter-active { border-color: #2563eb !important; background: #eff6ff !important; }
 
@@ -88,6 +91,7 @@
 .rep-chart-title { font-size: 12px; font-weight: 700; color: #1e40af; padding: 12px 16px 0; display: flex; align-items: center; gap: 7px; }
 .rep-chart-body { padding: 10px 16px 14px; height: 220px; }
 .rep-chart-body canvas { max-height: 100%; }
+.rep-chart-wrap { position: relative; width: 100%; height: 100%; overflow: hidden; }
 
 /* ── Stats row ── */
 .rep-stats-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid #f1f5f9; background: #fafbfc; }
@@ -145,46 +149,16 @@
         <div class="rep-hero-left">
             <h2>
                 <i class="bi bi-bar-chart-line-fill" style="color:#2563eb;"></i>
-                Reportes Operativos
+                Reportes de Servicios Técnicos
             </h2>
-            <p>Estadísticas en tiempo real · KPIs · Gráficos interactivos · Exportación enterprise</p>
-            @if($esMaster)
-                <span class="rep-hero-badge"><i class="bi bi-globe2"></i> Administrador Master — todas las sucursales</span>
+            <p>Estadísticas en tiempo real · KPIs · Gráficos interactivos de tus órdenes asignadas</p>
+            @if($esTecnicoMaster)
+                <span class="rep-hero-badge"><i class="bi bi-person-workspace"></i> Técnico Master — Vista de sucursal</span>
             @else
-                <span class="rep-hero-badge"><i class="bi bi-building"></i> Vista de su sucursal</span>
+                <span class="rep-hero-badge"><i class="bi bi-person-check"></i> Técnico — Tus órdenes asignadas</span>
             @endif
         </div>
     </div>
-
-    @if(session('es_superadmin') || !empty(session('permisos')['inv_repuestos']['ver']))
-    {{-- ════ BANNER AUDITORÍA DE REPUESTOS ════ --}}
-    <div class="rep-card" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25); position: relative; overflow: hidden; margin-bottom: 18px;">
-        <div style="position: absolute; right: -50px; bottom: -50px; font-size: 220px; color: rgba(255, 255, 255, 0.05); pointer-events: none; line-height: 1;">
-            <i class="bi bi-shield-check"></i>
-        </div>
-        <div style="padding: 24px 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; position: relative; z-index: 2;">
-            <div style="display: flex; align-items: center; gap: 20px; flex: 1; min-width: 280px;">
-                <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.25); flex-shrink: 0;">
-                    <i class="bi bi-clock-history" style="font-size: 28px; color: #ffffff;"></i>
-                </div>
-                <div>
-                    <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 2px 10px; font-size: 10px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                        <i class="bi bi-stars"></i> Nuevo Módulo
-                    </div>
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
-                        Historial de Auditoría de Repuestos
-                    </h3>
-                    <p style="margin: 6px 0 0; color: rgba(255, 255, 255, 0.85); font-size: 13px; line-height: 1.5; max-width: 800px;">
-                        Consulte el registro histórico detallado de asignación y consumo de repuestos en bodega. Visualice los costos financieros en tiempo real, filtre por técnicos responsables y exporte en formatos CSV o Excel Enterprise.
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('repuestos.auditoria') }}" class="rep-btn" style="background: #ffffff; color: #4f46e5; border: none; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 0, 0, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 0, 0, 0.1)';">
-                <i class="bi bi-journal-text" style="font-size: 16px;"></i> Ir a Auditoría de Stock <i class="bi bi-arrow-right" style="font-size: 14px;"></i>
-            </a>
-        </div>
-    </div>
-    @endif
 
     {{-- ════ FILTROS ════ --}}
     <div class="rep-card">
@@ -202,21 +176,37 @@
 
                 <div class="rep-campo">
                     <label>Técnico</label>
-                    <select name="tecnico_id" id="f-tecnico">
-                        <option value="">Todos</option>
-                        @foreach($tecnicos as $t)
-                            <option value="{{ $t->id }}">{{ $t->nombre_tecnico }}</option>
-                        @endforeach
+                    <select name="tecnico_id" id="f-tecnico" {{ (!$esTecnicoMaster && !session('es_superadmin') && !in_array($rol, ['master', 'admin'])) ? 'disabled' : '' }}>
+                        @if(!$esTecnicoMaster && !session('es_superadmin') && !in_array($rol, ['master', 'admin']))
+                            @foreach($tecnicos as $t)
+                                @if((int)$t->id === (int)$tecnicoSesionId)
+                                    <option value="{{ $t->id }}" selected>{{ $t->nombre_tecnico }}</option>
+                                @endif
+                            @endforeach
+                        @else
+                            <option value="">Todos de la sucursal</option>
+                            @foreach($tecnicos as $t)
+                                <option value="{{ $t->id }}" {{ (int) $t->id === (int) $tecnicoSesionId ? 'selected' : '' }}>{{ $t->nombre_tecnico }}</option>
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
                 <div class="rep-campo">
                     <label>Sucursal Novitec</label>
-                    <select name="sucursal_id" id="f-sucursal">
-                        <option value="">Todas</option>
-                        @foreach($sucursales as $s)
-                            <option value="{{ $s->id }}">{{ $s->ciudad }}</option>
-                        @endforeach
+                    <select name="sucursal_id" id="f-sucursal" {{ (!session('es_superadmin') && !in_array($rol, ['master', 'admin'])) ? 'disabled' : '' }}>
+                        @if(!session('es_superadmin') && !in_array($rol, ['master', 'admin']))
+                            @foreach($sucursales as $s)
+                                @if((int)$s->id === (int)$sucursalSesion)
+                                    <option value="{{ $s->id }}" selected>{{ $s->ciudad }}</option>
+                                @endif
+                            @endforeach
+                        @else
+                            <option value="">Todas</option>
+                            @foreach($sucursales as $s)
+                                <option value="{{ $s->id }}" {{ (int) $s->id === (int) $sucursalSesion ? 'selected' : '' }}>{{ $s->ciudad }}</option>
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
@@ -246,16 +236,6 @@
                         <option value="">Todos</option>
                         <option value="personal">Personal</option>
                         <option value="empresa">Empresa</option>
-                    </select>
-                </div>
-
-                <div class="rep-campo" id="campo-empresa">
-                    <label>Empresa (Filtro Corporativo)</label>
-                    <select name="empresa_id" id="f-empresa">
-                        <option value="">Todas</option>
-                        @foreach($empresas as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->nombre }}</option>
-                        @endforeach
                     </select>
                 </div>
 
@@ -392,11 +372,11 @@
         <div class="rep-charts-2">
             <div class="rep-chart-card">
                 <div class="rep-chart-title"><i class="bi bi-pie-chart-fill" style="color:#6366f1;"></i> Distribución por estado</div>
-                <div class="rep-chart-body"><canvas id="ch-estados"></canvas></div>
+                <div class="rep-chart-body"><div class="rep-chart-wrap"><canvas id="ch-estados"></canvas></div></div>
             </div>
             <div class="rep-chart-card">
-                <div class="rep-chart-title"><i class="bi bi-person-lines-fill" style="color:#2563eb;"></i> Órdenes por técnico (Top 10)</div>
-                <div class="rep-chart-body"><canvas id="ch-tecnicos"></canvas></div>
+                <div class="rep-chart-title"><i class="bi bi-person-lines-fill" style="color:#2563eb;"></i> Órdenes por técnico</div>
+                <div class="rep-chart-body"><div class="rep-chart-wrap"><canvas id="ch-tecnicos"></canvas></div></div>
             </div>
         </div>
 
@@ -404,15 +384,15 @@
         <div class="rep-charts-3">
             <div class="rep-chart-card">
                 <div class="rep-chart-title"><i class="bi bi-tag-fill" style="color:#f59e0b;"></i> Top marcas</div>
-                <div class="rep-chart-body"><canvas id="ch-marcas"></canvas></div>
+                <div class="rep-chart-body"><div class="rep-chart-wrap"><canvas id="ch-marcas"></canvas></div></div>
             </div>
             <div class="rep-chart-card">
                 <div class="rep-chart-title"><i class="bi bi-laptop" style="color:#10b981;"></i> Tipo de equipo</div>
-                <div class="rep-chart-body"><canvas id="ch-tipos"></canvas></div>
+                <div class="rep-chart-body"><div class="rep-chart-wrap"><canvas id="ch-tipos"></canvas></div></div>
             </div>
             <div class="rep-chart-card">
                 <div class="rep-chart-title"><i class="bi bi-buildings" style="color:#8b5cf6;"></i> Personal vs Empresa</div>
-                <div class="rep-chart-body"><canvas id="ch-tipoorden"></canvas></div>
+                <div class="rep-chart-body"><div class="rep-chart-wrap"><canvas id="ch-tipoorden"></canvas></div></div>
             </div>
         </div>
 
@@ -481,9 +461,8 @@ let _all = [], _filtered = [], _charts = {};
 let _sortCol = -1, _sortDir = 1;
 let _reportesPager = null;
 let _chartJsLoaded = false;
-const ES_MASTER = @json($esMaster);
-const RUTA_FILTRAR = @json(route('reportes.filtrar'));
-
+const ES_MASTER = @json($esTecnicoMaster);
+const RUTA_FILTRAR = @json(route('reportes.tecnico.filtrar'));
 
 /* ═══════════ COLORES ESTADO ═══════════ */
 const ESTADO_C = {
@@ -543,7 +522,6 @@ const FILTROS = [
     { id:'f-cas',       label:'CAS',         sel:true  },
     { id:'f-estado',    label:'Estado',      sel:true  },
     { id:'f-tipo-orden',label:'Tipo orden',  sel:true  },
-    { id:'f-empresa',   label:'Empresa',     sel:true  },
     { id:'f-marca',     label:'Marca',       sel:true  },
     { id:'f-tipo',      label:'Tipo equipo', sel:true  },
     { id:'f-motivo',    label:'Motivo',      sel:true  },
@@ -575,27 +553,14 @@ function actualizarPills() {
     badgeEl.style.display = cnt ? 'inline-block' : 'none';
 }
 
-window.limpiarFiltro = function(id) { const el = document.getElementById(id); if (el) el.value = ''; actualizarPills(); };
+window.limpiarFiltro = function(id) { 
+    const el = document.getElementById(id); 
+    if (el && !el.disabled) { 
+        el.value = ''; 
+        actualizarPills(); 
+    } 
+};
 FILTROS.forEach(f => { const el = document.getElementById(f.id); if (!el) return; el.addEventListener('change', actualizarPills); if (el.type === 'date') el.addEventListener('input', actualizarPills); });
-
-// Toggle Empresa filter based on Tipo Orden
-const fTipoOrden = document.getElementById('f-tipo-orden');
-const campoEmpresa = document.getElementById('campo-empresa');
-const fEmpresa = document.getElementById('f-empresa');
-if (fTipoOrden && campoEmpresa) {
-    fTipoOrden.addEventListener('change', function() {
-        if (this.value === 'personal') {
-            campoEmpresa.style.display = 'none';
-            if (fEmpresa) fEmpresa.value = '';
-        } else {
-            campoEmpresa.style.display = 'block';
-        }
-        actualizarPills();
-    });
-    if (fTipoOrden.value === 'personal') {
-        campoEmpresa.style.display = 'none';
-    }
-}
 
 /* === GENERAR REPORTE === */
 document.getElementById('rep-form').addEventListener('submit', function(e) {
@@ -611,7 +576,7 @@ function loadChartJs() {
         ];
         let i = 0;
         function tryNext() {
-            if (i >= urls.length) { resolve(); return; } // resolve anyway, charts wont show but table will
+            if (i >= urls.length) { resolve(); return; }
             const s = document.createElement('script'); s.src = urls[i++];
             s.onload = resolve;
             s.onerror = tryNext;
@@ -629,7 +594,6 @@ async function generarReporte() {
     document.getElementById('rep-resultados').style.display = 'none';
     ['btn-pdf','btn-xlsx','btn-csv'].forEach(id => document.getElementById(id).disabled = true);
 
-    // Build params manually to avoid FormData issues
     const form = document.getElementById('rep-form');
     const inputs = form.querySelectorAll('input, select');
     const params = new URLSearchParams();
@@ -652,7 +616,6 @@ async function generarReporte() {
         document.getElementById('rep-resultados').style.display = 'block';
         renderKpis();
         renderTabla();
-        // Load Chart.js and render charts (non-blocking)
         loadChartJs().then(() => {
             try { renderCharts(); } catch(ce) { console.warn('Charts error:', ce); }
         });
@@ -688,7 +651,6 @@ function renderKpis() {
 function dc(id) { if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; } }
 function renderCharts() {
     const rows = _all;
-    // 1. Estados
     dc('estados');
     const eC = countBy(rows, 'estado_orden');
     const eL = Object.keys(eC);
@@ -697,7 +659,7 @@ function renderCharts() {
         data: { labels: eL, datasets: [{ data: Object.values(eC), backgroundColor: eL.map(l => (ESTADO_C[l]||{ch:'#94a3b8'}).ch), borderWidth: 2, borderColor: '#fff' }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ boxWidth:12, font:{ size:11 } } } } }
     });
-    // 2. Técnicos
+    
     dc('tecnicos');
     const tT = topN(countBy(rows, 'tecnico_nombre'), 10);
     _charts['tecnicos'] = new Chart(document.getElementById('ch-tecnicos'), {
@@ -705,7 +667,7 @@ function renderCharts() {
         data: { labels: tT.map(x=>x[0]), datasets: [{ label:'Órdenes', data: tT.map(x=>x[1]), backgroundColor:'#3b82f6', borderRadius:5 }] },
         options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
     });
-    // 3. Marcas
+    
     dc('marcas');
     const mT = topN(countBy(rows, 'marca'), 8);
     _charts['marcas'] = new Chart(document.getElementById('ch-marcas'), {
@@ -713,7 +675,7 @@ function renderCharts() {
         data: { labels: mT.map(x=>x[0]), datasets: [{ label:'Órdenes', data: mT.map(x=>x[1]), backgroundColor: PAL, borderRadius:5 }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
     });
-    // 4. Tipo equipo
+    
     dc('tipos');
     const tpT = topN(countBy(rows, 'tipo_equipo'), 8);
     _charts['tipos'] = new Chart(document.getElementById('ch-tipos'), {
@@ -721,7 +683,7 @@ function renderCharts() {
         data: { labels: tpT.map(x=>x[0]), datasets: [{ data: tpT.map(x=>x[1]), backgroundColor: PAL, borderWidth:2, borderColor:'#fff' }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } } } }
     });
-    // 5. Tipo orden
+    
     dc('tipoorden');
     const toC = countBy(rows, 'tipo_orden');
     _charts['tipoorden'] = new Chart(document.getElementById('ch-tipoorden'), {
@@ -766,7 +728,6 @@ function renderTabla() {
 
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
-        const valNovicompu = (r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? Number(r.valor_novicompu).toFixed(2) : '0.00';
         return `<tr data-row="reporte" ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_de_ingreso)}</td>
@@ -790,7 +751,7 @@ function renderTabla() {
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_entrega || '—')}</td>
             ${pdfOrdenCol}
             ${pdfInformeCol}
-            <td style="text-align:right;font-weight:700;font-family:monospace;color:${Number(valNovicompu) > 0 ? '#166534' : '#64748b'};">$${valNovicompu}</td>
+            <td style="text-align:right;font-weight:700;font-family:monospace;color:${Number((r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? r.valor_novicompu : 0) > 0 ? '#166534' : '#64748b'};">$${((r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? Number(r.valor_novicompu) : 0).toFixed(2)}</td>
         </tr>`;
     }).join('');
     
@@ -838,7 +799,13 @@ window.sortTabla = function(col, key) {
 
 /* ═══════════ LIMPIAR ═══════════ */
 window.limpiarFiltros = function() {
-    FILTROS.forEach(f => { const el = document.getElementById(f.id); if (el) { el.value = ''; el.classList.remove('filter-active'); } });
+    FILTROS.forEach(f => { 
+        const el = document.getElementById(f.id); 
+        if (el && !el.disabled) { 
+            el.value = ''; 
+            el.classList.remove('filter-active'); 
+        } 
+    });
     document.getElementById('rep-pills').innerHTML = '';
     document.getElementById('badge-filtros').style.display = 'none';
     document.getElementById('rep-resultados').style.display = 'none';
@@ -860,7 +827,7 @@ function getFiltrosTxt() {
 }
 
 /* ════════════════════════════════════════════════
-   PDF ENTERPRISE — igual formato que imprimir.blade.php
+    PDF ENTERPRISE
 ════════════════════════════════════════════════ */
 document.getElementById('btn-pdf').addEventListener('click', generarPDFEnterprise);
 
@@ -881,18 +848,19 @@ function generarPDFEnterprise() {
         params.append('buscar', buscar.value);
     }
     
-    const url = '{{ route("reportes.imprimir") }}?' + params.toString();
+    const url = '{{ route("reportes.tecnico.imprimir") }}?' + params.toString();
     window.open(url, '_blank');
+}
 }
 
 /* ════════════════════════════════════════════════
-   CSV ENTERPRISE
+    CSV ENTERPRISE
 ════════════════════════════════════════════════ */
 document.getElementById('btn-csv').addEventListener('click', exportarCSV);
 
 function exportarCSV() {
     if (!_filtered.length) { alert('No hay datos para exportar.'); return; }
-    const BOM = '\uFEFF'; // UTF-8 BOM para Excel
+    const BOM = '\uFEFF';
     const headers = [
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
@@ -925,12 +893,12 @@ function exportarCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reporte_novitec_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `reporte_tecnico_novitec_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(url);
 }
 
 /* ════════════════════════════════════════════════
-   XLSX ENTERPRISE con ExcelJS
+    XLSX ENTERPRISE con ExcelJS
 ════════════════════════════════════════════════ */
 document.getElementById('btn-xlsx').addEventListener('click', () => {
     document.getElementById('btn-xlsx').disabled = true;
@@ -996,7 +964,6 @@ async function exportarXLSX() {
     const tT2 = topN(countBy(_filtered, 'tecnico_nombre'), 10);
     const tiT2 = topN(countBy(_filtered, 'tipo_equipo'), 10);
 
-    /* ══ HOJA 1: DETALLE ══ */
     const cols1 = [
         'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Días','Vencida',
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
@@ -1019,9 +986,8 @@ async function exportarXLSX() {
     });
     ws1.columns = widths1.map(w => ({ width:w }));
 
-    // Titulo
     ws1.mergeCells(1, 1, 1, nc);
-    const t1 = ws1.getCell('A1'); t1.value = 'REPORTE DE ÓRDENES DE SERVICIO — Novitecnología Cía. Ltda.';
+    const t1 = ws1.getCell('A1'); t1.value = 'REPORTE DE ÓRDENES DE SERVICIO TÉCNICO';
     t1.fill = fl(C.azulO); t1.font = fn(true, 14, C.blanco); t1.alignment = al('center'); ws1.getRow(1).height = 30;
 
     ws1.mergeCells(2, 1, 2, nc);
@@ -1029,7 +995,6 @@ async function exportarXLSX() {
     t2.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   Total registros: ${total}   |   Filtros: ${getFiltrosTxt().join(' · ') || 'Ninguno'}`;
     t2.fill = fl(C.azulL); t2.font = fn(false, 10, C.azulO, { italic:true }); t2.alignment = al('center'); ws1.getRow(2).height = 16;
 
-    // KPIs
     const kpis = [
         { l:'TOTAL',      v:total,                p:'100%',            bg:C.azulXL,  fg:C.azul  },
         { l:'PENDIENTES', v:cnt['Pendiente'],      p:pp(cnt['Pendiente']),   bg:C.ambarL,  fg:C.ambar },
@@ -1051,15 +1016,13 @@ async function exportarXLSX() {
         const pc = ws1.getCell(5, col); pc.value = k.p; pc.font = fn(false, 9, k.fg); pc.alignment = al('center');
     });
 
-    // Separador resumen
     ws1.mergeCells(6, 1, 6, nc);
     const sep6 = ws1.getCell(6, 1); sep6.value = 'RESUMEN EJECUTIVO';
     sep6.fill = fl(C.azulO); sep6.font = fn(true, 10, C.blanco); sep6.alignment = al('center'); ws1.getRow(6).height = 18;
 
-    // Resumen: estados | marcas | tecnicos
     const resHdr = ['Estado','Cant.','%','','Marca','Cant.','%','','Técnico','Cant.','%'];
     ws1.getRow(7).height = 15;
-    resHdr.forEach((h, i) => { if (!h) return; const c = ws1.getCell(7, i+1); c.value = h; c.fill = fl(C.grisMed); c.font = fn(true, 9, C.negro); c.alignment = al('center'); c.border = bd(); });
+    resHdr.forEach((h, i) => { if (!h) return; const c = ws1.getCell(7, i+1); c.value = h; c.fill = fl(C.grisMed); c.font = fn(true, 9, C.negro); c.alignment = al(i===0?'left':'center'); c.border = bd('CBD5E1'); });
 
     const estadosList = [
         ['Total Órdenes', total, '100%', C.azulXL, C.azul],
@@ -1094,7 +1057,6 @@ async function exportarXLSX() {
         }
     }
 
-    // Encabezado tabla
     const sepR = 8 + maxR + 1;
     ws1.getRow(sepR - 1).height = 6;
     ws1.mergeCells(sepR, 1, sepR, nc);
@@ -1109,7 +1071,6 @@ async function exportarXLSX() {
     ws1.autoFilter = { from:{ row:hRowN, column:1 }, to:{ row:hRowN, column:nc } };
     ws1.views = [{ state:'frozen', ySplit:hRowN }];
 
-    // Datos
     _filtered.forEach((r, idx) => {
         const rawId = String(r.id).replace('empresa-', '');
         const pdfOrdenUrl = window.location.origin + (r.tipo_orden === 'empresa' 
@@ -1171,7 +1132,6 @@ async function exportarXLSX() {
         cellInforme.fill = fl(bgBase);
     });
 
-    /* ══ HOJA 2: ESTADÍSTICAS ══ */
     const ws2 = wb.addWorksheet('Estadísticas', { views:[{ showGridLines:false }] });
     ws2.columns = [{ width:2 },{ width:30 },{ width:13 },{ width:10 },{ width:20 },{ width:3 },{ width:30 },{ width:13 },{ width:10 },{ width:20 }];
 
@@ -1194,7 +1154,7 @@ async function exportarXLSX() {
     }
 
     ws2.mergeCells(1, 1, 1, 10);
-    const tS = ws2.getCell('A1'); tS.value = 'ESTADÍSTICAS — Novitecnología Cía. Ltda.';
+    const tS = ws2.getCell('A1'); tS.value = 'ESTADÍSTICAS DE ÓRDENES TÉCNICAS';
     tS.fill = fl(C.azulO); tS.font = fn(true, 15, C.blanco); tS.alignment = al('center'); ws2.getRow(1).height = 32;
     ws2.mergeCells(2, 1, 2, 10);
     const dS = ws2.getCell('A2'); dS.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   ${total} órdenes en el período`;
@@ -1219,12 +1179,11 @@ async function exportarXLSX() {
     const toArr = Object.entries(countBy(_filtered, 'tipo_orden')).map(x => [x[0].charAt(0).toUpperCase()+x[0].slice(1), x[1], pp(x[1])]);
     addSec2('TIPO DE ORDEN', ['Tipo','Órdenes','%'], toArr, bR, 2, '0369A1', '0369A1');
 
-    /* Guardar */
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `reporte_novitec_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.href = url; a.download = `reporte_tecnico_novitec_${new Date().toISOString().slice(0,10)}.xlsx`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
@@ -1233,4 +1192,3 @@ async function exportarXLSX() {
 @endpush
 
 @include('layouts.asistente_widget')
-

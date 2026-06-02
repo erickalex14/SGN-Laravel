@@ -20,10 +20,102 @@ class GuardarOrdenRequest extends FormRequest
 
         $reglas = [
             // Validacion de Cliente
-            'cli_identificacion' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:20'],
-            'cli_nombres'        => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100'],
-            'cli_apellidos'      => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100'],
-            'cli_telefono'       => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:20'],
+            'cli_identificacion' => [
+                $esEmpresa ? 'nullable' : 'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (empty($value)) return;
+                    $value = trim($value);
+                    $len = strlen($value);
+                    if ($len !== 10 && $len !== 13) {
+                        return $fail('La identificación debe tener 10 dígitos (cédula) o 13 dígitos (RUC).');
+                    }
+                    if (!ctype_digit($value)) {
+                        return $fail('La identificación sólo debe contener números.');
+                    }
+                    if ($len === 10) {
+                        $provincia = (int) substr($value, 0, 2);
+                        if (($provincia < 1 || $provincia > 24) && $provincia !== 30) {
+                            return $fail('El código de provincia de la cédula no es válido.');
+                        }
+                        $tercerDigito = (int) $value[2];
+                        if ($tercerDigito >= 6) {
+                            return $fail('El número de cédula no es válido.');
+                        }
+                        $decimoDigito = (int) $value[9];
+                        $suma = 0;
+                        for ($i = 0; $i < 9; $i++) {
+                            $coef = ($i % 2 === 0) ? 2 : 1;
+                            $val = (int) $value[$i] * $coef;
+                            if ($val >= 10) {
+                                $val -= 9;
+                            }
+                            $suma += $val;
+                        }
+                        $residuo = $suma % 10;
+                        $resultado = ($residuo === 0) ? 0 : 10 - $residuo;
+                        if ($resultado !== $decimoDigito) {
+                            return $fail('La cédula ingresada no es válida.');
+                        }
+                    } else {
+                        if (!str_ends_with($value, '001')) {
+                            return $fail('El RUC debe terminar en 001.');
+                        }
+                        $provincia = (int) substr($value, 0, 2);
+                        if (($provincia < 1 || $provincia > 24) && $provincia !== 30) {
+                            return $fail('El código de provincia del RUC no es válido.');
+                        }
+                        $tercerDigito = (int) $value[2];
+                        if ($tercerDigito < 6) {
+                            $cedula = substr($value, 0, 10);
+                            $decimoDigito = (int) $cedula[9];
+                            $suma = 0;
+                            for ($i = 0; $i < 9; $i++) {
+                                $coef = ($i % 2 === 0) ? 2 : 1;
+                                $val = (int) $cedula[$i] * $coef;
+                                if ($val >= 10) {
+                                    $val -= 9;
+                                }
+                                $suma += $val;
+                            }
+                            $residuo = $suma % 10;
+                            $resultado = ($residuo === 0) ? 0 : 10 - $residuo;
+                            if ($resultado !== $decimoDigito) {
+                                return $fail('El RUC ingresado no corresponde a una cédula válida.');
+                            }
+                        } elseif ($tercerDigito === 9) {
+                            $digitoVerificador = (int) $value[9];
+                            $coeficientes = [4, 3, 2, 7, 6, 5, 4, 3, 2];
+                            $suma = 0;
+                            for ($i = 0; $i < 9; $i++) {
+                                $suma += (int)$value[$i] * $coeficientes[$i];
+                            }
+                            $residuo = $suma % 11;
+                            $resultado = ($residuo === 0) ? 0 : 11 - $residuo;
+                            if ($resultado !== $digitoVerificador) {
+                                return $fail('El RUC de persona jurídica ingresado no es válido.');
+                            }
+                        } elseif ($tercerDigito === 6) {
+                            $digitoVerificador = (int) $value[8];
+                            $coeficientes = [3, 2, 7, 6, 5, 4, 3, 2];
+                            $suma = 0;
+                            for ($i = 0; $i < 8; $i++) {
+                                $suma += (int)$value[$i] * $coeficientes[$i];
+                            }
+                            $residuo = $suma % 11;
+                            $resultado = ($residuo === 0) ? 0 : 11 - $residuo;
+                            if ($resultado !== $digitoVerificador) {
+                                return $fail('El RUC de entidad pública ingresado no es válido.');
+                            }
+                        } else {
+                            return $fail('El RUC ingresado no es válido.');
+                        }
+                    }
+                }
+            ],
+            'cli_nombres'        => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_apellidos'      => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_telefono'       => [$esEmpresa ? 'nullable' : 'required', 'string', 'regex:/^0[0-9]{9}$/'],
             'cli_correo'         => ['nullable', 'email', 'max:100'],
             'cli_direccion'      => ['nullable', 'string', 'max:200'],
 
@@ -89,6 +181,15 @@ class GuardarOrdenRequest extends FormRequest
         }
 
         return $reglas;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'cli_nombres.regex' => 'El nombre del cliente sólo debe contener letras, tildes y espacios.',
+            'cli_apellidos.regex' => 'El apellido del cliente sólo debe contener letras, tildes y espacios.',
+            'cli_telefono.regex' => 'El teléfono del cliente debe tener el formato ecuatoriano de 10 números (ej: 0987654321).',
+        ];
     }
 
     protected function failedValidation(Validator $validator)
