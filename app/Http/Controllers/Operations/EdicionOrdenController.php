@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Operations;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\GuardarEdicionOrdenRequest;
+use App\Http\Requests\Operations\GuardarEdicionOrdenEmpresaRequest;
 use App\Services\Operations\ActualizarOrdenService;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\PrecioEstandarRepository;
 use App\Repositories\Inventory\ProductoRepository;
 use App\Repositories\Operations\TipoServicioRepository;
+use App\Repositories\Identity\UsuarioRepository;
 use App\DTOs\Operations\ActualizarOrdenDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -24,19 +26,22 @@ class EdicionOrdenController extends Controller
     protected PrecioEstandarRepository $precioRepo;
     protected ProductoRepository $productoRepo;
     protected TipoServicioRepository $tipoServicioRepo;
+    protected UsuarioRepository $usuarioRepo;
 
     public function __construct(
         ActualizarOrdenService $service,
         OrdenRepository $ordenRepo,
         PrecioEstandarRepository $precioRepo,
         ProductoRepository $productoRepo,
-        TipoServicioRepository $tipoServicioRepo
+        TipoServicioRepository $tipoServicioRepo,
+        UsuarioRepository $usuarioRepo
     ) {
         $this->service = $service;
         $this->ordenRepo = $ordenRepo;
         $this->precioRepo = $precioRepo;
         $this->productoRepo = $productoRepo;
         $this->tipoServicioRepo = $tipoServicioRepo;
+        $this->usuarioRepo = $usuarioRepo;
     }
 
     public function edit(int $id): View
@@ -138,5 +143,49 @@ class EdicionOrdenController extends Controller
             'ok'      => true,
             'ordenes' => $resultados
         ]);
+    }
+
+    public function editEmpresa(int $id): View
+    {
+        $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
+
+        if (!$orden) {
+            abort(404, 'La orden corporativa solicitada no fue encontrada.');
+        }
+
+        $verTodosTecnicos = (bool) session('es_superadmin', false)
+            || $this->tienePermisoSesion('usuarios_crear', 'ver')
+            || $this->tienePermisoSesion('usuarios', 'crear')
+            || $this->tienePermisoSesion('usuarios', 'ver');
+
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual(
+            $verTodosTecnicos,
+            (int) session('sucursal_id'),
+            (int) session('tecnico_id')
+        );
+
+        return view('operations.ordenes.editar_empresa', compact('orden', 'tecnicos'));
+    }
+
+    public function updateEmpresa(GuardarEdicionOrdenEmpresaRequest $request): JsonResponse
+    {
+        try {
+            $this->service->actualizarOrdenEmpresa($request->all(), (int) session('tecnico_id'));
+
+            return response()->json([
+                'ok'      => true,
+                'mensaje' => 'Orden de empresa actualizada correctamente.'
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function tienePermisoSesion(string $modulo, string $accion): bool
+    {
+        $permisos = (array) session('permisos', []);
+        $acciones = (array) ($permisos[$modulo] ?? []);
+        return (bool) ($acciones[$accion] ?? false);
     }
 }

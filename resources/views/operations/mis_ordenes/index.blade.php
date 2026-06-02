@@ -206,7 +206,7 @@
             'tecnico' => (string) ($esEmpresa ? ($ord->tecnico->nombre_tecnico ?? '') : (session('nombre') ?? session('usuario') ?? '')),
             'sucursal' => (string) ($ord->sucursal->ciudad ?? $ord->sucursal->nombre ?? ''),
             'nro_factura' => (string) ($esEmpresa ? ($ord->nro_ticket ?? '') : ($ord->nro_factura ?? '')),
-            'nro_sucursal_cliente' => (string) ($esEmpresa ? '' : ($ord->nro_sucursal_cliente ?? '')),
+            'nro_sucursal_cliente' => (string) ($ord->nro_sucursal_cliente ?? ''),
             'ingresado_por_nombre' => (string) ($esEmpresa
                 ? ($ord->ingresadoPor->nombre_tecnico ?? $ord->ingresadoPor->usuario ?? '')
                 : ($ord->usuarioIngreso->nombre_tecnico ?? $ord->usuarioIngreso->usuario ?? '')),
@@ -1097,6 +1097,7 @@ function verDetalleOrden(cardEl) {
                     <div class="det-campo det-full"><label>Equipo</label><span>${_h((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
                     <div class="det-campo"><label>Serie</label><span>${_h(o.serie || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal</label><span>${_h(o.sucursal || '-')}</span></div>
+                    <div class="det-campo"><label>Sucursal Cliente</label><span>${_h(o.nro_sucursal_cliente || '-')}</span></div>
                     <div class="det-campo"><label>Motivo</label><span>${_h(o.motivo_ingreso || '-')}</span></div>
                     ${esEmpresa ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>

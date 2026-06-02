@@ -297,6 +297,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:ordenes_editar,ver'])->group(function () {
         Route::get('/operaciones/ordenes/editar/{id}', [EdicionOrdenController::class, 'edit'])->name('ordenes.editar');
         Route::post('/operaciones/ordenes/actualizar', [EdicionOrdenController::class, 'update'])->name('ordenes.update');
+        Route::get('/operaciones/ordenes-empresa/editar/{id}', [EdicionOrdenController::class, 'editEmpresa'])->name('ordenes_empresa.editar');
+        Route::post('/operaciones/ordenes-empresa/actualizar', [EdicionOrdenController::class, 'updateEmpresa'])->name('ordenes_empresa.update');
     });
 
     // Buscador Global: accesible a usuarios autenticados, filtrando por alcance interno

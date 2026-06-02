@@ -801,16 +801,18 @@
             acciones.appendChild(btnInf);
         }
 
-        // Editar (solo órdenes personales)
-        if (!esEmpresa) {
-            var btnEdit   = document.createElement('button');
-            btnEdit.className = 'bo-accion editar';
-            btnEdit.innerHTML = '<i class="bi bi-pencil-square"></i>Editar Orden';
-            btnEdit.onclick   = function () {
+        // Editar
+        var btnEdit   = document.createElement('button');
+        btnEdit.className = 'bo-accion editar';
+        btnEdit.innerHTML = '<i class="bi bi-pencil-square"></i>Editar Orden';
+        btnEdit.onclick   = function () {
+            if (esEmpresa) {
+                window.location.href = '/operaciones/ordenes-empresa/editar/' + o.orden_id;
+            } else {
                 window.location.href = URL_EDITAR + o.orden_id;
-            };
-            acciones.appendChild(btnEdit);
-        }
+            }
+        };
+        acciones.appendChild(btnEdit);
 
         // Mostrar panel
         elResultados.style.display = 'none';

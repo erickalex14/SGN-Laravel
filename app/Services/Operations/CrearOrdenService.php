@@ -223,11 +223,11 @@ class CrearOrdenService
                     $subtipo = trim((string) $data['subtipo_empresa']);
                     $descripcion = trim((string) ($data['emp_descripcion'] ?? ''));
 
-                    if (!in_array($subtipo, ['Autoconsumo', 'Servicios'], true)) {
-                        throw new Exception('Selecciona el tipo (Autoconsumo o Servicios).');
+                    if (!in_array($subtipo, ['Autoconsumo', 'Servicios', 'Stock'], true)) {
+                        throw new Exception('Selecciona el tipo (Autoconsumo, Servicios o Stock).');
                     }
 
-                    if ($subtipo === 'Autoconsumo') {
+                    if ($subtipo === 'Autoconsumo' || $subtipo === 'Stock') {
                         $series = $this->normalizarSeries((array) ($data['emp_series'] ?? []));
                         $codigoProducto = strtoupper(trim((string) ($data['emp_modelo'] ?? '')));
 
@@ -269,7 +269,30 @@ class CrearOrdenService
                         ]);
                     }
 
+                    $esNovisolutionsServicio = ($subtipo === 'Servicios');
+
+                    $tecnicosAsignados = $data['tecnicos_asignados'] ?? [];
+                    if (!is_array($tecnicosAsignados)) {
+                        $tecnicosAsignados = [$tecnicosAsignados];
+                    }
+                    $tecnicosAsignados = array_map('intval', array_filter($tecnicosAsignados));
+
+                    $primaryTecnicoId = $esNovisolutionsServicio && !empty($tecnicosAsignados)
+                        ? (int) $tecnicosAsignados[0]
+                        : (int) $data['ord_tecnico_id'];
+
                     $nroOrden = $this->ordenRepo->generarNumeroOrden($sucursalId);
+
+                    $ticketVal = null;
+                    if ($subtipo === 'Servicios') {
+                        $ticketVal = trim((string) ($data['emp_nro_ticket'] ?? ''));
+                        if ($ticketVal === '') {
+                            $count = DB::table('ordenesempresas')->where('subtipo', 'Servicios')->count();
+                            $siguienteSecuencial = $count + 1;
+                            $codigoAleatorio = strtoupper(substr(md5(uniqid('', true)), 0, 4));
+                            $ticketVal = 'TK-' . $codigoAleatorio . '-' . str_pad($siguienteSecuencial, 4, '0', STR_PAD_LEFT);
+                        }
+                    }
 
                     $orden = OrdenEmpresa::create([
                         'nro_orden' => $nroOrden,
@@ -277,15 +300,24 @@ class CrearOrdenService
                         'subtipo' => $subtipo,
                         'equipo_id' => $equipo->id,
                         'tipo_servicio' => $subtipo === 'Servicios' ? trim((string) $data['emp_tipo_servicio']) : null,
-                        'nro_ticket' => $subtipo === 'Servicios' ? trim((string) $data['emp_nro_ticket']) : null,
+                        'nro_ticket' => $ticketVal,
                         'descripcion' => $subtipo === 'Servicios' ? $descripcion : trim((string) $data['emp_falla']),
-                        'tecnico_id' => (int) $data['ord_tecnico_id'],
+                        'tecnico_id' => $primaryTecnicoId,
                         'sucursal_id' => $sucursalId,
                         'ingresado_por' => (int) $data['ingresado_por'],
                         'fecha_prometido' => $data['emp_fecha_prometido'],
                         'estado' => 'Pendiente',
                         'fecha_ingreso' => $data['fecha_ingreso'],
+                        'nro_sucursal_cliente' => $subtipo === 'Stock' ? (string) ($data['nro_sucursal_cliente'] ?? null) : null,
+                        'valor_hora' => $esNovisolutionsServicio ? (float) ($data['valor_hora'] ?? 0) : null,
+                        'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($data['horas_trabajadas'] ?? 0) : null,
                     ]);
+
+                    if ($esNovisolutionsServicio && !empty($tecnicosAsignados)) {
+                        $orden->tecnicos()->sync($tecnicosAsignados);
+                    } else {
+                        $orden->tecnicos()->sync([$primaryTecnicoId]);
+                    }
 
                     Log::info('Orden de empresa creada exitosamente.', [
                         'nro_orden' => $nroOrden,
