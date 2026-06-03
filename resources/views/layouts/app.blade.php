@@ -250,10 +250,12 @@
                                         <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
                                     </a>
+                                    {{--
                                     <a data-tip="Reportes" href="{{ route('reportes.tecnico') }}">
                                         <i class="bi bi-bar-chart-line" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Reportes</span>
                                     </a>
+                                    --}}
                                 @endif
                                 {{-- Buscar Informes: Admin (tienen informes,ver) + Superadmin --}}
                                 @if ($sa || $can('informes', 'ver'))
