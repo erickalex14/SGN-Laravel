@@ -25,7 +25,15 @@ class GuardarEdicionOrdenRequest extends FormRequest
             'valor_estandar_id'      => ['nullable', 'integer'],
             'repuesto_inventario_id' => ['nullable', 'integer'],
             'fecha_prometido'        => ['nullable', 'date'],
+            'cas_id'                 => ['nullable', 'integer', 'exists:cas,id'],
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        if ($this->has('cas_id') && $this->input('cas_id') === '') {
+            $this->merge(['cas_id' => null]);
+        }
     }
 
     protected function failedValidation(Validator $validator)

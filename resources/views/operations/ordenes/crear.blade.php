@@ -142,7 +142,7 @@
 .linea-item { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 10px; align-items: center; }
 .btn-mini { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-mini:hover { background: #e2e8f0; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .preord-alert { display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 10px; background: #fffbeb; border: 1.5px solid #fde68a; color: #78350f; }
 .preord-title { font-weight: 800; font-size: 13px; color: #92400e; margin-bottom: 5px; }
 .rep-stock-wrap { display: none; margin-top: 10px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 9px; padding: 12px 14px; }
@@ -448,6 +448,15 @@
                         <label>Fecha Prometido <span class="req">*</span></label>
                         <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido">
                     </div>
+                    <div class="campo hidden" id="bloque-cas-empresa">
+                        <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
+                        <select id="cas_id_empresa" name="cas_id_empresa">
+                            <option value="">-- Seleccione CAS --</option>
+                            @foreach($cas as $c)
+                                <option value="{{ $c->id }}">{{ $c->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 {{-- Bloque de cálculo para NOVISOLUTIONS --}}
@@ -455,11 +464,11 @@
                     <h4 style="margin: 0 0 14px; font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; color: #166534;"><i class="bi bi-calculator"></i> Desglose de Costo de Servicio Corporativo</h4>
                     <div class="grid-2" style="margin-bottom: 14px; gap: 14px;">
                         <div class="campo" style="margin-bottom: 0;">
-                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Tarifa por Hora ($) <span class="req">*</span></label>
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Tarifa por Hora ($)</label>
                             <input type="number" step="0.01" name="valor_hora" id="valor_hora" value="50.00" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
                         </div>
                         <div class="campo" style="margin-bottom: 0;">
-                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Horas Trabajadas <span class="req">*</span></label>
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Horas Trabajadas</label>
                             <input type="number" step="0.25" name="horas_trabajadas" id="horas_trabajadas" value="1.00" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
                         </div>
                     </div>
@@ -535,6 +544,15 @@
                     <div class="campo">
                         <label>Fecha de Facturacion</label>
                         <input type="date" id="fecha_facturacion" name="fecha_facturacion">
+                    </div>
+                    <div class="campo" id="bloque-cas">
+                        <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
+                        <select id="cas_id" name="cas_id">
+                            <option value="">-- Seleccione CAS --</option>
+                            @foreach($cas as $c)
+                                <option value="{{ $c->id }}">{{ $c->nombre }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
             </div>
@@ -2007,6 +2025,7 @@ function verificarNovisolutions() {
     const subtipoRadio = document.querySelector('input[name="subtipo_empresa"]:checked');
     const subtipo = subtipoRadio ? subtipoRadio.value : '';
     const esServicioEmpresa = subtipo === 'Servicios';
+    const requiereEquipo = subtipo === 'Autoconsumo' || subtipo === 'Stock';
     
     const bloqueMultiTecnicos = document.getElementById('bloque-multi-tecnicos');
     const defaultTecnicoDropdown = document.getElementById('tec-dropdown-emp')?.parentElement;
@@ -2026,6 +2045,18 @@ function verificarNovisolutions() {
                 chk.disabled = true;
                 chk.checked = false;
             });
+        }
+    }
+    
+    const bloqueCasEmpresa = document.getElementById('bloque-cas-empresa');
+    if (bloqueCasEmpresa) {
+        if (requiereEquipo) {
+            bloqueCasEmpresa.classList.remove('hidden');
+            document.getElementById('cas_id_empresa').disabled = false;
+        } else {
+            bloqueCasEmpresa.classList.add('hidden');
+            document.getElementById('cas_id_empresa').disabled = true;
+            document.getElementById('cas_id_empresa').value = '';
         }
     }
     

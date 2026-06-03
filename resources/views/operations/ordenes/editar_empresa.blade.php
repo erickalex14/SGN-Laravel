@@ -164,6 +164,17 @@
                         <label>Fecha Prometida de Entrega <span class="req">*</span></label>
                         <input type="date" id="fecha_prometido" name="fecha_prometido" required value="{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('Y-m-d') : '' }}">
                     </div>
+                    @if($orden->subtipo === 'Autoconsumo' || $orden->subtipo === 'Stock')
+                        <div class="campo" id="bloque-cas-empresa">
+                            <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#64748b;">(Opcional)</span></label>
+                            <select id="cas_id_empresa" name="cas_id_empresa">
+                                <option value="">-- Seleccione CAS --</option>
+                                @foreach($cas as $c)
+                                    <option value="{{ $c->id }}" {{ $orden->cas_id == $c->id ? 'selected' : '' }}>{{ $c->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="campo">
@@ -199,11 +210,11 @@
                 <div class="seccion-body">
                     <div class="grid-2" style="margin-bottom: 14px; gap: 14px;">
                         <div class="campo" style="margin-bottom: 0;">
-                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Tarifa por Hora ($) <span class="req">*</span></label>
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Tarifa por Hora ($)</label>
                             <input type="number" step="0.01" name="valor_hora" id="valor_hora" value="{{ number_format($orden->valor_hora, 2, '.', '') }}" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
                         </div>
                         <div class="campo" style="margin-bottom: 0;">
-                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Horas Trabajadas <span class="req">*</span></label>
+                            <label style="color: #166534; font-weight: 700; font-size: 12.5px;">Horas Trabajadas</label>
                             <input type="number" step="0.25" name="horas_trabajadas" id="horas_trabajadas" value="{{ number_format($orden->horas_trabajadas, 2, '.', '') }}" style="border-color: #86efac; padding: 8px 12px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
                         </div>
                     </div>
@@ -287,6 +298,10 @@ async function guardarActualizacionEmpresa() {
     fd.append('fecha_prometido', document.getElementById('fecha_prometido').value);
     fd.append('descripcion', document.getElementById('descripcion').value.trim());
     fd.append('eq_observacion', document.getElementById('eq_observacion').value.trim());
+
+    @if($orden->subtipo === 'Autoconsumo' || $orden->subtipo === 'Stock')
+        fd.append('cas_id_empresa', document.getElementById('cas_id_empresa').value);
+    @endif
 
     @if($orden->subtipo === 'Servicios')
         fd.append('valor_hora', document.getElementById('valor_hora').value);

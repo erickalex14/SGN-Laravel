@@ -31,7 +31,8 @@ class OrdenEmpresa extends Model
         'fecha_ingreso',
         'nro_sucursal_cliente',
         'valor_hora',
-        'horas_trabajadas'
+        'horas_trabajadas',
+        'cas_id'
     ];
 
     public function tecnicos()
@@ -62,6 +63,11 @@ class OrdenEmpresa extends Model
     public function sucursal()
     {
         return $this->belongsTo(Sucursal::class, 'sucursal_id', 'id');
+    }
+
+    public function cas()
+    {
+        return $this->belongsTo(\App\Models\Directory\Cas::class, 'cas_id', 'id');
     }
 
     public function ingresadoPor()

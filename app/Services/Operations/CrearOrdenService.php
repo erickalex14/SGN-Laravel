@@ -77,18 +77,15 @@ class CrearOrdenService
                     throw new Exception('Debe seleccionar al menos un repuesto del inventario cuando el estado es Con stock.');
                 }
 
-                if ($esValidacionGarantia && $garantiaTipo === null) {
-                    throw new Exception('Debe seleccionar el tipo de garantia para la validacion.');
-                }
-
-                if ($garantiaTipo !== 'externa') {
-                    $casId = null;
-                } elseif (empty($casId)) {
-                    throw new Exception('Debe seleccionar el CAS para garantia externa.');
-                }
-
-                if (!$esValidacionGarantia) {
+                if ($esValidacionGarantia) {
+                    if (!empty($casId)) {
+                        $garantiaTipo = $garantiaTipo ?? 'externa';
+                    }
+                } else {
                     $garantiaTipo = null;
+                }
+
+                if ($motivoIngreso === 'Servicio Cliente Externo') {
                     $casId = null;
                 }
 
@@ -294,6 +291,8 @@ class CrearOrdenService
                         }
                     }
 
+                    $casId = !empty($data['cas_id_empresa']) ? (int) $data['cas_id_empresa'] : null;
+
                     $orden = OrdenEmpresa::create([
                         'nro_orden' => $nroOrden,
                         'empresa_id' => (int) $data['empresa_id'],
@@ -304,6 +303,7 @@ class CrearOrdenService
                         'descripcion' => $subtipo === 'Servicios' ? $descripcion : trim((string) $data['emp_falla']),
                         'tecnico_id' => $primaryTecnicoId,
                         'sucursal_id' => $sucursalId,
+                        'cas_id' => $casId,
                         'ingresado_por' => (int) $data['ingresado_por'],
                         'fecha_prometido' => $data['emp_fecha_prometido'],
                         'estado' => 'Pendiente',

@@ -151,6 +151,7 @@ class OrdenRepository
             'tecnico',
             'tecnicos',
             'sucursal',
+            'cas',
             'ingresadoPor',
         ])->find($id);
     }

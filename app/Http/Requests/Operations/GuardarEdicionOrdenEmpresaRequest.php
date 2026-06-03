@@ -32,11 +32,25 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
             'descripcion'        => ['required', 'string'],
             'eq_observacion'     => ['nullable', 'string'],
             'fecha_prometido'    => ['required', 'date'],
-            'valor_hora'         => [$requiereServicioCampos ? 'required' : 'nullable', 'numeric', 'min:0'],
-            'horas_trabajadas'   => [$requiereServicioCampos ? 'required' : 'nullable', 'numeric', 'min:0'],
+            'valor_hora'         => ['nullable', 'numeric', 'min:0'],
+            'horas_trabajadas'   => ['nullable', 'numeric', 'min:0'],
             'tecnicos_asignados' => [$requiereServicioCampos ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
             'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
+            'cas_id_empresa'     => ['nullable', 'integer', 'exists:cas,id'],
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        if ($this->has('valor_hora') && $this->input('valor_hora') === '') {
+            $this->merge(['valor_hora' => null]);
+        }
+        if ($this->has('horas_trabajadas') && $this->input('horas_trabajadas') === '') {
+            $this->merge(['horas_trabajadas' => null]);
+        }
+        if ($this->has('cas_id_empresa') && $this->input('cas_id_empresa') === '') {
+            $this->merge(['cas_id_empresa' => null]);
+        }
     }
 
     protected function failedValidation(Validator $validator)
