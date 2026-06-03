@@ -14,6 +14,7 @@ readonly class ActualizarOrdenDTO
         public ?int $valor_estandar_id,
         public ?int $repuesto_inventario_id,
         public ?string $fecha_prometido,
-        public int $usuario_modificacion_id
+        public int $usuario_modificacion_id,
+        public ?int $cas_id = null
     ) {}
 }

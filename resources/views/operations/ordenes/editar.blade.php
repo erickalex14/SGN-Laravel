@@ -179,6 +179,17 @@
                         <label>Fecha Prometida de Entrega</label>
                         <input type="date" id="fecha_prometido" value="{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('Y-m-d') : '' }}">
                     </div>
+                    @if($orden->motivo_ingreso === 'Validacion de Garantia')
+                        <div class="campo" id="bloque-cas">
+                            <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#64748b;">(Opcional)</span></label>
+                            <select id="cas_id" name="cas_id">
+                                <option value="">-- Seleccione CAS --</option>
+                                @foreach($cas as $c)
+                                    <option value="{{ $c->id }}" {{ $orden->cas_id == $c->id ? 'selected' : '' }}>{{ $c->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="campo">
@@ -267,6 +278,10 @@ async function guardarActualizacion() {
     fd.append('tipo_servicio_id', document.getElementById('tipo_servicio_id').value);
     fd.append('valor_estandar_id', document.getElementById('valor_estandar_id').value);
     fd.append('repuesto_inventario_id', document.getElementById('repuesto_inventario_id').value);
+
+    @if($orden->motivo_ingreso === 'Validacion de Garantia')
+        fd.append('cas_id', document.getElementById('cas_id').value);
+    @endif
 
     const btn = document.getElementById('btn-actualizar');
     btn.disabled = true;

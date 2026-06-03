@@ -46,6 +46,9 @@ class ActualizarOrdenService
                 $orden->valor_estandar_id      = $dto->valor_estandar_id;
                 $orden->repuesto_inventario_id = $dto->repuesto_inventario_id;
                 $orden->fecha_prometido        = $dto->fecha_prometido;
+                if ($orden->motivo_ingreso === 'Validacion de Garantia') {
+                    $orden->cas_id             = $dto->cas_id;
+                }
                 $orden->modificado_por         = $dto->usuario_modificacion_id;
                 $orden->fecha_modificacion     = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
@@ -104,6 +107,8 @@ class ActualizarOrdenService
                         $orden->tecnico_id = (int) $tecnicosAsignados[0];
                         $orden->tecnicos()->sync($tecnicosAsignados);
                     }
+                } else {
+                    $orden->cas_id = isset($data['cas_id_empresa']) && $data['cas_id_empresa'] !== '' ? (int) $data['cas_id_empresa'] : null;
                 }
 
                 $orden->save();

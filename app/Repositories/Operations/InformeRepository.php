@@ -63,8 +63,15 @@ class InformeRepository
 
         $empresas = OrdenEmpresa::query()
             ->with(['empresa', 'equipo', 'tecnico', 'ingresadoPor'])
-            ->whereRaw("subtipo COLLATE utf8mb4_0900_ai_ci = 'Autoconsumo'")
-            ->when(! $esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
+            ->whereRaw("subtipo COLLATE utf8mb4_0900_ai_ci IN ('Autoconsumo', 'Servicios', 'Stock')")
+            ->when(! $esAdmin, function ($q) use ($tecnicoId) {
+                $q->where(function ($query) use ($tecnicoId) {
+                    $query->where('tecnico_id', $tecnicoId)
+                          ->orWhereHas('tecnicos', function ($inner) use ($tecnicoId) {
+                              $inner->where('usuarios.id', $tecnicoId);
+                          });
+                });
+            })
             ->when($esAdmin && ! $esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
             ->orderByDesc('id')
             ->get()
@@ -154,8 +161,15 @@ class InformeRepository
             $ordenEmpresa = OrdenEmpresa::query()
                 ->select(['id', 'tecnico_id', 'sucursal_id', 'estado'])
                 ->where('id', $ordenEmpresaId)
-                ->where('subtipo', 'Autoconsumo')
-                ->when(! $esAdmin, fn ($q) => $q->where('tecnico_id', $tecnicoId))
+                ->whereIn('subtipo', ['Autoconsumo', 'Servicios', 'Stock'])
+                ->when(! $esAdmin, function ($q) use ($tecnicoId) {
+                    $q->where(function ($query) use ($tecnicoId) {
+                        $query->where('tecnico_id', $tecnicoId)
+                              ->orWhereHas('tecnicos', function ($inner) use ($tecnicoId) {
+                                  $inner->where('usuarios.id', $tecnicoId);
+                              });
+                    });
+                })
                 ->when($esAdmin && ! $esMaster && $sucursalSesion > 0, fn ($q) => $q->where('sucursal_id', $sucursalSesion))
                 ->first();
 
@@ -601,7 +615,15 @@ class InformeRepository
         // - Superadmin: ve todas las órdenes
         // - Cualquier otro (admin o técnico): solo sus órdenes asignadas al crear informe
         if (!$esSuperadmin) {
-            $qEmpresas->where('oe.tecnico_id', $tecnicoId);
+            $qEmpresas->where(function ($query) use ($tecnicoId) {
+                $query->where('oe.tecnico_id', $tecnicoId)
+                      ->orWhereExists(function ($inner) use ($tecnicoId) {
+                          $inner->select(DB::raw(1))
+                                ->from('orden_empresa_tecnicos')
+                                ->whereColumn('orden_empresa_tecnicos.orden_empresa_id', 'oe.id')
+                                ->where('orden_empresa_tecnicos.tecnico_id', $tecnicoId);
+                      });
+            });
         } elseif (!$esMaster && $sucursalSesion > 0) {
             $qEmpresas->where('oe.sucursal_id', $sucursalSesion);
         }

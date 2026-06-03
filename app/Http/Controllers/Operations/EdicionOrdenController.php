@@ -56,7 +56,10 @@ class EdicionOrdenController extends Controller
         $productos = $this->productoRepo->obtenerTodos();
         $tiposServicio = $this->tipoServicioRepo->obtenerTodos()->where('activo', 1);
 
-        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio'));
+        $casRepo = app(\App\Repositories\Directory\CasRepository::class);
+        $cas = $casRepo->obtenerActivos();
+
+        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio', 'cas'));
     }
 
     public function update(GuardarEdicionOrdenRequest $request): JsonResponse
@@ -72,7 +75,8 @@ class EdicionOrdenController extends Controller
                 $request->input('valor_estandar_id') ? (int) $request->input('valor_estandar_id') : null,
                 $request->input('repuesto_inventario_id') ? (int) $request->input('repuesto_inventario_id') : null,
                 $request->input('fecha_prometido'),
-                session('tecnico_id')
+                session('tecnico_id'),
+                $request->input('cas_id') ? (int) $request->input('cas_id') : null
             );
 
             $this->service->actualizarOrden($dto);
@@ -164,7 +168,10 @@ class EdicionOrdenController extends Controller
             (int) session('tecnico_id')
         );
 
-        return view('operations.ordenes.editar_empresa', compact('orden', 'tecnicos'));
+        $casRepo = app(\App\Repositories\Directory\CasRepository::class);
+        $cas = $casRepo->obtenerActivos();
+
+        return view('operations.ordenes.editar_empresa', compact('orden', 'tecnicos', 'cas'));
     }
 
     public function updateEmpresa(GuardarEdicionOrdenEmpresaRequest $request): JsonResponse

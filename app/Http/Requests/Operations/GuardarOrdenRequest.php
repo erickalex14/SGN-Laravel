@@ -143,13 +143,12 @@ class GuardarOrdenRequest extends FormRequest
             'nro_sucursal_cliente'     => ['nullable', 'integer'],
             'estado_repuesto'          => ['nullable', 'string', 'max:50'],
             'garantia_tipo'            => [
-                'required_if:motivo_ingreso,Validacion de Garantia',
                 'nullable',
                 'string',
                 'max:50',
                 Rule::in(['propia', 'externa', 'PROPIA', 'EXTERNA', 'interna', 'INTERNA'])
             ],
-            'cas_id'                   => ['required_if:garantia_tipo,externa,EXTERNA', 'nullable', 'integer', 'exists:cas,id'],
+            'cas_id'                   => ['nullable', 'integer', 'exists:cas,id'],
             'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
             'repuestos_seleccionados'   => ['nullable', 'array'],
             'repuestos_seleccionados.*' => ['integer', 'exists:repuestos,id'],
@@ -183,10 +182,11 @@ class GuardarOrdenRequest extends FormRequest
                 'nro_sucursal_cliente' => [$subtipo === 'Stock' ? 'required' : 'nullable', 'integer', 'exists:sucursalescliente,numero'],
                 
                 // Nuevas reglas para NOVISOLUTIONS
-                'valor_hora' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'numeric', 'min:0'],
-                'horas_trabajadas' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'numeric', 'min:0'],
+                'valor_hora' => ['nullable', 'numeric', 'min:0'],
+                'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
                 'tecnicos_asignados' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
                 'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
+                'cas_id_empresa' => ['nullable', 'integer', 'exists:cas,id'],
             ]);
 
             if ($esNovisolutionsServicio) {
@@ -204,6 +204,22 @@ class GuardarOrdenRequest extends FormRequest
             'cli_apellidos.regex' => 'El apellido del cliente sólo debe contener letras, tildes y espacios.',
             'cli_telefono.regex' => 'El teléfono del cliente debe tener el formato ecuatoriano de 10 números (ej: 0987654321).',
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        if ($this->has('valor_hora') && $this->input('valor_hora') === '') {
+            $this->merge(['valor_hora' => null]);
+        }
+        if ($this->has('horas_trabajadas') && $this->input('horas_trabajadas') === '') {
+            $this->merge(['horas_trabajadas' => null]);
+        }
+        if ($this->has('cas_id') && $this->input('cas_id') === '') {
+            $this->merge(['cas_id' => null]);
+        }
+        if ($this->has('cas_id_empresa') && $this->input('cas_id_empresa') === '') {
+            $this->merge(['cas_id_empresa' => null]);
+        }
     }
 
     protected function failedValidation(Validator $validator)
