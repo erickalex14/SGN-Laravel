@@ -1,41 +1,40 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Directory\CasController;
 use App\Http\Controllers\Directory\EmpresaController;
-use App\Http\Controllers\Directory\SucursalController;
 use App\Http\Controllers\Directory\SucursalClienteController;
-use App\Http\Controllers\Identity\MiCuentaController;
+use App\Http\Controllers\Directory\SucursalController;
+use App\Http\Controllers\Identity\AuthController;
 use App\Http\Controllers\Identity\GrupoAccesoController;
-use App\Http\Controllers\Identity\UsuarioController;
+use App\Http\Controllers\Identity\MiCuentaController;
 use App\Http\Controllers\Identity\NotificationController;
 use App\Http\Controllers\Identity\SuggestionController;
+use App\Http\Controllers\Identity\UsuarioController;
+use App\Http\Controllers\Inventory\ListaCompraController;
 use App\Http\Controllers\Inventory\MarcaController;
 use App\Http\Controllers\Inventory\ProductoController;
 use App\Http\Controllers\Inventory\RepuestoController;
-use App\Http\Controllers\Operations\CatalogoPrecioController;
-use App\Http\Controllers\Operations\OrdenController;
-use App\Http\Controllers\Operations\MisOrdenesController;
-use App\Http\Controllers\Operations\OrdenesAsignadasController;
-use App\Http\Controllers\Operations\EdicionOrdenController;
+use App\Http\Controllers\Operations\AsistenteIaController;
 use App\Http\Controllers\Operations\BuscarOrdenController;
+use App\Http\Controllers\Operations\CatalogoPrecioController;
+use App\Http\Controllers\Operations\EdicionOrdenController;
 use App\Http\Controllers\Operations\InformeController;
+use App\Http\Controllers\Operations\MisOrdenesController;
+use App\Http\Controllers\Operations\NotaCreditoController;
+use App\Http\Controllers\Operations\OrdenController;
+use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
-use App\Http\Controllers\Operations\NotaCreditoController;
-use App\Http\Controllers\Operations\SolicitudRepuestoController;
 use App\Http\Controllers\Operations\ReporteController;
-use App\Http\Controllers\Operations\AsistenteIaController;
-use App\Http\Controllers\Inventory\ListaCompraController;
+use App\Http\Controllers\Operations\SolicitudRepuestoController; // Controlador de autenticación heredado
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Identity\AuthController; // Controlador de autenticación heredado
-use App\Http\Controllers\DashboardController;
-
 
 // ═════════════════════════════════════════════════════════════════
 // 1. RUTAS PÚBLICAS / INVITADOS (GUEST)
 // ═════════════════════════════════════════════════════════════════
 Route::middleware('guest')->group(function () {
-    
+
     // Raíz del sitio: Renderiza el formulario de inicio de sesión legacy
     Route::get('/', function () {
         return view('auth.login');
@@ -44,7 +43,6 @@ Route::middleware('guest')->group(function () {
     // Endpoint que procesa el POST del formulario (Reemplaza a validar_login.php)
     Route::post('/validar_login', [AuthController::class, 'login'])->name('auth.validar');
 });
-
 
 // Grupo de rutas que requieren sesion activa
 Route::middleware('auth')->group(function () {
@@ -71,7 +69,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard (Requiere acceso basico)
     // Vista Principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // Endpoint asincrono de metricas
     Route::get('/dashboard/metricas', [DashboardController::class, 'obtenerMetricas'])->name('dashboard.metricas');
 
@@ -80,9 +78,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/notificaciones/marcar', [NotificationController::class, 'markAsRead'])->name('notificaciones.marcar');
     Route::post('/sugerencias/enviar', [SuggestionController::class, 'send'])->name('sugerencias.enviar');
 
-    //-------------------------------------------------------
-    //------------------EMPRESAS-----------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // ------------------EMPRESAS-----------------------------
+    // -------------------------------------------------------
 
     Route::middleware(['permiso:empresas,ver'])->group(function () {
         Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas.index');
@@ -93,9 +91,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/empresas/guardar', [EmpresaController::class, 'guardar'])->name('empresas.guardar');
     });
 
-    //-------------------------------------------------------
-    //----------------------CAS------------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // ----------------------CAS------------------------------
+    // -------------------------------------------------------
 
     // Vista principal protegida por el permiso general del modulo (require_modulo('cas', 'ver'))
     Route::middleware(['permiso:cas,ver'])->group(function () {
@@ -111,9 +109,9 @@ Route::middleware('auth')->group(function () {
     // No requiere validación profunda más allá de estar autenticado
     Route::get('/cas/activos', [CasController::class, 'listarActivos'])->name('cas.listar_activos');
 
-    //-------------------------------------------------------
-    //--------------SUCURSALES/CLIENTE-SUCURSAL--------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // --------------SUCURSALES/CLIENTE-SUCURSAL--------------
+    // -------------------------------------------------------
 
     // Vista principal protegida por (require_modulo('sucursales', 'ver'))
     Route::middleware(['permiso:sucursales,ver'])->group(function () {
@@ -144,9 +142,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/sucursales-nonitec/actualizar', [SucursalController::class, 'actualizar'])->name('sucursales.actualizar');
     });
 
-    //-------------------------------------------------------
-    //------------------PERMISOS GRUPOS----------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // ------------------PERMISOS GRUPOS----------------------
+    // -------------------------------------------------------
 
     // Vista principal
     Route::middleware(['permiso:grupos_acceso,ver'])->group(function () {
@@ -169,10 +167,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/grupos/permisos', [GrupoAccesoController::class, 'guardarPermisos'])->name('grupos.permisos.guardar');
     });
 
-
-    //-------------------------------------------------------
-    //---------------------USUARIOS--------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // ---------------------USUARIOS--------------------------
+    // -------------------------------------------------------
 
     // Crear Usuario
     Route::middleware(['permiso:usuarios,crear'])->group(function () {
@@ -193,10 +190,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/usuarios/{id}/cas', [UsuarioController::class, 'getCas']);
     });
 
-
-    //-------------------------------------------------------
-    //---------------------=MARCAS---------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // ---------------------=MARCAS---------------------------
+    // -------------------------------------------------------
 
     // Vista conjunta protegida por permiso de modulo
     Route::middleware(['permiso:inv_marcas,ver'])->group(function () {
@@ -213,9 +209,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventario/tipos', [MarcaController::class, 'guardarTipo'])->name('tipos_dispositivo.guardar');
     });
 
-    //-------------------------------------------------------
-    //--------------------PRODUCTOS--------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // --------------------PRODUCTOS--------------------------
+    // -------------------------------------------------------
 
     // Rutas operativas de Productos protegidas por los permisos estipulados
     Route::middleware(['permiso:inv_productos,ver'])->group(function () {
@@ -227,9 +223,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventario/productos', [ProductoController::class, 'procesar'])->name('productos.guardar');
     });
 
-    //-------------------------------------------------------
-    //--------------------REPUESTOS--------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // --------------------REPUESTOS--------------------------
+    // -------------------------------------------------------
 
     // Vista y listado JSON de repuestos
     Route::middleware(['permiso:inv_repuestos,ver'])->group(function () {
@@ -243,9 +239,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
     });
 
-    //-------------------------------------------------------
-    //-------------------MODULO PRECIOS----------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -------------------MODULO PRECIOS----------------------
+    // -------------------------------------------------------
 
     // Vista combinada del modulo
     Route::middleware(['permiso:precios,ver'])->group(function () {
@@ -258,14 +254,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/tipos-servicio', [CatalogoPrecioController::class, 'procesarTipo'])->name('tipos_servicio.guardar');
     });
 
-    //-------------------------------------------------------
-    //-----------------MODULO ORDENES------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -----------------MODULO ORDENES------------------------
+    // -------------------------------------------------------
 
     Route::middleware(['permiso:ordenes_crear,ver'])->group(function () {
         Route::get('/operaciones/ordenes/crear', [OrdenController::class, 'create'])->name('ordenes.crear');
         Route::post('/operaciones/ordenes', [OrdenController::class, 'store'])->name('ordenes.store');
-        
+
         // Endpoint AJAX para autocompletar
         Route::get('/operaciones/ordenes/buscar-cliente', [OrdenController::class, 'buscarCliente'])->name('ordenes.buscar_cliente');
         Route::get('/operaciones/ordenes/buscar-producto', [OrdenController::class, 'buscarProducto'])->name('ordenes.productos.buscar');
@@ -286,6 +282,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
         Route::get('/operaciones/ordenes/asignadas', [OrdenesAsignadasController::class, 'index'])->name('ordenes_asignadas.index');
+        Route::get('/operaciones/ordenes/asignadas/ajax', [OrdenesAsignadasController::class, 'cargarOrdenesAjax'])->name('ordenes_asignadas.ajax');
     });
 
     Route::middleware(['permiso:ordenes_buscar,ver'])->group(function () {
@@ -307,9 +304,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/operaciones/ordenes/{id}/imprimir', [OrdenController::class, 'imprimir'])->name('ordenes.imprimir');
     Route::get('/operaciones/ordenes-empresa/{id}/imprimir', [OrdenController::class, 'imprimirEmpresa'])->name('ordenes_empresa.imprimir');
 
-    //-------------------------------------------------------
-    //-----------------MODULO INFORMES-----------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -----------------MODULO INFORMES-----------------------
+    // -------------------------------------------------------
 
     Route::middleware(['permiso:informes,ver'])->group(function () {
         // Raíz → redirect inteligente según rol (ver controller)
@@ -333,26 +330,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/informes/generar-con-ia', [InformeController::class, 'generarConIa'])->name('informes.generar.ia');
     });
 
-    //-------------------------------------------------------
-    //-----------------MODULO PREORDENES---------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -----------------MODULO PREORDENES---------------------
+    // -------------------------------------------------------
     Route::middleware(['permiso:preordenes,ver'])->group(function () {
         Route::get('/operaciones/preordenes', [PreordenController::class, 'index'])->name('preordenes.index');
         Route::post('/operaciones/preordenes/reporte', [PreordenController::class, 'reporte'])->name('preordenes.reporte');
         Route::post('/operaciones/preordenes/ingresar', [PreordenController::class, 'ingresar'])->name('preordenes.ingresar');
     });
 
-    //-------------------------------------------------------
-    //-----------------MODULO PRESUPUESTOS-------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -----------------MODULO PRESUPUESTOS-------------------
+    // -------------------------------------------------------
     Route::middleware(['permiso:presupuestos,ver'])->group(function () {
         Route::get('/operaciones/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
         Route::get('/operaciones/presupuestos/{id}/imprimir', [PresupuestoController::class, 'imprimir'])->name('presupuestos.imprimir');
     });
 
-    //-------------------------------------------------------
-    //-----------------MODULO NOTAS CREDITO------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -----------------MODULO NOTAS CREDITO------------------
+    // -------------------------------------------------------
 
     // Panel Tecnico (Crear Solicitudes)
     Route::middleware(['permiso:solicitar_nc,ver'])->group(function () {
@@ -372,9 +369,9 @@ Route::middleware('auth')->group(function () {
     // Reimpresion de solicitudes NC (acceso controlado dentro del controlador)
     Route::get('/operaciones/notas-credito/{id}/imprimir', [NotaCreditoController::class, 'imprimir'])->name('notas_credito.imprimir');
 
-    //-------------------------------------------------------
-    //-------------MODULO SOLICITUDES REPUESTOS--------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -------------MODULO SOLICITUDES REPUESTOS--------------
+    // -------------------------------------------------------
 
     // Panel Tecnico
     Route::middleware(['permiso:solicitar_repuesto,ver'])->group(function () {
@@ -390,9 +387,9 @@ Route::middleware('auth')->group(function () {
     // Reimpresion de tickets de repuestos (acceso controlado dentro del controlador)
     Route::get('/operaciones/solicitudes-repuestos/{id}/imprimir', [SolicitudRepuestoController::class, 'imprimir'])->name('solicitudes_repuestos.imprimir');
 
-    //-------------------------------------------------------
-    //-------------MODULO REPORTES----------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -------------MODULO REPORTES----------------------------
+    // -------------------------------------------------------
 
     Route::middleware(['permiso:reportes,ver'])->group(function () {
         Route::get('/operaciones/reportes', [ReporteController::class, 'index'])->name('reportes.index');
@@ -405,11 +402,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/operaciones/informes/reportes/filtrar', [ReporteController::class, 'filtrarTecnico'])->name('reportes.tecnico.filtrar');
     Route::get('/operaciones/informes/reportes/imprimir', [ReporteController::class, 'imprimirTecnico'])->name('reportes.tecnico.imprimir');
 
-    //-------------------------------------------------------
-    //-------------MODULO LISTAS COMPRA----------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // -------------MODULO LISTAS COMPRA----------------------
+    // -------------------------------------------------------
 
-// Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
+    // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
         Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
@@ -419,9 +416,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
     });
 
-    //-------------------------------------------------------
-    //--------------------MI CUENTA--------------------------
-    //-------------------------------------------------------
+    // -------------------------------------------------------
+    // --------------------MI CUENTA--------------------------
+    // -------------------------------------------------------
     Route::middleware(['permiso:mi_cuenta,ver'])->group(function () {
         Route::get('/mi-cuenta', [MiCuentaController::class, 'index'])->name('mi_cuenta.index');
         Route::get('/configuracion', [MiCuentaController::class, 'index'])->name('configuracion.index');
