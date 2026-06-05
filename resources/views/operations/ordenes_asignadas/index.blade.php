@@ -83,10 +83,11 @@
         $kpiPendientes = 0;
         $cargasTecnicos = [];
         foreach ($porTecnico as $p) {
-            $kpiEnCurso += count($p['en_curso']);
-            $kpiEntregadas += count($p['entregadas']);
-            $pend = (int) ($p['tecnico']->pendientes ?? 0);
-            $proceso = (int) ($p['tecnico']->en_proceso ?? 0);
+            $tec = $p['tecnico'];
+            $kpiEnCurso += (int) ($tec->activas ?? 0);
+            $kpiEntregadas += (int) ($tec->entregadas ?? 0);
+            $pend = (int) ($tec->pendientes ?? 0);
+            $proceso = (int) ($tec->en_proceso ?? 0);
             $kpiPendientes += $pend;
             $cargasTecnicos[] = $pend + $proceso;
         }
@@ -161,8 +162,8 @@
         @foreach($porTecnico as $idx => $pack)
             @php
                 $tec = $pack['tecnico'];
-                $enCurso = $pack['en_curso'];
-                $entregadas = $pack['entregadas'];
+                $enCursoCount = (int) ($tec->activas ?? 0);
+                $entregadasCount = (int) ($tec->entregadas ?? 0);
                 $pendientes = (int) ($tec->pendientes ?? 0);
                 $enProceso = (int) ($tec->en_proceso ?? 0);
                 $totalCarga = $pendientes + $enProceso;
@@ -173,92 +174,38 @@
                 else { $cargaColor = '#ef4444'; $cargaLabel = 'Alta'; }
             @endphp
 
-            <div class="oa-tecnico-bloque">
-                <div class="oa-tec-header" onclick="toggleTecnico('tec-{{ $idx }}', 'chev-{{ $idx }}')">
+            <div class="oa-tecnico-bloque" id="bloque-tec-{{ $tec->id }}">
+                <div class="oa-tec-header" onclick="toggleTecnico({{ $tec->id }})">
                     <div class="oa-tec-avatar" style="background: {{ $cargaColor }};">{{ strtoupper(substr((string) $tec->nombre_tecnico, 0, 1)) }}</div>
                     <span class="oa-tec-nombre">{{ $tec->nombre_tecnico }}</span>
                     <div class="oa-tec-badges">
-                        <span class="oa-badge-asig">{{ count($enCurso) }} en curso</span>
-                        <span class="oa-badge-entr">{{ count($entregadas) }} entregadas</span>
+                        <span class="oa-badge-asig">{{ $enCursoCount }} en curso</span>
+                        <span class="oa-badge-entr">{{ $entregadasCount }} entregadas</span>
                         <span class="oa-badge-carga" style="background:{{ $cargaColor }}20;color:{{ $cargaColor }};border-color:{{ $cargaColor }}66;">
                             {{ $pendientes }}P · {{ $enProceso }}EP · {{ $cargaLabel }}
                         </span>
                     </div>
-                    <span class="oa-chevron" id="chev-{{ $idx }}">&#9660;</span>
+                    <span class="oa-chevron" id="chev-{{ $tec->id }}">&#9660;</span>
                 </div>
 
-                <div class="oa-tec-body" id="tec-{{ $idx }}">
-                    <div class="oa-sub-title"><i class="bi bi-wrench"></i> Órdenes Asignadas <span class="oa-sub-pill">{{ count($enCurso) }}</span></div>
-                    <div class="oa-cards-grid">
-                        @forelse($enCurso as $o)
-                            @php
-                                $estado = trim((string) $o->estado_orden);
-                                $estadoClass = match (true) {
-                                    in_array($estado, ['Pendiente', 'INGRESO'], true) => 'pend',
-                                    in_array($estado, ['En proceso', 'REVISION', 'EN PROCESO'], true) => 'proc',
-                                    in_array($estado, ['Finalizada', 'REPARADO'], true) => 'fin',
-                                    in_array($estado, ['Entregada', 'ENTREGADO'], true) => 'ent',
-                                    default => 'def',
-                                };
-                            @endphp
-                            <div class="oa-card" data-orden='@json($o)'>
-                                <div class="oa-card-top">
-                                    <span class="oa-nro">{{ $o->nro_orden }}</span>
-                                    <span class="oa-status {{ $estadoClass }}">{{ $o->estado_orden }}</span>
-                                </div>
-                                <div class="oa-cliente">{{ $o->cliente }}</div>
-                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
-                                <div class="oa-meta-row">
-                                    <span class="oa-meta"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
-                                    <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
-                                    @if(!empty($o->motivo_ingreso))<span class="oa-meta">{{ $o->motivo_ingreso }}</span>@endif
-                                    @if(!empty($o->fecha_prometido))
-                                        <span class="oa-meta" style="color: #b45309; background: #fffbeb; border-color: #fde68a;" title="Fecha Prometida"><i class="bi bi-calendar-check me-1"></i>Prometido: {{ \Carbon\Carbon::parse($o->fecha_prometido)->format('d/m/Y') }}</span>
-                                    @endif
-                                </div>
-                                <div class="oa-actions">
-                                    <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
-                                    @if(($o->tipo_orden ?? 'personal') === 'personal')
-                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
-                                    @else
-                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes-empresa/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
-                                    @endif
-                                </div>
-                            </div>
-                        @empty
-                            <div class="oa-empty">Sin ordenes en esta sección.</div>
-                        @endforelse
+                <div class="oa-tec-body" id="tec-{{ $tec->id }}" style="display: none;">
+                    <div class="oa-tabs-header" style="display: flex; gap: 12px; border-bottom: 2.5px solid #e2e8f0; margin-bottom: 16px; padding-bottom: 2px;">
+                        <button class="tab-btn-custom active" id="tab-btn-en_curso-{{ $tec->id }}" onclick="switchTab({{ $tec->id }}, 'en_curso')"
+                                style="background: none; border: none; border-bottom: 2.5px solid #2563eb; color: #2563eb; padding: 8px 16px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-bottom: -4.5px;">
+                            Órdenes en Curso (<span class="cnt-badge">{{ $enCursoCount }}</span>)
+                        </button>
+                        <button class="tab-btn-custom" id="tab-btn-entregadas-{{ $tec->id }}" onclick="switchTab({{ $tec->id }}, 'entregadas')"
+                                style="background: none; border: none; border-bottom: 2.5px solid transparent; color: #64748b; padding: 8px 16px; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-bottom: -4.5px;">
+                            Órdenes Entregadas (<span class="cnt-badge">{{ $entregadasCount }}</span>)
+                        </button>
                     </div>
-
-                    <div class="oa-sub-title"><i class="bi bi-check-circle"></i> Órdenes Entregadas <span class="oa-sub-pill">{{ count($entregadas) }}</span></div>
-                    <div class="oa-cards-grid">
-                        @forelse($entregadas as $o)
-                            <div class="oa-card" data-orden='@json($o)'>
-                                <div class="oa-card-top">
-                                    <span class="oa-nro">{{ $o->nro_orden }}</span>
-                                    <span class="oa-status ent">{{ $o->estado_orden }}</span>
-                                </div>
-                                <div class="oa-cliente">{{ $o->cliente }}</div>
-                                <div class="oa-equipo">{{ trim(($o->tipo ?? '').' '.($o->marca ?? '').' '.($o->modelo ?? '')) }} · S/N {{ $o->serie }}</div>
-                                <div class="oa-meta-row">
-                                    <span class="oa-meta"><i class="bi bi-calendar3 me-1"></i>{{ \Carbon\Carbon::parse($o->fecha_de_ingreso)->format('d/m/Y H:i') }}</span>
-                                    <span class="oa-meta">{{ $o->estado_repuesto ?: 'No requerido' }}</span>
-                                    @if(!empty($o->fecha_prometido))
-                                        <span class="oa-meta" style="color: #b45309; background: #fffbeb; border-color: #fde68a;" title="Fecha Prometida"><i class="bi bi-calendar-check me-1"></i>Prometido: {{ \Carbon\Carbon::parse($o->fecha_prometido)->format('d/m/Y') }}</span>
-                                    @endif
-                                </div>
-                                <div class="oa-actions">
-                                    <a class="btn-det ot" target="_blank" href="{{ ($o->tipo_orden ?? 'personal') === 'empresa' ? route('ordenes_empresa.imprimir', ['id' => $o->orden_id]) : route('ordenes.imprimir', ['id' => $o->orden_id]) }}"><i class="bi bi-printer"></i> OT</a>
-                                    @if(($o->tipo_orden ?? 'personal') === 'personal')
-                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
-                                    @else
-                                        <a class="btn-det ver" href="{{ url('/operaciones/ordenes-empresa/editar/'.$o->orden_id) }}"><i class="bi bi-eye"></i> Ver detalle</a>
-                                    @endif
-                                </div>
-                            </div>
-                        @empty
-                            <div class="oa-empty">Sin ordenes en esta sección.</div>
-                        @endforelse
+                    
+                    <div class="oa-cards-grid" id="grid-{{ $tec->id }}">
+                        <!-- Cargado dinámicamente -->
+                    </div>
+                    
+                    <div id="pager-{{ $tec->id }}">
+                        <!-- Paginación dinámica -->
                     </div>
                 </div>
             </div>
@@ -277,6 +224,8 @@
 
 @push('js_adicional')
 <script>
+const tecStates = {}; // Mantiene el estado { tab: 'en_curso', page: 1 } de cada técnico expanded
+
 function esc(str) {
     return String(str || '')
         .replace(/&/g, '&amp;')
@@ -286,103 +235,195 @@ function esc(str) {
         .replace(/'/g, '&#39;');
 }
 
-function aplicarFiltros() {
-    const q = document.getElementById('oa-buscar').value.toLowerCase().trim();
-    const estado = document.getElementById('oa-filtro-estado').value.toLowerCase().trim();
-    const motivo = document.getElementById('oa-filtro-motivo').value.toLowerCase().trim();
-    const repuesto = document.getElementById('oa-filtro-repuesto').value.toLowerCase().trim();
+async function cargarOrdenes(tecnicoId, page = 1) {
+    if (!tecStates[tecnicoId]) {
+        tecStates[tecnicoId] = { tab: 'en_curso', page: 1 };
+    }
+    tecStates[tecnicoId].page = page;
+    const state = tecStates[tecnicoId];
+    
+    const q = document.getElementById('oa-buscar').value.trim();
+    const estado = document.getElementById('oa-filtro-estado').value;
+    const motivo = document.getElementById('oa-filtro-motivo').value;
+    const repuesto = document.getElementById('oa-filtro-repuesto').value;
 
-    const bloques = document.querySelectorAll('.oa-tecnico-bloque');
-    let totalVisibles = 0;
+    const grid = document.getElementById(`grid-${tecnicoId}`);
+    const pager = document.getElementById(`pager-${tecnicoId}`);
+    if (!grid) return;
 
-    bloques.forEach((bloque) => {
-        let visibleEnCurso = 0;
-        let visibleEntregadas = 0;
+    grid.innerHTML = `<div class="oa-loading" style="text-align: center; padding: 20px; color: #64748b; grid-column: 1/-1;"><i class="bi bi-hourglass-split spin"></i> Cargando órdenes...</div>`;
+    if (pager) pager.innerHTML = '';
 
-        const cards = bloque.querySelectorAll('.oa-card');
-        cards.forEach((card) => {
-            const raw = card.getAttribute('data-orden') || '{}';
-            let o = {};
-            try { o = JSON.parse(raw); } catch (_) {}
-
-            const matchQ = !q || 
-                (o.nro_orden || '').toLowerCase().includes(q) || 
-                (o.cliente || '').toLowerCase().includes(q) || 
-                (o.marca || '').toLowerCase().includes(q) || 
-                (o.modelo || '').toLowerCase().includes(q) || 
-                (o.serie || '').toLowerCase().includes(q) ||
-                (o.tipo || '').toLowerCase().includes(q);
-                
-            const matchEstado = !estado || (o.estado_orden || '').toLowerCase() === estado;
-            const matchMotivo = !motivo || (o.motivo_ingreso || '').toLowerCase() === motivo;
-            const matchRepuesto = !repuesto || (o.estado_repuesto || 'no requerido').toLowerCase() === repuesto;
-
-            const match = matchQ && matchEstado && matchMotivo && matchRepuesto;
-            card.style.display = match ? '' : 'none';
-            if (match) {
-                if ((o.estado_orden || '').toLowerCase() === 'entregada' || (o.estado_orden || '').toLowerCase() === 'entregado') {
-                    visibleEntregadas++;
-                } else {
-                    visibleEnCurso++;
-                }
-            }
+    try {
+        const params = new URLSearchParams({
+            tecnico_id: tecnicoId,
+            type: state.tab,
+            page: page,
+            q: q,
+            estado: estado,
+            motivo: motivo,
+            repuesto: repuesto
         });
 
-        // Toggle local empty states inside this technician block
-        const enCursoGrid = bloque.querySelector('.oa-cards-grid:first-of-type');
-        const entregadasGrid = bloque.querySelector('.oa-cards-grid:last-of-type');
+        const res = await fetch(`/operaciones/ordenes/asignadas/ajax?${params.toString()}`);
+        const data = await res.json();
 
-        if (enCursoGrid) {
-            let emptyEl = enCursoGrid.querySelector('.oa-empty-filter');
-            if (visibleEnCurso === 0 && enCursoGrid.querySelectorAll('.oa-card[style=""]').length === 0) {
-                if (!emptyEl) {
-                    emptyEl = document.createElement('div');
-                    emptyEl.className = 'oa-empty oa-empty-filter';
-                    emptyEl.textContent = 'Sin coincidencias en esta sección.';
-                    enCursoGrid.appendChild(emptyEl);
-                }
-                const defaultEmpty = enCursoGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
-                if (defaultEmpty) defaultEmpty.style.display = 'none';
-            } else {
-                if (emptyEl) emptyEl.remove();
-                const defaultEmpty = enCursoGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
-                if (defaultEmpty) defaultEmpty.style.display = '';
-            }
+        if (!data.ok) {
+            grid.innerHTML = `<div class="oa-empty" style="grid-column: 1/-1;">Error al cargar: ${esc(data.error)}</div>`;
+            return;
         }
 
-        if (entregadasGrid) {
-            let emptyEl = entregadasGrid.querySelector('.oa-empty-filter');
-            if (visibleEntregadas === 0 && entregadasGrid.querySelectorAll('.oa-card[style=""]').length === 0) {
-                if (!emptyEl) {
-                    emptyEl = document.createElement('div');
-                    emptyEl.className = 'oa-empty oa-empty-filter';
-                    emptyEl.textContent = 'Sin coincidencias en esta sección.';
-                    entregadasGrid.appendChild(emptyEl);
-                }
-                const defaultEmpty = entregadasGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
-                if (defaultEmpty) defaultEmpty.style.display = 'none';
-            } else {
-                if (emptyEl) emptyEl.remove();
-                const defaultEmpty = entregadasGrid.querySelector('.oa-empty:not(.oa-empty-filter)');
-                if (defaultEmpty) defaultEmpty.style.display = '';
-            }
+        const items = data.data || [];
+        if (items.length === 0) {
+            grid.innerHTML = `<div class="oa-empty" style="grid-column: 1/-1;">Sin órdenes en esta sección.</div>`;
+            return;
         }
 
-        // Update badges dynamically in the DOM
-        const badgeCurso = bloque.querySelector('.oa-badge-asig');
-        const badgeEntregadas = bloque.querySelector('.oa-badge-entr');
-        if (badgeCurso) badgeCurso.textContent = `${visibleEnCurso} en curso`;
-        if (badgeEntregadas) badgeEntregadas.textContent = `${visibleEntregadas} entregadas`;
+        let html = '';
+        items.forEach(o => {
+            const estado = (o.estado_orden || '').trim();
+            let estadoClass = 'def';
+            if (['pendiente', 'ingreso'].includes(estado.toLowerCase())) estadoClass = 'pend';
+            else if (['en proceso', 'revision', 'en_proceso'].includes(estado.toLowerCase())) estadoClass = 'proc';
+            else if (['finalizada', 'reparado'].includes(estado.toLowerCase())) estadoClass = 'fin';
+            else if (['entregada', 'entregado'].includes(estado.toLowerCase())) estadoClass = 'ent';
 
-        const totalBloque = visibleEnCurso + visibleEntregadas;
-        bloque.style.display = totalBloque > 0 ? '' : 'none';
-        if (totalBloque > 0) totalVisibles++;
-    });
+            const equipo = [o.tipo, o.marca, o.modelo].filter(Boolean).join(' ').trim();
+            const urlImprimir = o.tipo_orden === 'empresa' 
+                ? `/operaciones/ordenes-empresa/${o.orden_id}/imprimir` 
+                : `/operaciones/ordenes/${o.orden_id}/imprimir`;
+            const urlEditar = o.tipo_orden === 'empresa'
+                ? `/operaciones/ordenes-empresa/editar/${o.orden_id}`
+                : `/operaciones/ordenes/editar/${o.orden_id}`;
 
-    const emptyGlobal = document.getElementById('oa-busqueda-empty');
-    if (emptyGlobal) {
-        emptyGlobal.style.display = totalVisibles === 0 ? 'block' : 'none';
+            html += `
+                <div class="oa-card" data-orden='${JSON.stringify(o).replace(/'/g, "&#39;")}' ondblclick="abrirDetalleDesdeCard(this)">
+                    <div class="oa-card-top">
+                        <span class="oa-nro">${esc(o.nro_orden)}</span>
+                        <span class="oa-status ${estadoClass}">${esc(o.estado_orden)}</span>
+                    </div>
+                    <div class="oa-cliente">${esc(o.cliente)}</div>
+                    <div class="oa-equipo">${esc(equipo)} · S/N ${esc(o.serie)}</div>
+                    <div class="oa-meta-row">
+                        <span class="oa-meta"><i class="bi bi-calendar3 me-1"></i>${esc(o.fecha_ingreso_fmt)}</span>
+                        <span class="oa-meta">${esc(o.estado_repuesto || 'No requerido')}</span>
+                        ${o.motivo_ingreso ? `<span class="oa-meta">${esc(o.motivo_ingreso)}</span>` : ''}
+                        ${o.fecha_prometido_fmt ? `
+                            <span class="oa-meta" style="color: #b45309; background: #fffbeb; border-color: #fde68a;" title="Fecha Prometida">
+                                <i class="bi bi-calendar-check me-1"></i>Prometido: ${esc(o.fecha_prometido_fmt)}
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="oa-actions">
+                        <a class="btn-det ot" target="_blank" href="${urlImprimir}"><i class="bi bi-printer"></i> OT</a>
+                        <a class="btn-det ver" href="${urlEditar}"><i class="bi bi-eye"></i> Ver detalle</a>
+                    </div>
+                </div>
+            `;
+        });
+        grid.innerHTML = html;
+
+        renderPager(pager, data.current_page, data.last_page, data.total, data.per_page, (newPage) => {
+            cargarOrdenes(tecnicoId, newPage);
+        });
+
+    } catch (e) {
+        console.error(e);
+        grid.innerHTML = `<div class="oa-empty" style="grid-column: 1/-1;">Error de conexión.</div>`;
     }
+}
+
+function renderPager(container, currentPage, lastPage, total, perPage, onPageClick) {
+    if (!container) return;
+    if (lastPage <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const start = (currentPage - 1) * perPage + 1;
+    const end = Math.min(start + perPage - 1, total);
+
+    let buttonsHtml = '';
+    
+    buttonsHtml += `
+        <button class="sgn-pager-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+    `;
+
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(lastPage, startPage + maxButtons - 1);
+
+    if (endPage - startPage + 1 < maxButtons) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    if (startPage > 1) {
+        buttonsHtml += `<button class="sgn-pager-btn" data-page="1">1</button>`;
+        if (startPage > 2) {
+            buttonsHtml += `<span style="color:#94a3b8;padding:0 4px;font-size:12px;">...</span>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        buttonsHtml += `
+            <button class="sgn-pager-btn ${p === currentPage ? 'activo' : ''}" data-page="${p}">
+                ${p}
+            </button>
+        `;
+    }
+
+    if (endPage < lastPage) {
+        if (endPage < lastPage - 1) {
+            buttonsHtml += `<span style="color:#94a3b8;padding:0 4px;font-size:12px;">...</span>`;
+        }
+        buttonsHtml += `<button class="sgn-pager-btn" data-page="${lastPage}">${lastPage}</button>`;
+    }
+
+    buttonsHtml += `
+        <button class="sgn-pager-btn" ${currentPage === lastPage ? 'disabled' : ''} data-page="next">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    `;
+
+    container.innerHTML = `
+        <div class="sgn-pager-wrap" style="margin-top: 10px;">
+            <div class="sgn-pager-info">Mostrando <span class="sgn-p-start">${start}</span> a <span class="sgn-p-end">${end}</span> de <span class="sgn-p-total">${total}</span> registros</div>
+            <div class="sgn-pager-buttons">${buttonsHtml}</div>
+        </div>
+    `;
+
+    const btns = container.querySelectorAll('.sgn-pager-btn');
+    btns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pageAttr = btn.getAttribute('data-page');
+            let targetPage = currentPage;
+            if (pageAttr === 'prev') targetPage = currentPage - 1;
+            else if (pageAttr === 'next') targetPage = currentPage + 1;
+            else targetPage = parseInt(pageAttr);
+
+            if (targetPage >= 1 && targetPage <= lastPage) {
+                onPageClick(targetPage);
+            }
+        });
+    });
+}
+
+let oaFilterTimer = null;
+function aplicarFiltros() {
+    clearTimeout(oaFilterTimer);
+    oaFilterTimer = setTimeout(() => {
+        Object.keys(tecStates).forEach(tecnicoId => {
+            if (tecStates[tecnicoId]) {
+                tecStates[tecnicoId].page = 1;
+            }
+            const body = document.getElementById(`tec-${tecnicoId}`);
+            if (body && body.style.display !== 'none') {
+                cargarOrdenes(tecnicoId, 1);
+            }
+        });
+    }, 300);
 }
 
 function limpiarFiltros() {
@@ -393,12 +434,57 @@ function limpiarFiltros() {
     aplicarFiltros();
 }
 
-function toggleTecnico(id, chevId) {
-    const body = document.getElementById(id);
-    const chev = document.getElementById(chevId);
+function toggleTecnico(tecnicoId) {
+    const body = document.getElementById(`tec-${tecnicoId}`);
+    const chev = document.getElementById(`chev-${tecnicoId}`);
     if (!body) return;
-    body.classList.toggle('open');
-    if (chev) chev.classList.toggle('open', body.classList.contains('open'));
+    
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        if (chev) chev.classList.add('open');
+        
+        const page = tecStates[tecnicoId] ? tecStates[tecnicoId].page : 1;
+        cargarOrdenes(tecnicoId, page);
+    } else {
+        body.style.display = 'none';
+        if (chev) chev.classList.remove('open');
+    }
+}
+
+function switchTab(tecnicoId, tab) {
+    if (!tecStates[tecnicoId]) {
+        tecStates[tecnicoId] = { tab: 'en_curso', page: 1 };
+    }
+    
+    if (tecStates[tecnicoId].tab === tab) return;
+    
+    tecStates[tecnicoId].tab = tab;
+    tecStates[tecnicoId].page = 1;
+
+    const btnCurso = document.getElementById(`tab-btn-en_curso-${tecnicoId}`);
+    const btnEntregadas = document.getElementById(`tab-btn-entregadas-${tecnicoId}`);
+    
+    if (tab === 'en_curso') {
+        if (btnCurso) {
+            btnCurso.style.borderBottomColor = '#2563eb';
+            btnCurso.style.color = '#2563eb';
+        }
+        if (btnEntregadas) {
+            btnEntregadas.style.borderBottomColor = 'transparent';
+            btnEntregadas.style.color = '#64748b';
+        }
+    } else {
+        if (btnCurso) {
+            btnCurso.style.borderBottomColor = 'transparent';
+            btnCurso.style.color = '#64748b';
+        }
+        if (btnEntregadas) {
+            btnEntregadas.style.borderBottomColor = '#2563eb';
+            btnEntregadas.style.color = '#2563eb';
+        }
+    }
+    
+    cargarOrdenes(tecnicoId, 1);
 }
 
 function abrirDetalleDesdeCard(card) {
@@ -418,13 +504,13 @@ function abrirDetalleDesdeCard(card) {
         </div>
         <div class="det-grid">
             <div class="det-campo"><label>Cliente</label><span>${esc(o.cliente || '-')}</span></div>
-            <div class="det-campo"><label>Fecha de Ingreso</label><span>${esc(o.fecha_de_ingreso || '-')}</span></div>
+            <div class="det-campo"><label>Fecha de Ingreso</label><span>${esc(o.fecha_ingreso_fmt || '-')}</span></div>
             <div class="det-campo"><label>Equipo</label><span>${esc((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
             <div class="det-campo"><label>Serie</label><span>${esc(o.serie || '-')}</span></div>
             <div class="det-campo"><label>Motivo de Ingreso</label><span>${esc(motivo)}</span></div>
             <div class="det-campo"><label>Estado Garantía</label><span>${esc(garantia)}</span></div>
             <div class="det-campo"><label>Estado Repuesto</label><span>${esc(o.estado_repuesto || '-')}</span></div>
-            <div class="det-campo"><label>Fecha Prometido</label><span>${esc(o.fecha_prometido || '-')}</span></div>
+            <div class="det-campo"><label>Fecha Prometido</label><span>${esc(o.fecha_prometido_fmt || '-')}</span></div>
         </div>
     `;
 
@@ -444,14 +530,13 @@ function cerrarDetalle(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.oa-card').forEach((card) => {
-        card.addEventListener('dblclick', () => abrirDetalleDesdeCard(card));
-    });
-
-    const first = document.querySelector('.oa-tec-body');
-    const firstChev = document.querySelector('.oa-chevron');
-    if (first) first.classList.add('open');
-    if (firstChev) firstChev.classList.add('open');
+    const firstBlock = document.querySelector('.oa-tecnico-bloque');
+    if (firstBlock) {
+        const header = firstBlock.querySelector('.oa-tec-header');
+        if (header) {
+            header.click();
+        }
+    }
 });
 </script>
 @endpush

@@ -86,9 +86,9 @@
                         <th style="width:90px; text-align:right;">Acciones</th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="repuestos-tbody">
                     @forelse($repuestos as $r)
-                        <tr>
+                        <tr data-row="repuesto">
                             <td><strong>{{ $r->codigo }}</strong></td>
                             <td style="color:#64748b;">{{ $r->nro_parte ?: '-' }}</td>
                             <td>{{ $r->nombre }}</td>
@@ -111,6 +111,7 @@
                     @endforelse
                     </tbody>
                 </table>
+                <div id="repuestos-pager" style="padding: 10px 20px 20px;"></div>
             </div>
         </div>
     </div>
@@ -303,7 +304,7 @@
 
         function filtrarTabla() {
             const q = document.getElementById('buscador').value.toLowerCase();
-            const filas = document.querySelectorAll('#tabla-repuestos tbody tr:not(#tr-vacio)');
+            const filas = document.querySelectorAll('#repuestos-tbody tr[data-row="repuesto"]');
             let conteo = 0;
 
             filas.forEach(tr => {
@@ -317,5 +318,15 @@
 
             document.getElementById('count-rep').textContent = conteo;
         }
+
+        let _repPager = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            _repPager = new SgnPager({
+                containerSelector: '#repuestos-tbody',
+                itemSelector: 'tr[data-row="repuesto"]',
+                pagerContainerSelector: '#repuestos-pager',
+                pageSize: 15
+            });
+        });
     </script>
 @endpush
