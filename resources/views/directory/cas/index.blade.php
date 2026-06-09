@@ -408,5 +408,25 @@
                 tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
             });
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Validaciones nuevo CAS
+            setupDynamicValidation(document.getElementById('cas-telefono'), EcuadorianValidator.validarTelefono, (v) => {
+                if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+                return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+            });
+            setupDynamicValidation(document.getElementById('cas-correo'), EcuadorianValidator.validarEmail, (v) => {
+                return 'El correo electrónico no tiene un formato válido.';
+            });
+
+            // Validaciones edición CAS
+            setupDynamicValidation(document.getElementById('edit-cas-telefono'), EcuadorianValidator.validarTelefono, (v) => {
+                if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+                return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+            });
+            setupDynamicValidation(document.getElementById('edit-cas-correo'), EcuadorianValidator.validarEmail, (v) => {
+                return 'El correo electrónico no tiene un formato válido.';
+            });
+        });
     </script>
 @endpush

@@ -210,5 +210,20 @@
                 btn.disabled = false; btn.innerHTML = '<i class="bi bi-floppy"></i> Registrar Usuario';
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDynamicValidation(document.getElementById('cu-usuario'), EcuadorianValidator.validarCedula, (v) => {
+                if (v.length === 0) return 'El usuario (cédula) es requerido.';
+                if (/[^\d]/.test(v)) return 'El usuario sólo debe contener números.';
+                return 'El usuario debe ser un número de cédula ecuatoriano de 10 dígitos válido.';
+            });
+            setupDynamicValidation(document.getElementById('cu-telefono'), EcuadorianValidator.validarTelefono, (v) => {
+                if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+                return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+            });
+            setupDynamicValidation(document.getElementById('cu-correo'), EcuadorianValidator.validarEmail, (v) => {
+                return 'El correo electrónico no tiene un formato válido.';
+            });
+        });
     </script>
 @endpush

@@ -1977,6 +1977,23 @@ document.addEventListener('DOMContentLoaded', () => {
     onEstadoRepuestoChange(document.getElementById('estado_repuesto').value || 'No requerido');
     sincronizarTecnicoDesdeSelect();
 
+    // Configurar validaciones dinámicas
+    setupDynamicValidation(document.getElementById('cli_identificacion'), EcuadorianValidator.validarIdentificacion, (v) => {
+        if (v.length === 0) return 'La identificación es requerida.';
+        if (/[^\d]/.test(v)) return 'La identificación sólo debe contener números.';
+        return 'La identificación debe ser una cédula (10 dígitos) o RUC (13 dígitos) válido de Ecuador.';
+    });
+
+    setupDynamicValidation(document.getElementById('cli_telefono'), EcuadorianValidator.validarTelefono, (v) => {
+        if (v.length === 0) return 'El teléfono es requerido.';
+        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+        return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+    });
+
+    setupDynamicValidation(document.getElementById('cli_correo'), EcuadorianValidator.validarEmail, (v) => {
+        return 'El correo electrónico no tiene un formato válido.';
+    });
+
     const inpCi = document.getElementById('cli_identificacion');
     const inpCod = document.getElementById('producto_inventario_codigo');
     if (inpCi) {
