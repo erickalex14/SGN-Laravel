@@ -4,6 +4,7 @@ namespace App\Http\Requests\Directory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Rules\EcuadorTelefono;
 
 class GuardarCasRequest extends FormRequest
 {
@@ -20,7 +21,7 @@ class GuardarCasRequest extends FormRequest
             'nombre'    => ['required', 'string', 'max:20' , 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/'],
             'prefijo'   => ['nullable', 'string', 'max:10'],
             'marca'     => ['nullable', 'string'],
-            'telefono'  => ['nullable', 'integer', 'max:10'],
+            'telefono'  => ['nullable', 'string', new EcuadorTelefono()],
             'correo'    => ['nullable', 'email', 'max:35'],
             'ciudad'    => ['nullable', 'string', 'max:15'],
             'direccion' => ['nullable', 'string', 'max:200'],

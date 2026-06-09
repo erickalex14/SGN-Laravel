@@ -446,7 +446,7 @@
                     </div>
                     <div class="campo">
                         <label>Fecha Prometido <span class="req">*</span></label>
-                        <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido">
+                        <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido" min="{{ \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d') }}">
                     </div>
                     <div class="campo hidden" id="bloque-cas-empresa">
                         <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
@@ -534,16 +534,22 @@
             <div class="seccion-body">
                 <div id="bloque-facturacion" class="grid-3 hidden" style="margin-bottom: 18px;">
                     <div class="campo">
-                        <label>Nro. Factura 1</label>
-                        <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)">
+                        <label>Nro. Factura 1 <span class="req">*</span></label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)" style="flex: 1;">
+                            <button type="button" id="btn-agregar-factura-2" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="mostrarFactura2()">+</button>
+                        </div>
                     </div>
-                    <div class="campo">
+                    <div class="campo hidden" id="wrapper-factura-2">
                         <label>Nro. Factura 2</label>
-                        <input type="text" id="nro_factura_2" name="nro_factura_2">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="nro_factura_2" name="nro_factura_2" style="flex: 1;">
+                            <button type="button" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #dc2626; border-color: #fca5a5; background: #fee2e2;" onclick="ocultarFactura2()">-</button>
+                        </div>
                     </div>
                     <div class="campo">
-                        <label>Fecha de Facturacion</label>
-                        <input type="date" id="fecha_facturacion" name="fecha_facturacion">
+                        <label>Fecha de Facturacion <span class="req">*</span></label>
+                        <input type="date" id="fecha_facturacion" name="fecha_facturacion" max="{{ \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d') }}">
                     </div>
                     <div class="campo" id="bloque-cas">
                         <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
@@ -784,7 +790,7 @@
                 <div class="grid-3">
                     <div class="campo">
                         <label>Fecha Prometido <span class="req">*</span></label>
-                        <input type="date" id="fecha_prometido" name="fecha_prometido" required>
+                        <input type="date" id="fecha_prometido" name="fecha_prometido" required min="{{ \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d') }}">
                     </div>
                 </div>
             </div>
@@ -1387,6 +1393,10 @@ function actualizarMotivo() {
         limpiarRequiredEmpresa();
     }
 
+    if (!esGarantia) {
+        ocultarFactura2();
+    }
+
     _preordenIgnorada = false;
     verificarPreorden();
 }
@@ -1502,6 +1512,22 @@ function autoseleccionarSucursalPorFactura(valor) {
         select.value = opcion.value;
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }
+}
+
+function mostrarFactura2() {
+    const wrap = document.getElementById('wrapper-factura-2');
+    const btn = document.getElementById('btn-agregar-factura-2');
+    if (wrap) wrap.classList.remove('hidden');
+    if (btn) btn.classList.add('hidden');
+}
+
+function ocultarFactura2() {
+    const wrap = document.getElementById('wrapper-factura-2');
+    const btn = document.getElementById('btn-agregar-factura-2');
+    const input = document.getElementById('nro_factura_2');
+    if (wrap) wrap.classList.add('hidden');
+    if (btn) btn.classList.remove('hidden');
+    if (input) input.value = '';
 }
 
 function buscarProductoEmpresa(codigo) {
