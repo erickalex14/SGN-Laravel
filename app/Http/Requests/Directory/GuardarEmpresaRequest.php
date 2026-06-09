@@ -5,6 +5,8 @@ namespace App\Http\Requests\Directory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Rules\EcuadorIdentificacion;
+use App\Rules\EcuadorTelefono;
 
 class GuardarEmpresaRequest extends FormRequest
 {
@@ -22,8 +24,8 @@ class GuardarEmpresaRequest extends FormRequest
 
         return [
             'nombre'    => ['required', 'string', 'max:15'],
-            'ruc'       => ['required', 'numeric:', 'regex:/^[0-9]{13}$/', 'max:13'],
-            'telefono'  => ['nullable', 'string', 'max:10'],
+            'ruc'       => ['required', 'string', new EcuadorIdentificacion('ruc')],
+            'telefono'  => ['nullable', 'string', new EcuadorTelefono()],
             'correo'    => ['nullable', 'email', 'max:30'],
             'direccion' => ['nullable', 'string', 'max:200'],
         ];
@@ -34,7 +36,6 @@ class GuardarEmpresaRequest extends FormRequest
         return [
             'nombre.required' => 'El nombre es obligatorio.',
             'ruc.required'    => 'El RUC es obligatorio.',
-            'ruc.regex'       => 'El RUC debe tener exactamente 13 dígitos numéricos.',
             'id.required'     => 'ID inválido.'
         ];
     }
