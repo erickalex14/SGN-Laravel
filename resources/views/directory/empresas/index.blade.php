@@ -259,6 +259,20 @@
                     body.innerHTML = '<table class="emp-table"><thead><tr><th>Nombre</th><th>RUC</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
                 });
         }
-        //...
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDynamicValidation(document.getElementById('emp-ruc'), EcuadorianValidator.validarRuc, (v) => {
+                if (v.length === 0) return 'El RUC es requerido.';
+                if (/[^\d]/.test(v)) return 'El RUC sólo debe contener números.';
+                return 'El RUC debe ser un número de 13 dígitos válido (ej. 1790012345001).';
+            });
+            setupDynamicValidation(document.getElementById('emp-telefono'), EcuadorianValidator.validarTelefono, (v) => {
+                if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+                return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+            });
+            setupDynamicValidation(document.getElementById('emp-correo'), EcuadorianValidator.validarEmail, (v) => {
+                return 'El correo electrónico no tiene un formato válido.';
+            });
+        });
     </script>
 @endpush

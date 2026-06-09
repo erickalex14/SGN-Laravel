@@ -171,6 +171,11 @@ async function guardarPerfil() {
     cfgErr('cfg-nombre-err', '');
     if (!nombre) { cfgErr('cfg-nombre-err', 'El nombre no puede estar vacio.'); return; }
     if (nombre.length < 3) { cfgErr('cfg-nombre-err', 'Minimo 3 caracteres.'); return; }
+    if (document.getElementById('cfg-telefono').classList.contains('is-invalid') ||
+        document.getElementById('cfg-correo').classList.contains('is-invalid')) {
+        cfgMsg('cfg-msg-nombre', 'err', 'Por favor, corrija los errores en los campos antes de guardar.');
+        return;
+    }
     var fd = new FormData();
     fd.append('_token', '{{ csrf_token() }}');
     fd.append('accion', 'perfil');
@@ -219,6 +224,15 @@ async function guardarPassword() {
 function confirmarLogout() {
     document.getElementById('cfg-modal-logout').style.display = 'flex';
 }
+document.addEventListener('DOMContentLoaded', () => {
+    setupDynamicValidation(document.getElementById('cfg-telefono'), EcuadorianValidator.validarTelefono, (v) => {
+        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+        return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+    });
+    setupDynamicValidation(document.getElementById('cfg-correo'), EcuadorianValidator.validarEmail, (v) => {
+        return 'El correo electrónico no tiene un formato válido.';
+    });
+});
 </script>
 @endpush
 

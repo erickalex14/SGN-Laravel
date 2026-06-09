@@ -99,10 +99,23 @@
         .sgn-pager-select:focus {
             border-color: #2563eb;
         }
+        /* Dynamic validation styles */
+        .is-invalid {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+        }
+        .error-mensaje {
+            color: #ef4444;
+            font-size: 11.5px;
+            font-weight: 600;
+            margin-top: 4px;
+            display: none;
+        }
     </style>
     @stack('css_adicional')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('js/validador-ecuador.js') }}"></script>
 </head>
 <body>
 @php
