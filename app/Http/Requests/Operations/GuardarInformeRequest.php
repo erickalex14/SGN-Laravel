@@ -19,7 +19,7 @@ class GuardarInformeRequest extends FormRequest
             'orden_id'        => ['required', 'integer', 'not_in:0'],
             'antecedentes'    => ['required', 'string'],
             'proceso'         => ['required', 'string'],
-            'conclusion'      => ['required', 'string'],
+            'conclusion'      => ['nullable', 'string'],
             'recomendaciones' => ['nullable', 'string'],
             'estado_equipo'   => ['required', 'string', 'in:Operativo,Reparado parcialmente,Sin reparación posible,Desguace,En espera de repuesto'],
             'fecha_informe'   => ['nullable', 'date'],

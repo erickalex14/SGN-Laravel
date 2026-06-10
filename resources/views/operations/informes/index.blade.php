@@ -267,7 +267,7 @@
             </div>
             <div class="grid-2">
                 <div class="campo">
-                    <label for="inf-conclusion">Conclusión <span class="req">*</span></label>
+                    <label for="inf-conclusion">Conclusión</label>
                     <textarea id="inf-conclusion" rows="3" placeholder="Conclusión del informe..."></textarea>
                 </div>
                 <div class="campo">
@@ -678,7 +678,6 @@
         if (ES_ADMIN) return true;
         if (!_getVal('inf-antecedentes')) { _mostrarMsg('err', 'Los antecedentes son obligatorios.'); return false; }
         if (!_getVal('inf-proceso'))      { _mostrarMsg('err', 'El proceso es obligatorio.'); return false; }
-        if (!_getVal('inf-conclusion'))   { _mostrarMsg('err', 'La conclusión es obligatoria.'); return false; }
         return true;
     }
 

@@ -59,23 +59,8 @@ class EcuadorIdentificacion implements ValidationRule
         if (($provincia < 1 || $provincia > 24) && $provincia !== 30) {
             return false;
         }
-        $tercerDigito = (int) $value[2];
-        if ($tercerDigito >= 6) {
-            return false;
-        }
-        $decimoDigito = (int) $value[9];
-        $suma = 0;
-        for ($i = 0; $i < 9; $i++) {
-            $coef = ($i % 2 === 0) ? 2 : 1;
-            $val = (int) $value[$i] * $coef;
-            if ($val >= 10) {
-                $val -= 9;
-            }
-            $suma += $val;
-        }
-        $residuo = $suma % 10;
-        $resultado = ($residuo === 0) ? 0 : 10 - $residuo;
-        return $resultado === $decimoDigito;
+
+        return true;
     }
 
     protected function validarRuc(string $value): bool

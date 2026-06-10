@@ -513,18 +513,6 @@
                         <input type="text" id="cli_direccion" name="cli_direccion" maxlength="200" oninput="this.value=this.value.toUpperCase()">
                     </div>
                 </div>
-                <div class="grid-3">
-                    <div class="campo">
-                        <label>Sucursal Cliente <span class="req">*</span></label>
-                        <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
-                            <option value="">-- Seleccione --</option>
-                            @foreach($sucursalesCliente as $suc)
-                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
-                            @endforeach
-                            <option value="999">999 - SERVICIO EXTERNO</option>
-                        </select>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -551,8 +539,26 @@
                         <label>Fecha de Facturacion <span class="req">*</span></label>
                         <input type="date" id="fecha_facturacion" name="fecha_facturacion" max="{{ \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d') }}">
                     </div>
-                    <div class="campo" id="bloque-cas">
-                        <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
+                    <div class="campo">
+                        <label>Sucursal Cliente <span class="req">*</span></label>
+                        <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
+                            <option value="">-- Seleccione --</option>
+                            @foreach($sucursalesCliente as $suc)
+                                <option value="{{ $suc->numero }}">{{ str_pad((string) $suc->numero, 3, '0', STR_PAD_LEFT) }} - {{ $suc->nombre }}</option>
+                            @endforeach
+                            <option value="999">999 - SERVICIO EXTERNO</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Tipo de Garantia <span class="req">*</span></label>
+                        <select id="garantia_tipo" name="garantia_tipo" onchange="actualizarGarantiaTipo()">
+                            <option value="">-- Seleccione --</option>
+                            <option value="interna">Interna</option>
+                            <option value="externa">Externa</option>
+                        </select>
+                    </div>
+                    <div class="campo hidden" id="bloque-cas">
+                        <label>Asignar CAS <span class="req">*</span></label>
                         <select id="cas_id" name="cas_id">
                             <option value="">-- Seleccione CAS --</option>
                             @foreach($cas as $c)
@@ -1352,6 +1358,8 @@ function actualizarMotivo() {
     const tipoServicioTexto = document.getElementById('tipo_servicio_texto');
     const nroFactura = document.getElementById('nro_factura');
     const fechaFacturacion = document.getElementById('fecha_facturacion');
+    const garantiaTipo = document.getElementById('garantia_tipo');
+    const casGarantia = document.getElementById('cas_id');
     const bloquesDependientes = document.querySelectorAll('.bloque-motivo');
     const acciones = document.getElementById('acciones-orden');
     const lockMsg = document.getElementById('motivo-lock-msg');
@@ -1377,10 +1385,27 @@ function actualizarMotivo() {
         el.disabled = !esEmpresa;
     });
 
-    if (tipoServicioSelect) tipoServicioSelect.disabled = esEmpresa || esGarantia || esExterno;
-    if (tipoServicioTexto) tipoServicioTexto.required = !esEmpresa && esExterno;
+    if (tipoServicioSelect) {
+        tipoServicioSelect.disabled = esEmpresa || esExterno;
+        tipoServicioSelect.required = !esEmpresa && esGarantia;
+        tipoServicioSelect.style.display = esExterno ? 'none' : '';
+        if (esExterno) tipoServicioSelect.value = '';
+    }
+    if (tipoServicioTexto) {
+        tipoServicioTexto.disabled = esEmpresa || !esExterno;
+        tipoServicioTexto.required = !esEmpresa && esExterno;
+        tipoServicioTexto.style.display = esExterno ? '' : 'none';
+        if (!esExterno) tipoServicioTexto.value = '';
+    }
     if (nroFactura) nroFactura.required = !esEmpresa && esGarantia;
     if (fechaFacturacion) fechaFacturacion.required = !esEmpresa && esGarantia;
+    if (selectSucursal) {
+        selectSucursal.required = !esEmpresa && esGarantia;
+    }
+    if (garantiaTipo) {
+        garantiaTipo.required = !esEmpresa && esGarantia;
+        if (!esGarantia) garantiaTipo.value = '';
+    }
 
     if (esExterno) {
         if (selectSucursal) selectSucursal.value = '999';
@@ -1395,10 +1420,28 @@ function actualizarMotivo() {
 
     if (!esGarantia) {
         ocultarFactura2();
+        if (casGarantia) casGarantia.value = '';
     }
+
+    actualizarGarantiaTipo();
 
     _preordenIgnorada = false;
     verificarPreorden();
+}
+
+function actualizarGarantiaTipo() {
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
+    const garantiaTipo = document.getElementById('garantia_tipo');
+    const bloqueCas = document.getElementById('bloque-cas');
+    const cas = document.getElementById('cas_id');
+    const esGarantiaExterna = motivo === 'Validacion de Garantia' && (garantiaTipo?.value || '') === 'externa';
+
+    if (bloqueCas) bloqueCas.classList.toggle('hidden', !esGarantiaExterna);
+    if (cas) {
+        cas.disabled = !esGarantiaExterna;
+        cas.required = esGarantiaExterna;
+        if (!esGarantiaExterna) cas.value = '';
+    }
 }
 
 function limpiarRequiredEmpresa() {
@@ -1948,9 +1991,11 @@ async function guardarOrden() {
         const d = await r.json();
 
         if(d.ok) {
+            const urlImprimirOrden = @json(route('ordenes.imprimir', ['id' => '__ID__']));
+            const urlImprimirEmpresa = @json(route('ordenes_empresa.imprimir', ['id' => '__ID__']));
             const linkImprimir = d.tipo_orden === 'empresa'
-                ? `<br><br> <a href="/operaciones/ordenes-empresa/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`
-                : `<br><br> <a href="/operaciones/ordenes/${d.orden_id}/imprimir" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`;
+                ? `<br><br> <a href="${urlImprimirEmpresa.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`
+                : `<br><br> <a href="${urlImprimirOrden.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`;
             mostrarMensaje(false, `<strong>Exito!</strong> ${d.mensaje}${linkImprimir}`);
             document.getElementById('form-orden').reset();
             actualizarMotivo();

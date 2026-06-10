@@ -67,7 +67,7 @@ class InformeService
                 $informe->tecnico_id = $informeExistente ? (int) $informeExistente->tecnico_id : $dto->tecnico_id;
                 $informe->antecedentes = trim($dto->antecedentes);
                 $informe->proceso = trim($dto->proceso);
-                $informe->conclusion = trim($dto->conclusion);
+                $informe->conclusion = trim((string) ($dto->conclusion ?? ''));
                 $informe->recomendaciones = trim((string) ($dto->recomendaciones ?? ''));
                 $informe->estado_equipo = $this->normalizarEstadoEquipo($dto->estado_equipo);
                 $informe->fecha_informe = $dto->fecha_informe

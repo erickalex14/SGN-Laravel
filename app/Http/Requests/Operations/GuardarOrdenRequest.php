@@ -19,6 +19,8 @@ class GuardarOrdenRequest extends FormRequest
     public function rules(): array
     {
         $esEmpresa = $this->input('motivo_ingreso') === 'Servicios a Empresas';
+        $esGarantia = $this->input('motivo_ingreso') === 'Validacion de Garantia';
+        $garantiaExterna = in_array(strtolower((string) $this->input('garantia_tipo')), ['externa'], true);
         $todayEcuador = \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d');
 
         $reglas = [
@@ -45,7 +47,7 @@ class GuardarOrdenRequest extends FormRequest
             'eq_contrasena'            => ['nullable', 'string', 'max:100'],
             'eq_falla'                 => [$esEmpresa ? 'nullable' : 'required', 'string'],
             'eq_observacion'           => ['nullable', 'string'],
-            'eq_tipo_servicio'         => ['nullable', 'integer'],
+            'eq_tipo_servicio'         => [$esGarantia ? 'required' : 'nullable', 'integer', 'exists:tiposservicio,id'],
             'tipo_servicio_texto'      => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
             'producto_inventario_codigo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
 
@@ -59,15 +61,15 @@ class GuardarOrdenRequest extends FormRequest
             'nro_factura_2'            => ['nullable', 'string', 'max:50'],
             'fecha_facturacion'        => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'date', 'before_or_equal:' . $todayEcuador],
             'fecha_prometido'          => [$esEmpresa ? 'nullable' : 'required', 'date', 'after_or_equal:' . $todayEcuador],
-            'nro_sucursal_cliente'     => ['nullable', 'integer'],
+            'nro_sucursal_cliente'     => [$esGarantia ? 'required' : 'nullable', 'integer'],
             'estado_repuesto'          => ['nullable', 'string', 'max:50'],
             'garantia_tipo'            => [
-                'nullable',
+                $esGarantia ? 'required' : 'nullable',
                 'string',
                 'max:50',
                 Rule::in(['propia', 'externa', 'PROPIA', 'EXTERNA', 'interna', 'INTERNA'])
             ],
-            'cas_id'                   => ['nullable', 'integer', 'exists:cas,id'],
+            'cas_id'                   => [$garantiaExterna ? 'required' : 'nullable', 'integer', 'exists:cas,id'],
             'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
             'repuestos_seleccionados'   => ['nullable', 'array'],
             'repuestos_seleccionados.*' => ['integer', 'exists:repuestos,id'],
@@ -137,6 +139,15 @@ class GuardarOrdenRequest extends FormRequest
         }
         if ($this->has('cas_id') && $this->input('cas_id') === '') {
             $this->merge(['cas_id' => null]);
+        }
+        if ($this->has('garantia_tipo') && $this->input('garantia_tipo') === '') {
+            $this->merge(['garantia_tipo' => null]);
+        }
+        if ($this->has('eq_tipo_servicio') && $this->input('eq_tipo_servicio') === '') {
+            $this->merge(['eq_tipo_servicio' => null]);
+        }
+        if ($this->has('nro_sucursal_cliente') && $this->input('nro_sucursal_cliente') === '') {
+            $this->merge(['nro_sucursal_cliente' => null]);
         }
         if ($this->has('cas_id_empresa') && $this->input('cas_id_empresa') === '') {
             $this->merge(['cas_id_empresa' => null]);

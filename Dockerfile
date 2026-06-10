@@ -1,19 +1,15 @@
 FROM node:20-alpine AS frontend
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-COPY resources ./resources
-COPY public ./public
-COPY vite.config.js ./
-RUN npm run build
+COPY . .
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi \
+    && npm run build
 
 
 FROM composer:2 AS vendor
 WORKDIR /app
 
-COPY composer.json composer.lock ./
+COPY . .
 RUN composer install \
     --no-dev \
     --no-interaction \
@@ -64,7 +60,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENV APP_ENV=production
 ENV APP_DEBUG=false
 ENV LOG_CHANNEL=stderr
+ENV PORT=8001
 
-EXPOSE 10000
+EXPOSE 8001
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -50,11 +50,6 @@ class CrearOrdenService
                 $garantiaTipo = $this->normalizarGarantiaTipo($dto->garantia_tipo);
                 $casId = $dto->cas_id;
 
-                if ($esValidacionGarantia) {
-                    $tipoServicioId = null;
-                    $tipoServicioTexto = null;
-                }
-
                 if ($motivoIngreso === 'Servicio Cliente Externo') {
                     $tipoServicioId = null;
                 }
@@ -78,11 +73,12 @@ class CrearOrdenService
                 }
 
                 if ($esValidacionGarantia) {
-                    if (!empty($casId)) {
-                        $garantiaTipo = $garantiaTipo ?? 'externa';
+                    if ($garantiaTipo !== 'externa') {
+                        $casId = null;
                     }
                 } else {
                     $garantiaTipo = null;
+                    $casId = null;
                 }
 
                 if ($motivoIngreso === 'Servicio Cliente Externo') {
