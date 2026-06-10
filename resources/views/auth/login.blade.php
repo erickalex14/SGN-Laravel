@@ -147,7 +147,7 @@
                 </div>
             @endif
 
-            <form class="space-y-lg" action="{{ route('auth.validar', [], false) }}" method="POST">
+            <form class="space-y-lg" action="{{ route('auth.validar') }}" method="POST">
                 @csrf
                 <div class="space-y-xs">
                     <label class="block font-label-caps text-label-caps text-on-surface-variant" for="usuario">Email o Usuario</label>

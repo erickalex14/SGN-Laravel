@@ -3,21 +3,30 @@ set -e
 
 cd /var/www/html
 
-if [ ! -f .env ] && [ -f .env.example ]; then
-  cp .env.example .env
+if [ ! -f .env ]; then
+  echo "ERROR: falta el archivo /var/www/html/.env" >&2
+  exit 1
 fi
 
-if [ "${GENERATE_APP_KEY:-true}" = "true" ]; then
-  php artisan key:generate --force || true
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
+chown -R nobody:nobody storage bootstrap/cache || true
+chmod -R ug+rw storage bootstrap/cache || true
+rm -f bootstrap/cache/*.php || true
+
+if [ "${RUN_STORAGE_LINK:-true}" = "true" ] && [ ! -L public/storage ]; then
+  php artisan storage:link || true
 fi
 
-php artisan config:clear || true
-php artisan route:clear || true
-php artisan view:clear || true
+php artisan optimize:clear || true
 
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+  php artisan migrate --force
+fi
 
-PORT_TO_USE="${PORT:-10000}"
-exec php artisan serve --host=0.0.0.0 --port="${PORT_TO_USE}"
+if [ "${CACHE_LARAVEL:-true}" = "true" ]; then
+  php artisan config:cache || true
+  php artisan route:cache || true
+  php artisan view:cache || true
+fi
+
+exec php artisan serve --host=0.0.0.0 --port="${PORT:-8001}"

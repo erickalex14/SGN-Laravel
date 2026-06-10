@@ -9,7 +9,7 @@ readonly class InformeDTO
         public int $tecnico_id,
         public string $antecedentes,
         public string $proceso,
-        public string $conclusion,
+        public ?string $conclusion,
         public ?string $recomendaciones,
         public string $estado_equipo,
         public ?string $fecha_informe,

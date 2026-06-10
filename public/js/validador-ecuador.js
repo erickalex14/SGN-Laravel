@@ -5,20 +5,8 @@ const EcuadorianValidator = {
         
         const prov = parseInt(val.substring(0, 2), 10);
         if ((prov < 1 || prov > 24) && prov !== 30) return false;
-        
-        const third = parseInt(val[2], 10);
-        if (third >= 6) return false;
-        
-        const decimo = parseInt(val[9], 10);
-        let suma = 0;
-        for (let i = 0; i < 9; i++) {
-            let valDigit = parseInt(val[i], 10) * (i % 2 === 0 ? 2 : 1);
-            if (valDigit >= 10) valDigit -= 9;
-            suma += valDigit;
-        }
-        const residuo = suma % 10;
-        const resultado = residuo === 0 ? 0 : 10 - residuo;
-        return resultado === decimo;
+
+        return true;
     },
 
     validarRuc(val) {
@@ -31,7 +19,7 @@ const EcuadorianValidator = {
         const third = parseInt(val[2], 10);
         if (third < 6) {
             // Natural person
-            return this.validarCedula(val.substring(0, 10));
+            return EcuadorianValidator.validarCedula(val.substring(0, 10));
         } else if (third === 9) {
             // Private entity
             const verif = parseInt(val[9], 10);
@@ -60,8 +48,8 @@ const EcuadorianValidator = {
 
     validarIdentificacion(val) {
         val = val.trim();
-        if (val.length === 10) return this.validarCedula(val);
-        if (val.length === 13) return this.validarRuc(val);
+        if (val.length === 10) return EcuadorianValidator.validarCedula(val);
+        if (val.length === 13) return EcuadorianValidator.validarRuc(val);
         return false;
     },
 

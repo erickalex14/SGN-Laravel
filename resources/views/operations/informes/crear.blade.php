@@ -262,7 +262,7 @@
                 </div>
                 <div class="grid-2">
                     <div class="campo">
-                        <label for="inf-conclusion">Conclusion <span class="req">*</span></label>
+                        <label for="inf-conclusion">Conclusion</label>
                         <textarea id="inf-conclusion" rows="3" placeholder="Conclusion del informe..."></textarea>
                     </div>
                     <div class="campo">
@@ -695,7 +695,6 @@ window.onerror = function(msg, url, line, col, error) {
         if (!_orden) { _msgForm('err', 'Selecciona una orden primero.'); return false; }
         if (!_getVal('inf-antecedentes')) { _msgForm('err', 'Los antecedentes son obligatorios.'); return false; }
         if (!_getVal('inf-proceso'))      { _msgForm('err', 'El proceso es obligatorio.'); return false; }
-        if (!_getVal('inf-conclusion'))   { _msgForm('err', 'La conclusion es obligatoria.'); return false; }
         return true;
     }
 

@@ -170,8 +170,15 @@
 
 @section('contenido')
 @php
-    $rows = $ordenes->map(function ($ord) {
+    $sucursalesClienteMapa = \App\Models\Directory\SucursalCliente::query()
+        ->orderBy('numero')
+        ->get(['numero', 'nombre'])
+        ->keyBy(fn($s) => (string) (int) $s->numero);
+
+    $rows = $ordenes->map(function ($ord) use ($sucursalesClienteMapa) {
         $esEmpresa = $ord instanceof \App\Models\Operations\OrdenEmpresa;
+        $nroSucursalCliente = (int) ($ord->nro_sucursal_cliente ?? 0);
+        $sucursalCliente = $nroSucursalCliente > 0 ? $sucursalesClienteMapa->get((string) $nroSucursalCliente) : null;
         $credenciales = $esEmpresa ? collect() : collect($ord->equipo?->credenciales ?? [])->map(fn($c) => [
             'usuario' => (string) ($c->usuario ?? ''),
             'contrasena' => (string) ($c->contrasena ?? ''),
@@ -207,6 +214,7 @@
             'sucursal' => (string) ($ord->sucursal->ciudad ?? $ord->sucursal->nombre ?? ''),
             'nro_factura' => (string) ($esEmpresa ? ($ord->nro_ticket ?? '') : ($ord->nro_factura ?? '')),
             'nro_sucursal_cliente' => (string) ($ord->nro_sucursal_cliente ?? ''),
+            'sucursal_cliente_nombre' => (string) ($sucursalCliente->nombre ?? ''),
             'ingresado_por_nombre' => (string) ($esEmpresa
                 ? ($ord->ingresadoPor->nombre_tecnico ?? $ord->ingresadoPor->usuario ?? '')
                 : ($ord->usuarioIngreso->nombre_tecnico ?? $ord->usuarioIngreso->usuario ?? '')),
@@ -310,7 +318,7 @@
                 <div class="orden-card" data-estado="{{ $o['estado_orden'] }}" id="card-{{ $o['tipo_orden'] }}-{{ $o['id'] }}" data-orden='@json($o)'>
                     <div class="card-top" onclick="verDetalleOrden(this.parentElement)">
                         <span class="card-nro">{{ $o['nro_orden'] }}</span>
-                        <span style="background:{{ $estadoBg }};color:{{ $estadoColor }};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">{{ $o['estado_orden'] }}</span>
+                        <span class="card-estado-badge" style="background:{{ $estadoBg }};color:{{ $estadoColor }};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">{{ $o['estado_orden'] }}</span>
                     </div>
                     <div class="card-cliente" onclick="verDetalleOrden(this.parentElement)"><i class="bi bi-person"></i> {{ $o['cliente'] }}</div>
                     <div class="card-equipo" onclick="verDetalleOrden(this.parentElement)"><i class="bi bi-hdd"></i> {{ trim($o['tipo'].' '.$o['marca'].' '.$o['modelo']) }}</div>
@@ -324,7 +332,7 @@
 
                     <div class="card-meta-row">
                         <span class="tarj-meta"><i class="bi bi-calendar3"></i> {{ \Carbon\Carbon::parse($o['fecha_de_ingreso'])->format('d/m/Y H:i') }}</span>
-                        <span style="background:{{ $repBg }};color:{{ $repColor }};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">{{ $o['estado_repuesto'] }}</span>
+                        <span class="card-repuesto-badge" style="background:{{ $repBg }};color:{{ $repColor }};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">{{ $o['estado_repuesto'] }}</span>
                         @if(!empty($o['ingresado_por_nombre']))
                             <span class="tarj-meta" title="Ingresado por"><i class="bi bi-person-check"></i> {{ $o['ingresado_por_nombre'] }}</span>
                         @endif
@@ -621,7 +629,120 @@ function _badgeRepuestoHtml(estado) {
     return `<span style="background:${pair[0]};color:${pair[1]};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${_h(estado)}</span>`;
 }
 
+function _moFindRow(ordenId, tipoOrden = 'personal') {
+    return _moRows.find((x) => Number(x.id) === Number(ordenId) && (x.tipo_orden || 'personal') === tipoOrden)
+        || _moRows.find((x) => Number(x.id) === Number(ordenId));
+}
+
+function _moCardId(row) {
+    return 'card-' + (row.tipo_orden || 'personal') + '-' + Number(row.id || 0);
+}
+
+function _moEstadoColors(estado) {
+    const map = {
+        'Pendiente': ['#fef9c3', '#854d0e'],
+        'Abierta': ['#fef9c3', '#854d0e'],
+        'En proceso': ['#dbeafe', '#1e40af'],
+        'Finalizada': ['#dcfce7', '#166534'],
+        'Entregada': ['#f0fdf4', '#15803d'],
+        'Nota de Credito': ['#fce7f3', '#9d174d'],
+    };
+    return map[estado] || ['#f1f5f9', '#475569'];
+}
+
+function _moRepuestoColors(estado) {
+    const map = {
+        'No requerido': ['#f1f5f9', '#475569'],
+        'Requerido': ['#fef3c7', '#92400e'],
+        'Con stock': ['#dcfce7', '#166534'],
+        'Con Stock': ['#dcfce7', '#166534'],
+        'Sin stock': ['#fee2e2', '#991b1b'],
+        'Sin Stock': ['#fee2e2', '#991b1b'],
+        'En espera': ['#fef3c7', '#92400e'],
+        'En espera del repuesto': ['#fef3c7', '#92400e'],
+    };
+    return map[estado] || ['#f1f5f9', '#475569'];
+}
+
+function _moOption(value, label, actual) {
+    const selected = String(value || '') === String(actual || '') ? ' selected' : '';
+    return `<option value="${_h(value)}"${selected}>${_h(label || value)}</option>`;
+}
+
+function _estadoOrdenOptions(actual, esEmpresa = false) {
+    const estados = esEmpresa
+        ? ['Pendiente', 'En proceso', 'Finalizada', 'Entregada']
+        : ['Pendiente', 'En proceso', 'Finalizada', 'Entregada', 'Nota de Credito'];
+    const normalizado = actual === 'Abierta' ? 'Pendiente' : actual;
+    const lista = estados.includes(normalizado) ? estados : [normalizado, ...estados].filter(Boolean);
+    return lista.map((estado) => _moOption(estado, estado === normalizado ? `Actual: ${estado}` : estado, normalizado)).join('');
+}
+
+function _moActualizarCard(row) {
+    if (!row) return;
+    const card = document.getElementById(_moCardId(row));
+    if (!card) return;
+
+    card.dataset.orden = JSON.stringify(row);
+    card.dataset.estado = row.estado_orden || '';
+
+    const estadoBadge = card.querySelector('.card-estado-badge');
+    if (estadoBadge) {
+        const [bg, color] = _moEstadoColors(row.estado_orden || '');
+        estadoBadge.textContent = row.estado_orden || '-';
+        estadoBadge.style.background = bg;
+        estadoBadge.style.color = color;
+    }
+
+    const repBadge = card.querySelector('.card-repuesto-badge');
+    if (repBadge) {
+        const [bg, color] = _moRepuestoColors(row.estado_repuesto || '');
+        repBadge.textContent = row.estado_repuesto || '-';
+        repBadge.style.background = bg;
+        repBadge.style.color = color;
+    }
+}
+
+function _moRefrescarModal(row) {
+    _moActualizarCard(row);
+    const modal = document.getElementById('modal-detalle');
+    if (!modal || modal.style.display === 'none') return;
+    const card = document.getElementById(_moCardId(row));
+    if (card) verDetalleOrden(card);
+}
+
+function _moActualizarKpis() {
+    const total = _moRows.length;
+    const pendientes = _moRows.filter((o) => ['Pendiente', 'Abierta'].includes(o.estado_orden)).length;
+    const proceso = _moRows.filter((o) => o.estado_orden === 'En proceso').length;
+    const finalizadas = _moRows.filter((o) => o.estado_orden === 'Finalizada').length;
+    const notas = _moRows.filter((o) => o.estado_orden === 'Nota de Credito').length;
+    const entregadas = _moRows.filter((o) => o.estado_orden === 'Entregada').length;
+    const valores = {
+        'mo-kpi-pendiente': pendientes,
+        'mo-kpi-enproceso': proceso,
+        'mo-kpi-finalizada': finalizadas,
+        'mo-kpi-notacred': notas,
+        'mo-kpi-entregada': entregadas,
+        'mo-kpi-todos': total,
+    };
+    Object.entries(valores).forEach(([id, valor]) => {
+        const el = document.querySelector('#' + id + ' .mo-kpi-num');
+        if (el) el.textContent = valor;
+    });
+}
+
+function _moAplicarCambioLocal(row) {
+    _moActualizarCard(row);
+    _moActualizarKpis();
+    filtrarOrdenes(_moFiltroActual);
+    _moRefrescarModal(row);
+}
+
+let _moFiltroActual = 'Pendiente';
+
 function filtrarOrdenes(estado) {
+    _moFiltroActual = estado;
     const cards = document.querySelectorAll('.orden-card');
     let visibles = 0;
     cards.forEach((card) => {
@@ -656,7 +777,11 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         return;
     }
     const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
-    if (!verificado) return;
+    if (!verificado) {
+        const rowCancel = _moFindRow(ordenId, tipoOrden);
+        if (rowCancel) _moRefrescarModal(rowCancel);
+        return;
+    }
 
     const fd = new FormData();
     fd.append('_token', _moCsrf);
@@ -671,7 +796,15 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
             await mostrarAlertaEstetica(d.error || 'No se pudo actualizar el estado.', 'error', 'Error de Operación');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, tipoOrden);
+        if (row) {
+            row.estado_orden = nuevoEstado;
+            if (nuevoEstado === 'Nota de Credito') {
+                row.nc_estado = row.nc_estado || 'Pendiente';
+            }
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Estado actualizado correctamente.', 'success', 'Estado Actualizado');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -682,7 +815,8 @@ async function reasignarOrden(ordenId, nuevoTecnicoId, tipoOrden = 'personal') {
 
     const verificado = await mostrarAlertaEstetica(`¿Confirma reasignar esta orden al nuevo técnico seleccionado?`, 'confirm', 'Confirmar Reasignación');
     if (!verificado) {
-        location.reload();
+        const row = _moFindRow(ordenId, tipoOrden);
+        if (row) _moRefrescarModal(row);
         return;
     }
 
@@ -719,7 +853,12 @@ async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
             await mostrarAlertaEstetica(d.error || 'No se pudo actualizar la garantía.', 'error', 'Error de Garantía');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            row.estado_garantia = nuevoEstado;
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Estado de garantia actualizado.', 'success', 'Garantia Actualizada');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -742,7 +881,17 @@ async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
             await mostrarAlertaEstetica(d.error || 'No se pudo actualizar el repuesto.', 'error', 'Error de Repuesto');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            row.estado_repuesto = nuevoEstado;
+            if (nuevoEstado !== 'Con stock') {
+                row.repuesto_inventario_id = 0;
+                row.repuesto_codigo = '';
+                row.repuesto_nombre = '';
+            }
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Estado de repuesto actualizado.', 'success', 'Repuesto Actualizado');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -753,7 +902,11 @@ function limpiarRepuestoSeleccionadoMisOrdenes(ordenId) {
     const inp = document.getElementById('rep-inv-query-' + ordenId);
     const tag = document.getElementById('rep-inv-selected-' + ordenId);
     const text = document.getElementById('rep-inv-selected-text-' + ordenId);
-    if (hid) hid.value = '';
+    if (hid) {
+        hid.value = '';
+        delete hid.dataset.codigo;
+        delete hid.dataset.nombre;
+    }
     if (inp) inp.value = '';
     if (tag) tag.style.display = 'none';
     if (text) text.textContent = '';
@@ -768,7 +921,11 @@ function seleccionarRepuestoMisOrdenes(ordenId, repuestoId, codigo, nombre) {
 
     const cod = String(codigo || '').trim();
     const nom = String(nombre || '').trim();
-    if (hid) hid.value = Number(repuestoId || 0) || '';
+    if (hid) {
+        hid.value = Number(repuestoId || 0) || '';
+        hid.dataset.codigo = cod;
+        hid.dataset.nombre = nom;
+    }
     if (inp) inp.value = cod || nom;
     if (text) text.textContent = (cod || '-') + ' - ' + (nom || '-');
     if (tag) tag.style.display = 'flex';
@@ -832,7 +989,11 @@ function onInputBuscarRepuestoMisOrdenes(ordenId, q) {
     const hid = document.getElementById('rep-inv-' + ordenId);
     const tag = document.getElementById('rep-inv-selected-' + ordenId);
     const text = document.getElementById('rep-inv-selected-text-' + ordenId);
-    if (hid) hid.value = '';
+    if (hid) {
+        hid.value = '';
+        delete hid.dataset.codigo;
+        delete hid.dataset.nombre;
+    }
     if (tag) tag.style.display = 'none';
     if (text) text.textContent = '';
     buscarRepuestoMisOrdenes(ordenId, q);
@@ -855,7 +1016,29 @@ async function asignarRepuesto(ordenId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo asignar el repuesto.', 'error', 'Error de Asignación');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            const repuestoId = Number(sel.value || 0);
+            const codigo = sel.dataset.codigo || '';
+            const nombre = sel.dataset.nombre || '';
+            row.estado_repuesto = 'Con stock';
+            row.repuesto_inventario_id = repuestoId;
+            row.repuesto_codigo = codigo;
+            row.repuesto_nombre = nombre;
+            row.repuestos_asignados = Array.isArray(row.repuestos_asignados) ? row.repuestos_asignados : [];
+            if (!row.repuestos_asignados.some((ra) => Number(ra.repuesto_id) === repuestoId)) {
+                row.repuestos_asignados.push({
+                    id: repuestoId,
+                    repuesto_id: repuestoId,
+                    codigo,
+                    nombre,
+                    cantidad: 1,
+                });
+            }
+            limpiarRepuestoSeleccionadoMisOrdenes(ordenId);
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Repuesto asignado correctamente.', 'success', 'Repuesto Asignado');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -875,7 +1058,16 @@ async function revertirRepuesto(ordenId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación del repuesto.', 'error', 'Error al Revertir');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            row.repuestos_asignados = [];
+            row.estado_repuesto = 'No requerido';
+            row.repuesto_inventario_id = 0;
+            row.repuesto_codigo = '';
+            row.repuesto_nombre = '';
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Repuesto revertido correctamente.', 'success', 'Repuesto Revertido');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -896,7 +1088,24 @@ async function revertirRepuestoIndividual(ordenId, repuestoId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación de este repuesto.', 'error', 'Error al Revertir');
             return;
         }
-        location.reload();
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            row.repuestos_asignados = (row.repuestos_asignados || []).filter((ra) => Number(ra.repuesto_id) !== Number(repuestoId));
+            if (row.repuestos_asignados.length > 0) {
+                const principal = row.repuestos_asignados[0];
+                row.estado_repuesto = 'Con stock';
+                row.repuesto_inventario_id = Number(principal.repuesto_id || 0);
+                row.repuesto_codigo = principal.codigo || '';
+                row.repuesto_nombre = principal.nombre || '';
+            } else {
+                row.estado_repuesto = 'No requerido';
+                row.repuesto_inventario_id = 0;
+                row.repuesto_codigo = '';
+                row.repuesto_nombre = '';
+            }
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Repuesto revertido correctamente.', 'success', 'Repuesto Revertido');
     } catch {
         await mostrarAlertaEstetica('Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error', 'Error de Conexión');
     }
@@ -924,8 +1133,13 @@ async function abrirModalNC(ordenId) {
     document.getElementById('nc-asunto').focus();
 }
 
-function cerrarModalNC() {
+function cerrarModalNC(restaurarSelect = true) {
+    const ordenId = _ncOrdenId;
     document.getElementById('modal-nota-credito').style.display = 'none';
+    if (restaurarSelect && ordenId) {
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) _moRefrescarModal(row);
+    }
     _ncOrdenId = 0;
 }
 
@@ -946,8 +1160,9 @@ function abrirModalSR(ordenId) {
     document.getElementById('sr-repuesto-nombre').focus();
 }
 
-function cerrarModalSR() {
+function cerrarModalSR(restaurarSelect = true) {
     document.getElementById('modal-solicitud-repuesto').style.display = 'none';
+    if (!restaurarSelect) return;
     
     // Restaurar el select del modal de gestión si el usuario canceló
     const ordenId = document.getElementById('sr-orden-id').value;
@@ -995,8 +1210,16 @@ async function confirmarSR() {
             err.style.display = 'block';
             return;
         }
-        cerrarModalSR();
-        location.reload();
+        cerrarModalSR(false);
+        const row = _moFindRow(ordenId, 'personal');
+        if (row) {
+            row.estado_repuesto = 'Requerido';
+            row.repuesto_inventario_id = 0;
+            row.repuesto_codigo = '';
+            row.repuesto_nombre = '';
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Solicitud registrada correctamente.', 'success', 'Solicitud Registrada');
     } catch {
         err.textContent = 'Error de conexión con el servidor.';
         err.style.display = 'block';
@@ -1034,8 +1257,15 @@ async function confirmarNC() {
             err.style.display = 'block';
             return;
         }
-        cerrarModalNC();
-        location.reload();
+        const ordenIdNc = _ncOrdenId;
+        cerrarModalNC(false);
+        const row = _moFindRow(ordenIdNc, 'personal');
+        if (row) {
+            row.estado_orden = 'Nota de Credito';
+            row.nc_estado = row.nc_estado || 'Pendiente';
+            _moAplicarCambioLocal(row);
+        }
+        await mostrarAlertaEstetica(d.mensaje || 'Solicitud de nota de credito registrada.', 'success', 'Nota de Credito');
     } catch {
         err.textContent = 'Error de conexion.';
         err.style.display = 'block';
@@ -1076,6 +1306,9 @@ function verDetalleOrden(cardEl) {
     const repTextoSeleccionado = [o.repuesto_codigo || '', o.repuesto_nombre || '']
         .filter(Boolean)
         .join(' - ');
+    const sucursalClienteTexto = o.nro_sucursal_cliente
+        ? String(o.nro_sucursal_cliente).padStart(3, '0') + (o.sucursal_cliente_nombre ? ' - ' + o.sucursal_cliente_nombre : '')
+        : '-';
 
     const html = `
         <div class="det-wrap">
@@ -1097,7 +1330,7 @@ function verDetalleOrden(cardEl) {
                     <div class="det-campo det-full"><label>Equipo</label><span>${_h((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
                     <div class="det-campo"><label>Serie</label><span>${_h(o.serie || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal</label><span>${_h(o.sucursal || '-')}</span></div>
-                    <div class="det-campo"><label>Sucursal Cliente</label><span>${_h(o.nro_sucursal_cliente || '-')}</span></div>
+                    <div class="det-campo"><label>Sucursal Cliente</label><span>${_h(sucursalClienteTexto)}</span></div>
                     <div class="det-campo"><label>Motivo</label><span>${_h(o.motivo_ingreso || '-')}</span></div>
                     ${esEmpresa ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
@@ -1114,11 +1347,7 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-icon"><i class="bi bi-activity"></i></span>
                     <span class="gestion-label">Estado</span>
                     <select class="gestion-select" onchange="cambiarEstado(${Number(o.id)}, this.value, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}', 'empresa')">
-                        <option value="">Cambiar a...</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En proceso">En proceso</option>
-                        <option value="Finalizada">Finalizada</option>
-                        <option value="Entregada">Entregada</option>
+                        ${_estadoOrdenOptions(o.estado_orden, true)}
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
@@ -1144,12 +1373,7 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-icon"><i class="bi bi-activity"></i></span>
                     <span class="gestion-label">Estado</span>
                     <select class="gestion-select" onchange="cambiarEstado(${Number(o.id)}, this.value, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}', 'personal')">
-                        <option value="">Cambiar a...</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En proceso">En proceso</option>
-                        <option value="Finalizada">Finalizada</option>
-                        <option value="Entregada">Entregada</option>
-                        <option value="Nota de Credito">Nota de Credito</option>
+                        ${_estadoOrdenOptions(o.estado_orden, false)}
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
