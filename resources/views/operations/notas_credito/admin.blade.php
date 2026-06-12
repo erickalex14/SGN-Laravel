@@ -131,7 +131,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                 <button class="btn-exportar" style="background:#2563eb;" onclick="window.print()"><i class="bi bi-printer-fill"></i> Imprimir PDF</button>
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
             <div style="display:flex; flex-direction:column; gap:6px;">
                 <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Buscador General</label>
                 <input type="text" id="filtro-q" class="filtro-inp" placeholder="Nro, asunto, orden..." style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px;" oninput="aplicarFiltrosLocal()">
@@ -143,6 +143,15 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                     <option value="PENDIENTE">Pendiente</option>
                     <option value="APROBADA">Aprobada</option>
                     <option value="RECHAZADA">Rechazada</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Sucursal</label>
+                <select id="filtro-sucursal" style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px; background:#fff; cursor:pointer;" onchange="aplicarFiltrosLocal()">
+                    <option value="">-- Todas --</option>
+                    @foreach($sucursales as $s)
+                        <option value="{{ $s->id }}">{{ $s->ciudad }}</option>
+                    @endforeach
                 </select>
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
@@ -184,7 +193,8 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                         'orden' => $nc->orden->nro_orden ?? '',
                         'estado' => $nc->estado,
                         'fecha' => \Carbon\Carbon::parse($nc->creado_en)->format('Y-m-d'),
-                        'motivo_rechazo' => $nc->motivo_rechazo
+                        'motivo_rechazo' => $nc->motivo_rechazo,
+                        'sucursal_id' => $nc->orden->sucursal_id ?? ''
                     ]) }}">
                         <td>
                             <span class="badge audit-nro-sol">{{ $nc->nro_solicitud }}</span><br>
@@ -197,6 +207,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                                 <a href="{{ route('ordenes.editar', ['id' => $nc->orden_id]) }}" target="_blank" style="color:#2563eb;text-decoration:none;font-weight:600;" class="audit-orden">
                                     <i class="bi bi-eye me-1"></i>{{ $nc->orden->nro_orden }}
                                 </a>
+                                <div style="font-size:11px;color:#64748b;margin-top:4px;">{{ $nc->orden->sucursal->ciudad ?? '-' }}</div>
                             @else
                                 -
                             @endif
@@ -280,6 +291,7 @@ function initFiltros() {
 window.aplicarFiltrosLocal = function() {
     const q = document.getElementById('filtro-q').value.toLowerCase().trim();
     const estado = document.getElementById('filtro-estado').value;
+    const sucursal = document.getElementById('filtro-sucursal').value;
     const tecnico = document.getElementById('filtro-tecnico').value.toLowerCase().trim();
     const fecha = document.getElementById('filtro-fecha').value;
     
@@ -294,10 +306,11 @@ window.aplicarFiltrosLocal = function() {
         );
         
         const matchEstado = !estado || d.estado.toUpperCase() === estado;
+        const matchSucursal = !sucursal || String(d.sucursal_id) === sucursal;
         const matchTecnico = !tecnico || d.tecnico.toLowerCase().includes(tecnico);
         const matchFecha = !fecha || d.fecha === fecha;
         
-        if (matchQ && matchEstado && matchTecnico && matchFecha) {
+        if (matchQ && matchEstado && matchSucursal && matchTecnico && matchFecha) {
             s.element.style.display = '';
             count++;
         } else {

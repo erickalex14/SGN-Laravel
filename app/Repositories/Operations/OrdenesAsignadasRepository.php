@@ -59,7 +59,8 @@ class OrdenesAsignadasRepository
             ->selectRaw(
                 'vo.orden_id, vo.nro_orden, vo.tipo_orden, vo.estado_orden, vo.estado_repuesto, '.
                 'vo.fecha_de_ingreso_fmt as fecha_ingreso_fmt, vo.fecha_prometido_fmt as fecha_prometido_fmt, '.
-                'vo.motivo_ingreso, vo.estado_garantia, vo.cliente, vo.tipo, vo.marca, vo.modelo, vo.serie'
+                'vo.motivo_ingreso, vo.estado_garantia, vo.cliente, vo.tipo, vo.marca, vo.modelo, vo.serie, '.
+                '(SELECT producto_inventario_codigo FROM equipos WHERE id = vo.equipo_id) as producto_inventario_codigo'
             )
             ->where('vo.tecnico_id', $tecnicoId)
             ->when(

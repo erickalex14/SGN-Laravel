@@ -11,39 +11,16 @@ const EcuadorianValidator = {
 
     validarRuc(val) {
         val = val.trim();
-        if (val.length !== 13 || !/^\d+$/.test(val) || !val.endsWith('001')) return false;
+        if (val.length !== 13 || !/^\d+$/.test(val)) return false;
         
+        // El RUC debe terminar en algo diferente de 000 (generalmente 001, 002, etc.)
+        const establishment = val.substring(10, 13);
+        if (establishment === '000') return false;
+
         const prov = parseInt(val.substring(0, 2), 10);
         if ((prov < 1 || prov > 24) && prov !== 30) return false;
         
-        const third = parseInt(val[2], 10);
-        if (third < 6) {
-            // Natural person
-            return EcuadorianValidator.validarCedula(val.substring(0, 10));
-        } else if (third === 9) {
-            // Private entity
-            const verif = parseInt(val[9], 10);
-            const coefs = [4, 3, 2, 7, 6, 5, 4, 3, 2];
-            let suma = 0;
-            for (let i = 0; i < 9; i++) {
-                suma += parseInt(val[i], 10) * coefs[i];
-            }
-            const residuo = suma % 11;
-            const resultado = residuo === 0 ? 0 : 11 - residuo;
-            return resultado === verif;
-        } else if (third === 6) {
-            // Public entity
-            const verif = parseInt(val[8], 10);
-            const coefs = [3, 2, 7, 6, 5, 4, 3, 2];
-            let suma = 0;
-            for (let i = 0; i < 8; i++) {
-                suma += parseInt(val[i], 10) * coefs[i];
-            }
-            const residuo = suma % 11;
-            const resultado = residuo === 0 ? 0 : 11 - residuo;
-            return resultado === verif;
-        }
-        return false;
+        return true;
     },
 
     validarIdentificacion(val) {

@@ -46,6 +46,10 @@ class EdicionOrdenController extends Controller
 
     public function edit(int $id): View
     {
+        if (!$this->esUsuarioAdminOAdminMaster()) {
+            abort(403, 'Acceso denegado: Solo los administradores pueden editar órdenes.');
+        }
+
         $orden = $this->ordenRepo->obtenerOrdenCompleta($id);
 
         if (!$orden) {
@@ -58,12 +62,28 @@ class EdicionOrdenController extends Controller
 
         $casRepo = app(\App\Repositories\Directory\CasRepository::class);
         $cas = $casRepo->obtenerActivos();
+        $sucursalesCliente = app(\App\Repositories\Directory\SucursalClienteRepository::class)->obtenerTodas();
 
-        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio', 'cas'));
+        $verTodosTecnicos = (bool) session('es_superadmin', false)
+            || $this->tienePermisoSesion('usuarios_crear', 'ver')
+            || $this->tienePermisoSesion('usuarios', 'crear')
+            || $this->tienePermisoSesion('usuarios', 'ver');
+
+        $tecnicos = $this->usuarioRepo->obtenerTecnicosConCargaActual(
+            $verTodosTecnicos,
+            (int) session('sucursal_id'),
+            (int) session('tecnico_id')
+        );
+
+        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio', 'cas', 'sucursalesCliente', 'tecnicos'));
     }
 
     public function update(GuardarEdicionOrdenRequest $request): JsonResponse
     {
+        if (!$this->esUsuarioAdminOAdminMaster()) {
+            return response()->json(['ok' => false, 'error' => 'Acceso denegado: Solo administradores pueden realizar esta acción.'], 403);
+        }
+
         try {
             $dto = new ActualizarOrdenDTO(
                 (int) $request->input('orden_id'),
@@ -76,7 +96,22 @@ class EdicionOrdenController extends Controller
                 $request->input('repuesto_inventario_id') ? (int) $request->input('repuesto_inventario_id') : null,
                 $request->input('fecha_prometido'),
                 session('tecnico_id'),
-                $request->input('cas_id') ? (int) $request->input('cas_id') : null
+                $request->input('cas_id') ? (int) $request->input('cas_id') : null,
+                
+                $request->input('cli_identificacion'),
+                $request->input('cli_nombres'),
+                $request->input('cli_apellidos'),
+                $request->input('cli_telefono'),
+                $request->input('cli_correo'),
+                $request->input('cli_direccion'),
+                
+                $request->input('nro_factura'),
+                $request->input('nro_factura_2'),
+                $request->input('nro_sucursal_cliente') ? (int) $request->input('nro_sucursal_cliente') : null,
+                $request->input('fecha_facturacion'),
+                
+                $request->input('series', []),
+                (int) $request->input('tecnico_id')
             );
 
             $this->service->actualizarOrden($dto);
@@ -151,6 +186,10 @@ class EdicionOrdenController extends Controller
 
     public function editEmpresa(int $id): View
     {
+        if (!$this->esUsuarioAdminOAdminMaster()) {
+            abort(403, 'Acceso denegado: Solo los administradores pueden editar órdenes.');
+        }
+
         $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
 
         if (!$orden) {
@@ -176,6 +215,10 @@ class EdicionOrdenController extends Controller
 
     public function updateEmpresa(GuardarEdicionOrdenEmpresaRequest $request): JsonResponse
     {
+        if (!$this->esUsuarioAdminOAdminMaster()) {
+            return response()->json(['ok' => false, 'error' => 'Acceso denegado: Solo administradores pueden realizar esta acción.'], 403);
+        }
+
         try {
             $this->service->actualizarOrdenEmpresa($request->all(), (int) session('tecnico_id'));
 
@@ -194,5 +237,23 @@ class EdicionOrdenController extends Controller
         $permisos = (array) session('permisos', []);
         $acciones = (array) ($permisos[$modulo] ?? []);
         return (bool) ($acciones[$accion] ?? false);
+    }
+
+    private function esUsuarioAdminOAdminMaster(): bool
+    {
+        $usuario = auth()->user();
+        if (!$usuario) {
+            return false;
+        }
+
+        $rol = $usuario->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+        $grupo = $usuario->grupo ? mb_strtolower(trim((string) $usuario->grupo->nombre)) : '';
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+
+        $rolesAdmitidos = ['admin', 'administrador', 'admin master', 'administrador master'];
+
+        return in_array($rol, $rolesAdmitidos, true)
+            || in_array($grupo, $rolesAdmitidos, true)
+            || in_array($sessionGrupo, $rolesAdmitidos, true);
     }
 }

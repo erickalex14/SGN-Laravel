@@ -197,6 +197,14 @@ class CrearOrdenService
                 return $orden;
                 });
             });
+
+            try {
+                \App\Services\Operations\SgnMailService::enviarOrdenCreada($orden);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar notificacion de nueva orden', ['error' => $e->getMessage()]);
+            }
+
+            return $orden;
         } catch (Exception $e) {
             Log::error('Fallo transaccional al crear orden de servicio.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrió un error al generar la orden. Los cambios han sido revertidos.');
@@ -323,6 +331,14 @@ class CrearOrdenService
                     return $orden;
                 });
             });
+
+            try {
+                \App\Services\Operations\SgnMailService::enviarOrdenCreada($orden);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar notificacion de nueva orden empresa', ['error' => $e->getMessage()]);
+            }
+
+            return $orden;
         } catch (Exception $e) {
             Log::error('Fallo transaccional al crear orden de empresa.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrio un error al generar la orden de empresa. Los cambios han sido revertidos.');

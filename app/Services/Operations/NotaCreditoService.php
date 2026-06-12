@@ -50,8 +50,9 @@ class NotaCreditoService
             throw new Exception('Esta orden ya tiene una solicitud de Nota de Credito registrada.');
         }
 
+        $solicitud = null;
         try {
-            return DB::transaction(function () use ($dto) {
+            $nroSolicitud = DB::transaction(function () use ($dto, &$solicitud) {
                 $nroSolicitud = $this->repository->generarNumeroSolicitud();
 
                 $solicitud = new SolicitudNc();
@@ -74,6 +75,16 @@ class NotaCreditoService
 
                 return $nroSolicitud;
             });
+
+            if ($solicitud) {
+                try {
+                    \App\Services\Operations\SgnMailService::enviarSolicitudNcCreada($solicitud);
+                } catch (\Throwable $e) {
+                    Log::error('Error al enviar notificacion de solicitud de NC creada', ['error' => $e->getMessage()]);
+                }
+            }
+
+            return $nroSolicitud;
         } catch (Exception $e) {
             Log::error('Error al registrar solicitud NC.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrio un error al procesar la solicitud.');
@@ -125,6 +136,12 @@ class NotaCreditoService
                     'admin' => $dto->nombre_admin,
                 ]);
             });
+
+            try {
+                \App\Services\Operations\SgnMailService::enviarSolicitudNcGestionada($solicitud);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar notificacion de solicitud de NC gestionada', ['error' => $e->getMessage()]);
+            }
         } catch (Exception $e) {
             Log::error('Error al gestionar solicitud NC.', ['error' => $e->getMessage()]);
             throw new Exception('Error al actualizar el estado de la solicitud.');

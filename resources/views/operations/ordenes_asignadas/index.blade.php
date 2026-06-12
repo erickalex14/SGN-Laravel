@@ -223,7 +223,17 @@
 @endsection
 
 @push('js_adicional')
+@php
+    $usuario = auth()->user();
+    $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
+    $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
+    $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+@endphp
 <script>
+const PUEDE_EDITAR = @json($esAdminOAdminMaster);
 const tecStates = {}; // Mantiene el estado { tab: 'en_curso', page: 1 } de cada técnico expanded
 
 function esc(str) {
@@ -265,7 +275,7 @@ async function cargarOrdenes(tecnicoId, page = 1) {
             repuesto: repuesto
         });
 
-        const res = await fetch(`/operaciones/ordenes/asignadas/ajax?${params.toString()}`);
+        const res = await fetch(`{{ url('/operaciones/ordenes/asignadas/ajax') }}?${params.toString()}`);
         const data = await res.json();
 
         if (!data.ok) {
@@ -290,11 +300,11 @@ async function cargarOrdenes(tecnicoId, page = 1) {
 
             const equipo = [o.tipo, o.marca, o.modelo].filter(Boolean).join(' ').trim();
             const urlImprimir = o.tipo_orden === 'empresa' 
-                ? `/operaciones/ordenes-empresa/${o.orden_id}/imprimir` 
-                : `/operaciones/ordenes/${o.orden_id}/imprimir`;
+                ? `{{ url('/operaciones/ordenes-empresa') }}/${o.orden_id}/imprimir` 
+                : `{{ url('/operaciones/ordenes') }}/${o.orden_id}/imprimir`;
             const urlEditar = o.tipo_orden === 'empresa'
-                ? `/operaciones/ordenes-empresa/editar/${o.orden_id}`
-                : `/operaciones/ordenes/editar/${o.orden_id}`;
+                ? `{{ url('/operaciones/ordenes-empresa/editar') }}/${o.orden_id}`
+                : `{{ url('/operaciones/ordenes/editar') }}/${o.orden_id}`;
 
             html += `
                 <div class="oa-card" data-orden='${JSON.stringify(o).replace(/'/g, "&#39;")}' ondblclick="abrirDetalleDesdeCard(this)">
@@ -316,7 +326,7 @@ async function cargarOrdenes(tecnicoId, page = 1) {
                     </div>
                     <div class="oa-actions">
                         <a class="btn-det ot" target="_blank" href="${urlImprimir}"><i class="bi bi-printer"></i> OT</a>
-                        <a class="btn-det ver" href="${urlEditar}"><i class="bi bi-eye"></i> Ver detalle</a>
+                        ${PUEDE_EDITAR ? `<a class="btn-det ver" href="${urlEditar}"><i class="bi bi-eye"></i> Ver detalle</a>` : ''}
                     </div>
                 </div>
             `;
@@ -507,6 +517,7 @@ function abrirDetalleDesdeCard(card) {
             <div class="det-campo"><label>Fecha de Ingreso</label><span>${esc(o.fecha_ingreso_fmt || '-')}</span></div>
             <div class="det-campo"><label>Equipo</label><span>${esc((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
             <div class="det-campo"><label>Serie</label><span>${esc(o.serie || '-')}</span></div>
+            <div class="det-campo"><label>Código Producto</label><span>${esc(o.producto_inventario_codigo || '-')}</span></div>
             <div class="det-campo"><label>Motivo de Ingreso</label><span>${esc(motivo)}</span></div>
             <div class="det-campo"><label>Estado Garantía</label><span>${esc(garantia)}</span></div>
             <div class="det-campo"><label>Estado Repuesto</label><span>${esc(o.estado_repuesto || '-')}</span></div>

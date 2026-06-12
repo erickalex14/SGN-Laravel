@@ -5,7 +5,10 @@
     $sucursal = $orden->sucursal;
     $usuarioIngreso = $orden->ingresadoPor;
     $series = collect();
-    if ($equipo && $equipo->relationLoaded('series')) {
+    if ($equipo) {
+        if (!$equipo->relationLoaded('series')) {
+            $equipo->load('series');
+        }
         $series = $equipo->series->pluck('serie')->filter();
     }
     if ($series->isEmpty() && !empty($equipo?->serie)) {

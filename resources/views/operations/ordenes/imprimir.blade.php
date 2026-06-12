@@ -8,11 +8,14 @@
     $repuesto = $orden->repuestoInventario;
 
     $series = collect();
-    if ($equipo && $equipo->relationLoaded('series')) {
+    if ($equipo) {
+        if (!$equipo->relationLoaded('series')) {
+            $equipo->load('series');
+        }
         $series = $equipo->series->pluck('serie')->filter();
     }
     if ($series->isEmpty() && !empty($equipo?->serie)) {
-        $series = collect([$equipo->serie]);
+        $series = collect(explode(',', (string) $equipo->serie))->map(fn($s) => trim($s))->filter();
     }
     $cantidadSeries = $series->count();
     $motivoIngreso = (string) ($orden->motivo_ingreso ?? '');
@@ -153,7 +156,13 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         <tr>
             <td colspan="2"><span class="lbl">Direccion</span>{{ $cliente?->direccion_clientes ?? '-' }}</td>
             <td><span class="lbl">Motivo de Ingreso</span>{{ $motivoIngreso ?: '-' }}</td>
-            <td><span class="lbl">Nro. Factura</span>{{ $orden->nro_factura ?: '-' }}</td>
+            <td>
+                <span class="lbl">Nro. Factura</span>
+                @php
+                    $facturas = collect([$orden->nro_factura, $orden->nro_factura_2])->filter(fn($f) => !empty(trim((string)$f)));
+                @endphp
+                {{ $facturas->isNotEmpty() ? $facturas->implode(' / ') : '-' }}
+            </td>
         </tr>
         <tr>
             <td colspan="2"><span class="lbl">Sucursal del Cliente</span>{{ $nombreSucursalCliente ?? '-' }}</td>

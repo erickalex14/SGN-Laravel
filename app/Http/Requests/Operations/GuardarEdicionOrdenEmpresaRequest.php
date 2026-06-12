@@ -37,6 +37,7 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
             'tecnicos_asignados' => [$requiereServicioCampos ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
             'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
             'cas_id_empresa'     => ['nullable', 'integer', 'exists:cas,id'],
+            'tecnico_id'         => ['nullable', 'integer', 'exists:usuarios,id'],
         ];
     }
 

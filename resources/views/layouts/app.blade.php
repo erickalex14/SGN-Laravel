@@ -111,6 +111,52 @@
             margin-top: 4px;
             display: none;
         }
+        /* Reloj Premium */
+        .topbar-clock {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            background: rgba(241, 245, 249, 0.7);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: all 0.2s ease-in-out;
+            user-select: none;
+            margin-right: 6px;
+        }
+        .topbar-clock:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #cbd5e1;
+            box-shadow: 0 3px 10px rgba(37,99,235,0.06);
+            transform: translateY(-1px);
+        }
+        .topbar-clock .clock-icon {
+            font-size: 16px;
+            color: #2563eb;
+            animation: pulse-clock 2s infinite alternate ease-in-out;
+        }
+        .topbar-clock .clock-details {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25;
+        }
+        .topbar-clock .clock-time {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+        }
+        .topbar-clock .clock-date {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: capitalize;
+        }
+        @keyframes pulse-clock {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
     </style>
     @stack('css_adicional')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -121,6 +167,15 @@
 @php
     $p = session('permisos', []);
     $sa = session('es_superadmin');
+    
+    $usuario = auth()->user();
+    $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
+    $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
+    $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+
     $permAlias = [
         'grupos' => 'grupos_acceso',
         'productos' => 'inv_productos',
@@ -225,6 +280,16 @@
                         <a data-tip="Buscar Órdenes" href="{{ route('ordenes_buscar.index') }}">
                             <i class="bi bi-search" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Buscar Órdenes</span>
+                        </a>
+                    @endif
+                    @if ($esAdminOAdminMaster)
+                        <a data-tip="Recuperar Orden" href="{{ route('ordenes.recuperar') }}?type=orden">
+                            <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Recuperar Orden</span>
+                        </a>
+                        <a data-tip="Recuperar Informe" href="{{ route('ordenes.recuperar') }}?type=informe">
+                            <i class="bi bi-file-earmark-medical" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Recuperar Informe</span>
                         </a>
                     @endif
                     @if ($can('preordenes', 'ver'))
@@ -504,6 +569,15 @@
                 <div class="gs-dropdown" id="gs-dropdown"></div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                <!-- Reloj Widget -->
+                <div class="topbar-clock" id="sgn-clock-widget">
+                    <i class="bi bi-clock-fill clock-icon"></i>
+                    <div class="clock-details">
+                        <span class="clock-time" id="sgn-clock-time">00:00:00</span>
+                        <span class="clock-date" id="sgn-clock-date">--/--/----</span>
+                    </div>
+                </div>
+
                 <span class="topbar-username">
                     <i class="bi bi-person-circle me-1"></i>
                     {{ session('nombre') ?? session('usuario') ?? 'Usuario' }}
@@ -620,6 +694,16 @@
         localStorage.setItem('sgn_sidebar_collapsed', _sidebarCollapsed ? '1' : '0');
     }
 
+    @php
+        $usuario = auth()->user();
+        $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
+        $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+    @endphp
+    var _esAdminOAdminMasterGlobal = @json($esAdminOAdminMaster);
     var _csrf = '{{ csrf_token() }}';
     var _urlBuscarGlobal = '{{ route("ordenes.buscar_global") }}';
     var _urlNotificaciones = '{{ route("notificaciones.index") }}';
@@ -692,7 +776,11 @@
                     var html = '<div class="gs-section"><div class="gs-section-lbl">Ordenes</div>';
                     ordenes.forEach(function(o, idx) {
                         var id = o.orden_id || o.id || 0;
-                        html += '<div class="gs-item" data-idx="' + idx + '" onclick="gsAbrir(' + id + ')">';
+                        if (_esAdminOAdminMasterGlobal) {
+                            html += '<div class="gs-item" data-idx="' + idx + '" onclick="gsAbrir(' + id + ')" style="cursor:pointer;">';
+                        } else {
+                            html += '<div class="gs-item no-click" data-idx="' + idx + '" style="cursor:default;">';
+                        }
                         html += '<span class="gs-nro">' + escHtml(o.nro_orden || '-') + '</span>';
                         html += '<span class="gs-cliente">' + escHtml(o.cliente || '-') + '</span>';
                         html += '<span class="' + gsBadge(o.estado_orden) + '">' + escHtml(o.estado_orden || '-') + '</span>';
@@ -713,7 +801,7 @@
 
     function gsAbrir(id) {
         if (!id) return;
-        window.location.href = '/operaciones/ordenes/editar/' + id;
+        window.location.href = '{{ url("/operaciones/ordenes/editar") }}/' + id;
     }
 
     function gsKeyDown(e) {
@@ -922,7 +1010,43 @@
         _notifTimer = setInterval(function() {
             if (!_notifAbierto) cargarNotificaciones();
         }, 30000);
+
+        // Inicializar reloj dinámico
+        actualizarRelojSGN();
+        setInterval(actualizarRelojSGN, 1000);
     });
+
+    function actualizarRelojSGN() {
+        const timeEl = document.getElementById('sgn-clock-time');
+        const dateEl = document.getElementById('sgn-clock-date');
+        if (!timeEl || !dateEl) return;
+
+        const optionsTime = {
+            timeZone: 'America/Guayaquil',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        };
+        const optionsDate = {
+            timeZone: 'America/Guayaquil',
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        };
+
+        const now = new Date();
+        try {
+            timeEl.textContent = now.toLocaleTimeString('es-EC', optionsTime);
+            let dateStr = now.toLocaleDateString('es-EC', optionsDate);
+            dateStr = dateStr.replace(/\./g, '');
+            dateEl.textContent = dateStr;
+        } catch (e) {
+            timeEl.textContent = now.toTimeString().split(' ')[0];
+            dateEl.textContent = now.toDateString();
+        }
+    }
 
     // Reusable client-side pagination component for SGN
     class SgnPager {

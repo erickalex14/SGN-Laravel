@@ -387,9 +387,9 @@
 
     /* ── Config ────────────────────────────────────────────────── */
     var URL_BUSCAR  = '{{ route("informes.buscar.listar") }}';
-    var URL_IMPRIMIR = '/operaciones/informes/';
-    var URL_OT       = '/operaciones/ordenes/';
-    var URL_OT_EMP   = '/operaciones/ordenes-empresa/';
+    var URL_IMPRIMIR = '{{ url("/operaciones/informes") }}/';
+    var URL_OT       = '{{ url("/operaciones/ordenes") }}/';
+    var URL_OT_EMP   = '{{ url("/operaciones/ordenes-empresa") }}/';
 
     /* ── Estado ────────────────────────────────────────────────── */
     var _tipo       = 'nro_orden';

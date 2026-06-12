@@ -5,6 +5,8 @@ namespace App\Http\Requests\Operations;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Rules\EcuadorIdentificacion;
+use App\Rules\EcuadorTelefono;
 
 class GuardarEdicionOrdenRequest extends FormRequest
 {
@@ -26,6 +28,25 @@ class GuardarEdicionOrdenRequest extends FormRequest
             'repuesto_inventario_id' => ['nullable', 'integer'],
             'fecha_prometido'        => ['nullable', 'date'],
             'cas_id'                 => ['nullable', 'integer', 'exists:cas,id'],
+            'tecnico_id'             => ['required', 'integer', 'exists:usuarios,id'],
+
+            // Campos de cliente
+            'cli_identificacion'     => ['required', 'string', new EcuadorIdentificacion()],
+            'cli_nombres'            => ['required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_apellidos'          => ['required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_telefono'           => ['required', 'string', new EcuadorTelefono()],
+            'cli_correo'             => ['nullable', 'email', 'max:100'],
+            'cli_direccion'          => ['nullable', 'string', 'max:200'],
+
+            // Campos de factura / garantía
+            'nro_factura'            => ['nullable', 'string', 'max:50'],
+            'nro_factura_2'          => ['nullable', 'string', 'max:50'],
+            'fecha_facturacion'      => ['nullable', 'date'],
+            'nro_sucursal_cliente'   => ['nullable', 'integer'],
+
+            // Series del equipo
+            'series'                 => ['required', 'array', 'min:1'],
+            'series.*'               => ['nullable', 'string', 'max:100'],
         ];
     }
 
