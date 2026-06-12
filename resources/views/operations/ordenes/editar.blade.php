@@ -160,6 +160,103 @@
         <input type="hidden" id="orden_id" value="{{ $orden->id }}">
         <input type="hidden" id="equipo_id" value="{{ $orden->equipo_id }}">
 
+        <!-- Datos del Cliente -->
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-person"></i> Datos del Cliente</div>
+            <div class="seccion-body">
+                <div class="grid-2">
+                    <div class="campo">
+                        <label>C.I / RUC <span class="req">*</span></label>
+                        <input type="text" id="cli_identificacion" value="{{ $orden->cliente->identificacion }}" required>
+                    </div>
+                    <div class="campo">
+                        <label>Nombre <span class="req">*</span></label>
+                        <input type="text" id="cli_nombres" value="{{ $orden->cliente->nombres }}" required oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                    <div class="campo">
+                        <label>Apellido <span class="req">*</span></label>
+                        <input type="text" id="cli_apellidos" value="{{ $orden->cliente->apellidos }}" required oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                    <div class="campo">
+                        <label>Teléfono <span class="req">*</span></label>
+                        <input type="text" id="cli_telefono" value="{{ $orden->cliente->numero_contacto }}" required>
+                    </div>
+                    <div class="campo">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="cli_correo" value="{{ $orden->cliente->correo }}">
+                    </div>
+                    <div class="campo">
+                        <label>Dirección</label>
+                        <input type="text" id="cli_direccion" value="{{ $orden->cliente->direccion_clientes }}" oninput="this.value=this.value.toUpperCase()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Series del Equipo -->
+        <div class="seccion-form">
+            <div class="seccion-hdr"><i class="bi bi-laptop"></i> Series del Equipo</div>
+            <div class="seccion-body">
+                <div class="campo">
+                    <label>Series del Equipo <span class="req">*</span></label>
+                    <div id="series-container" style="display:flex; flex-direction:column; gap:8px;">
+                        @php
+                            $eqSeries = $orden->equipo->series()->orderBy('orden')->get();
+                        @endphp
+                        @if($eqSeries->isEmpty())
+                            <div class="linea-item" style="display:flex; gap:10px;">
+                                <input type="text" name="series[]" value="{{ $orden->equipo->serie }}" oninput="this.value=this.value.toUpperCase()" placeholder="Serie Principal" style="flex:1;">
+                            </div>
+                        @else
+                            @foreach($eqSeries as $index => $es)
+                                <div class="linea-item" style="display:flex; gap:10px;">
+                                    <input type="text" name="series[]" value="{{ $es->serie }}" oninput="this.value=this.value.toUpperCase()" placeholder="{{ $index === 0 ? 'Serie Principal' : 'Serie Adicional' }}" style="flex:1;">
+                                    @if($index > 0)
+                                        <button type="button" class="btn btn-sm btn-danger btn-mini" style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; border-radius:8px; width:36px; height:36px;" onclick="this.closest('.linea-item').remove()">-</button>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                    <button type="button" class="btn btn-sm" style="margin-top:10px; background:#f1f5f9; border:1.5px solid #cbd5e1; color:#475569; font-weight:700; border-radius:8px; padding:6px 12px; cursor:pointer; width:auto; display:inline-block;" onclick="agregarSerie()">+ Agregar Serie Adicional</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos de Factura (Garantía) -->
+        @if($orden->motivo_ingreso === 'Validacion de Garantia')
+            <div class="seccion-form">
+                <div class="seccion-hdr"><i class="bi bi-receipt"></i> Datos de Facturación (Garantía)</div>
+                <div class="seccion-body">
+                    <div class="grid-2">
+                        <div class="campo">
+                            <label>Nro. Factura <span class="req">*</span></label>
+                            <input type="text" id="nro_factura" value="{{ $orden->nro_factura }}" required>
+                        </div>
+                        <div class="campo">
+                            <label>Nro. Factura 2 (Opcional)</label>
+                            <input type="text" id="nro_factura_2" value="{{ $orden->nro_factura_2 }}">
+                        </div>
+                        <div class="campo">
+                            <label>Fecha de Facturación <span class="req">*</span></label>
+                            <input type="date" id="fecha_facturacion" value="{{ $orden->fecha_facturacion ? \Carbon\Carbon::parse($orden->fecha_facturacion)->format('Y-m-d') : '' }}" required>
+                        </div>
+                        <div class="campo">
+                            <label>Sucursal del Cliente (Novicompu) <span class="req">*</span></label>
+                            <select id="nro_sucursal_cliente" required>
+                                <option value="">-- Seleccionar Sucursal --</option>
+                                @foreach($sucursalesCliente as $suc)
+                                    <option value="{{ $suc->numero }}" {{ $orden->nro_sucursal_cliente == $suc->numero ? 'selected' : '' }}>
+                                        {{ str_pad($suc->numero, 3, '0', STR_PAD_LEFT) }} - {{ $suc->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="seccion-form">
             <div class="seccion-hdr"><i class="bi bi-activity"></i> Diagnostico y Estado</div>
             <div class="seccion-body">
@@ -178,6 +275,16 @@
                     <div class="campo">
                         <label>Fecha Prometida de Entrega</label>
                         <input type="date" id="fecha_prometido" value="{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('Y-m-d') : '' }}">
+                    </div>
+                    <div class="campo">
+                        <label>Técnico Asignado <span class="req">*</span></label>
+                        <select id="tecnico_id" required>
+                            @foreach($tecnicos as $t)
+                                <option value="{{ $t->id }}" {{ $orden->tecnico_id == $t->id ? 'selected' : '' }}>
+                                    {{ $t->nombre_tecnico }} ({{ $t->pendientes + $t->en_proceso }} OT)
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     @if($orden->motivo_ingreso === 'Validacion de Garantia')
                         <div class="campo" id="bloque-cas">
@@ -271,6 +378,7 @@ async function guardarActualizacion() {
 
     fd.append('estado_orden', document.getElementById('estado_orden').value);
     fd.append('fecha_prometido', document.getElementById('fecha_prometido').value);
+    fd.append('tecnico_id', document.getElementById('tecnico_id').value);
 
     fd.append('eq_falla', document.getElementById('eq_falla').value.trim());
     fd.append('eq_observacion', document.getElementById('eq_observacion').value.trim());
@@ -281,7 +389,25 @@ async function guardarActualizacion() {
 
     @if($orden->motivo_ingreso === 'Validacion de Garantia')
         fd.append('cas_id', document.getElementById('cas_id').value);
+        fd.append('nro_factura', document.getElementById('nro_factura').value.trim());
+        fd.append('nro_factura_2', document.getElementById('nro_factura_2').value.trim());
+        fd.append('fecha_facturacion', document.getElementById('fecha_facturacion').value);
+        fd.append('nro_sucursal_cliente', document.getElementById('nro_sucursal_cliente').value);
     @endif
+
+    // Datos del cliente
+    fd.append('cli_identificacion', document.getElementById('cli_identificacion').value.trim());
+    fd.append('cli_nombres', document.getElementById('cli_nombres').value.trim());
+    fd.append('cli_apellidos', document.getElementById('cli_apellidos').value.trim());
+    fd.append('cli_telefono', document.getElementById('cli_telefono').value.trim());
+    fd.append('cli_correo', document.getElementById('cli_correo').value.trim());
+    fd.append('cli_direccion', document.getElementById('cli_direccion').value.trim());
+
+    // Series
+    const seriesInputs = document.querySelectorAll('input[name="series[]"]');
+    seriesInputs.forEach(input => {
+        fd.append('series[]', input.value.trim());
+    });
 
     const btn = document.getElementById('btn-actualizar');
     btn.disabled = true;
@@ -304,6 +430,37 @@ async function guardarActualizacion() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-floppy"></i> Guardar Actualizacion de Orden';
     }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Configurar validaciones dinámicas
+    setupDynamicValidation(document.getElementById('cli_identificacion'), EcuadorianValidator.validarIdentificacion, (v) => {
+        if (v.length === 0) return 'La identificación es requerida.';
+        if (/[^\d]/.test(v)) return 'La identificación sólo debe contener números.';
+        return 'La identificación debe ser una cédula (10 dígitos) o RUC (13 dígitos) válido de Ecuador.';
+    });
+
+    setupDynamicValidation(document.getElementById('cli_telefono'), EcuadorianValidator.validarTelefono, (v) => {
+        if (v.length === 0) return 'El teléfono es requerido.';
+        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+        return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
+    });
+
+    setupDynamicValidation(document.getElementById('cli_correo'), EcuadorianValidator.validarEmail, (v) => {
+        return 'El correo electrónico no tiene un formato válido.';
+    });
+});
+
+function agregarSerie() {
+    const container = document.getElementById('series-container');
+    const row = document.createElement('div');
+    row.className = 'linea-item';
+    row.style.cssText = 'display:flex; gap:10px; margin-top:8px;';
+    row.innerHTML = `
+        <input type="text" name="series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional" style="flex:1;">
+        <button type="button" class="btn btn-sm btn-danger btn-mini" style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; border-radius:8px; width:36px; height:36px;" onclick="this.closest('.linea-item').remove()">-</button>
+    `;
+    container.appendChild(row);
 }
 </script>
 @endpush

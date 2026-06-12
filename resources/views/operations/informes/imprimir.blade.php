@@ -15,8 +15,25 @@
     $telefono = (string) ($cliente?->numero_contacto ?? $empresa?->telefono ?? '—');
     $correo = (string) ($cliente?->correo ?? $empresa?->correo ?? '—');
     $direccion = (string) ($cliente?->direccion_clientes ?? $empresa?->direccion_empresa ?? '');
-    $nroFactura = trim((string) ($orden?->nro_factura ?? $ordenEmpresa?->nro_ticket ?? ''));
-    $nroFactura2 = trim((string) ($orden?->nro_factura_2 ?? ''));
+    $facturas = collect();
+    if ($orden) {
+        $facturas = collect([$orden->nro_factura, $orden->nro_factura_2])->filter(fn($f) => !empty(trim((string)$f)));
+    } elseif ($ordenEmpresa) {
+        $facturas = collect([$ordenEmpresa->nro_ticket])->filter(fn($f) => !empty(trim((string)$f)));
+    }
+
+    $series = collect();
+    if ($equipo) {
+        if (!$equipo->relationLoaded('series')) {
+            $equipo->load('series');
+        }
+        $series = $equipo->series->pluck('serie')->filter();
+    }
+    if ($series->isEmpty() && !empty($equipo?->serie)) {
+        $series = collect(explode(',', (string) $equipo->serie))->map(fn($s) => trim($s))->filter();
+    }
+    $cantidadSeries = $series->count();
+
     $estadoOrden = (string) ($orden?->estado_orden ?? $ordenEmpresa?->estado ?? '');
     $estadoOrden = str_replace(['Credito', 'credito'], ['Crédito', 'crédito'], $estadoOrden);
     $estadoEquipo = (string) ($informe->estado_equipo ?? '');
@@ -118,7 +135,7 @@ table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transfor
     <table class="datos">
         <tr>
             <td width="50%"><span class="lbl">Nro. de Orden</span>{{ $nroOrden }}</td>
-            <td width="50%"><span class="lbl">{{ $ordenEmpresa ? 'Nro. Ticket' : 'Nro. Factura' }}</span>{{ $nroFactura !== '' ? $nroFactura : ($nroFactura2 !== '' ? '' : '—') }}{{ $nroFactura2 !== '' ? (' / ' . $nroFactura2) : '' }}</td>
+            <td width="50%"><span class="lbl">{{ $ordenEmpresa ? 'Nro. Ticket' : 'Nro. Factura' }}</span>{{ $facturas->isNotEmpty() ? $facturas->implode(' / ') : '—' }}</td>
         </tr>
         <tr>
             <td><span class="lbl">Estado de la Orden</span>{{ $estadoOrden }}</td>
@@ -144,7 +161,7 @@ table.datos td .lbl{font-size:6.5pt;color:#6b7280;font-weight:bold;text-transfor
             <td width="25%"><span class="lbl">Tipo</span>{{ $equipo?->tipo ?? '—' }}</td>
             <td width="25%"><span class="lbl">Marca</span>{{ $equipo?->marca ?? '—' }}</td>
             <td width="25%"><span class="lbl">Código / Modelo</span>{{ $equipo?->modelo ?? '—' }}</td>
-            <td width="25%"><span class="lbl">Serie</span>{{ $equipo?->serie ?? '—' }}</td>
+            <td width="25%"><span class="lbl">Serie{{ $cantidadSeries > 1 ? 's' : '' }}</span>{{ $series->isNotEmpty() ? $series->implode(' | ') : '—' }}</td>
         </tr>
     </table>
 

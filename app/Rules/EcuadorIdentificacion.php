@@ -65,41 +65,18 @@ class EcuadorIdentificacion implements ValidationRule
 
     protected function validarRuc(string $value): bool
     {
-        if (!str_ends_with($value, '001')) {
+        // El RUC debe terminar en un código de establecimiento diferente de 000 (ej: 001, 002, etc.)
+        $establecimiento = substr($value, 10, 3);
+        if ($establecimiento === '000') {
             return false;
         }
+
+        // Validar provincia (primeros 2 dígitos entre 01 y 24, o 30)
         $provincia = (int) substr($value, 0, 2);
         if (($provincia < 1 || $provincia > 24) && $provincia !== 30) {
             return false;
         }
-        $tercerDigito = (int) $value[2];
-        if ($tercerDigito < 6) {
-            // RUC natural person: first 10 digits must be a valid cédula
-            $cedula = substr($value, 0, 10);
-            return $this->validarCedula($cedula);
-        } elseif ($tercerDigito === 9) {
-            // RUC private juridical entity
-            $digitoVerificador = (int) $value[9];
-            $coeficientes = [4, 3, 2, 7, 6, 5, 4, 3, 2];
-            $suma = 0;
-            for ($i = 0; $i < 9; $i++) {
-                $suma += (int)$value[$i] * $coeficientes[$i];
-            }
-            $residuo = $suma % 11;
-            $resultado = ($residuo === 0) ? 0 : 11 - $residuo;
-            return $resultado === $digitoVerificador;
-        } elseif ($tercerDigito === 6) {
-            // RUC public entity
-            $digitoVerificador = (int) $value[8];
-            $coeficientes = [3, 2, 7, 6, 5, 4, 3, 2];
-            $suma = 0;
-            for ($i = 0; $i < 8; $i++) {
-                $suma += (int)$value[$i] * $coeficientes[$i];
-            }
-            $residuo = $suma % 11;
-            $resultado = ($residuo === 0) ? 0 : 11 - $residuo;
-            return $resultado === $digitoVerificador;
-        }
-        return false;
+
+        return true;
     }
 }

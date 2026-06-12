@@ -551,12 +551,23 @@
 (function () {
     'use strict';
 
+    @php
+        $usuario = auth()->user();
+        $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
+        $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+    @endphp
+
     /* ── Configuración ─────────────────────────────────────────── */
     var URL_BUSCAR    = '{{ route("ordenes_buscar.listar") }}';
-    var URL_OT        = '/operaciones/ordenes/';
-    var URL_OT_EMP    = '/operaciones/ordenes-empresa/';
-    var URL_INFORME   = '/operaciones/informes/';
-    var URL_EDITAR    = '/operaciones/ordenes/editar/';
+    var URL_OT        = '{{ url("/operaciones/ordenes") }}/';
+    var URL_OT_EMP    = '{{ url("/operaciones/ordenes-empresa") }}/';
+    var URL_INFORME   = '{{ url("/operaciones/informes") }}/';
+    var URL_EDITAR    = '{{ url("/operaciones/ordenes/editar") }}/';
+    var PUEDE_EDITAR  = @json($esAdminOAdminMaster);
 
     /* ── Estado interno ───────────────────────────────────────── */
     var _tipo       = 'nro_orden';
@@ -733,7 +744,8 @@
                         campo('Tipo',   o.tipo   || '—') +
                         campo('Marca',  o.marca  || '—') +
                         campo('Modelo', o.modelo || '—') +
-                        campo('Serie',  o.serie  || '—') +
+                        campo(o.serie && o.serie.indexOf('|') !== -1 ? 'Series' : 'Serie', o.serie || '—') +
+                        campo('Código Producto', o.producto_inventario_codigo || '—') +
                     '</div>' +
                     (o.falla
                         ? '<div class="bo-det-lbl" style="margin-top:10px;margin-bottom:4px;">Falla reportada</div>' +
@@ -802,17 +814,19 @@
         }
 
         // Editar
-        var btnEdit   = document.createElement('button');
-        btnEdit.className = 'bo-accion editar';
-        btnEdit.innerHTML = '<i class="bi bi-pencil-square"></i>Editar Orden';
-        btnEdit.onclick   = function () {
-            if (esEmpresa) {
-                window.location.href = '/operaciones/ordenes-empresa/editar/' + o.orden_id;
-            } else {
-                window.location.href = URL_EDITAR + o.orden_id;
-            }
-        };
-        acciones.appendChild(btnEdit);
+        if (PUEDE_EDITAR) {
+            var btnEdit   = document.createElement('button');
+            btnEdit.className = 'bo-accion editar';
+            btnEdit.innerHTML = '<i class="bi bi-pencil-square"></i>Editar Orden';
+            btnEdit.onclick   = function () {
+                if (esEmpresa) {
+                    window.location.href = '{{ url("/operaciones/ordenes-empresa/editar") }}/' + o.orden_id;
+                } else {
+                    window.location.href = URL_EDITAR + o.orden_id;
+                }
+            };
+            acciones.appendChild(btnEdit);
+        }
 
         // Mostrar panel
         elResultados.style.display = 'none';

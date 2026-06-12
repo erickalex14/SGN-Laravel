@@ -49,8 +49,9 @@ class SolicitudRepuestoService
             throw new Exception('Esta orden ya tiene una solicitud de repuesto registrada.');
         }
 
+        $sol = null;
         try {
-            return DB::transaction(function () use ($dto) {
+            $nro = DB::transaction(function () use ($dto, &$sol) {
                 $nro = $this->repository->generarNumeroSolicitud();
 
                 $sol = new SolicitudRepuesto();
@@ -78,6 +79,16 @@ class SolicitudRepuestoService
                 Log::info('Solicitud de repuesto creada', ['sr_id' => $sol->id, 'orden_id' => $dto->orden_id]);
                 return $nro;
             });
+
+            if ($sol) {
+                try {
+                    \App\Services\Operations\SgnMailService::enviarSolicitudRepuestoCreada($sol);
+                } catch (\Throwable $e) {
+                    Log::error('Error al enviar notificacion de solicitud de repuesto creada', ['error' => $e->getMessage()]);
+                }
+            }
+
+            return $nro;
         } catch (Exception $e) {
             Log::error('Fallo al registrar solicitud de repuesto.', ['error' => $e->getMessage()]);
             throw new Exception('No se pudo procesar la solicitud.');
@@ -156,6 +167,12 @@ class SolicitudRepuestoService
                     'es_compra' => $esCompra,
                 ]);
             });
+
+            try {
+                \App\Services\Operations\SgnMailService::enviarSolicitudRepuestoGestionada($solicitud);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar notificacion de solicitud de repuesto gestionada', ['error' => $e->getMessage()]);
+            }
         } catch (Exception $e) {
             Log::error('Error al gestionar SR', ['error' => $e->getMessage()]);
             throw new Exception($e->getMessage()); // Pasa el error (ej. Stock insuficiente) al controlador

@@ -45,7 +45,10 @@ class GestionOrdenService
             throw new Exception('La orden de empresa especificada no existe.');
         }
 
-        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioId) {
+        $esTecnicoAsignado = ((int) $orden->tecnico_id === $usuarioId)
+            || ($orden->subtipo === 'Servicios' && $orden->tecnicos()->where('tecnico_id', $usuarioId)->exists());
+
+        if (!$esAdmin && !$esTecnicoAsignado) {
             throw new Exception('Sin permiso sobre esta orden.');
         }
 
@@ -63,6 +66,14 @@ class GestionOrdenService
             'nuevo_estado' => $orden->estado,
             'usuario_id' => $usuarioId,
         ]);
+
+        if ($estadoAnterior !== $estadoNormalizado) {
+            try {
+                \App\Services\Operations\SgnMailService::enviarOrdenEstadoCambiado($orden, $estadoAnterior, $estadoNormalizado);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar mail de cambio de estado gestion empresa', ['error' => $e->getMessage()]);
+            }
+        }
     }
 
     /**
@@ -135,6 +146,14 @@ class GestionOrdenService
             'nuevo_estado'    => $orden->estado_orden,
             'tecnico_id'      => $usuarioModificacionId
         ]);
+
+        if ($estadoAnterior !== $estadoNormalizado) {
+            try {
+                \App\Services\Operations\SgnMailService::enviarOrdenEstadoCambiado($orden, $estadoAnterior, $estadoNormalizado);
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar mail de cambio de estado gestion', ['error' => $e->getMessage()]);
+            }
+        }
     }
 
     private function normalizarEstado(string $estado): string

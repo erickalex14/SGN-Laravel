@@ -170,6 +170,15 @@
 
 @section('contenido')
 @php
+    $usuario = auth()->user();
+    $rol = $usuario && $usuario->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+    $grupo = $usuario && $usuario->grupo ? mb_strtolower(trim((string) $usuario->grupo->nombre)) : '';
+    $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $rolesAdmitidos = ['admin', 'administrador', 'admin master', 'administrador master'];
+    $esAdminOAdminMaster = in_array($rol, $rolesAdmitidos, true)
+        || in_array($grupo, $rolesAdmitidos, true)
+        || in_array($sessionGrupo, $rolesAdmitidos, true);
+
     $sucursalesClienteMapa = \App\Models\Directory\SucursalCliente::query()
         ->orderBy('numero')
         ->get(['numero', 'nombre'])
@@ -208,6 +217,7 @@
             'marca' => (string) ($ord->equipo->marca ?? ''),
             'modelo' => (string) ($ord->equipo->modelo ?? ''),
             'serie' => (string) ($ord->equipo->serie ?? ''),
+            'producto_inventario_codigo' => (string) ($ord->equipo->producto_inventario_codigo ?? ''),
             'falla' => (string) ($esEmpresa ? ($ord->descripcion ?? $ord->equipo->falla ?? '') : ($ord->equipo->falla ?? '')),
             'observacion' => (string) ($ord->equipo->observacion ?? ''),
             'tecnico' => (string) ($esEmpresa ? ($ord->tecnico->nombre_tecnico ?? '') : (session('nombre') ?? session('usuario') ?? '')),
@@ -505,6 +515,7 @@
 
 @push('js_adicional')
 <script>
+const PUEDE_REASIGNAR = @json($esAdminOAdminMaster);
 const _moRows = @json($rows);
 const _moCsrf = @json(csrf_token());
 const _moUrlEstado = @json(route('mis_ordenes.estado'));
@@ -1329,6 +1340,7 @@ function verDetalleOrden(cardEl) {
                     <div class="det-campo"><label>Correo</label><span>${_h(o.correo || '-')}</span></div>
                     <div class="det-campo det-full"><label>Equipo</label><span>${_h((o.tipo || '') + ' ' + (o.marca || '') + ' ' + (o.modelo || ''))}</span></div>
                     <div class="det-campo"><label>Serie</label><span>${_h(o.serie || '-')}</span></div>
+                    <div class="det-campo"><label>Código Producto</label><span>${_h(o.producto_inventario_codigo || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal</label><span>${_h(o.sucursal || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal Cliente</label><span>${_h(sucursalClienteTexto)}</span></div>
                     <div class="det-campo"><label>Motivo</label><span>${_h(o.motivo_ingreso || '-')}</span></div>
@@ -1351,6 +1363,7 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                ${PUEDE_REASIGNAR ? `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-person-gear"></i></span>
                     <span class="gestion-label">Reasignar</span>
@@ -1360,6 +1373,7 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                ` : ''}
                 <div class="gestion-actions-rep" style="margin-top:12px;">
                     <button type="button" class="btn-mini-rep" onclick="abrirInformeDeOrden(${-1 * Number(o.id)})"><i class="bi bi-pencil-square me-1"></i>Gestionar informe</button>
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
@@ -1377,6 +1391,7 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                ${PUEDE_REASIGNAR ? `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-person-gear"></i></span>
                     <span class="gestion-label">Reasignar</span>
@@ -1386,6 +1401,7 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                ` : ''}
 
                 ${esGarantia ? `
                 <div class="gestion-row garantia-row">

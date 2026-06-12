@@ -28,6 +28,7 @@ use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
 use App\Http\Controllers\Operations\ReporteController;
 use App\Http\Controllers\Operations\SolicitudRepuestoController; // Controlador de autenticación heredado
+use App\Http\Controllers\Operations\RecuperarOrdenController;
 use Illuminate\Support\Facades\Route;
 
 // ═════════════════════════════════════════════════════════════════
@@ -300,6 +301,11 @@ Route::middleware('auth')->group(function () {
 
     // Buscador Global: accesible a usuarios autenticados, filtrando por alcance interno
     Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
+
+    // Recuperación de órdenes/informes perdidos desde PDF (Solo Admins)
+    Route::get('/operaciones/ordenes/recuperar-pdf', [RecuperarOrdenController::class, 'index'])->name('ordenes.recuperar');
+    Route::post('/operaciones/ordenes/recuperar-pdf/analizar', [RecuperarOrdenController::class, 'analizar'])->name('ordenes.recuperar.analizar');
+    Route::post('/operaciones/ordenes/recuperar-pdf/guardar', [RecuperarOrdenController::class, 'guardar'])->name('ordenes.recuperar.guardar');
     // Reimpresion de comprobante OT (legacy: disponible para usuario autenticado)
     Route::get('/operaciones/ordenes/{id}/imprimir', [OrdenController::class, 'imprimir'])->name('ordenes.imprimir');
     Route::get('/operaciones/ordenes-empresa/{id}/imprimir', [OrdenController::class, 'imprimirEmpresa'])->name('ordenes_empresa.imprimir');

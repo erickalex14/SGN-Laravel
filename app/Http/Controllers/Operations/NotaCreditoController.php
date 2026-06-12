@@ -37,7 +37,8 @@ class NotaCreditoController extends Controller
     public function indexAdmin(): View
     {
         $solicitudes = $this->ncRepository->obtenerTodas();
-        return view('operations.notas_credito.admin', compact('solicitudes'));
+        $sucursales = app(\App\Repositories\Directory\SucursalRepository::class)->obtenerTodas();
+        return view('operations.notas_credito.admin', compact('solicitudes', 'sucursales'));
     }
 
     public function indexTecnico(): View

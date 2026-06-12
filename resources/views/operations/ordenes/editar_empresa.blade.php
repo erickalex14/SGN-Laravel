@@ -174,6 +174,16 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="campo">
+                            <label>Técnico Asignado <span class="req">*</span></label>
+                            <select id="tecnico_id" name="tecnico_id" required>
+                                @foreach($tecnicos as $t)
+                                    <option value="{{ $t->id }}" {{ $orden->tecnico_id == $t->id ? 'selected' : '' }}>
+                                        {{ $t->nombre_tecnico }} ({{ $t->pendientes + $t->en_proceso }} OT)
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     @endif
                 </div>
 
@@ -301,6 +311,7 @@ async function guardarActualizacionEmpresa() {
 
     @if($orden->subtipo === 'Autoconsumo' || $orden->subtipo === 'Stock')
         fd.append('cas_id_empresa', document.getElementById('cas_id_empresa').value);
+        fd.append('tecnico_id', document.getElementById('tecnico_id').value);
     @endif
 
     @if($orden->subtipo === 'Servicios')

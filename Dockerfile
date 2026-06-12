@@ -33,6 +33,9 @@ RUN apk add --no-cache \
     oniguruma-dev \
     unzip \
     zip \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-data-spa \
     $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \

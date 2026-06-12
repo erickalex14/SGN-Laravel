@@ -162,13 +162,14 @@ class PreordenService
             }
         });
 
-        $this->notificarNuevaOrden(
-            $resultado['nro_orden'],
-            (int) $resultado['tecnico_id'],
-            (int) $resultado['sucursal_id'],
-            (int) $dto->usuario_sesion_id,
-            $resultado['motivo_ingreso']
-        );
+        try {
+            $ordenCompleta = \App\Models\Operations\Orden::find((int) $resultado['orden_id']);
+            if ($ordenCompleta) {
+                \App\Services\Operations\SgnMailService::enviarOrdenCreada($ordenCompleta);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error al enviar notificacion de nueva orden desde preorden', ['error' => $e->getMessage()]);
+        }
 
         return $resultado;
     }

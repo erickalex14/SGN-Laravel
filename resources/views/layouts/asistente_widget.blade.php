@@ -130,7 +130,7 @@
             msgs.scrollTop = msgs.scrollHeight;
 
             // 3. Petición AJAX
-            fetch('/operaciones/asistente-ia/preguntar', {
+            fetch('{{ url("/operaciones/asistente-ia/preguntar") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

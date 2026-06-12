@@ -719,11 +719,11 @@ function renderTabla() {
         const vR = r.vencida ? 'class="vencida-row"' : '';
         const rawId = String(r.id).replace('empresa-', '');
         const pdfOrdenUrl = r.tipo_orden === 'empresa'
-            ? `/operaciones/ordenes-empresa/${rawId}/imprimir`
-            : `/operaciones/ordenes/${rawId}/imprimir`;
+            ? `{{ url('/operaciones/ordenes-empresa') }}/${rawId}/imprimir`
+            : `{{ url('/operaciones/ordenes') }}/${rawId}/imprimir`;
         const pdfOrdenCol = `<td style="text-align:center;"><a href="${pdfOrdenUrl}" target="_blank" title="Imprimir Orden" style="color:#ef4444;font-size:15px;"><i class="bi bi-file-earmark-pdf-fill"></i></a></td>`;
         const pdfInformeCol = r.informe_id
-            ? `<td style="text-align:center;"><a href="/operaciones/informes/${r.informe_id}/imprimir" target="_blank" title="Ver Informe" style="color:#2563eb;font-size:15px;"><i class="bi bi-file-earmark-text-fill"></i></a></td>`
+            ? `<td style="text-align:center;"><a href="{{ url('/operaciones/informes') }}/${r.informe_id}/imprimir" target="_blank" title="Ver Informe" style="color:#2563eb;font-size:15px;"><i class="bi bi-file-earmark-text-fill"></i></a></td>`
             : `<td style="text-align:center;color:#cbd5e1;">—</td>`;
 
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
@@ -870,11 +870,11 @@ function exportarCSV() {
     ];
     const rows = _filtered.map(r => {
         const rawId = String(r.id).replace('empresa-', '');
-        const pdfOrdenUrl = window.location.origin + (r.tipo_orden === 'empresa' 
+        const pdfOrdenUrl = `{{ url('/') }}` + (r.tipo_orden === 'empresa' 
             ? `/operaciones/ordenes-empresa/${rawId}/imprimir` 
             : `/operaciones/ordenes/${rawId}/imprimir`);
         const pdfInformeUrl = r.informe_id 
-            ? window.location.origin + `/operaciones/informes/${r.informe_id}/imprimir` 
+            ? `{{ url('/') }}/operaciones/informes/${r.informe_id}/imprimir` 
             : '';
         return [
             r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.cliente_nombre, r.identificacion,
@@ -1073,11 +1073,11 @@ async function exportarXLSX() {
 
     _filtered.forEach((r, idx) => {
         const rawId = String(r.id).replace('empresa-', '');
-        const pdfOrdenUrl = window.location.origin + (r.tipo_orden === 'empresa' 
+        const pdfOrdenUrl = `{{ url('/') }}` + (r.tipo_orden === 'empresa' 
             ? `/operaciones/ordenes-empresa/${rawId}/imprimir` 
             : `/operaciones/ordenes/${rawId}/imprimir`);
         const pdfInformeUrl = r.informe_id 
-            ? window.location.origin + `/operaciones/informes/${r.informe_id}/imprimir` 
+            ? `{{ url('/') }}/operaciones/informes/${r.informe_id}/imprimir` 
             : null;
 
         const vals = [
