@@ -165,6 +165,16 @@
 </head>
 <body>
 @php
+    $sgnFlashMessage = session('success')
+        ?? session('error')
+        ?? session('warning')
+        ?? session('info');
+    $sgnFlashType = session()->has('success')
+        ? 'success'
+        : (session()->has('error')
+            ? 'error'
+            : (session()->has('warning') ? 'warning' : (session()->has('info') ? 'info' : null)));
+    $sgnValidationMessage = $errors->any() ? $errors->first() : null;
     $p = session('permisos', []);
     $sa = session('es_superadmin');
     
@@ -172,9 +182,11 @@
     $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
     $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $tienePermisoEditar = $sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']);
     $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || $tienePermisoEditar;
 
     $permAlias = [
         'grupos' => 'grupos_acceso',
@@ -282,6 +294,7 @@
                             <span class="nav-label" style="margin-left:10px;">Buscar Órdenes</span>
                         </a>
                     @endif
+                    {{--
                     @if ($esAdminOAdminMaster)
                         <a data-tip="Recuperar Orden" href="{{ route('ordenes.recuperar') }}?type=orden">
                             <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
@@ -292,6 +305,7 @@
                             <span class="nav-label" style="margin-left:10px;">Recuperar Informe</span>
                         </a>
                     @endif
+                    --}}
                     @if ($can('preordenes', 'ver'))
                         <a data-tip="Preórdenes" href="{{ route('preordenes.index') }}">
                             <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
@@ -467,7 +481,7 @@
                 </a>
                 <div class="nav-submenu">
                     @if ($can('sucursales', 'ver'))
-                    <a data-tip="NONITEC" href="{{ route('sucursales.index') }}">
+                    <a data-tip="NOVITEC" href="{{ route('sucursales.index') }}">
                         <i class="bi bi-shop" style="flex-shrink:0;"></i>
                         <span class="nav-label" style="margin-left:10px;">Novitecnologia</span>
                     </a>
@@ -602,7 +616,10 @@
                         </div>
                     </div>
                 </div>
-                <a href="{{ route('auth.logout') }}" class="btn btn-sm btn-logout">Cerrar sesión</a>
+                <form method="POST" action="{{ route('auth.logout') }}" style="margin:0;">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-logout">Cerrar sesión</button>
+                </form>
             </div>
         </div>
 
@@ -699,10 +716,92 @@
         $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
         $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
         $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $tienePermisoEditar = session('es_superadmin') === true 
+            || !empty(session('permisos', [])['ordenes_editar']['editar']) 
+            || !empty(session('permisos', [])['ordenes_editar']['ver']);
         $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
             || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-            || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+            || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || $tienePermisoEditar;
     @endphp
+    window.SGN_NOTIFY_FLASH = @json($sgnFlashMessage);
+    window.SGN_NOTIFY_FLASH_TYPE = @json($sgnFlashType);
+    window.SGN_NOTIFY_VALIDATION = @json($sgnValidationMessage);
+
+    function sgnInferNotificationType(message) {
+        var text = String(message || '').toLowerCase();
+        if (!text) return 'info';
+        if (text.includes('error') || text.includes('fall') || text.includes('rechaz') || text.includes('bloque') || text.includes('critico')) {
+            return 'error';
+        }
+        if (text.includes('exito') || text.includes('correctamente') || text.includes('guardad') || text.includes('cread') || text.includes('actualizad') || text.includes('aprobad')) {
+            return 'success';
+        }
+        if (text.includes('atencion') || text.includes('seleccion') || text.includes('debe') || text.includes('por favor') || text.includes('no hay') || text.includes('maximo')) {
+            return 'warning';
+        }
+        return 'info';
+    }
+
+    function sgnNormalizeNotificationMessage(message) {
+        if (Array.isArray(message)) {
+            return message.filter(Boolean).join('<br>');
+        }
+
+        return String(message || '').trim();
+    }
+
+    function sgnNotify(type, message, options) {
+        var text = sgnNormalizeNotificationMessage(message);
+        if (!text) return;
+
+        var resolvedType = type || sgnInferNotificationType(text);
+        var config = Object.assign({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: resolvedType === 'error' ? 5200 : 3600,
+            timerProgressBar: true,
+            customClass: {
+                popup: 'sgn-toast-popup',
+                title: 'sgn-toast-title',
+                htmlContainer: 'sgn-toast-body',
+                icon: 'sgn-toast-icon'
+            }
+        }, options || {});
+
+        if (config.toast === false) {
+            config.customClass = Object.assign({
+                popup: 'sgn-alert-popup',
+                title: 'sgn-alert-title',
+                htmlContainer: 'sgn-alert-body',
+                icon: 'sgn-alert-icon',
+                confirmButton: 'sgn-alert-confirm'
+            }, config.customClass || {});
+            if (typeof config.confirmButtonText === 'undefined') {
+                config.confirmButtonText = 'Entendido';
+            }
+        }
+
+        Swal.fire(Object.assign({}, config, {
+            icon: resolvedType,
+            title: text,
+            html: config.html || undefined
+        }));
+    }
+
+    window.SGNNotify = {
+        success: function(message, options) { sgnNotify('success', message, options); },
+        error: function(message, options) { sgnNotify('error', message, options); },
+        warning: function(message, options) { sgnNotify('warning', message, options); },
+        info: function(message, options) { sgnNotify('info', message, options); },
+        show: function(message, options) { sgnNotify(null, message, options); }
+    };
+
+    window.alert = function(message) {
+        sgnNotify(null, message, { toast: false });
+    };
+
     var _esAdminOAdminMasterGlobal = @json($esAdminOAdminMaster);
     var _csrf = '{{ csrf_token() }}';
     var _urlBuscarGlobal = '{{ route("ordenes.buscar_global") }}';
@@ -992,6 +1091,14 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
+        if (window.SGN_NOTIFY_FLASH) {
+            sgnNotify(window.SGN_NOTIFY_FLASH_TYPE, window.SGN_NOTIFY_FLASH);
+        }
+
+        if (window.SGN_NOTIFY_VALIDATION) {
+            sgnNotify('warning', window.SGN_NOTIFY_VALIDATION, { timer: 4200 });
+        }
+
         if (_sidebarCollapsed) {
             var sidebar = document.getElementById('sidebar');
             var icon = document.getElementById('collapse-icon');
@@ -1278,6 +1385,58 @@
         }
     }
 </script>
+<style>
+    .swal2-popup.sgn-toast-popup {
+        width: min(420px, calc(100vw - 24px));
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid #dbe4f0;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+    }
+
+    .swal2-popup.sgn-alert-popup {
+        border-radius: 18px;
+        border: 1px solid #dbe4f0;
+        padding: 22px 20px 18px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    }
+
+    .sgn-toast-title,
+    .sgn-alert-title {
+        margin: 0;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+        text-align: left;
+    }
+
+    .sgn-alert-title {
+        text-align: center;
+        font-size: 15px;
+    }
+
+    .sgn-toast-body,
+    .sgn-alert-body {
+        margin: 0;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .sgn-alert-confirm {
+        border-radius: 10px !important;
+        background: #2563eb !important;
+        font-weight: 700 !important;
+        box-shadow: none !important;
+        padding: 10px 18px !important;
+    }
+
+    .swal2-popup .swal2-timer-progress-bar {
+        background: rgba(37, 99, 235, 0.28);
+    }
+</style>
 
 @stack('js_adicional')
 </body>

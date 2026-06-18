@@ -15,13 +15,16 @@ body { font-family: Arial, sans-serif; font-size: 7.6pt; color: #000; background
 .doc-header { display: flex; justify-content: space-between; align-items: center; background: #1a56db; color: #fff; padding: 3px 8px; border-radius: 3px; margin-bottom: 4px; }
 .doc-header .nro { font-size: 10pt; font-weight: 700; }
 .doc-header .meta { font-size: 6.5pt; text-align: right; line-height: 1.4; }
-.sec-title { background: #dbeafe; font-weight: 700; font-size: 6.5pt; text-transform: uppercase; padding: 2px 6px; border-left: 3px solid #1a56db; margin-bottom: 1px; }
-table.data { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-table.data td, table.data th { border: 1px solid #d1d5db; padding: 2px 5px; font-size: 7pt; vertical-align: top; }
-.lbl { font-size: 5.5pt; color: #6b7280; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 0; }
-.pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 6.5pt; font-weight: 700; }
-.txt-box { border: 1px solid #d1d5db; padding: 6px; margin-bottom: 4px; white-space: pre-wrap; line-height: 1.45; }
-.foot { text-align: center; margin-top: 8px; font-size: 7pt; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+.sec-titulo { background: #dbeafe; font-weight: 700; font-size: 6.5pt; text-transform: uppercase; padding: 2px 6px; border-left: 3px solid #1a56db; margin-bottom: 1px; }
+table.datos { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+table.datos td { border: 1px solid #d1d5db; padding: 2px 5px; font-size: 7pt; vertical-align: top; }
+table.datos td .lbl { font-size: 5.5pt; color: #6b7280; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 0; }
+.pill { display: inline-block; border-radius: 4px; padding: 1px 6px; font-size: 6.5pt; font-weight: 700; border: 1px solid #cbd5e1; }
+.txt-box { border: 1px solid #d1d5db; padding: 6px; margin-bottom: 4px; white-space: pre-wrap; line-height: 1.45; font-size: 7pt; }
+.firmas { display: flex; justify-content: space-between; margin-top: 25px; page-break-inside: avoid; }
+.firma-box { width: 44%; text-align: center; }
+.firma-linea { border-top: 1px solid #000; padding-top: 3px; font-size: 7pt; margin-top: 35px; }
+.foot { text-align: center; margin-top: 12px; font-size: 7pt; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 6px; }
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
     .no-print { display: none !important; }
@@ -42,47 +45,93 @@ table.data td, table.data th { border: 1px solid #d1d5db; padding: 2px 5px; font
     </div>
 
     <div class="doc-header">
-        <div class="nro">Solicitud Nota de Credito - {{ $solicitud->nro_solicitud }}</div>
+        <div class="nro">Autorizacion de Nota de Credito</div>
         <div class="meta">
-            Fecha: {{ \Carbon\Carbon::parse($solicitud->fecha_solicitud ?? $solicitud->creado_en)->format('d/m/Y H:i') }}<br>
-            Tecnico: {{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}
+            SOLICITUD: <strong>{{ $solicitud->nro_solicitud }}</strong><br>
+            Fecha: {{ \Carbon\Carbon::parse($solicitud->fecha_solicitud ?? $solicitud->creado_en)->format('d/m/Y H:i') }}
         </div>
     </div>
 
     @php
         $estado = strtoupper((string) $solicitud->estado);
         $estilo = $estado === 'APROBADA'
-            ? ['#dcfce7', '#166534']
-            : ($estado === 'RECHAZADA' ? ['#fee2e2', '#991b1b'] : ['#fef3c7', '#92400e']);
+            ? ['#dcfce7', '#166534', '#bbf7d0']
+            : ($estado === 'RECHAZADA' ? ['#fee2e2', '#991b1b', '#fecaca'] : ['#fef3c7', '#92400e', '#fde047']);
     @endphp
 
-    <div class="sec-title">Datos de Solicitud</div>
-    <table class="data">
+    <div class="sec-titulo">Datos de Solicitud</div>
+    <table class="datos">
         <tr>
-            <td width="25%"><span class="lbl">Estado</span><span class="pill" style="background: {{ $estilo[0] }}; color: {{ $estilo[1] }};">{{ $solicitud->estado }}</span></td>
-            <td width="25%"><span class="lbl">Tecnico</span>{{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}</td>
-            <td width="25%"><span class="lbl">Asunto</span>{{ $solicitud->asunto ?: '-' }}</td>
-            <td width="25%"><span class="lbl">Aprobado/Revisado por</span>{{ $solicitud->nombre_admin ?: '-' }}</td>
+            <td width="25%">
+                <span class="lbl">Estado de Solicitud</span>
+                <span class="pill" style="background: {{ $estilo[0] }}; color: {{ $estilo[1] }}; border-color: {{ $estilo[2] }};">{{ $solicitud->estado }}</span>
+            </td>
+            <td width="25%"><span class="lbl">Tecnico Solicitante</span>{{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}</td>
+            <td width="50%"><span class="lbl">Asunto</span>{{ $solicitud->asunto ?: '-' }}</td>
+        </tr>
+        <tr>
+            <td><span class="lbl">Sucursal Origen</span>{{ $solicitud->orden->sucursal->ciudad ?? '-' }}</td>
+            <td><span class="lbl">Autorizado/Revisado por</span>{{ $solicitud->nombre_admin ?: '-' }}</td>
+            <td></td>
         </tr>
     </table>
 
-    <div class="sec-title">Orden Relacionada</div>
-    <table class="data">
+    <div class="sec-titulo">Orden de Servicio Relacionada</div>
+    <table class="datos">
         <tr>
-            <td width="25%"><span class="lbl">Nro. Orden</span>{{ $solicitud->orden->nro_orden ?? ('#' . $solicitud->orden_id) }}</td>
-            <td width="25%"><span class="lbl">Estado Orden</span>{{ $solicitud->orden->estado_orden ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Cliente</span>{{ trim(($solicitud->orden->cliente->nombres ?? '') . ' ' . ($solicitud->orden->cliente->apellidos ?? '')) ?: '-' }}</td>
-            <td width="25%"><span class="lbl">Equipo</span>{{ trim(($solicitud->orden->equipo->marca ?? '') . ' ' . ($solicitud->orden->equipo->modelo ?? '')) ?: '-' }}</td>
+            <td width="25%"><span class="lbl">Nro. Orden</span><strong>{{ $solicitud->orden->nro_orden ?? ('#' . $solicitud->orden_id) }}</strong></td>
+            <td width="25%"><span class="lbl">Estado de Orden</span>{{ $solicitud->orden->estado_orden ?? '-' }}</td>
+            <td width="50%">
+                <span class="lbl">Nro. Factura</span>
+                <strong>{{ $solicitud->orden->nro_factura ?: '-' }}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <span class="lbl">Cliente</span>
+                {{ trim(($solicitud->orden->cliente->nombres ?? '') . ' ' . ($solicitud->orden->cliente->apellidos ?? '')) ?: '-' }}
+            </td>
+            <td>
+                <span class="lbl">Identificacion (RUC/C.I)</span>
+                {{ $solicitud->orden->cliente->identificacion ?? '-' }}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <span class="lbl">Equipo</span>
+                {{ trim(($solicitud->orden->equipo->marca ?? '') . ' ' . ($solicitud->orden->equipo->modelo ?? '')) ?: '-' }}
+            </td>
+            <td>
+                <span class="lbl">Serie del Equipo</span>
+                {{ $solicitud->orden->equipo->serie ?? '-' }}
+            </td>
         </tr>
     </table>
 
-    <div class="sec-title">Detalle</div>
-    <div class="txt-box">{{ $solicitud->detalles ?: '-' }}</div>
+    <div class="sec-titulo">Justificacion y Detalle de la Solicitud</div>
+    <div class="txt-box" style="min-height: 50px;">{{ $solicitud->detalles ?: '-' }}</div>
 
     @if(!empty($solicitud->motivo_rechazo))
-        <div class="sec-title">Motivo de Rechazo</div>
-        <div class="txt-box">{{ $solicitud->motivo_rechazo }}</div>
+        <div class="sec-titulo" style="background:#fee2e2; border-left-color:#ef4444; color:#991b1b;">Motivo del Rechazo</div>
+        <div class="txt-box" style="border-color:#fca5a5; background:#fff5f5; color:#991b1b; min-height: 40px;">{{ $solicitud->motivo_rechazo }}</div>
     @endif
+
+    <div class="firmas">
+        <div class="firma-box">
+            <div class="firma-linea">
+                <strong>Solicitado por:</strong><br>
+                {{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}<br>
+                Técnico Responsable
+            </div>
+        </div>
+        <div class="firma-box">
+            <div class="firma-linea">
+                <strong>Autorizado por:</strong><br>
+                {{ $solicitud->nombre_admin ?: 'Firma Autorizada' }}<br>
+                Administrador SGN
+            </div>
+        </div>
+    </div>
 
     <div class="foot">
         Novitecnologia Cia. Ltda. | Sistema de Gestion SGN | Impreso el:

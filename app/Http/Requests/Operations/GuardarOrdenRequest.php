@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Operations;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Validation\Rule;
+use App\Models\Directory\SucursalCliente;
 use App\Rules\EcuadorIdentificacion;
 use App\Rules\EcuadorTelefono;
+use Carbon\Carbon;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
 class GuardarOrdenRequest extends FormRequest
 {
@@ -21,62 +23,77 @@ class GuardarOrdenRequest extends FormRequest
         $esEmpresa = $this->input('motivo_ingreso') === 'Servicios a Empresas';
         $esGarantia = $this->input('motivo_ingreso') === 'Validacion de Garantia';
         $garantiaExterna = in_array(strtolower((string) $this->input('garantia_tipo')), ['externa'], true);
-        $todayEcuador = \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d');
+        $todayEcuador = Carbon::now('America/Guayaquil')->format('Y-m-d');
 
         $reglas = [
             // Validacion de Cliente
             'cli_identificacion' => [
                 $esEmpresa ? 'nullable' : 'required',
                 'string',
-                new EcuadorIdentificacion(),
+                new EcuadorIdentificacion,
             ],
-            'cli_nombres'        => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
-            'cli_apellidos'      => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
-            'cli_telefono'       => [
+            'cli_nombres' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_apellidos' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_telefono' => [
                 $esEmpresa ? 'nullable' : 'required',
                 'string',
-                new EcuadorTelefono(),
+                new EcuadorTelefono,
             ],
-            'cli_correo'         => ['nullable', 'email', 'max:100'],
-            'cli_direccion'      => ['nullable', 'string', 'max:200'],
+            'cli_correo' => ['nullable', 'email', 'max:100'],
+            'cli_direccion' => ['nullable', 'string', 'max:200'],
 
             // Validacion de Equipo
-            'eq_tipo'                  => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
-            'eq_marca'                 => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
-            'eq_modelo'                => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100'],
-            'eq_contrasena'            => ['nullable', 'string', 'max:100'],
-            'eq_falla'                 => [$esEmpresa ? 'nullable' : 'required', 'string'],
-            'eq_observacion'           => ['nullable', 'string'],
-            'eq_tipo_servicio'         => [$esGarantia ? 'required' : 'nullable', 'integer', 'exists:tiposservicio,id'],
-            'tipo_servicio_texto'      => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
+            'eq_tipo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
+            'eq_marca' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
+            'eq_modelo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100'],
+            'eq_contrasena' => ['nullable', 'string', 'max:100'],
+            'eq_falla' => [$esEmpresa ? 'nullable' : 'required', 'string'],
+            'eq_observacion' => ['nullable', 'string'],
+            'eq_tipo_servicio' => [$esGarantia ? 'required' : 'nullable', 'integer', 'exists:tiposservicio,id'],
+            'tipo_servicio_texto' => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
             'producto_inventario_codigo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
 
-            'series'                   => [$esEmpresa ? 'nullable' : 'required', 'array', 'min:1'],
-            'series.*'                 => ['nullable', 'string', 'max:100'],
+            'series' => [$esEmpresa ? 'nullable' : 'required', 'array', 'min:1'],
+            'series.*' => ['nullable', 'string', 'max:100'],
 
             // Validacion de Orden
-            'ord_tecnico_id'           => ['required', 'integer', 'exists:usuarios,id'],
-            'motivo_ingreso'           => ['required', 'string', 'max:50', Rule::in(['Servicio Cliente Externo', 'Validacion de Garantia', 'Servicios a Empresas'])],
-            'nro_factura'              => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'string', 'max:50'],
-            'nro_factura_2'            => ['nullable', 'string', 'max:50'],
-            'fecha_facturacion'        => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'date', 'before_or_equal:' . $todayEcuador],
-            'fecha_prometido'          => [$esEmpresa ? 'nullable' : 'required', 'date', 'after_or_equal:' . $todayEcuador],
-            'nro_sucursal_cliente'     => [$esGarantia ? 'required' : 'nullable', 'integer'],
-            'estado_repuesto'          => ['nullable', 'string', 'max:50'],
-            'garantia_tipo'            => [
+            'ord_tecnico_id' => ['required', 'integer', 'exists:usuarios,id'],
+            'motivo_ingreso' => ['required', 'string', 'max:50', Rule::in(['Servicio Cliente Externo', 'Validacion de Garantia', 'Servicios a Empresas'])],
+            'nro_factura' => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'string', 'max:50'],
+            'nro_factura_2' => ['nullable', 'string', 'max:50'],
+            'fecha_facturacion' => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'date', 'before_or_equal:'.$todayEcuador],
+            'fecha_prometido' => [$esEmpresa ? 'nullable' : 'required', 'date', 'after_or_equal:'.$todayEcuador],
+            'nro_sucursal_cliente' => [
                 $esGarantia ? 'required' : 'nullable',
                 'string',
                 'max:50',
-                Rule::in(['propia', 'externa', 'PROPIA', 'EXTERNA', 'interna', 'INTERNA'])
+                function ($attribute, $value, $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    $exists = SucursalCliente::where('codigo', $value)
+                        ->orWhere('numero', (int) $value)
+                        ->exists();
+                    if (! $exists) {
+                        $fail('El campo nro sucursal cliente seleccionado es inválido.');
+                    }
+                },
             ],
-            'cas_id'                   => [$garantiaExterna ? 'required' : 'nullable', 'integer', 'exists:cas,id'],
-            'repuesto_inventario_id'   => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
-            'repuestos_seleccionados'   => ['nullable', 'array'],
+            'estado_repuesto' => ['nullable', 'string', 'max:50'],
+            'garantia_tipo' => [
+                $esGarantia ? 'required' : 'nullable',
+                'string',
+                'max:50',
+                Rule::in(['propia', 'externa', 'PROPIA', 'EXTERNA', 'interna', 'INTERNA']),
+            ],
+            'cas_id' => [$garantiaExterna ? 'required' : 'nullable', 'integer', 'exists:cas,id'],
+            'repuesto_inventario_id' => ['required_if:estado_repuesto,Con stock', 'nullable', 'integer', 'exists:repuestos,id'],
+            'repuestos_seleccionados' => ['nullable', 'array'],
             'repuestos_seleccionados.*' => ['integer', 'exists:repuestos,id'],
 
-            'cred_usuario'             => ['nullable', 'array'],
-            'cred_contrasena'          => ['nullable', 'array'],
-            'cred_es_patron'           => ['nullable', 'array']
+            'cred_usuario' => ['nullable', 'array'],
+            'cred_contrasena' => ['nullable', 'array'],
+            'cred_es_patron' => ['nullable', 'array'],
         ];
 
         if ($esEmpresa) {
@@ -99,9 +116,24 @@ class GuardarOrdenRequest extends FormRequest
                 'emp_falla' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_observacion' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_tipo_servicio_id' => ['nullable', 'integer', 'exists:tiposservicio,id'],
-                'emp_fecha_prometido' => ['required', 'date', 'after_or_equal:' . $todayEcuador],
-                'nro_sucursal_cliente' => [$subtipo === 'Stock' ? 'required' : 'nullable', 'integer', 'exists:sucursalescliente,numero'],
-                
+                'emp_fecha_prometido' => ['required', 'date', 'after_or_equal:'.$todayEcuador],
+                'nro_sucursal_cliente' => [
+                    $subtipo === 'Stock' ? 'required' : 'nullable',
+                    'string',
+                    'max:50',
+                    function ($attribute, $value, $fail) {
+                        if ($value === null || $value === '') {
+                            return;
+                        }
+                        $exists = SucursalCliente::where('codigo', $value)
+                            ->orWhere('numero', (int) $value)
+                            ->exists();
+                        if (! $exists) {
+                            $fail('El campo nro sucursal cliente seleccionado es inválido.');
+                        }
+                    },
+                ],
+
                 // Nuevas reglas para NOVISOLUTIONS
                 'valor_hora' => ['nullable', 'numeric', 'min:0'],
                 'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
@@ -157,8 +189,8 @@ class GuardarOrdenRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
-            'ok'    => false,
-            'error' => 'Error de validación: ' . $validator->errors()->first()
+            'ok' => false,
+            'error' => 'Error de validación: '.$validator->errors()->first(),
         ]));
     }
 }

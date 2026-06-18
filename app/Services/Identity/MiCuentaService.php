@@ -32,7 +32,7 @@ class MiCuentaService
     public function actualizarPerfil(MiCuentaPerfilDTO $dto, ?string $telefono, ?string $correo): void
     {
         $usuario = $this->repository->buscarPorId($dto->usuario_id);
-        if (!$usuario) {
+        if (! $usuario) {
             throw new Exception('Usuario no encontrado.');
         }
 
@@ -49,11 +49,11 @@ class MiCuentaService
     public function actualizarPassword(MiCuentaPasswordDTO $dto): void
     {
         $usuario = $this->repository->buscarPorId($dto->usuario_id);
-        if (!$usuario) {
+        if (! $usuario) {
             throw new Exception('Usuario no encontrado.');
         }
 
-        if ((string) $usuario->clave !== trim($dto->actual)) {
+        if (! $usuario->validarClave($dto->actual)) {
             throw new Exception('La contrasena actual es incorrecta.');
         }
 
@@ -61,8 +61,7 @@ class MiCuentaService
             throw new Exception('La contrasena debe tener entre 6 y 12 caracteres.');
         }
 
-        $usuario->clave = $dto->nueva;
+        $usuario->establecerClaveSegura($dto->nueva);
         $this->repository->guardar($usuario);
     }
 }
-

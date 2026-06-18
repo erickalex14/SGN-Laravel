@@ -132,6 +132,8 @@
                     <p class="font-body-sm text-body-sm text-on-error-container">
                         @if(request()->query('error') === 'db')
                             No se pudo conectar a la base de datos. Verifique conectividad y credenciales del servidor.
+                        @elseif(request()->query('error') === 'throttle')
+                            Demasiados intentos fallidos. Espere 1 minuto antes de intentar de nuevo.
                         @elseif(request()->query('error') === 'inactivo')
                             El usuario se encuentra inactivo. Contacte al administrador.
                         @else

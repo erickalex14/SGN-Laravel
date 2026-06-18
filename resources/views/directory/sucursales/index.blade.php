@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('titulo', 'Sucursales NONITEC')
+@section('titulo', 'Sucursales Novitec')
 
 @push('css_adicional')
     <style>
@@ -56,7 +56,7 @@
     <section class="modulo activo">
         <div class="suc-wrap">
             <div class="form-titulo" style="margin-bottom:18px;">
-                <h2><i class="bi bi-shop me-2"></i>Sucursales NONITEC</h2>
+                <h2><i class="bi bi-shop me-2"></i>Sucursales Novitec</h2>
                 <p>Crear y editar sucursales de Novitecnología</p>
             </div>
 

@@ -25,9 +25,14 @@ const EcuadorianValidator = {
 
     validarIdentificacion(val) {
         val = val.trim();
-        if (val.length === 10) return EcuadorianValidator.validarCedula(val);
-        if (val.length === 13) return EcuadorianValidator.validarRuc(val);
-        return false;
+        if (EcuadorianValidator.validarCedula(val)) return true;
+        if (EcuadorianValidator.validarRuc(val)) return true;
+        return EcuadorianValidator.validarPasaporte(val);
+    },
+
+    validarPasaporte(val) {
+        val = val.trim();
+        return /^(?=.*[A-Za-z])[A-Za-z0-9]{5,20}$/.test(val);
     },
 
     validarTelefono(val) {
@@ -73,9 +78,10 @@ function setupDynamicValidation(input, validate, getErrorMsg) {
             errorEl.style.display = 'none';
             return true;
         } else {
-            const hasLetters = (validate === EcuadorianValidator.validarIdentificacion || validate === EcuadorianValidator.validarTelefono || validate === EcuadorianValidator.validarRuc || validate === EcuadorianValidator.validarCedula) && /[^\d]/.test(val);
+            const hasInvalidChars = (validate === EcuadorianValidator.validarIdentificacion && /[^a-zA-Z0-9]/.test(val))
+                || ((validate === EcuadorianValidator.validarTelefono || validate === EcuadorianValidator.validarRuc || validate === EcuadorianValidator.validarCedula) && /[^\d]/.test(val));
             
-            if (isBlur || hasLetters || (val.length >= 10 && validate === EcuadorianValidator.validarIdentificacion) || (val.length >= 13 && validate === EcuadorianValidator.validarRuc) || (val.length >= 10 && validate === EcuadorianValidator.validarTelefono)) {
+            if (isBlur || hasInvalidChars || (val.length >= 20 && validate === EcuadorianValidator.validarIdentificacion) || (val.length >= 13 && validate === EcuadorianValidator.validarRuc) || (val.length >= 10 && validate === EcuadorianValidator.validarTelefono)) {
                 input.classList.add('is-invalid');
                 errorEl.textContent = getErrorMsg(val);
                 errorEl.style.display = 'block';
@@ -94,8 +100,8 @@ function setupDynamicValidation(input, validate, getErrorMsg) {
     }
 
     input.addEventListener('input', () => {
-        if (validate === EcuadorianValidator.validarIdentificacion && input.value.length > 13) {
-            input.value = input.value.substring(0, 13);
+        if (validate === EcuadorianValidator.validarIdentificacion && input.value.length > 20) {
+            input.value = input.value.substring(0, 20);
         } else if (validate === EcuadorianValidator.validarRuc && input.value.length > 13) {
             input.value = input.value.substring(0, 13);
         } else if (validate === EcuadorianValidator.validarCedula && input.value.length > 10) {

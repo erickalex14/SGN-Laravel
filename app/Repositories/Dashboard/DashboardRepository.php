@@ -7,14 +7,19 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardRepository
 {
+    private function sqlEstadoResuelto(string $columna): string
+    {
+        return "UPPER(TRIM(COALESCE({$columna}, ''))) IN ('ENTREGADA', 'NOTA DE CREDITO', 'NOTA DE CRÉDITO')";
+    }
+
     public function obtenerDatosTecnico(int $tecnicoId): array
     {
         $totalAsignadas = $this->scalar(
-            "SELECT COUNT(*) FROM (
+            'SELECT COUNT(*) FROM (
                 SELECT id FROM ordenes WHERE tecnico_id = ?
                 UNION ALL
                 SELECT id FROM ordenesempresas WHERE tecnico_id = ?
-            ) t",
+            ) t',
             [$tecnicoId, $tecnicoId]
         );
 
@@ -45,28 +50,28 @@ class DashboardRepository
             [$tecnicoId, $tecnicoId]
         );
 
-        $entregadas = $this->scalar(
+        $resueltas = $this->scalar(
             "SELECT COUNT(*) FROM (
-                SELECT id FROM ordenes WHERE tecnico_id = ? AND estado_orden = 'Entregada'
+                SELECT id FROM ordenes WHERE tecnico_id = ? AND {$this->sqlEstadoResuelto('estado_orden')}
                 UNION ALL
-                SELECT id FROM ordenesempresas WHERE tecnico_id = ? AND estado = 'Entregada'
+                SELECT id FROM ordenesempresas WHERE tecnico_id = ? AND {$this->sqlEstadoResuelto('estado')}
             ) t",
             [$tecnicoId, $tecnicoId]
         );
 
         $hoy = $this->scalar(
-            "SELECT COUNT(*) FROM (
+            'SELECT COUNT(*) FROM (
                 SELECT id FROM ordenes WHERE tecnico_id = ? AND DATE(fecha_de_ingreso) = CURDATE()
                 UNION ALL
                 SELECT id FROM ordenesempresas WHERE tecnico_id = ? AND DATE(fecha_ingreso) = CURDATE()
-            ) t",
+            ) t',
             [$tecnicoId, $tecnicoId]
         );
 
-        $tasa = $totalAsignadas > 0 ? (int) round(($entregadas / $totalAsignadas) * 100) : 0;
+        $tasa = $totalAsignadas > 0 ? (int) round(($resueltas / $totalAsignadas) * 100) : 0;
 
         $rowsDias = DB::select(
-            "SELECT dia, SUM(total) AS total FROM (
+            'SELECT dia, SUM(total) AS total FROM (
                 SELECT DATE(fecha_de_ingreso) AS dia, COUNT(*) AS total
                 FROM ordenes
                 WHERE tecnico_id = ? AND fecha_de_ingreso >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
@@ -78,7 +83,7 @@ class DashboardRepository
                 GROUP BY DATE(fecha_ingreso)
             ) t
             GROUP BY dia
-            ORDER BY dia ASC",
+            ORDER BY dia ASC',
             [$tecnicoId, $tecnicoId]
         );
 
@@ -97,14 +102,14 @@ class DashboardRepository
         }
 
         $rowsEquipos = DB::select(
-            "SELECT e.tipo, COUNT(*) AS total FROM (
+            'SELECT e.tipo, COUNT(*) AS total FROM (
                 SELECT equipo_id FROM ordenes WHERE tecnico_id = ?
                 UNION ALL
                 SELECT equipo_id FROM ordenesempresas WHERE tecnico_id = ?
             ) t
             JOIN equipos e ON e.id = t.equipo_id
             GROUP BY e.tipo
-            ORDER BY total DESC",
+            ORDER BY total DESC',
             [$tecnicoId, $tecnicoId]
         );
 
@@ -144,7 +149,7 @@ class DashboardRepository
             $mesOrd = (string) ($row->mes_ord ?? '');
             [$anio, $mes] = array_pad(explode('-', $mesOrd), 2, '');
             if ($anio !== '' && $mes !== '') {
-                $mesLabels[] = ($mesesEs[$mes] ?? $mes) . ' ' . substr($anio, 2);
+                $mesLabels[] = ($mesesEs[$mes] ?? $mes).' '.substr($anio, 2);
                 $mesData[] = (int) ($row->total ?? 0);
             }
         }
@@ -156,7 +161,8 @@ class DashboardRepository
                 'pendientes' => $pendientes,
                 'en_proceso' => $enProceso,
                 'finalizadas' => $finalizadas,
-                'entregadas' => $entregadas,
+                'entregadas' => $resueltas,
+                'resueltas' => $resueltas,
                 'hoy' => $hoy,
                 'tasa_resolucion' => $tasa,
             ],
@@ -198,11 +204,11 @@ class DashboardRepository
             $paramsSucursal
         );
 
-        $totalClientes = $this->scalar("SELECT COUNT(*) FROM clientes");
+        $totalClientes = $this->scalar('SELECT COUNT(*) FROM clientes');
         $totalSucursales = $esSuperadmin
-            ? $this->scalar("SELECT COUNT(*) FROM sucursales")
+            ? $this->scalar('SELECT COUNT(*) FROM sucursales')
             : 1;
-        $totalCas = $this->scalar("SELECT COUNT(*) FROM cas");
+        $totalCas = $this->scalar('SELECT COUNT(*) FROM cas');
         $totalOrdenesCas = $this->scalar(
             "SELECT COUNT(*) FROM ordenes o WHERE o.cas_id IS NOT NULL AND {$filtroPersonal}",
             $esSuperadmin ? [] : [$sucursalId]
@@ -246,17 +252,17 @@ class DashboardRepository
                 u.id,
                 u.nombre_tecnico,
                 COUNT(all_o.orden_id) AS total,
-                SUM(CASE WHEN all_o.estado = 'Entregada' THEN 1 ELSE 0 END) AS entregadas,
+                SUM(CASE WHEN {$this->sqlEstadoResuelto('all_o.estado')} THEN 1 ELSE 0 END) AS resueltas,
                 SUM(CASE WHEN all_o.estado = 'Pendiente' THEN 1 ELSE 0 END) AS pendientes
             FROM usuarios u
             LEFT JOIN (
                 SELECT tecnico_id, id AS orden_id, sucursal_id, estado_orden COLLATE utf8mb4_unicode_ci AS estado
                 FROM ordenes
-                " . ($esSuperadmin ? '' : 'WHERE sucursal_id = ?') . "
+                ".($esSuperadmin ? '' : 'WHERE sucursal_id = ?').'
                 UNION ALL
                 SELECT tecnico_id, id AS orden_id, sucursal_id, estado COLLATE utf8mb4_unicode_ci AS estado
                 FROM ordenesempresas
-                " . ($esSuperadmin ? '' : 'WHERE sucursal_id = ?') . "
+                '.($esSuperadmin ? '' : 'WHERE sucursal_id = ?')."
             ) all_o ON all_o.tecnico_id = u.id
             WHERE {$filtroUsuario}
             GROUP BY u.id, u.nombre_tecnico
@@ -271,7 +277,7 @@ class DashboardRepository
             $partes = preg_split('/\s+/', $nombre);
             $nombreCorto = $nombre;
             if (is_array($partes) && count($partes) > 1) {
-                $nombreCorto = $partes[0] . ' ' . strtoupper(substr($partes[1], 0, 1)) . '.';
+                $nombreCorto = $partes[0].' '.strtoupper(substr($partes[1], 0, 1)).'.';
             } elseif (is_array($partes) && count($partes) === 1) {
                 $nombreCorto = $partes[0];
             }
@@ -279,8 +285,13 @@ class DashboardRepository
             $tecnicos[] = [
                 'nombre' => $nombreCorto,
                 'total' => (int) ($row->total ?? 0),
-                'entregadas' => (int) ($row->entregadas ?? 0),
+                'resueltas' => (int) ($row->resueltas ?? 0),
                 'pendientes' => (int) ($row->pendientes ?? 0),
+                'tasa_resolucion' => (int) (
+                    (int) ($row->total ?? 0) > 0
+                        ? round(((int) ($row->resueltas ?? 0) / (int) ($row->total ?? 0)) * 100)
+                        : 0
+                ),
             ];
         }
 
@@ -350,17 +361,17 @@ class DashboardRepository
         }
 
         $rowsSucursales = DB::select(
-            "SELECT s.ciudad, COUNT(all_o.id) AS total
+            'SELECT s.ciudad, COUNT(all_o.id) AS total
             FROM sucursales s
             LEFT JOIN (
                 SELECT id, sucursal_id FROM ordenes
                 UNION ALL
                 SELECT id, sucursal_id FROM ordenesempresas
             ) all_o ON all_o.sucursal_id = s.id
-            " . ($esSuperadmin ? '' : 'WHERE s.id = ?') . "
+            '.($esSuperadmin ? '' : 'WHERE s.id = ?').'
             GROUP BY s.id, s.ciudad
             ORDER BY total DESC
-            LIMIT 5",
+            LIMIT 5',
             $esSuperadmin ? [] : [$sucursalId]
         );
 
@@ -415,10 +426,11 @@ class DashboardRepository
     private function scalar(string $sql, array $bindings = []): int
     {
         $fila = DB::selectOne($sql, $bindings);
-        if (!$fila) {
+        if (! $fila) {
             return 0;
         }
         $valor = (array) $fila;
+
         return (int) (array_values($valor)[0] ?? 0);
     }
 }

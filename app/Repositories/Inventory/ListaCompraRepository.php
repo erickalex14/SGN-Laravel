@@ -55,6 +55,7 @@ class ListaCompraRepository
             'orden.cliente',
             'orden.equipo',
             'orden.sucursal',
+            'orden.tecnico',
         ])
             ->where('lista_compra_id', $listaId)
             ->orderBy('id', 'asc')

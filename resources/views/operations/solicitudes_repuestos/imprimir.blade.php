@@ -55,7 +55,7 @@ a { color: #1d4ed8; text-decoration: none; }
         <div class="nro">Solicitud de Repuesto - {{ $solicitud->nro_solicitud }}</div>
         <div class="meta">
             Fecha: {{ \Carbon\Carbon::parse($solicitud->fecha_solicitud ?? $solicitud->created_at)->format('d/m/Y H:i') }}<br>
-            Tecnico: {{ $solicitud->tecnico_nombre ?: ($solicitud->tecnico->nombre_tecnico ?? '-') }}
+            Tecnico: {{ $solicitud->tecnico->nombre_tecnico ?? $solicitud->tecnico_nombre ?? '-' }}
         </div>
     </div>
 

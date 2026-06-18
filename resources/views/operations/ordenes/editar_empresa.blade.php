@@ -81,6 +81,9 @@
 
     $usuarioIngreso = $orden->ingresadoPor->usuario ?? ($orden->ingresadoPor->nombre_tecnico ?? '-');
     $fmt = static fn($v) => $v ? \Carbon\Carbon::parse($v)->format('d/m/Y H:i') : '-';
+    
+    $eqSeries = $orden->equipo ? $orden->equipo->series()->orderBy('orden')->get() : collect();
+    $cantidadSeries = $eqSeries->count() ?: 1;
 @endphp
 
 <div class="eo-wrap">
@@ -127,7 +130,7 @@
                 <div class="eo-meta-item"><label>Equipo</label><span>{{ trim(($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')) ?: '-' }}</span></div>
                 <div class="eo-meta-item"><label>Serie</label><span>{{ $orden->equipo->serie ?? '-' }}</span></div>
                 <div class="eo-meta-item"><label>Tipo Servicio Equipo</label><span>{{ $orden->equipo->tipoServicio->nombre ?? '-' }}</span></div>
-                <div class="eo-meta-item"></div>
+                <div class="eo-meta-item"><label>Cantidad</label><span id="overview-cantidad">{{ $cantidadSeries }}</span></div>
             @endif
 
             <div class="eo-meta-item full"><label>Falla / Descripción del Servicio</label><span>{{ $orden->descripcion }}</span></div>
@@ -198,6 +201,72 @@
             </div>
         </div>
 
+        @if($orden->subtipo !== 'Servicios')
+            <!-- Datos del Equipo Corporativo -->
+            <div class="seccion-form">
+                <div class="seccion-hdr"><i class="bi bi-laptop"></i> Datos del Equipo</div>
+                <div class="seccion-body">
+                    <div class="grid-2">
+                        <div class="campo">
+                            <label>Tipo de Equipo <span class="req">*</span></label>
+                            <select id="eq_tipo" name="eq_tipo" required>
+                                <option value="">-- Seleccione --</option>
+                                @foreach($tiposDispositivo as $tipo)
+                                    <option value="{{ $tipo->nombre }}" {{ ($orden->equipo->tipo ?? '') === $tipo->nombre ? 'selected' : '' }}>
+                                        {{ $tipo->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label>Marca <span class="req">*</span></label>
+                            <select id="eq_marca" name="eq_marca" required>
+                                <option value="">-- Seleccione --</option>
+                                @foreach($marcas as $marca)
+                                    <option value="{{ $marca->nombre }}" {{ ($orden->equipo->marca ?? '') === $marca->nombre ? 'selected' : '' }}>
+                                        {{ $marca->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label>Modelo</label>
+                            <input type="text" id="eq_modelo" name="eq_modelo" value="{{ $orden->equipo->modelo ?? '' }}" oninput="this.value=this.value.toUpperCase()">
+                        </div>
+                        <div class="campo">
+                            <label>Contraseña / PIN del Equipo</label>
+                            <input type="text" id="eq_contrasena" name="eq_contrasena" value="{{ $orden->equipo->contrasena_equipo ?? '' }}">
+                        </div>
+                        <div class="campo">
+                            <label>Cantidad</label>
+                            <input type="text" id="eq_cantidad" value="{{ $cantidadSeries }}" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:700;">
+                        </div>
+                    </div>
+
+                    <div class="campo" style="margin-top:16px;">
+                        <label>Series del Equipo <span class="req">*</span></label>
+                        <div id="series-container" style="display:flex; flex-direction:column; gap:8px;">
+                            @if($eqSeries->isEmpty())
+                                <div class="linea-item" style="display:flex; gap:10px;">
+                                    <input type="text" name="series[]" value="{{ $orden->equipo->serie ?? '' }}" oninput="this.value=this.value.toUpperCase()" placeholder="Serie Principal" style="flex:1;">
+                                </div>
+                            @else
+                                @foreach($eqSeries as $index => $es)
+                                    <div class="linea-item" style="display:flex; gap:10px;">
+                                        <input type="text" name="series[]" value="{{ $es->serie }}" oninput="this.value=this.value.toUpperCase()" placeholder="{{ $index === 0 ? 'Serie Principal' : 'Serie Adicional' }}" style="flex:1;">
+                                        @if($index > 0)
+                                            <button type="button" class="btn btn-sm btn-danger btn-mini" style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; border-radius:8px; width:36px; height:36px;" onclick="this.closest('.linea-item').remove(); actualizarCantidad();">-</button>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+                        <button type="button" class="btn btn-sm" style="margin-top:10px; background:#f1f5f9; border:1.5px solid #cbd5e1; color:#475569; font-weight:700; border-radius:8px; padding:6px 12px; cursor:pointer; width:auto; display:inline-block;" onclick="agregarSerie()">+ Agregar Serie Adicional</button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if($orden->subtipo === 'Servicios')
             <div class="seccion-form">
                 <div class="seccion-hdr"><i class="bi bi-person-gear"></i> Técnicos Asignados <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#64748b;text-transform:none;">(máximo 5 técnicos)</span></div>
@@ -246,11 +315,14 @@
 @push('js_adicional')
 <script>
 function mostrarMensaje(isError, texto) {
-    const box = document.getElementById('eo-msg');
-    box.className = 'msg-box ' + (isError ? 'err' : 'ok');
-    box.innerHTML = texto;
-    box.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    Swal.fire({
+        icon: isError ? 'error' : 'success',
+        title: isError ? 'Error' : '¡Éxito!',
+        html: texto,
+        confirmButtonColor: '#2563eb',
+        background: '#ffffff',
+        color: '#1e293b'
+    });
 }
 
 @if($orden->subtipo === 'Servicios')
@@ -314,13 +386,26 @@ async function guardarActualizacionEmpresa() {
         fd.append('tecnico_id', document.getElementById('tecnico_id').value);
     @endif
 
+    @if($orden->subtipo !== 'Servicios')
+        fd.append('eq_tipo', document.getElementById('eq_tipo').value);
+        fd.append('eq_marca', document.getElementById('eq_marca').value);
+        fd.append('eq_modelo', document.getElementById('eq_modelo').value.trim());
+        fd.append('eq_contrasena', document.getElementById('eq_contrasena').value.trim());
+        
+        // Series
+        const seriesInputs = document.querySelectorAll('input[name="series[]"]');
+        seriesInputs.forEach(input => {
+            fd.append('series[]', input.value.trim());
+        });
+    @endif
+
     @if($orden->subtipo === 'Servicios')
         fd.append('valor_hora', document.getElementById('valor_hora').value);
         fd.append('horas_trabajadas', document.getElementById('horas_trabajadas').value);
         
         const chks = document.querySelectorAll('.chk-tecnico-emp:checked');
         if (chks.length === 0) {
-            mostrarMensaje(true, 'Debe asignar al menos 1 técnico.');
+            Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Debe asignar al menos 1 técnico.', confirmButtonColor: '#2563eb' });
             return;
         }
         chks.forEach(chk => {
@@ -344,21 +429,68 @@ async function guardarActualizacionEmpresa() {
         const d = await r.json();
 
         if (d.ok) {
-            mostrarMensaje(false, `<strong>Éxito:</strong> ${d.mensaje}`);
+            Swal.fire({
+                icon: 'success',
+                title: '¡Guardado!',
+                text: d.mensaje,
+                showConfirmButton: false,
+                timer: 1500,
+                background: '#ffffff',
+                color: '#1e293b'
+            });
             setTimeout(() => {
                 location.reload();
-            }, 1300);
+            }, 1500);
         } else {
-            mostrarMensaje(true, d.error || 'No se pudo actualizar la orden corporativa.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al actualizar',
+                text: d.error || 'No se pudo actualizar la orden corporativa.',
+                confirmButtonColor: '#2563eb',
+                background: '#ffffff',
+                color: '#1e293b'
+            });
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-floppy"></i> Guardar Actualización de Orden';
         }
     } catch (e) {
         console.error(e);
-        mostrarMensaje(true, 'Se perdió la conexión con el servidor o hubo un error crítico. Intente nuevamente.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red/Sistema',
+            text: 'Se perdió la conexión con el servidor o hubo un error crítico. Intente nuevamente.',
+            confirmButtonColor: '#2563eb',
+            background: '#ffffff',
+            color: '#1e293b'
+        });
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-floppy"></i> Guardar Actualización de Orden';
     }
+}
+
+function actualizarCantidad() {
+    const count = document.querySelectorAll('input[name="series[]"]').length || 1;
+    const inputCant = document.getElementById('eq_cantidad');
+    if (inputCant) {
+        inputCant.value = count;
+    }
+    const overviewCant = document.getElementById('overview-cantidad');
+    if (overviewCant) {
+        overviewCant.textContent = count;
+    }
+}
+
+function agregarSerie() {
+    const container = document.getElementById('series-container');
+    const row = document.createElement('div');
+    row.className = 'linea-item';
+    row.style.cssText = 'display:flex; gap:10px; margin-top:8px;';
+    row.innerHTML = `
+        <input type="text" name="series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional" style="flex:1;">
+        <button type="button" class="btn btn-sm btn-danger btn-mini" style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; border-radius:8px; width:36px; height:36px;" onclick="this.closest('.linea-item').remove(); actualizarCantidad();">-</button>
+    `;
+    container.appendChild(row);
+    actualizarCantidad();
 }
 </script>
 @endpush

@@ -26,9 +26,9 @@ use App\Http\Controllers\Operations\OrdenController;
 use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
-use App\Http\Controllers\Operations\ReporteController;
-use App\Http\Controllers\Operations\SolicitudRepuestoController; // Controlador de autenticación heredado
 use App\Http\Controllers\Operations\RecuperarOrdenController;
+use App\Http\Controllers\Operations\ReporteController; // Controlador de autenticación heredado
+use App\Http\Controllers\Operations\SolicitudRepuestoController;
 use Illuminate\Support\Facades\Route;
 
 // ═════════════════════════════════════════════════════════════════
@@ -49,7 +49,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
 
     // Cerrar sesion
-    Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+    Route::match(['GET', 'POST'], '/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
     // Asistente de Inteligencia Artificial Conversacional
     Route::post('/operaciones/asistente-ia/preguntar', [AsistenteIaController::class, 'preguntar'])->name('asistente.preguntar');
@@ -130,17 +130,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/sucursales-cliente/toggle', [SucursalClienteController::class, 'toggle'])->name('sucursales_cliente.toggle');
     });
 
-    // Sucursales NONITEC (tabla legacy: sucursales)
+    // Sucursales Novitec (tabla legacy: sucursales)
     Route::middleware(['permiso:sucursales,ver'])->group(function () {
-        Route::get('/sucursales-nonitec', [SucursalController::class, 'index'])->name('sucursales.index');
+        Route::get('/sucursales-novitec', [SucursalController::class, 'index'])->name('sucursales.index');
+        Route::get('/sucursales-nonitec', fn () => redirect()->route('sucursales.index'));
     });
 
     Route::middleware(['permiso:sucursales,crear'])->group(function () {
-        Route::post('/sucursales-nonitec/crear', [SucursalController::class, 'crear'])->name('sucursales.crear');
+        Route::post('/sucursales-novitec/crear', [SucursalController::class, 'crear'])->name('sucursales.crear');
+        Route::post('/sucursales-nonitec/crear', [SucursalController::class, 'crear']);
     });
 
     Route::middleware(['permiso:sucursales,editar'])->group(function () {
-        Route::post('/sucursales-nonitec/actualizar', [SucursalController::class, 'actualizar'])->name('sucursales.actualizar');
+        Route::post('/sucursales-novitec/actualizar', [SucursalController::class, 'actualizar'])->name('sucursales.actualizar');
+        Route::post('/sucursales-nonitec/actualizar', [SucursalController::class, 'actualizar']);
     });
 
     // -------------------------------------------------------
@@ -233,6 +236,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventario/repuestos', [RepuestoController::class, 'index'])->name('repuestos.index');
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
         Route::get('/inventario/repuestos/auditoria', [RepuestoController::class, 'auditoria'])->name('repuestos.auditoria');
+        Route::get('/inventario/repuestos/imprimir-reporte', [RepuestoController::class, 'imprimirReporte'])->name('repuestos.imprimir_reporte');
     });
 
     // Guardar / Modificar / Eliminar repuestos
@@ -321,6 +325,9 @@ Route::middleware('auth')->group(function () {
         // Admin: buscar todos los informes
         Route::get('/operaciones/informes/buscar', [InformeController::class, 'indexBuscar'])->name('informes.buscar');
         Route::get('/operaciones/informes/buscar/listar', [InformeController::class, 'buscarInformes'])->name('informes.buscar.listar');
+        Route::get('/operaciones/informes/editar/buscar-orden', [InformeController::class, 'buscarOrdenesAjax'])->name('informes.editar.buscar');
+        Route::get('/operaciones/informes/{id}/editar', [InformeController::class, 'editar'])->name('informes.editar');
+        Route::post('/operaciones/informes/{id}/actualizar', [InformeController::class, 'actualizar'])->name('informes.actualizar');
 
         // Compartidos (autenticado + permiso ver)
         Route::get('/operaciones/informes/ver', [InformeController::class, 'verPorOrden'])->name('informes.ver');
@@ -366,6 +373,7 @@ Route::middleware('auth')->group(function () {
     // Panel Admin listado
     Route::middleware(['permiso:notas_credito,ver'])->group(function () {
         Route::get('/operaciones/gestion-nc', [NotaCreditoController::class, 'indexAdmin'])->name('notas_credito.admin');
+        Route::get('/operaciones/gestion-nc/imprimir-reporte', [NotaCreditoController::class, 'imprimirReporte'])->name('notas_credito.imprimir_reporte');
     });
 
     // Panel Admin (Aprobar/Rechazar)
@@ -389,6 +397,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/bodega-solicitudes', [SolicitudRepuestoController::class, 'indexAdmin'])->name('solicitudes_repuestos.admin');
         Route::post('/operaciones/bodega-solicitudes/procesar', [SolicitudRepuestoController::class, 'gestionar'])->name('solicitudes_repuestos.gestionar');
+        Route::get('/operaciones/bodega-solicitudes/repuestos/buscar', [RepuestoController::class, 'buscarParaOrden'])->name('solicitudes_repuestos.admin.buscar_repuesto');
     });
     // Reimpresion de tickets de repuestos (acceso controlado dentro del controlador)
     Route::get('/operaciones/solicitudes-repuestos/{id}/imprimir', [SolicitudRepuestoController::class, 'imprimir'])->name('solicitudes_repuestos.imprimir');
@@ -415,8 +424,9 @@ Route::middleware('auth')->group(function () {
     // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
-        Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
     });
+
+    Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
 
     Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');

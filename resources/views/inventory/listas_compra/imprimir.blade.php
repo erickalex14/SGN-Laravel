@@ -34,6 +34,12 @@ table.data th { background: #f1f5f9; text-align: left; font-size: 6.5pt; text-tr
 <body>
 <button class="btn-print no-print" onclick="window.print()">Imprimir / Guardar PDF</button>
 <div class="wrap">
+    @php
+        $estadoPdf = match (trim((string) ($lista->estado ?? ''))) {
+            'Pendiente', 'Generada', 'Completada', 'Aprobada' => 'APROBADA',
+            default => strtoupper(trim((string) ($lista->estado ?? '-'))),
+        };
+    @endphp
     <div class="header">
         <div class="header-info">
             <div class="empresa">Novitecnologia Cia. Ltda.</div>
@@ -55,7 +61,7 @@ table.data th { background: #f1f5f9; text-align: left; font-size: 6.5pt; text-tr
     <table class="data">
         <tr>
             <td width="33%"><span class="lbl">Nro Lista</span>{{ $lista->nro_lista ?: '-' }}</td>
-            <td width="33%"><span class="lbl">Estado</span>{{ $lista->estado ?: '-' }}</td>
+            <td width="33%"><span class="lbl">Estado</span>{{ $estadoPdf }}</td>
             <td width="34%"><span class="lbl">Total Unidades</span>{{ $totalCantidad }}</td>
         </tr>
     </table>
@@ -65,27 +71,48 @@ table.data th { background: #f1f5f9; text-align: left; font-size: 6.5pt; text-tr
         <tr>
             <th width="4%">#</th>
             <th width="12%">Solicitud</th>
-            <th width="30%">Orden / Cliente</th>
-            <th width="28%">Repuesto</th>
-            <th width="16%">Tecnico</th>
+            <th width="34%">Orden / Equipo</th>
+            <th width="24%">Repuesto</th>
+            <th width="16%">Solicita / Aprueba</th>
             <th width="10%" style="text-align:center;">Cant.</th>
         </tr>
         @forelse($items as $item)
+            @php
+                $orden = $item->orden;
+                $equipo = $orden?->equipo;
+                $cliente = $orden?->cliente;
+                $clienteNombre = trim(($cliente?->nombres ?? '') . ' ' . ($cliente?->apellidos ?? '')) ?: '-';
+                $equipoNombre = trim(($equipo?->tipo ?? '') . ' ' . ($equipo?->marca ?? '') . ' ' . ($equipo?->modelo ?? '')) ?: '-';
+                $codigoEquipo = trim((string) ($equipo?->producto_inventario_codigo ?? '')) !== ''
+                    ? trim((string) $equipo->producto_inventario_codigo)
+                    : (trim((string) ($equipo?->modelo ?? '')) !== '' ? trim((string) $equipo->modelo) : '-');
+                $factura = collect([$orden?->nro_factura, $orden?->nro_factura_2])
+                    ->filter(fn ($v) => trim((string) $v) !== '')
+                    ->implode(' / ');
+            @endphp
             <tr>
                 <td>{{ $loop->iteration }}</td>
                 <td><span class="mono">{{ $item->nro_solicitud }}</span></td>
                 <td>
-                    <span class="mono">{{ $item->orden?->nro_orden ?? '-' }}</span><br>
-                    {{ trim(($item->orden?->cliente?->nombres ?? '') . ' ' . ($item->orden?->cliente?->apellidos ?? '')) ?: '-' }}<br>
-                    <span style="color:#64748b;">
-                        {{ trim(($item->orden?->equipo?->tipo ?? '') . ' ' . ($item->orden?->equipo?->marca ?? '') . ' ' . ($item->orden?->equipo?->modelo ?? '')) ?: '-' }}
-                    </span>
+                    <span class="lbl">Orden</span><span class="mono">{{ $orden?->nro_orden ?? '-' }}</span><br>
+                    <span class="lbl">Cliente</span>{{ $clienteNombre }}<br>
+                    <span class="lbl">Equipo</span>{{ $equipoNombre }}<br>
+                    <span class="lbl">Codigo equipo</span>{{ $codigoEquipo }}<br>
+                    <span class="lbl">Serie</span>{{ $equipo?->serie ?: '-' }}<br>
+                    <span class="lbl">Motivo ingreso</span>{{ $orden?->motivo_ingreso ?: '-' }}<br>
+                    @if($factura !== '')
+                        <span class="lbl">Factura</span>{{ $factura }}
+                    @endif
                 </td>
                 <td>
                     <strong>{{ $item->repuesto_nombre ?: '-' }}</strong><br>
                     <span style="color:#64748b;">{{ $item->nro_parte ?: '-' }}</span>
                 </td>
-                <td>{{ $item->tecnico_nombre ?: '-' }}</td>
+                <td>
+                    <span class="lbl">Solicita</span>{{ $item->tecnico_nombre ?: ($item->tecnico?->nombre_tecnico ?? '-') }}<br>
+                    <span class="lbl">Aprueba</span>{{ $item->aprobado_por ?: '-' }}<br>
+                    <span class="lbl">Tecnico OT</span>{{ $orden?->tecnico?->nombre_tecnico ?: '-' }}
+                </td>
                 <td class="num">{{ (int) $item->cantidad }}</td>
             </tr>
         @empty

@@ -22,10 +22,9 @@ class AuthService
         $usuarioInput = $this->normalizarInput($dto->usuario);
         $claveInput = $this->normalizarInput($dto->clave);
 
-        // Validacion compatible con legacy: usuario o correo + clave (comparacion SQL)
-        $usuario = $this->usuarioRepository->encontrarPorCredencialesLegadas($usuarioInput, $claveInput);
+        $usuario = $this->usuarioRepository->encontrarPorLogin($usuarioInput);
 
-        if (!$usuario) {
+        if (! $usuario || ! $usuario->validarClave($claveInput)) {
             Log::warning('Intento de login fallido: credenciales incorrectas', ['usuario' => $usuarioInput]);
             throw new Exception('credenciales_invalidas');
         }
@@ -36,7 +35,13 @@ class AuthService
             throw new Exception('usuario_inactivo');
         }
 
+        if ($usuario->usaClaveLegacy()) {
+            $usuario->establecerClaveSegura($claveInput);
+            $usuario->save();
+        }
+
         Auth::login($usuario);
+        session()->regenerate();
 
         $grupo = $usuario->grupo;
         $esSuperadmin = $grupo ? (bool) $grupo->es_superadmin : false;
@@ -61,15 +66,15 @@ class AuthService
         }
 
         session([
-            'usuario'        => $usuario->usuario,
-            'nombre'         => $usuario->nombre_tecnico,
-            'tecnico_id'     => $usuario->id,
-            'sucursal_id'    => $usuario->sucursal_id,
+            'usuario' => $usuario->usuario,
+            'nombre' => $usuario->nombre_tecnico,
+            'tecnico_id' => $usuario->id,
+            'sucursal_id' => $usuario->sucursal_id,
             'sucursales_ids' => $sucursalesIds,
-            'grupo_id'       => $usuario->grupo_id ?? 0,
-            'grupo_nombre'   => $grupo ? $grupo->nombre : 'Sin grupo',
-            'es_superadmin'  => $esSuperadmin,
-            'permisos'       => $permisosFinales,
+            'grupo_id' => $usuario->grupo_id ?? 0,
+            'grupo_nombre' => $grupo ? $grupo->nombre : 'Sin grupo',
+            'es_superadmin' => $esSuperadmin,
+            'permisos' => $permisosFinales,
         ]);
     }
 
@@ -83,6 +88,7 @@ class AuthService
     private function normalizarInput(string $valor): string
     {
         $normalizado = preg_replace('/[\x{00A0}\x{2000}-\x{200B}\x{202F}\x{205F}\x{3000}]/u', ' ', $valor);
+
         return trim($normalizado ?? $valor);
     }
 }

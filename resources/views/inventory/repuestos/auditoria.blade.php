@@ -271,7 +271,7 @@
                 <button type="submit" class="btn-aud btn-aud-primary">
                     <i class="bi bi-funnel-fill"></i> Aplicar Filtros
                 </button>
-                <button type="button" class="btn-aud btn-aud-dark" onclick="window.print()">
+                <button type="button" class="btn-aud btn-aud-dark" onclick="abrirReporteImpresion()">
                     <i class="bi bi-printer-fill"></i> Imprimir Reporte (PDF)
                 </button>
                 <button type="button" class="btn-aud btn-aud-green" onclick="exportarExcel()">
@@ -509,97 +509,259 @@
         document.body.removeChild(link);
     };
 
-    // Exportador Nativo a XLSX (Genera un XML Spreadsheet compatible con Excel)
+    const routeImprimirReporte = '{{ route("repuestos.imprimir_reporte") }}';
+
+    window.abrirReporteImpresion = function() {
+        const params = new URLSearchParams(window.location.search);
+        const busq = document.getElementById('aud-buscador') ? document.getElementById('aud-buscador').value.trim() : '';
+        if (busq) {
+            params.append('buscar', busq);
+        }
+        const url = routeImprimirReporte + '?' + params.toString();
+        window.open(url, '_blank');
+    };
+
+@verbatim
+    function cargarExcelJS() {
+        return new Promise((resolve, reject) => {
+            if (window.ExcelJS) { resolve(); return; }
+            const urls = [
+                'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+                'https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js'
+            ];
+            let i = 0;
+            function tryNext() {
+                if (i >= urls.length) { reject(new Error('No se pudo cargar ExcelJS')); return; }
+                const s = document.createElement('script'); s.src = urls[i++];
+                s.onload = () => window.ExcelJS ? resolve() : tryNext();
+                s.onerror = tryNext;
+                document.head.appendChild(s);
+            }
+            tryNext();
+        });
+    }
+
     window.exportarExcel = function() {
         if (!_filteredRows.length) {
             alert('No hay datos para exportar.');
             return;
         }
 
-        const now = new Date().toISOString().slice(0, 10);
-        let xml = '<?xml version="1.0" encoding="utf-8"?>\r\n';
-        xml += '<?mso-application progid="Excel.Sheet"?>\r\n';
-        xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
-        xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"\r\n';
-        xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"\r\n';
-        xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
-        xml += ' xmlns:html="http://www.w3.org/TR/REC-html40">\r\n';
-        xml += ' <Styles>\r\n';
-        xml += '  <Style ss:ID="Default" ss:Name="Normal">\r\n';
-        xml += '   <Alignment ss:Vertical="Bottom"/>\r\n';
-        xml += '   <Borders/>\r\n';
-        xml += '   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>\r\n';
-        xml += '   <Interior/>\r\n';
-        xml += '   <NumberFormat/>\r\n';
-        xml += '   <Protection/>\r\n';
-        xml += '  </Style>\r\n';
-        xml += '  <Style ss:ID="Header">\r\n';
-        xml += '   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>\r\n';
-        xml += '   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#FFFFFF" ss:Bold="1"/>\r\n';
-        xml += '   <Interior ss:Color="#4F46E5" ss:Pattern="Solid"/>\r\n';
-        xml += '  </Style>\r\n';
-        xml += '  <Style ss:ID="Code">\r\n';
-        xml += '   <Font ss:FontName="Courier New" x:Family="Modern" ss:Size="10" ss:Color="#B45309" ss:Bold="1"/>\r\n';
-        xml += '  </Style>\r\n';
-        xml += '  <Style ss:ID="Currency">\r\n';
-        xml += '   <NumberFormat ss:Format="$#,##0.00"/>\r\n';
-        xml += '  </Style>\r\n';
-        xml += ' </Styles>\r\n';
-        xml += ' <Worksheet ss:Name="Auditoria Repuestos">\r\n';
-        xml += '  <Table>\r\n';
-        xml += '   <Column ss:Width="140"/>\r\n';
-        xml += '   <Column ss:Width="90"/>\r\n';
-        xml += '   <Column ss:Width="220"/>\r\n';
-        xml += '   <Column ss:Width="160"/>\r\n';
-        xml += '   <Column ss:Width="100"/>\r\n';
-        xml += '   <Column ss:Width="160"/>\r\n';
-        xml += '   <Column ss:Width="50"/>\r\n';
-        xml += '   <Column ss:Width="80"/>\r\n';
-        xml += '   <Column ss:Width="90"/>\r\n';
-        
-        // Headers
-        xml += '   <Row ss:Height="24">\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Fecha / Hora</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Código</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Nombre del Repuesto</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Usuario / Técnico</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Orden de Servicio</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Tipo de Orden</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Cant</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Costo Unit ($)</Data></Cell>\r\n';
-        xml += '    <Cell ss:StyleID="Header"><Data ss:Type="String">Costo Total ($)</Data></Cell>\r\n';
-        xml += '   </Row>\r\n';
+        const btn = document.querySelector('button[onclick="exportarExcel()"]');
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando...';
 
-        _filteredRows.forEach(r => {
-            const d = r.data;
-            const fecha = new Date(d.fecha).toLocaleString('es-EC');
-            xml += '   <Row>\r\n';
-            xml += '    <Cell><Data ss:Type="String">' + escHtml(fecha) + '</Data></Cell>\r\n';
-            xml += '    <Cell ss:StyleID="Code"><Data ss:Type="String">' + escHtml(d.codigo) + '</Data></Cell>\r\n';
-            xml += '    <Cell><Data ss:Type="String">' + escHtml(d.nombre) + '</Data></Cell>\r\n';
-            xml += '    <Cell><Data ss:Type="String">' + escHtml(d.tecnico) + '</Data></Cell>\r\n';
-            xml += '    <Cell><Data ss:Type="String">' + escHtml(d.orden || 'N/A') + '</Data></Cell>\r\n';
-            xml += '    <Cell><Data ss:Type="String">' + escHtml(d.tipo_orden || 'N/A') + '</Data></Cell>\r\n';
-            xml += '    <Cell><Data ss:Type="Number">' + d.cantidad + '</Data></Cell>\r\n';
-            xml += '    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' + d.costo_u + '</Data></Cell>\r\n';
-            xml += '    <Cell ss:StyleID="Currency"><Data ss:Type="Number">' + d.costo_t + '</Data></Cell>\r\n';
-            xml += '   </Row>\r\n';
+        cargarExcelJS().then(async () => {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'SGN - Novitecnologia';
+            wb.created = new Date();
+
+            const ws = wb.addWorksheet('Auditoría Repuestos', {
+                views: [{ showGridLines: true }]
+            });
+
+            // Column Widths
+            ws.columns = [
+                { width: 18 }, // Fecha / Hora
+                { width: 15 }, // Código
+                { width: 35 }, // Nombre del Repuesto
+                { width: 28 }, // Usuario / Técnico
+                { width: 18 }, // Orden de Servicio
+                { width: 25 }, // Tipo de Orden
+                { width: 8 },  // Cant
+                { width: 15 }, // Costo Unit ($)
+                { width: 15 }  // Costo Total ($)
+            ];
+
+            const C = {
+                azulO: '1E3A8A', azul: '1E40AF', azulL: 'DBEAFE', azulXL: 'EFF6FF',
+                verdeO: '065F46', verde: '166534', verdeL: 'DCFCE7', verdeXL: 'ECFDF5',
+                ambar: '854D0E', ambarL: 'FEF9C3', rojo: '991B1B', rojoL: 'FEE2E2',
+                indigo: '4F46E5', indigoL: 'EEF2FF', indigoXL: 'F5F7FF',
+                gris: 'F8FAFC', grisMed: 'E2E8F0', grisOsc: '64748B', blanco: 'FFFFFF', negro: '0F172A'
+            };
+
+            const fl = color => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + color } });
+            const bd = (color = 'E2E8F0') => {
+                const borderStyle = { style: 'thin', color: { argb: 'FF' + color } };
+                return { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+            };
+            const fn = (bold, size, color, extra = {}) => Object.assign({ name: 'Arial', bold: !!bold, size: size || 10, color: { argb: 'FF' + (color || C.negro) } }, extra);
+            const al = (h = 'left', v = 'middle') => ({ horizontal: h, vertical: v });
+
+            // 1. Title Row
+            ws.mergeCells('A1:I1');
+            const t1 = ws.getCell('A1');
+            t1.value = 'REPORTE DE AUDITORÍA — STOCK DE REPUESTOS';
+            t1.fill = fl(C.indigo);
+            t1.font = fn(true, 14, C.blanco);
+            t1.alignment = al('center');
+            ws.getRow(1).height = 30;
+
+            // 2. Metadata Row
+            ws.mergeCells('A2:I2');
+            const t2 = ws.getCell('A2');
+            t2.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   Registros: ${_filteredRows.length}`;
+            t2.fill = fl(C.indigoL);
+            t2.font = fn(false, 10, C.indigo, { italic: true });
+            t2.alignment = al('center');
+            ws.getRow(2).height = 16;
+
+            // Calculate metrics based on filtered rows
+            let totalItems = 0;
+            let totalCosto = 0;
+            const repCounts = {};
+            const tecCounts = {};
+
+            const dataRows = _filteredRows.map(r => {
+                const d = r.data;
+                const qty = Number(d.cantidad || 0);
+                const costU = Number(d.costo_u || 0);
+                const costT = Number(d.costo_t || 0);
+
+                totalItems += qty;
+                totalCosto += costT;
+
+                if (d.nombre) {
+                    repCounts[d.nombre] = (repCounts[d.nombre] || 0) + qty;
+                }
+                if (d.tecnico) {
+                    tecCounts[d.tecnico] = (tecCounts[d.tecnico] || 0) + qty;
+                }
+
+                const fechaStr = new Date(d.fecha).toLocaleString('es-EC');
+
+                return [fechaStr, d.codigo, d.nombre, d.tecnico, d.orden || 'N/A', d.tipo_orden || 'N/A', qty, costU, costT];
+            });
+
+            let repuestoMasUsado = 'Ninguno';
+            let repuestoMasUsadoCant = 0;
+            Object.entries(repCounts).forEach(([name, cant]) => {
+                if (cant > repuestoMasUsadoCant) {
+                    repuestoMasUsadoCant = cant;
+                    repuestoMasUsado = name;
+                }
+            });
+
+            let tecnicoLider = 'Ninguno';
+            let tecnicoLiderCant = 0;
+            Object.entries(tecCounts).forEach(([name, cant]) => {
+                if (cant > tecnicoLiderCant) {
+                    tecnicoLiderCant = cant;
+                    tecnicoLider = name;
+                }
+            });
+
+            // Set up cell background fills and borders for KPIs (Cols A-I, Rows 4-6)
+            const kpiColumnFills = {
+                A: C.indigoL, B: C.indigoL,
+                C: C.verdeL,  D: C.verdeL,
+                E: C.ambarL,  F: C.ambarL, G: C.ambarL,
+                H: C.azulL,   I: C.azulL
+            };
+
+            for (let r = 4; r <= 6; r++) {
+                ws.getRow(r).height = (r === 5) ? 28 : 14;
+                ['A','B','C','D','E','F','G','H','I'].forEach(col => {
+                    const cell = ws.getCell(`${col}${r}`);
+                    cell.fill = fl(kpiColumnFills[col]);
+                    cell.border = bd();
+                });
+            }
+
+            // KPI 1: TOTAL UTILIZADOS (Cols A-B)
+            ws.mergeCells('A4:B4'); ws.getCell('A4').value = 'REPUESTOS UTILIZADOS'; ws.getCell('A4').font = fn(true, 8, C.indigo); ws.getCell('A4').alignment = al('center');
+            ws.mergeCells('A5:B5'); ws.getCell('A5').value = `${totalItems} uds`;           ws.getCell('A5').font = fn(true, 16, C.indigo); ws.getCell('A5').alignment = al('center');
+            ws.mergeCells('A6:B6'); ws.getCell('A6').value = 'Movimientos Totales';    ws.getCell('A6').font = fn(false, 9, C.indigo); ws.getCell('A6').alignment = al('center');
+
+            // KPI 2: COSTO TOTAL SALIDAS (Cols C-D)
+            ws.mergeCells('C4:D4'); ws.getCell('C4').value = 'COSTO TOTAL SALIDAS'; ws.getCell('C4').font = fn(true, 8, C.verde); ws.getCell('C4').alignment = al('center');
+            ws.mergeCells('C5:D5'); ws.getCell('C5').value = totalCosto;            ws.getCell('C5').font = fn(true, 16, C.verde); ws.getCell('C5').alignment = al('center');
+            ws.getCell('C5').numFormat = '$#,##0.00';
+            ws.mergeCells('C6:D6'); ws.getCell('C6').value = 'Valor Financiero';     ws.getCell('C6').font = fn(false, 9, C.verde); ws.getCell('C6').alignment = al('center');
+
+            // KPI 3: REPUESTO MÁS USADO (Cols E-G)
+            ws.mergeCells('E4:G4'); ws.getCell('E4').value = 'REPUESTO MÁS USADO';  ws.getCell('E4').font = fn(true, 8, C.ambar); ws.getCell('E4').alignment = al('center');
+            ws.mergeCells('E5:G5'); ws.getCell('E5').value = repuestoMasUsado;      ws.getCell('E5').font = fn(true, 11, C.ambar); ws.getCell('E5').alignment = al('center');
+            ws.mergeCells('E6:G6'); ws.getCell('E6').value = `Consumo: ${repuestoMasUsadoCant} uds`; ws.getCell('E6').font = fn(false, 9, C.ambar); ws.getCell('E6').alignment = al('center');
+
+            // KPI 4: TÉCNICO MÁS ACTIVO (Cols H-I)
+            ws.mergeCells('H4:I4'); ws.getCell('H4').value = 'TÉCNICO MÁS ACTIVO';  ws.getCell('H4').font = fn(true, 8, C.azul); ws.getCell('H4').alignment = al('center');
+            ws.mergeCells('H5:I5'); ws.getCell('H5').value = tecnicoLider;          ws.getCell('H5').font = fn(true, 11, C.azul); ws.getCell('H5').alignment = al('center');
+            ws.mergeCells('H6:I6'); ws.getCell('H6').value = `Consumo: ${tecnicoLiderCant} uds`; ws.getCell('H6').font = fn(false, 9, C.azul); ws.getCell('H6').alignment = al('center');
+
+            // Separator Row
+            ws.getRow(7).height = 10;
+
+            // 3. Table Headers Row 8
+            const headers = ["Fecha / Hora", "Código", "Nombre del Repuesto", "Usuario / Técnico", "Orden de Servicio", "Tipo de Orden", "Cant", "Costo Unit ($)", "Costo Total ($)"];
+            ws.getRow(8).height = 22;
+            headers.forEach((h, idx) => {
+                const cell = ws.getCell(8, idx + 1);
+                cell.value = h;
+                cell.fill = fl(C.indigo);
+                cell.font = fn(true, 10, C.blanco);
+                cell.alignment = al('center');
+                cell.border = bd('4338CA');
+            });
+            ws.autoFilter = 'A8:I8';
+
+            // 4. Data Rows
+            dataRows.forEach((rData, idx) => {
+                const rNum = idx + 9;
+                const row = ws.getRow(rNum);
+                row.height = 16;
+                const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
+
+                rData.forEach((val, colIdx) => {
+                    const cell = row.getCell(colIdx + 1);
+                    cell.value = val;
+                    cell.border = bd();
+                    cell.font = fn(false, 9, C.negro);
+                    cell.alignment = al('left', 'middle');
+                    cell.fill = fl(bgBase);
+
+                    if (colIdx === 0) {
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 1) {
+                        cell.font = fn(true, 9, C.ambar, { name: 'Courier New' });
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 4) {
+                        cell.font = fn(true, 9, C.indigo);
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 5) {
+                        cell.alignment = al('left', 'middle');
+                    } else if (colIdx === 6) {
+                        cell.font = fn(true, 9, C.negro);
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 7 || colIdx === 8) {
+                        cell.numFormat = '$#,##0.00';
+                        cell.font = fn(colIdx === 8, 9, colIdx === 8 ? C.negro : C.grisOsc);
+                        cell.alignment = al('right', 'middle');
+                    }
+                });
+            });
+
+            // Save
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `auditoria_repuestos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }).catch(err => {
+            alert('Error al generar Excel: ' + err.message);
+        }).finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
         });
-
-        xml += '  </Table>\r\n';
-        xml += ' </Worksheet>\r\n';
-        xml += '</Workbook>\r\n';
-
-        const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'Auditoria_Stock_Repuestos_' + now + '.xls');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
+@endverbatim
 
     document.addEventListener('DOMContentLoaded', () => {
         initTabla();

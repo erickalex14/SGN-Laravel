@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Operations;
 
+use App\DTOs\Operations\CrearOrdenDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\GuardarOrdenRequest;
-use App\Services\Operations\CrearOrdenService;
-use App\Repositories\Directory\ClienteRepository;
+use App\Models\Directory\SucursalCliente;
 use App\Repositories\Directory\CasRepository;
+use App\Repositories\Directory\ClienteRepository;
 use App\Repositories\Directory\EmpresaRepository;
 use App\Repositories\Directory\SucursalClienteRepository;
 use App\Repositories\Identity\UsuarioRepository;
@@ -15,25 +16,35 @@ use App\Repositories\Inventory\ProductoRepository;
 use App\Repositories\Inventory\TipoDispositivoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\TipoServicioRepository;
-use App\DTOs\Operations\CrearOrdenDTO;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use App\Services\Operations\CrearOrdenService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class OrdenController extends Controller
 {
     protected CrearOrdenService $service;
+
     protected ClienteRepository $clienteRepo;
+
     protected UsuarioRepository $usuarioRepo;
+
     protected TipoServicioRepository $tipoServicioRepo;
+
     protected MarcaRepository $marcaRepo;
+
     protected TipoDispositivoRepository $tipoDispositivoRepo;
+
     protected CasRepository $casRepo;
+
     protected SucursalClienteRepository $sucursalClienteRepo;
+
     protected EmpresaRepository $empresaRepo;
+
     protected ProductoRepository $productoRepo;
+
     protected OrdenRepository $ordenRepo;
 
     public function __construct(
@@ -104,7 +115,7 @@ class OrdenController extends Controller
 
             if ($esServicioEmpresa) {
                 $tecnicosAsignados = $request->input('tecnicos_asignados', []);
-                if (!is_array($tecnicosAsignados)) {
+                if (! is_array($tecnicosAsignados)) {
                     $tecnicosAsignados = [$tecnicosAsignados];
                 }
                 foreach ($tecnicosAsignados as $tecId) {
@@ -123,22 +134,31 @@ class OrdenController extends Controller
 
                 return response()->json([
                     'ok' => true,
-                    'mensaje' => 'Orden ' . $orden->nro_orden . ' generada con exito.',
+                    'mensaje' => 'Orden '.$orden->nro_orden.' generada con exito.',
                     'nro_orden' => $orden->nro_orden,
                     'orden_id' => $orden->id,
-                    'tipo_orden' => 'empresa'
+                    'tipo_orden' => 'empresa',
                 ]);
             }
 
             $nroSucursalCliente = $request->input('nro_sucursal_cliente')
-                ? (int) $request->input('nro_sucursal_cliente')
+                ? (string) $request->input('nro_sucursal_cliente')
                 : $this->resolverSucursalClienteDesdeFactura(
                     (string) $request->input('motivo_ingreso'),
                     (string) $request->input('nro_factura')
                 );
 
+            if ($nroSucursalCliente !== null && $nroSucursalCliente !== '') {
+                if (is_numeric($nroSucursalCliente)) {
+                    $suc = SucursalCliente::where('numero', (int) $nroSucursalCliente)->first();
+                    if ($suc) {
+                        $nroSucursalCliente = $suc->codigo;
+                    }
+                }
+            }
+
             $series = $request->input('series', []);
-            if (!is_array($series)) {
+            if (! is_array($series)) {
                 $series = [$series];
             }
 
@@ -148,14 +168,14 @@ class OrdenController extends Controller
             $credenciales = [];
 
             foreach ($credContrasenas as $idx => $pwd) {
-                $pwd = trim((string)$pwd);
+                $pwd = trim((string) $pwd);
                 if ($pwd === '') {
                     continue;
                 }
                 $credenciales[] = [
-                    'usuario' => trim((string)($credUsuarios[$idx] ?? '')),
+                    'usuario' => trim((string) ($credUsuarios[$idx] ?? '')),
                     'contrasena' => $pwd,
-                    'es_patron' => (int)($credEsPatron[$idx] ?? 0)
+                    'es_patron' => (int) ($credEsPatron[$idx] ?? 0),
                 ];
             }
 
@@ -167,19 +187,19 @@ class OrdenController extends Controller
                 $request->input('cli_telefono'),
                 $request->input('cli_correo'),
                 $request->input('cli_direccion'),
-                
+
                 $request->input('eq_tipo'),
                 $request->input('eq_marca'),
                 $request->input('eq_modelo'),
                 $request->input('eq_contrasena'),
                 $request->input('eq_falla'),
                 $request->input('eq_observacion'),
-                $request->input('eq_tipo_servicio') ? (int)$request->input('eq_tipo_servicio') : null,
+                $request->input('eq_tipo_servicio') ? (int) $request->input('eq_tipo_servicio') : null,
                 $request->input('tipo_servicio_texto'),
                 $request->input('producto_inventario_codigo'),
                 $series,
                 $credenciales,
-                
+
                 session('sucursal_id'), // Extraido directo de la sesion del usuario logueado
                 (int) $request->input('ord_tecnico_id'),
                 session('tecnico_id'), // Usuario que registra
@@ -192,18 +212,18 @@ class OrdenController extends Controller
                 $nroSucursalCliente,
                 $request->input('estado_repuesto'),
                 $request->input('garantia_tipo'),
-                $request->input('cas_id') ? (int)$request->input('cas_id') : null,
-                $request->input('repuesto_inventario_id') ? (int)$request->input('repuesto_inventario_id') : null,
+                $request->input('cas_id') ? (int) $request->input('cas_id') : null,
+                $request->input('repuesto_inventario_id') ? (int) $request->input('repuesto_inventario_id') : null,
                 $request->input('repuestos_seleccionados', [])
             );
 
             $orden = $this->service->crearOrden($dto);
 
             return response()->json([
-                'ok' => true, 
-                'mensaje' => 'Orden ' . $orden->nro_orden . ' generada con éxito.',
+                'ok' => true,
+                'mensaje' => 'Orden '.$orden->nro_orden.' generada con éxito.',
                 'nro_orden' => $orden->nro_orden,
-                'orden_id' => $orden->id
+                'orden_id' => $orden->id,
             ]);
 
         } catch (Exception $e) {
@@ -213,7 +233,7 @@ class OrdenController extends Controller
 
     private function validarTecnicoAsignable(int $tecnicoId): void
     {
-        if (!$this->usuarioRepo->tecnicoAsignable(
+        if (! $this->usuarioRepo->tecnicoAsignable(
             $tecnicoId,
             $this->puedeVerTodosTecnicos(),
             (int) session('sucursal_id'),
@@ -235,10 +255,11 @@ class OrdenController extends Controller
     {
         $permisos = (array) session('permisos', []);
         $acciones = (array) ($permisos[$modulo] ?? []);
+
         return (bool) ($acciones[$accion] ?? false);
     }
 
-    private function resolverSucursalClienteDesdeFactura(string $motivoIngreso, string $nroFactura): ?int
+    private function resolverSucursalClienteDesdeFactura(string $motivoIngreso, string $nroFactura): ?string
     {
         if ($motivoIngreso !== 'Validacion de Garantia') {
             return null;
@@ -254,19 +275,24 @@ class OrdenController extends Controller
             return null;
         }
 
-        return $this->sucursalClienteRepo->existeNumero($numeroSucursal)
-            ? $numeroSucursal
-            : null;
+        $sucursales = SucursalCliente::where('numero', $numeroSucursal)->get();
+        if ($sucursales->count() === 1) {
+            return $sucursales->first()->codigo;
+        }
+
+        return null;
     }
 
     // Endpoint AJAX para autocompletar datos del cliente al digitar la cedula
     public function buscarCliente(Request $request): JsonResponse
     {
         $identificacion = $request->query('identificacion');
-        if (!$identificacion) return response()->json(['ok' => false]);
+        if (! $identificacion) {
+            return response()->json(['ok' => false]);
+        }
 
         $cliente = $this->clienteRepo->buscarPorIdentificacion($identificacion);
-        
+
         if ($cliente) {
             return response()->json(['ok' => true, 'cliente' => $cliente]);
         }
@@ -282,7 +308,7 @@ class OrdenController extends Controller
         }
 
         $producto = $this->productoRepo->buscarPorCodigo($codigo);
-        if (!$producto) {
+        if (! $producto) {
             return response()->json(['ok' => false, 'error' => 'Producto no encontrado']);
         }
 
@@ -301,7 +327,7 @@ class OrdenController extends Controller
     public function imprimir(int $id): View
     {
         $orden = $this->ordenRepo->obtenerOrdenCompleta($id);
-        abort_if(!$orden, 404);
+        abort_if(! $orden, 404);
 
         $orden->loadMissing([
             'equipo.series',
@@ -316,17 +342,29 @@ class OrdenController extends Controller
         ]);
 
         $nombreSucursalCliente = '-';
-        $nroSucursalCliente = (int) ($orden->nro_sucursal_cliente ?? 0);
-        if ($nroSucursalCliente > 0) {
-            if ($nroSucursalCliente === 999) {
+        $nroSuc = $orden->nro_sucursal_cliente;
+        if ($nroSuc !== null && $nroSuc !== '') {
+            if ($nroSuc === '999' || $nroSuc === '999 - SERVICIO EXTERNO') {
                 $nombreSucursalCliente = '999 - SERVICIO EXTERNO';
             } else {
-                $suc = $this->sucursalClienteRepo
-                    ->obtenerTodas()
-                    ->firstWhere('numero', $nroSucursalCliente);
-                $nombreSucursalCliente = $suc
-                    ? str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT) . ' - ' . (string) $suc->nombre
-                    : 'Nro. ' . str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT);
+                // 1. Prioridad: Buscar por código
+                $suc = $this->sucursalClienteRepo->obtenerTodas()->firstWhere('codigo', $nroSuc);
+                if ($suc) {
+                    $nombreSucursalCliente = $suc->codigo.' - '.$suc->nombre;
+                } else {
+                    // 2. Fallback: Si es numérico (histórico), buscar por número
+                    $numeroInt = (int) $nroSuc;
+                    if ($numeroInt > 0) {
+                        $suc = $this->sucursalClienteRepo->obtenerTodas()->firstWhere('numero', $numeroInt);
+                        if ($suc) {
+                            $nombreSucursalCliente = $suc->codigo.' - '.$suc->nombre;
+                        } else {
+                            $nombreSucursalCliente = 'Nro. '.str_pad((string) $numeroInt, 3, '0', STR_PAD_LEFT);
+                        }
+                    } else {
+                        $nombreSucursalCliente = $nroSuc;
+                    }
+                }
             }
         }
 
@@ -336,20 +374,32 @@ class OrdenController extends Controller
     public function imprimirEmpresa(int $id): View
     {
         $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
-        abort_if(!$orden, 404);
+        abort_if(! $orden, 404);
 
         $nombreSucursalCliente = '-';
-        $nroSucursalCliente = (int) ($orden->nro_sucursal_cliente ?? 0);
-        if ($nroSucursalCliente > 0) {
-            if ($nroSucursalCliente === 999) {
+        $nroSuc = $orden->nro_sucursal_cliente;
+        if ($nroSuc !== null && $nroSuc !== '') {
+            if ($nroSuc === '999' || $nroSuc === '999 - SERVICIO EXTERNO') {
                 $nombreSucursalCliente = '999 - SERVICIO EXTERNO';
             } else {
-                $suc = $this->sucursalClienteRepo
-                    ->obtenerTodas()
-                    ->firstWhere('numero', $nroSucursalCliente);
-                $nombreSucursalCliente = $suc
-                    ? str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT) . ' - ' . (string) $suc->nombre
-                    : 'Nro. ' . str_pad((string) $nroSucursalCliente, 3, '0', STR_PAD_LEFT);
+                // 1. Prioridad: Buscar por código
+                $suc = $this->sucursalClienteRepo->obtenerTodas()->firstWhere('codigo', $nroSuc);
+                if ($suc) {
+                    $nombreSucursalCliente = $suc->codigo.' - '.$suc->nombre;
+                } else {
+                    // 2. Fallback: Si es numérico (histórico), buscar por número
+                    $numeroInt = (int) $nroSuc;
+                    if ($numeroInt > 0) {
+                        $suc = $this->sucursalClienteRepo->obtenerTodas()->firstWhere('numero', $numeroInt);
+                        if ($suc) {
+                            $nombreSucursalCliente = $suc->codigo.' - '.$suc->nombre;
+                        } else {
+                            $nombreSucursalCliente = 'Nro. '.str_pad((string) $numeroInt, 3, '0', STR_PAD_LEFT);
+                        }
+                    } else {
+                        $nombreSucursalCliente = $nroSuc;
+                    }
+                }
             }
         }
 

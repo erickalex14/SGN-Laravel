@@ -338,7 +338,7 @@
                         <select id="nro_sucursal_cliente_empresa" name="nro_sucursal_cliente">
                             <option value="">-- Seleccione --</option>
                             @foreach($sucursalesCliente as $suc)
-                                <option value="{{ $suc->numero }}">{{ $suc->numero }} - {{ $suc->nombre }}</option>
+                                <option value="{{ $suc->codigo }}">{{ $suc->codigo }} - {{ $suc->nombre }}</option>
                             @endforeach
                             <option value="999">999 - SERVICIO EXTERNO</option>
                         </select>
@@ -524,14 +524,14 @@
                     <div class="campo">
                         <label>Nro. Factura 1 <span class="req">*</span></label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" id="nro_factura" name="nro_factura" oninput="autoseleccionarSucursalPorFactura(this.value)" style="flex: 1;">
+                            <input type="text" id="nro_factura" name="nro_factura" oninput="onInputFactura(this)" placeholder="000-000-000000000" style="flex: 1;">
                             <button type="button" id="btn-agregar-factura-2" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="mostrarFactura2()">+</button>
                         </div>
                     </div>
                     <div class="campo hidden" id="wrapper-factura-2">
                         <label>Nro. Factura 2</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" id="nro_factura_2" name="nro_factura_2" style="flex: 1;">
+                            <input type="text" id="nro_factura_2" name="nro_factura_2" oninput="formatearFactura(this)" placeholder="000-000-000000000" style="flex: 1;">
                             <button type="button" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #dc2626; border-color: #fca5a5; background: #fee2e2;" onclick="ocultarFactura2()">-</button>
                         </div>
                     </div>
@@ -544,7 +544,7 @@
                         <select id="nro_sucursal_cliente" name="nro_sucursal_cliente">
                             <option value="">-- Seleccione --</option>
                             @foreach($sucursalesCliente as $suc)
-                                <option value="{{ $suc->numero }}">{{ str_pad((string) $suc->numero, 3, '0', STR_PAD_LEFT) }} - {{ $suc->nombre }}</option>
+                                <option value="{{ $suc->codigo }}">{{ $suc->codigo }} - {{ $suc->nombre }}</option>
                             @endforeach
                             <option value="999">999 - SERVICIO EXTERNO</option>
                         </select>
@@ -1532,6 +1532,8 @@ function agregarSerieEmpresa() {
     container.appendChild(row);
 }
 
+let ultimoPrefijoPrompt = '';
+
 function autoseleccionarSucursalPorFactura(valor) {
     const motivo = document.getElementById('motivo_ingreso')?.value || '';
     if (motivo !== 'Validacion de Garantia') {
@@ -1545,16 +1547,80 @@ function autoseleccionarSucursalPorFactura(valor) {
 
     const digitos = String(valor || '').replace(/\D/g, '');
     if (digitos.length < 3) {
+        ultimoPrefijoPrompt = '';
         return;
     }
 
-    const numero = String(parseInt(digitos.substring(0, 3), 10));
-    const opcion = Array.from(select.options).find((opt) => String(parseInt(opt.value || '0', 10)) === numero);
-
-    if (opcion) {
-        select.value = opcion.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
+    const prefix = digitos.substring(0, 3);
+    if (prefix === ultimoPrefijoPrompt) {
+        return;
     }
+
+    const matches = Array.from(select.options).filter(opt => {
+        if (!opt.value) return false;
+        const optDigits = opt.value.replace(/\D/g, '').padStart(3, '0');
+        return optDigits === prefix;
+    });
+
+    if (matches.length === 1) {
+        ultimoPrefijoPrompt = prefix;
+        select.value = matches[0].value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (matches.length > 1) {
+        ultimoPrefijoPrompt = prefix;
+        
+        const inputOptions = {};
+        matches.forEach(opt => {
+            inputOptions[opt.value] = opt.text;
+        });
+
+        Swal.fire({
+            title: 'Seleccionar Sucursal',
+            text: `Se encontraron múltiples sucursales con el número ${prefix}. Por favor seleccione una:`,
+            input: 'select',
+            inputOptions: inputOptions,
+            inputPlaceholder: '-- Seleccione la sucursal --',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Debe seleccionar una sucursal';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                select.value = result.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    }
+}
+
+function formatearFactura(input) {
+    let value = input.value.replace(/\D/g, ''); // Remover todo lo que no sea digito
+    if (value.length > 15) {
+        value = value.substring(0, 15);
+    }
+    
+    let formatted = '';
+    if (value.length > 0) {
+        formatted += value.substring(0, 3);
+    }
+    if (value.length > 3) {
+        formatted += '-' + value.substring(3, 6);
+    }
+    if (value.length > 6) {
+        formatted += '-' + value.substring(6, 15);
+    }
+    input.value = formatted;
+}
+
+function onInputFactura(input) {
+    formatearFactura(input);
+    autoseleccionarSucursalPorFactura(input.value);
 }
 
 function mostrarFactura2() {
@@ -2025,8 +2091,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configurar validaciones dinámicas
     setupDynamicValidation(document.getElementById('cli_identificacion'), EcuadorianValidator.validarIdentificacion, (v) => {
         if (v.length === 0) return 'La identificación es requerida.';
-        if (/[^\d]/.test(v)) return 'La identificación sólo debe contener números.';
-        return 'La identificación debe ser una cédula (10 dígitos) o RUC (13 dígitos) válido de Ecuador.';
+        if (/[^a-zA-Z0-9]/.test(v)) return 'La identificación sólo debe contener letras y números.';
+        return 'Debe ser una cédula (10 dígitos), RUC (13 dígitos) de Ecuador, o un pasaporte válido (5 a 20 caracteres alfanuméricos).';
     });
 
     setupDynamicValidation(document.getElementById('cli_telefono'), EcuadorianValidator.validarTelefono, (v) => {

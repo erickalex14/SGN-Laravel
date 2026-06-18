@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Operations;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Models\Directory\SucursalCliente;
+use App\Models\Operations\OrdenEmpresa;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
 class GuardarEdicionOrdenEmpresaRequest extends FormRequest
@@ -17,27 +19,58 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
     {
         $ordenId = $this->input('orden_id');
         $requiereServicioCampos = false;
+        $esServicios = false;
 
         if ($ordenId) {
-            $orden = \App\Models\Operations\OrdenEmpresa::find($ordenId);
-            if ($orden && $orden->subtipo === 'Servicios') {
-                $requiereServicioCampos = true;
+            $orden = OrdenEmpresa::find($ordenId);
+            if ($orden) {
+                if ($orden->subtipo === 'Servicios') {
+                    $requiereServicioCampos = true;
+                    $esServicios = true;
+                }
             }
         }
 
         return [
-            'orden_id'           => ['required', 'integer', 'exists:ordenesempresas,id'],
-            'equipo_id'          => ['required', 'integer', 'exists:equipos,id'],
-            'estado'             => ['required', 'string', 'max:50'],
-            'descripcion'        => ['required', 'string'],
-            'eq_observacion'     => ['nullable', 'string'],
-            'fecha_prometido'    => ['required', 'date'],
-            'valor_hora'         => ['nullable', 'numeric', 'min:0'],
-            'horas_trabajadas'   => ['nullable', 'numeric', 'min:0'],
+            'orden_id' => ['required', 'integer', 'exists:ordenesempresas,id'],
+            'equipo_id' => ['required', 'integer', 'exists:equipos,id'],
+            'estado' => ['required', 'string', 'max:50'],
+            'descripcion' => ['required', 'string'],
+            'eq_observacion' => ['nullable', 'string'],
+            'fecha_prometido' => ['required', 'date'],
+            'valor_hora' => ['nullable', 'numeric', 'min:0'],
+            'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
             'tecnicos_asignados' => [$requiereServicioCampos ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
             'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
-            'cas_id_empresa'     => ['nullable', 'integer', 'exists:cas,id'],
-            'tecnico_id'         => ['nullable', 'integer', 'exists:usuarios,id'],
+            'nro_sucursal_cliente' => [
+                'nullable',
+                'string',
+                'max:50',
+                function ($attribute, $value, $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    $exists = SucursalCliente::where('codigo', $value)
+                        ->orWhere('numero', (int) $value)
+                        ->exists();
+                    if (! $exists) {
+                        $fail('El campo nro sucursal cliente seleccionado es inválido.');
+                    }
+                },
+            ],
+            'tecnico_id' => ['nullable', 'integer', 'exists:usuarios,id'],
+            'cas_id_empresa' => ['nullable', 'integer', 'exists:cas,id'],
+
+            // Campos adicionales de equipo corporativo
+            'eq_tipo' => ['nullable', 'string', 'max:100'],
+            'eq_marca' => ['nullable', 'string', 'max:100'],
+            'eq_modelo' => ['nullable', 'string', 'max:100'],
+            'eq_serie' => ['nullable', 'string', 'max:100'],
+            'eq_contrasena' => ['nullable', 'string', 'max:100'],
+
+            // Series
+            'series' => [$esServicios ? 'nullable' : 'required', 'array', 'min:1'],
+            'series.*' => ['nullable', 'string', 'max:100'],
         ];
     }
 
@@ -57,8 +90,8 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
-            'ok'    => false,
-            'error' => 'Error de validación: ' . $validator->errors()->first()
+            'ok' => false,
+            'error' => 'Error de validación: '.$validator->errors()->first(),
         ]));
     }
 }

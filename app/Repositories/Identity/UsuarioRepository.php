@@ -2,8 +2,8 @@
 
 namespace App\Repositories\Identity;
 
-use App\Models\Identity\Usuario;
 use App\Models\Identity\PermisoUsuario;
+use App\Models\Identity\Usuario;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -12,14 +12,13 @@ class UsuarioRepository
     /**
      * Busca un usuario validando credenciales de forma compatible con el sistema legacy.
      */
-    public function encontrarPorCredencialesLegadas(string $usuario, string $clave): ?Usuario
+    public function encontrarPorLogin(string $usuario): ?Usuario
     {
         return Usuario::with(['grupo', 'sucursalesAsignadas', 'permisos'])
             ->where(function ($query) use ($usuario) {
                 $query->where('usuario', $usuario)
-                      ->orWhere('correo_tec', $usuario);
+                    ->orWhere('correo_tec', $usuario);
             })
-            ->where('clave', $clave)
             ->first();
     }
 
@@ -49,8 +48,8 @@ class UsuarioRepository
             ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
             ->where('u.activo', 1)
             ->whereNotNull('u.nombre_tecnico')
-            ->when(!$verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
-                if (!empty($casIds)) {
+            ->when(! $verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
+                if (! empty($casIds)) {
                     $query->where(function ($q) use ($casIds, $tecnicoActualId) {
                         $q->whereIn('u.id', function ($sub) use ($casIds) {
                             $sub->select('usuario_id')
@@ -72,8 +71,8 @@ class UsuarioRepository
             })
             ->when($verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
                 $esSuperadmin = (bool) session('es_superadmin', false);
-                if (!$esSuperadmin) {
-                    if (!empty($casIds)) {
+                if (! $esSuperadmin) {
+                    if (! empty($casIds)) {
                         $query->where(function ($q) use ($casIds, $tecnicoActualId) {
                             $q->whereIn('u.id', function ($sub) use ($casIds) {
                                 $sub->select('usuario_id')
@@ -125,7 +124,7 @@ class UsuarioRepository
                     return;
                 }
 
-                if (!empty($casIds)) {
+                if (! empty($casIds)) {
                     $query->whereIn('u.id', function ($sub) use ($casIds) {
                         $sub->select('usuario_id')
                             ->from('usuariocas')
@@ -148,7 +147,10 @@ class UsuarioRepository
     public function existeUsuario(string $usuario, ?int $excluirId = null): bool
     {
         $query = Usuario::where('usuario', $usuario);
-        if ($excluirId) $query->where('id', '!=', $excluirId);
+        if ($excluirId) {
+            $query->where('id', '!=', $excluirId);
+        }
+
         return $query->exists();
     }
 
@@ -176,14 +178,14 @@ class UsuarioRepository
                     if ($permitido) {
                         $insertData[] = [
                             'usuario_id' => $usuario->id,
-                            'modulo'     => $modulo,
-                            'accion'     => $accion,
-                            'permitido'  => 1
+                            'modulo' => $modulo,
+                            'accion' => $accion,
+                            'permitido' => 1,
                         ];
                     }
                 }
             }
-            if (!empty($insertData)) {
+            if (! empty($insertData)) {
                 PermisoUsuario::insert($insertData);
             }
         });

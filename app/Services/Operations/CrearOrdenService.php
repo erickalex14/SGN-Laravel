@@ -2,34 +2,36 @@
 
 namespace App\Services\Operations;
 
-use App\Repositories\Directory\ClienteRepository;
-use App\Repositories\Operations\OrdenRepository;
-use App\Repositories\Operations\OrdenRepuestoRepository;
 use App\DTOs\Operations\CrearOrdenDTO;
-use App\Models\Inventory\ProductoInventario;
+use App\Models\Identity\Usuario;
 use App\Models\Inventory\Marca;
+use App\Models\Inventory\ProductoInventario;
 use App\Models\Inventory\TipoDispositivo;
 use App\Models\Operations\CredencialEquipo;
 use App\Models\Operations\Equipo;
 use App\Models\Operations\EquipoSerie;
 use App\Models\Operations\Orden;
 use App\Models\Operations\OrdenEmpresa;
+use App\Repositories\Directory\ClienteRepository;
+use App\Repositories\Operations\OrdenRepository;
+use App\Repositories\Operations\OrdenRepuestoRepository;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class CrearOrdenService
 {
     protected ClienteRepository $clienteRepo;
+
     protected OrdenRepository $ordenRepo;
+
     protected OrdenRepuestoRepository $ordenRepuestoRepo;
 
     public function __construct(
         ClienteRepository $clienteRepo,
         OrdenRepository $ordenRepo,
         OrdenRepuestoRepository $ordenRepuestoRepo
-    )
-    {
+    ) {
         $this->clienteRepo = $clienteRepo;
         $this->ordenRepo = $ordenRepo;
         $this->ordenRepuestoRepo = $ordenRepuestoRepo;
@@ -43,163 +45,164 @@ class CrearOrdenService
         try {
             return $this->ordenRepo->ejecutarConLockSecuencial($dto->sucursal_id, function () use ($dto) {
                 return DB::transaction(function () use ($dto) {
-                $motivoIngreso = trim($dto->motivo_ingreso);
-                $esValidacionGarantia = $motivoIngreso === 'Validacion de Garantia';
-                $tipoServicioId = $dto->tipo_servicio_id;
-                $tipoServicioTexto = $dto->tipo_servicio_texto ? strtoupper(trim($dto->tipo_servicio_texto)) : null;
-                $garantiaTipo = $this->normalizarGarantiaTipo($dto->garantia_tipo);
-                $casId = $dto->cas_id;
+                    $motivoIngreso = trim($dto->motivo_ingreso);
+                    $esValidacionGarantia = $motivoIngreso === 'Validacion de Garantia';
+                    $tipoServicioId = $dto->tipo_servicio_id;
+                    $tipoServicioTexto = $dto->tipo_servicio_texto ? strtoupper(trim($dto->tipo_servicio_texto)) : null;
+                    $garantiaTipo = $this->normalizarGarantiaTipo($dto->garantia_tipo);
+                    $casId = $dto->cas_id;
 
-                if ($motivoIngreso === 'Servicio Cliente Externo') {
-                    $tipoServicioId = null;
-                }
+                    if ($motivoIngreso === 'Servicio Cliente Externo') {
+                        $tipoServicioId = null;
+                    }
 
-                $series = $this->normalizarSeries($dto->series);
-                $seriePrincipal = $series[0] ?? '';
-                $nroSucursalCliente = $dto->nro_sucursal_cliente;
-                $estadoRepuesto = $this->normalizarEstadoRepuesto($dto->estado_repuesto);
-                
-                $repuestosSeleccionados = $dto->repuestos_seleccionados ?? [];
-                if (empty($repuestosSeleccionados) && $dto->repuesto_inventario_id) {
-                    $repuestosSeleccionados[] = $dto->repuesto_inventario_id;
-                }
+                    $series = $this->normalizarSeries($dto->series);
+                    $seriePrincipal = $series[0] ?? '';
+                    $nroSucursalCliente = $dto->nro_sucursal_cliente;
+                    $estadoRepuesto = $this->normalizarEstadoRepuesto($dto->estado_repuesto);
 
-                if ($motivoIngreso === 'Servicio Cliente Externo') {
-                    $nroSucursalCliente = 999;
-                }
+                    $repuestosSeleccionados = $dto->repuestos_seleccionados ?? [];
+                    if (empty($repuestosSeleccionados) && $dto->repuesto_inventario_id) {
+                        $repuestosSeleccionados[] = $dto->repuesto_inventario_id;
+                    }
 
-                if ($estadoRepuesto === 'Con stock' && empty($repuestosSeleccionados)) {
-                    throw new Exception('Debe seleccionar al menos un repuesto del inventario cuando el estado es Con stock.');
-                }
+                    if ($motivoIngreso === 'Servicio Cliente Externo') {
+                        $nroSucursalCliente = 999;
+                    }
 
-                if ($esValidacionGarantia) {
-                    if ($garantiaTipo !== 'externa') {
+                    if ($estadoRepuesto === 'Con stock' && empty($repuestosSeleccionados)) {
+                        throw new Exception('Debe seleccionar al menos un repuesto del inventario cuando el estado es Con stock.');
+                    }
+
+                    if ($esValidacionGarantia) {
+                        if ($garantiaTipo !== 'externa') {
+                            $casId = null;
+                        }
+                    } else {
+                        $garantiaTipo = null;
                         $casId = null;
                     }
-                } else {
-                    $garantiaTipo = null;
-                    $casId = null;
-                }
 
-                if ($motivoIngreso === 'Servicio Cliente Externo') {
-                    $casId = null;
-                }
-
-                $codigoProductoInventario = strtoupper(trim((string) $dto->producto_inventario_codigo));
-                $codigoFinal = $codigoProductoInventario !== '' ? $codigoProductoInventario : $dto->modelo;
-                
-                // 1. Gestionar Cliente (Crear o Actualizar si ya existe)
-                $cliente = $this->clienteRepo->actualizarOCrear([
-                    'identificacion'     => $dto->identificacion,
-                    'nombres'            => strtoupper(trim($dto->nombres)),
-                    'apellidos'          => strtoupper(trim($dto->apellidos)),
-                    'numero_contacto'    => $dto->telefono,
-                    'correo'             => $dto->correo,
-                    'direccion_clientes' => $dto->direccion ? strtoupper(trim($dto->direccion)) : null
-                ]);
-
-                // 2. Crear Registro del Equipo
-                $equipo = new Equipo();
-                $equipo->tipo             = strtoupper(trim($dto->tipo_equipo));
-                $equipo->marca            = strtoupper(trim($dto->marca));
-                $equipo->modelo           = strtoupper(trim($codigoFinal));
-                $equipo->serie            = $seriePrincipal;
-                $equipo->falla            = trim($dto->falla);
-                $equipo->observacion      = trim($dto->observacion);
-                $equipo->tipo_servicio_id = $tipoServicioId;
-                $equipo->tipo_servicio_texto = $tipoServicioTexto;
-                $equipo->fecha_facturacion = $dto->fecha_facturacion;
-                $equipo->contrasena_equipo = $dto->contrasena_equipo;
-
-                if ($codigoProductoInventario !== '') {
-                    $this->asegurarProductoInventario(
-                        $codigoProductoInventario,
-                        $dto->modelo,
-                        $dto->marca,
-                        $dto->tipo_equipo
-                    );
-                    $equipo->producto_inventario_codigo = $codigoProductoInventario;
-                }
-                $equipo->save();
-
-                // Guardar series adicionales
-                foreach ($series as $idx => $serie) {
-                    EquipoSerie::create([
-                        'equipo_id' => $equipo->id,
-                        'serie' => $serie,
-                        'orden' => $idx + 1
-                    ]);
-                }
-
-                // Guardar credenciales
-                foreach ($dto->credenciales as $credencial) {
-                    $contrasena = trim((string)($credencial['contrasena'] ?? ''));
-                    if ($contrasena === '') {
-                        continue;
+                    if ($motivoIngreso === 'Servicio Cliente Externo') {
+                        $casId = null;
                     }
-                    CredencialEquipo::create([
-                        'equipo_id' => $equipo->id,
-                        'usuario' => trim((string)($credencial['usuario'] ?? '')),
-                        'contrasena' => $contrasena,
-                        'es_patron' => (int)($credencial['es_patron'] ?? 0)
+
+                    $codigoProductoInventario = strtoupper(trim((string) $dto->producto_inventario_codigo));
+                    $codigoFinal = $codigoProductoInventario !== '' ? $codigoProductoInventario : $dto->modelo;
+
+                    // 1. Gestionar Cliente (Crear o Actualizar si ya existe)
+                    $cliente = $this->clienteRepo->actualizarOCrear([
+                        'identificacion' => $dto->identificacion,
+                        'nombres' => strtoupper(trim($dto->nombres)),
+                        'apellidos' => strtoupper(trim($dto->apellidos)),
+                        'numero_contacto' => $dto->telefono,
+                        'correo' => $dto->correo,
+                        'direccion_clientes' => $dto->direccion ? strtoupper(trim($dto->direccion)) : null,
                     ]);
-                }
 
-                // Identificar si el usuario creador pertenece a un CAS
-                $usuarioCreador = \App\Models\Identity\Usuario::find($dto->ingresado_por);
-                $casAsignado = $usuarioCreador ? $usuarioCreador->casAsignados()->first() : null;
+                    // 2. Crear Registro del Equipo
+                    $equipo = new Equipo;
+                    $equipo->tipo = strtoupper(trim($dto->tipo_equipo));
+                    $equipo->marca = strtoupper(trim($dto->marca));
+                    $equipo->modelo = strtoupper(trim($codigoFinal));
+                    $equipo->serie = $seriePrincipal;
+                    $equipo->falla = trim($dto->falla);
+                    $equipo->observacion = trim($dto->observacion);
+                    $equipo->tipo_servicio_id = $tipoServicioId;
+                    $equipo->tipo_servicio_texto = $tipoServicioTexto;
+                    $equipo->fecha_facturacion = $dto->fecha_facturacion;
+                    $equipo->contrasena_equipo = $dto->contrasena_equipo;
 
-                $casIdParaCodigo = null;
-                if ($casAsignado) {
-                    $casIdParaCodigo = $casAsignado->id;
-                }
-
-                // 3. Generar Nro de Orden y Crear la Orden
-                $nroOrden = $this->ordenRepo->generarNumeroOrden($dto->sucursal_id, $casIdParaCodigo);
-
-                $orden = new Orden();
-                $orden->nro_orden        = $nroOrden;
-                $orden->cliente_id       = $cliente->id;
-                $orden->equipo_id        = $equipo->id;
-                $orden->tecnico_id       = $dto->tecnico_id;
-                $orden->sucursal_id      = $dto->sucursal_id;
-                $orden->ingresado_por    = $dto->ingresado_por;
-                $orden->fecha_de_ingreso = $dto->fecha_ingreso;
-                $orden->estado_orden     = 'Pendiente';
-                $orden->motivo_ingreso   = $motivoIngreso;
-                $orden->nro_factura      = $dto->nro_factura;
-                $orden->nro_factura_2    = $dto->nro_factura_2;
-                $orden->nro_sucursal_cliente = $nroSucursalCliente;
-                $orden->estado_repuesto  = $estadoRepuesto;
-                $orden->estado_garantia  = $esValidacionGarantia ? 'Pendiente' : null;
-                $orden->fecha_prometido  = $dto->fecha_prometido;
-                $orden->garantia_tipo    = $garantiaTipo;
-                $orden->cas_id           = $casAsignado ? $casAsignado->id : $casId;
-                $orden->repuesto_inventario_id = !empty($repuestosSeleccionados) ? (int)$repuestosSeleccionados[0] : null;
-                
-                $orden->save();
-
-                if ($estadoRepuesto === 'Con stock' && !empty($repuestosSeleccionados)) {
-                    foreach ($repuestosSeleccionados as $repId) {
-                        $this->ordenRepuestoRepo->registrarDesdeCreacion(
-                            (int) $orden->id,
-                            (int) $repId,
-                            (int) $dto->ingresado_por
+                    if ($codigoProductoInventario !== '') {
+                        $this->asegurarProductoInventario(
+                            $codigoProductoInventario,
+                            $dto->modelo,
+                            $dto->marca,
+                            $dto->tipo_equipo
                         );
+                        $equipo->producto_inventario_codigo = $codigoProductoInventario;
                     }
-                }
+                    $equipo->save();
 
-                Log::info('Orden de Servicio creada exitosamente.', [
-                    'nro_orden' => $nroOrden,
-                    'cliente_id' => $cliente->id
-                ]);
+                    // Guardar series adicionales
+                    foreach ($series as $idx => $serie) {
+                        EquipoSerie::create([
+                            'equipo_id' => $equipo->id,
+                            'serie' => $serie,
+                            'orden' => $idx + 1,
+                        ]);
+                    }
 
-                return $orden;
+                    // Guardar credenciales
+                    foreach ($dto->credenciales as $credencial) {
+                        $contrasena = trim((string) ($credencial['contrasena'] ?? ''));
+                        if ($contrasena === '') {
+                            continue;
+                        }
+                        CredencialEquipo::create([
+                            'equipo_id' => $equipo->id,
+                            'usuario' => trim((string) ($credencial['usuario'] ?? '')),
+                            'contrasena' => $contrasena,
+                            'es_patron' => (int) ($credencial['es_patron'] ?? 0),
+                        ]);
+                    }
+
+                    // Identificar si el usuario creador pertenece a un CAS
+                    $usuarioCreador = Usuario::find($dto->ingresado_por);
+                    $casAsignado = $usuarioCreador ? $usuarioCreador->casAsignados()->first() : null;
+
+                    $casIdParaCodigo = null;
+                    if ($casAsignado) {
+                        $casIdParaCodigo = $casAsignado->id;
+                    }
+
+                    // 3. Generar Nro de Orden y Crear la Orden
+                    $nroOrden = $this->ordenRepo->generarNumeroOrden($dto->sucursal_id, $casIdParaCodigo);
+
+                    $orden = new Orden;
+                    $orden->nro_orden = $nroOrden;
+                    $orden->cliente_id = $cliente->id;
+                    $orden->equipo_id = $equipo->id;
+                    $orden->tecnico_id = $dto->tecnico_id;
+                    $orden->sucursal_id = $dto->sucursal_id;
+                    $orden->ingresado_por = $dto->ingresado_por;
+                    $orden->fecha_de_ingreso = $dto->fecha_ingreso;
+                    $orden->estado_orden = 'Pendiente';
+                    $orden->motivo_ingreso = $motivoIngreso;
+                    $orden->nro_factura = $dto->nro_factura;
+                    $orden->nro_factura_2 = $dto->nro_factura_2;
+                    $orden->nro_sucursal_cliente = $nroSucursalCliente;
+                    $orden->estado_repuesto = $estadoRepuesto;
+                    $orden->estado_garantia = $esValidacionGarantia ? 'Pendiente' : null;
+                    $orden->fecha_prometido = $dto->fecha_prometido;
+                    $orden->garantia_tipo = $garantiaTipo;
+                    $orden->cas_id = $casAsignado ? $casAsignado->id : $casId;
+                    $orden->repuesto_inventario_id = ! empty($repuestosSeleccionados) ? (int) $repuestosSeleccionados[0] : null;
+                    $orden->fecha_facturacion = $esValidacionGarantia ? $dto->fecha_facturacion : null;
+
+                    $orden->save();
+
+                    if ($estadoRepuesto === 'Con stock' && ! empty($repuestosSeleccionados)) {
+                        foreach ($repuestosSeleccionados as $repId) {
+                            $this->ordenRepuestoRepo->registrarDesdeCreacion(
+                                (int) $orden->id,
+                                (int) $repId,
+                                (int) $dto->ingresado_por
+                            );
+                        }
+                    }
+
+                    Log::info('Orden de Servicio creada exitosamente.', [
+                        'nro_orden' => $nroOrden,
+                        'cliente_id' => $cliente->id,
+                    ]);
+
+                    return $orden;
                 });
             });
 
             try {
-                \App\Services\Operations\SgnMailService::enviarOrdenCreada($orden);
+                SgnMailService::enviarOrdenCreada($orden);
             } catch (\Throwable $e) {
                 Log::error('Error al enviar notificacion de nueva orden', ['error' => $e->getMessage()]);
             }
@@ -224,7 +227,7 @@ class CrearOrdenService
                     $subtipo = trim((string) $data['subtipo_empresa']);
                     $descripcion = trim((string) ($data['emp_descripcion'] ?? ''));
 
-                    if (!in_array($subtipo, ['Autoconsumo', 'Servicios', 'Stock'], true)) {
+                    if (! in_array($subtipo, ['Autoconsumo', 'Servicios', 'Stock'], true)) {
                         throw new Exception('Selecciona el tipo (Autoconsumo, Servicios o Stock).');
                     }
 
@@ -248,7 +251,7 @@ class CrearOrdenService
                             'serie' => implode(', ', $series),
                             'falla' => $data['emp_falla'],
                             'observacion' => $data['emp_observacion'] ?? '',
-                            'tipo_servicio_id' => !empty($data['emp_tipo_servicio_id']) ? (int) $data['emp_tipo_servicio_id'] : null,
+                            'tipo_servicio_id' => ! empty($data['emp_tipo_servicio_id']) ? (int) $data['emp_tipo_servicio_id'] : null,
                             'producto_inventario_codigo' => $codigoProducto !== '' ? $codigoProducto : null,
                         ]);
 
@@ -256,7 +259,7 @@ class CrearOrdenService
                             EquipoSerie::create([
                                 'equipo_id' => $equipo->id,
                                 'serie' => $serie,
-                                'orden' => $idx + 1
+                                'orden' => $idx + 1,
                             ]);
                         }
                     } else {
@@ -273,12 +276,12 @@ class CrearOrdenService
                     $esNovisolutionsServicio = ($subtipo === 'Servicios');
 
                     $tecnicosAsignados = $data['tecnicos_asignados'] ?? [];
-                    if (!is_array($tecnicosAsignados)) {
+                    if (! is_array($tecnicosAsignados)) {
                         $tecnicosAsignados = [$tecnicosAsignados];
                     }
                     $tecnicosAsignados = array_map('intval', array_filter($tecnicosAsignados));
 
-                    $primaryTecnicoId = $esNovisolutionsServicio && !empty($tecnicosAsignados)
+                    $primaryTecnicoId = $esNovisolutionsServicio && ! empty($tecnicosAsignados)
                         ? (int) $tecnicosAsignados[0]
                         : (int) $data['ord_tecnico_id'];
 
@@ -291,11 +294,11 @@ class CrearOrdenService
                             $count = DB::table('ordenesempresas')->where('subtipo', 'Servicios')->count();
                             $siguienteSecuencial = $count + 1;
                             $codigoAleatorio = strtoupper(substr(md5(uniqid('', true)), 0, 4));
-                            $ticketVal = 'TK-' . $codigoAleatorio . '-' . str_pad($siguienteSecuencial, 4, '0', STR_PAD_LEFT);
+                            $ticketVal = 'TK-'.$codigoAleatorio.'-'.str_pad($siguienteSecuencial, 4, '0', STR_PAD_LEFT);
                         }
                     }
 
-                    $casId = !empty($data['cas_id_empresa']) ? (int) $data['cas_id_empresa'] : null;
+                    $casId = ! empty($data['cas_id_empresa']) ? (int) $data['cas_id_empresa'] : null;
 
                     $orden = OrdenEmpresa::create([
                         'nro_orden' => $nroOrden,
@@ -317,7 +320,7 @@ class CrearOrdenService
                         'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($data['horas_trabajadas'] ?? 0) : null,
                     ]);
 
-                    if ($esNovisolutionsServicio && !empty($tecnicosAsignados)) {
+                    if ($esNovisolutionsServicio && ! empty($tecnicosAsignados)) {
                         $orden->tecnicos()->sync($tecnicosAsignados);
                     } else {
                         $orden->tecnicos()->sync([$primaryTecnicoId]);
@@ -325,7 +328,7 @@ class CrearOrdenService
 
                     Log::info('Orden de empresa creada exitosamente.', [
                         'nro_orden' => $nroOrden,
-                        'empresa_id' => (int) $data['empresa_id']
+                        'empresa_id' => (int) $data['empresa_id'],
                     ]);
 
                     return $orden;
@@ -333,7 +336,7 @@ class CrearOrdenService
             });
 
             try {
-                \App\Services\Operations\SgnMailService::enviarOrdenCreada($orden);
+                SgnMailService::enviarOrdenCreada($orden);
             } catch (\Throwable $e) {
                 Log::error('Error al enviar notificacion de nueva orden empresa', ['error' => $e->getMessage()]);
             }
@@ -347,7 +350,7 @@ class CrearOrdenService
 
     private function crearEquipoBase(array $data): Equipo
     {
-        $equipo = new Equipo();
+        $equipo = new Equipo;
         $equipo->tipo = strtoupper(trim((string) $data['tipo']));
         $equipo->marca = strtoupper(trim((string) $data['marca']));
         $equipo->modelo = strtoupper(trim((string) $data['modelo']));
@@ -366,9 +369,9 @@ class CrearOrdenService
         $resultado = [];
 
         foreach ($series as $serie) {
-            $serie = trim((string)$serie);
+            $serie = trim((string) $serie);
             if ($serie === '' || preg_match('/^(s[\/\-]?n|sin[\s_\-]?(serie|n[uú]mero|num)?|n[\/\-]?a|na|ninguna|none|no[\s_]?aplica|-)$/i', $serie)) {
-                $serie = 'SN-' . strtoupper(substr(md5(uniqid('', true)), 0, 8));
+                $serie = 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
             }
             $resultado[] = strtoupper($serie);
         }
@@ -420,14 +423,14 @@ class CrearOrdenService
         $marca = Marca::query()
             ->whereRaw('UPPER(nombre) = ?', [strtoupper(trim($marcaNombre))])
             ->first();
-        if (!$marca) {
+        if (! $marca) {
             throw new Exception('La marca seleccionada no existe para registrar el producto de inventario.');
         }
 
         $tipo = TipoDispositivo::query()
             ->whereRaw('UPPER(nombre) = ?', [strtoupper(trim($tipoNombre))])
             ->first();
-        if (!$tipo) {
+        if (! $tipo) {
             throw new Exception('El tipo de equipo seleccionado no existe para registrar el producto de inventario.');
         }
 

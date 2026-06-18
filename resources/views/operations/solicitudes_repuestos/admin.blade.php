@@ -21,13 +21,13 @@
 .btn-accion:hover { background: #2563eb; color: #fff; }
 .btn-print { background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; text-decoration:none; display:inline-block; margin-right:6px; }
 .btn-print:hover { background:#0f172a; color:#fff; border-color:#0f172a; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6); z-index: 9999; display: none; align-items: center; justify-content: center; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
 .modal-overlay.activo { display: flex; }
-.modal-box { background: #fff; width: 100%; max-width: 550px; border-radius: 12px; display: flex; flex-direction: column; }
+.modal-box { background: #fff; width: 100%; max-width: 550px; max-height: 90vh; border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
 .m-hdr { padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
 .m-hdr h3 { margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; }
 .btn-cerrar { background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; }
-.m-body { padding: 24px; }
+.m-body { padding: 24px; overflow-y: auto; flex: 1; }
 .info-row { margin-bottom: 10px; font-size: 13.5px; }
 .info-row strong { color: #475569; display: inline-block; width: 120px; }
 .m-ftr { padding: 16px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; border-radius: 0 0 12px 12px; }
@@ -82,7 +82,7 @@
                         <td><span class="badge-sr">{{ $sr->nro_solicitud }}</span></td>
                         <td>{{ \Carbon\Carbon::parse($sr->fecha_solicitud)->format('d/m/Y') }}</td>
                         <td><strong>{{ $sr->orden->nro_orden }}</strong></td>
-                        <td>{{ $sr->tecnico_nombre }}</td>
+                        <td>{{ $sr->tecnico->nombre_tecnico ?? $sr->tecnico_nombre }}</td>
                         <td>
                             <strong>{{ $sr->repuesto_nombre ?? ($sr->repuestoAsignado ? $sr->repuestoAsignado->nombre : 'Indefinido') }}</strong><br>
                             <span style="font-size:11px;color:#64748b;">{{ $sr->nro_parte ? 'P/N: '.$sr->nro_parte : '' }}</span>
@@ -128,17 +128,36 @@
                 <div class="info-row" style="margin-top:8px;"><strong>Notas:</strong> <span id="sr-desc"></span></div>
             </div>
 
-            <div class="rep-select-wrap">
-                <label for="sr-repuesto-id">Repuesto de inventario para despacho</label>
-                <select id="sr-repuesto-id" class="rep-select">
-                    <option value="">Sin asignar (se mantiene sin stock)</option>
-                    @foreach($repuestos as $rep)
-                        <option value="{{ $rep->id }}" data-stock="{{ (int) $rep->stock }}">
-                            {{ $rep->codigo }} - {{ $rep->nombre }} (Stock: {{ (int) $rep->stock }})
-                        </option>
-                    @endforeach
-                </select>
-                <div class="rep-help" id="sr-repuesto-help">Si no selecciona repuesto, la orden quedara sin stock.</div>
+            <div class="rep-select-wrap" style="position: relative;">
+                <label for="sr-repuesto-busqueda">Buscar Repuesto de Inventario para Despacho</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                    <input type="text" id="sr-repuesto-busqueda" class="rep-select" placeholder="Escriba código, nombre o descripción..." style="flex: 1;" autocomplete="off">
+                    <button type="button" class="btn-accion" id="btn-buscar-repuesto" style="margin: 0; padding: 0 16px;" onclick="buscarRepuestosAjax()">Buscar</button>
+                </div>
+                
+                <!-- Contenedor de resultados de búsqueda -->
+                <div id="sr-busqueda-resultados" style="display: none; position: absolute; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 2px;">
+                    <!-- Los resultados se inyectarán aquí -->
+                </div>
+
+                <!-- Input oculto para almacenar el id seleccionado -->
+                <input type="hidden" id="sr-repuesto-id" value="">
+                
+                <!-- Visualización del repuesto seleccionado actualmente -->
+                <div id="sr-seleccionado-info" style="display: none; margin-top: 8px; padding: 8px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                        <strong style="color: #166534; font-size: 13px;">Seleccionado:</strong>
+                        <span id="sr-seleccionado-nombre" style="font-size: 13px; color: #1e293b; font-weight: 600;"></span>
+                    </div>
+                    <button type="button" style="background: none; border: none; color: #ef4444; font-weight: 700; cursor: pointer; font-size: 16px; line-height: 1;" onclick="deseleccionarRepuesto()">&times;</button>
+                </div>
+
+                <div class="rep-help" id="sr-repuesto-help" style="margin-top: 6px;">Escriba y busque para asignar un repuesto de inventario.</div>
+            </div>
+
+            <div style="margin-top: 14px; margin-bottom: 14px;">
+                <label for="sr-repuesto-cantidad" style="font-weight: 700; font-size: 12px; color: #475569; display: block; margin-bottom: 6px;">Cantidad a Despachar / Comprar</label>
+                <input type="number" id="sr-repuesto-cantidad" class="rep-select" min="1" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px;" placeholder="Ingrese cantidad a despachar...">
             </div>
 
             <div class="rechazo-box" id="box-rechazo">
@@ -158,31 +177,83 @@
 
 @push('js_adicional')
 <script>
-function actualizarAyudaRepuesto() {
-    const sel = document.getElementById('sr-repuesto-id');
+function seleccionarRepuesto(rep) {
+    document.getElementById('sr-repuesto-id').value = rep.id;
+    document.getElementById('sr-seleccionado-nombre').textContent = `${rep.codigo} - ${rep.nombre} (Stock: ${rep.stock})`;
+    document.getElementById('sr-seleccionado-info').style.display = 'flex';
+    document.getElementById('sr-busqueda-resultados').style.display = 'none';
+    document.getElementById('sr-repuesto-busqueda').value = '';
+    
     const help = document.getElementById('sr-repuesto-help');
-    if (!sel || !help) return;
+    if (help) {
+        help.textContent = `Stock disponible del item seleccionado: ${rep.stock}`;
+    }
+}
 
-    const opt = sel.options[sel.selectedIndex];
-    if (!opt || !opt.value) {
-        help.textContent = 'Si no selecciona repuesto, la orden quedara sin stock.';
+function deseleccionarRepuesto() {
+    document.getElementById('sr-repuesto-id').value = '';
+    document.getElementById('sr-seleccionado-info').style.display = 'none';
+    
+    const help = document.getElementById('sr-repuesto-help');
+    if (help) {
+        help.textContent = 'Escriba y busque para asignar un repuesto de inventario.';
+    }
+}
+
+async function buscarRepuestosAjax(mostrarAlert = true) {
+    const q = document.getElementById('sr-repuesto-busqueda').value.trim();
+    const resContainer = document.getElementById('sr-busqueda-resultados');
+    
+    if (q.length < 2) {
+        if (mostrarAlert) {
+            alert('Por favor, ingrese al menos 2 caracteres para buscar.');
+        }
+        resContainer.style.display = 'none';
         return;
     }
-
-    const stock = opt.getAttribute('data-stock') || '0';
-    help.textContent = `Stock disponible del item seleccionado: ${stock}`;
+    
+    resContainer.style.display = 'block';
+    resContainer.innerHTML = '<div style="padding: 10px; color: #64748b; font-size: 13px;">Buscando...</div>';
+    
+    try {
+        const response = await fetch(`{{ route('solicitudes_repuestos.admin.buscar_repuesto') }}?q=${encodeURIComponent(q)}&stock_only=false`);
+        const data = await response.json();
+        
+        if (data.ok && data.repuestos && data.repuestos.length > 0) {
+            resContainer.innerHTML = '';
+            data.repuestos.forEach(rep => {
+                const item = document.createElement('div');
+                item.style.padding = '8px 12px';
+                item.style.cursor = 'pointer';
+                item.style.borderBottom = '1px solid #f1f5f9';
+                item.style.fontSize = '13px';
+                item.innerHTML = `<strong>${rep.codigo}</strong> - ${rep.nombre} <span style="color: ${rep.stock > 0 ? '#166534' : '#ef4444'}; font-weight: bold;">(Stock: ${rep.stock})</span>`;
+                item.onmouseover = () => item.style.background = '#f8fafc';
+                item.onmouseout = () => item.style.background = '#fff';
+                item.onclick = () => seleccionarRepuesto(rep);
+                resContainer.appendChild(item);
+            });
+        } else {
+            resContainer.innerHTML = '<div style="padding: 10px; color: #94a3b8; font-size: 13px;">No se encontraron repuestos.</div>';
+        }
+    } catch (e) {
+        resContainer.innerHTML = '<div style="padding: 10px; color: #ef4444; font-size: 13px;">Error al buscar repuesto.</div>';
+    }
 }
 
 function abrirGestion(sr) {
     document.getElementById('sr-id').value = sr.id;
     document.getElementById('sr-nro').textContent = sr.nro_solicitud;
     document.getElementById('sr-orden').textContent = sr.orden ? sr.orden.nro_orden : 'Desconocida';
-    document.getElementById('sr-tec').textContent = sr.tecnico_nombre || '-';
+    
+    // Mostrar nombre real del tecnico (de la relacion eager loaded si existe)
+    document.getElementById('sr-tec').textContent = (sr.tecnico ? sr.tecnico.nombre_tecnico : sr.tecnico_nombre) || '-';
 
     document.getElementById('sr-rep').textContent = sr.repuesto_nombre || ('Repuesto del Catalogo ID: ' + (sr.repuesto_inv_id || '-'));
     document.getElementById('sr-part').textContent = sr.nro_parte || '-';
     document.getElementById('sr-cant').textContent = sr.cantidad || '-';
     document.getElementById('sr-desc').textContent = sr.descripcion || '-';
+    document.getElementById('sr-repuesto-cantidad').value = sr.cantidad || 1;
 
     const lnk = document.getElementById('sr-link');
     if (sr.link_compra) {
@@ -198,9 +269,26 @@ function abrirGestion(sr) {
     document.getElementById('btn-conf-rechazo').style.display = 'none';
     document.getElementById('motivo_rechazo').value = '';
 
-    const repSelect = document.getElementById('sr-repuesto-id');
-    repSelect.value = sr.repuesto_inv_id ? String(sr.repuesto_inv_id) : '';
-    actualizarAyudaRepuesto();
+    // Limpiar input y contenedor de busqueda
+    document.getElementById('sr-repuesto-busqueda').value = '';
+    document.getElementById('sr-busqueda-resultados').style.display = 'none';
+
+    // Si ya existe un repuesto asignado o sugerido en el catalogo, preseleccionarlo
+    if (sr.repuesto_asignado) {
+        seleccionarRepuesto(sr.repuesto_asignado);
+    } else if (sr.repuesto_catalogo) {
+        seleccionarRepuesto(sr.repuesto_catalogo);
+    } else if (sr.repuesto_inv_id) {
+        // Fallback si no cargo la relacion por alguna razon pero tiene el id
+        seleccionarRepuesto({
+            id: sr.repuesto_inv_id,
+            codigo: sr.repuesto_codigo || 'N/A',
+            nombre: sr.repuesto_nombre || 'Sugerido',
+            stock: 0
+        });
+    } else {
+        deseleccionarRepuesto();
+    }
 
     document.getElementById('modal-gestion').classList.add('activo');
 }
@@ -215,6 +303,7 @@ async function procesar(estado) {
     const id = document.getElementById('sr-id').value;
     const motivo = document.getElementById('motivo_rechazo').value.trim();
     const repuestoId = document.getElementById('sr-repuesto-id').value;
+    const cantidad = document.getElementById('sr-repuesto-cantidad').value;
 
     if (estado === 'RECHAZADA' && !motivo) {
         alert('Indique el motivo del rechazo.');
@@ -226,12 +315,18 @@ async function procesar(estado) {
         return;
     }
 
+    if (estado !== 'RECHAZADA' && (!cantidad || parseInt(cantidad) <= 0)) {
+        alert('Por favor ingrese una cantidad válida (mayor a 0).');
+        return;
+    }
+
     if (!confirm(`Confirma pasar el ticket al estado: ${estado}?`)) return;
 
     const fd = new FormData();
     fd.append('_token', '{{ csrf_token() }}');
     fd.append('solicitud_id', id);
     fd.append('estado', estado);
+    fd.append('cantidad', cantidad);
     if (estado === 'APROBADA' && repuestoId) fd.append('repuesto_id', repuestoId);
     if (estado === 'RECHAZADA') fd.append('motivo_rechazo', motivo);
 
@@ -251,8 +346,41 @@ async function procesar(estado) {
 
 let _sraPager = null;
 document.addEventListener('DOMContentLoaded', () => {
-    const sel = document.getElementById('sr-repuesto-id');
-    if (sel) sel.addEventListener('change', actualizarAyudaRepuesto);
+    // Escuchar el Enter en la barra de busqueda de repuestos
+    const txtBusqueda = document.getElementById('sr-repuesto-busqueda');
+    let debounceTimer;
+
+    if (txtBusqueda) {
+        txtBusqueda.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarRepuestosAjax(true);
+            }
+        });
+
+        // Autocompletado en tiempo real mientras escribe (con debounce de 300ms)
+        txtBusqueda.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const q = e.target.value.trim();
+            if (q.length >= 2) {
+                debounceTimer = setTimeout(() => {
+                    buscarRepuestosAjax(false);
+                }, 300);
+            } else {
+                document.getElementById('sr-busqueda-resultados').style.display = 'none';
+            }
+        });
+    }
+
+    // Cerrar sugerencias al hacer click fuera
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('sr-busqueda-resultados');
+        const input = document.getElementById('sr-repuesto-busqueda');
+        const btn = document.getElementById('btn-buscar-repuesto');
+        if (container && e.target !== container && e.target !== input && e.target !== btn && !container.contains(e.target)) {
+            container.style.display = 'none';
+        }
+    });
 
     _sraPager = new SgnPager({
         containerSelector: '#sra-tbody',
