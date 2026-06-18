@@ -208,6 +208,7 @@
 .bi-accion:hover { opacity:.88; transform:translateY(-1px); }
 .bi-accion.imprimir { background: #2563eb; color: #fff; }
 .bi-accion.ot       { background: #0f172a; color: #fff; }
+.bi-accion.editar   { background: #059669; color: #fff; }
 
 /* Skeleton */
 .bi-skeleton { display: flex; flex-direction: column; gap: 4px; }
@@ -388,8 +389,10 @@
     /* ── Config ────────────────────────────────────────────────── */
     var URL_BUSCAR  = '{{ route("informes.buscar.listar") }}';
     var URL_IMPRIMIR = '{{ url("/operaciones/informes") }}/';
+    var URL_EDITAR   = '{{ url("/operaciones/informes") }}/';
     var URL_OT       = '{{ url("/operaciones/ordenes") }}/';
     var URL_OT_EMP   = '{{ url("/operaciones/ordenes-empresa") }}/';
+    var PUEDE_EDITAR = @json((bool) ($puedeEditarInforme ?? false));
 
     /* ── Estado ────────────────────────────────────────────────── */
     var _tipo       = 'nro_orden';
@@ -552,6 +555,16 @@
             window.open(base + ordenAbs + '/imprimir', '_blank');
         };
         accDiv.appendChild(btnOT);
+
+        if (PUEDE_EDITAR) {
+            var btnEdit = document.createElement('button');
+            btnEdit.className = 'bi-accion editar';
+            btnEdit.innerHTML = '<i class="bi bi-pencil-square"></i>Editar Informe';
+            btnEdit.onclick   = function () {
+                window.location.href = URL_EDITAR + inf.id + '/editar';
+            };
+            accDiv.appendChild(btnEdit);
+        }
 
         elRes.style.display = 'none';
         elDet.style.display = 'block';

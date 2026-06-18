@@ -175,9 +175,13 @@
     $grupo = $usuario && $usuario->grupo ? mb_strtolower(trim((string) $usuario->grupo->nombre)) : '';
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
     $rolesAdmitidos = ['admin', 'administrador', 'admin master', 'administrador master'];
+    $tienePermisoEditar = session('es_superadmin') === true 
+        || !empty(session('permisos', [])['ordenes_editar']['editar']) 
+        || !empty(session('permisos', [])['ordenes_editar']['ver']);
     $esAdminOAdminMaster = in_array($rol, $rolesAdmitidos, true)
         || in_array($grupo, $rolesAdmitidos, true)
-        || in_array($sessionGrupo, $rolesAdmitidos, true);
+        || in_array($sessionGrupo, $rolesAdmitidos, true)
+        || $tienePermisoEditar;
 
     $sucursalesClienteMapa = \App\Models\Directory\SucursalCliente::query()
         ->orderBy('numero')
@@ -1344,7 +1348,10 @@ function verDetalleOrden(cardEl) {
                     <div class="det-campo"><label>Sucursal</label><span>${_h(o.sucursal || '-')}</span></div>
                     <div class="det-campo"><label>Sucursal Cliente</label><span>${_h(sucursalClienteTexto)}</span></div>
                     <div class="det-campo"><label>Motivo</label><span>${_h(o.motivo_ingreso || '-')}</span></div>
-                    ${esEmpresa ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` : ''}
+                    ${esEmpresa 
+                        ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` 
+                        : `<div class="det-campo"><label>Nro. Factura</label><span>${_h(o.nro_factura || '-')}</span></div>`
+                    }
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
                 </div>

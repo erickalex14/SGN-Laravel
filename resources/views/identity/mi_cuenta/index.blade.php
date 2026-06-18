@@ -138,7 +138,10 @@
         <h3>Cerrar sesion</h3>
         <p>Estas seguro de que deseas salir del sistema?</p>
         <div class="cfg-modal-btns">
-            <button class="cfg-btn cfg-btn-danger" onclick="window.location.href='{{ route('auth.logout') }}'">Si, cerrar sesion</button>
+            <form method="POST" action="{{ route('auth.logout') }}">
+                @csrf
+                <button type="submit" class="cfg-btn cfg-btn-danger" style="width:100%;justify-content:center;">Si, cerrar sesion</button>
+            </form>
             <button class="cfg-btn cfg-btn-ghost" onclick="document.getElementById('cfg-modal-logout').style.display='none'">Cancelar</button>
         </div>
     </div>
@@ -235,4 +238,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-

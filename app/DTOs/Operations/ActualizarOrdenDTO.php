@@ -16,7 +16,7 @@ readonly class ActualizarOrdenDTO
         public ?string $fecha_prometido,
         public int $usuario_modificacion_id,
         public ?int $cas_id = null,
-        
+
         // Campos de cliente
         public string $cli_identificacion = '',
         public string $cli_nombres = '',
@@ -28,11 +28,22 @@ readonly class ActualizarOrdenDTO
         // Campos de factura/garantía
         public ?string $nro_factura = null,
         public ?string $nro_factura_2 = null,
-        public ?int $nro_sucursal_cliente = null,
+        public ?string $nro_sucursal_cliente = null,
         public ?string $fecha_facturacion = null,
 
         // Series
         public array $series = [],
-        public ?int $tecnico_id = null
+        public ?int $tecnico_id = null,
+
+        // Nuevos campos de equipo
+        public ?string $eq_tipo = null,
+        public ?string $eq_marca = null,
+        public ?string $eq_modelo = null,
+        public ?string $eq_contrasena = null,
+
+        // Nuevos campos de orden
+        public ?string $motivo_ingreso = null,
+        public ?string $garantia_tipo = null,
+        public ?string $observacion_orden = null
     ) {}
 }

@@ -128,7 +128,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
             <div style="display:inline-flex; gap:8px;">
                 <button class="btn-exportar" style="background:#4f46e5;" onclick="exportarAuditoriaNC('csv')"><i class="bi bi-file-earmark-text-fill"></i> CSV</button>
                 <button class="btn-exportar" style="background:#10b981;" onclick="exportarAuditoriaNC('excel')"><i class="bi bi-file-earmark-excel-fill"></i> Excel</button>
-                <button class="btn-exportar" style="background:#2563eb;" onclick="window.print()"><i class="bi bi-printer-fill"></i> Imprimir PDF</button>
+                <button class="btn-exportar" style="background:#2563eb;" onclick="abrirReporteImpresion()"><i class="bi bi-printer-fill"></i> Imprimir PDF</button>
             </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
@@ -159,8 +159,12 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                 <input type="text" id="filtro-tecnico" placeholder="Nombre del técnico..." style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px;" oninput="aplicarFiltrosLocal()">
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
-                <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Fecha de Solicitud</label>
-                <input type="date" id="filtro-fecha" style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px;" onchange="aplicarFiltrosLocal()">
+                <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Fecha Desde</label>
+                <input type="date" id="filtro-fecha-desde" style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px;" onchange="aplicarFiltrosLocal()">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Fecha Hasta</label>
+                <input type="date" id="filtro-fecha-hasta" style="border:1.5px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px;" onchange="aplicarFiltrosLocal()">
             </div>
         </div>
     </div>
@@ -191,6 +195,7 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                         'asunto' => $nc->asunto,
                         'tecnico' => $tecnicoNombreReal,
                         'orden' => $nc->orden->nro_orden ?? '',
+                        'nro_factura' => $nc->orden->nro_factura ?? '',
                         'estado' => $nc->estado,
                         'fecha' => \Carbon\Carbon::parse($nc->creado_en)->format('Y-m-d'),
                         'motivo_rechazo' => $nc->motivo_rechazo,
@@ -207,7 +212,10 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                                 <a href="{{ route('ordenes.editar', ['id' => $nc->orden_id]) }}" target="_blank" style="color:#2563eb;text-decoration:none;font-weight:600;" class="audit-orden">
                                     <i class="bi bi-eye me-1"></i>{{ $nc->orden->nro_orden }}
                                 </a>
-                                <div style="font-size:11px;color:#64748b;margin-top:4px;">{{ $nc->orden->sucursal->ciudad ?? '-' }}</div>
+                                @if($nc->orden->nro_factura)
+                                    <div style="font-size:11px;color:#0f172a;margin-top:2px;font-weight:600;">Factura: <span class="audit-factura">{{ $nc->orden->nro_factura }}</span></div>
+                                @endif
+                                <div style="font-size:11px;color:#64748b;margin-top:2px;">{{ $nc->orden->sucursal->ciudad ?? '-' }}</div>
                             @else
                                 -
                             @endif
@@ -293,7 +301,8 @@ window.aplicarFiltrosLocal = function() {
     const estado = document.getElementById('filtro-estado').value;
     const sucursal = document.getElementById('filtro-sucursal').value;
     const tecnico = document.getElementById('filtro-tecnico').value.toLowerCase().trim();
-    const fecha = document.getElementById('filtro-fecha').value;
+    const fechaDesde = document.getElementById('filtro-fecha-desde').value;
+    const fechaHasta = document.getElementById('filtro-fecha-hasta').value;
     
     let count = 0;
     _allSolicitudes.forEach(s => {
@@ -302,13 +311,17 @@ window.aplicarFiltrosLocal = function() {
         const matchQ = !q || (
             d.nro_solicitud.toLowerCase().includes(q) ||
             d.asunto.toLowerCase().includes(q) ||
-            d.orden.toLowerCase().includes(q)
+            d.orden.toLowerCase().includes(q) ||
+            (d.nro_factura && d.nro_factura.toLowerCase().includes(q))
         );
         
         const matchEstado = !estado || d.estado.toUpperCase() === estado;
         const matchSucursal = !sucursal || String(d.sucursal_id) === sucursal;
         const matchTecnico = !tecnico || d.tecnico.toLowerCase().includes(tecnico);
-        const matchFecha = !fecha || d.fecha === fecha;
+        
+        let matchFecha = true;
+        if (fechaDesde && d.fecha < fechaDesde) matchFecha = false;
+        if (fechaHasta && d.fecha > fechaHasta) matchFecha = false;
         
         if (matchQ && matchEstado && matchSucursal && matchTecnico && matchFecha) {
             s.element.style.display = '';
@@ -416,6 +429,26 @@ window.procesarNC = async function(estado) {
     } catch(e) { alert('Error de conexión.'); }
 }
 
+@verbatim
+function cargarExcelJS() {
+    return new Promise((resolve, reject) => {
+        if (window.ExcelJS) { resolve(); return; }
+        const urls = [
+            'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+            'https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js'
+        ];
+        let i = 0;
+        function tryNext() {
+            if (i >= urls.length) { reject(new Error('No se pudo cargar ExcelJS')); return; }
+            const s = document.createElement('script'); s.src = urls[i++];
+            s.onload = () => window.ExcelJS ? resolve() : tryNext();
+            s.onerror = tryNext;
+            document.head.appendChild(s);
+        }
+        tryNext();
+    });
+}
+
 window.exportarAuditoriaNC = function(tipo) {
     const rows = Array.from(document.querySelectorAll('.nc-row')).filter(row => row.style.display !== 'none');
     
@@ -424,32 +457,243 @@ window.exportarAuditoriaNC = function(tipo) {
         return;
     }
 
-    let csvContent = "\uFEFF"; // BOM para caracteres UTF-8 en Excel
-    const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Tecnico Solicitante", "Orden Relacionada", "Estado"];
-    csvContent += headers.join(",") + "\r\n";
+    if (tipo === 'csv') {
+        let csvContent = "\uFEFF"; // BOM para caracteres UTF-8 en Excel
+        const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Tecnico Solicitante", "Orden Relacionada", "Factura", "Estado"];
+        csvContent += headers.join(",") + "\r\n";
 
-    rows.forEach(row => {
-        const nroSol = row.querySelector('.audit-nro-sol').innerText.trim();
-        const asunto = row.querySelector('.audit-asunto').innerText.trim().replace(/"/g, '""');
-        const fecha = row.querySelector('.audit-fecha').innerText.trim();
-        const tecnico = row.querySelector('.audit-tecnico').innerText.trim();
-        const orden = row.querySelector('.audit-orden') ? row.querySelector('.audit-orden').innerText.trim() : '-';
-        const estado = row.querySelector('.audit-estado').innerText.trim();
+        rows.forEach(row => {
+            const nroSol = row.querySelector('.audit-nro-sol').innerText.trim();
+            const asunto = row.querySelector('.audit-asunto').innerText.trim().replace(/"/g, '""');
+            const fecha = row.querySelector('.audit-fecha').innerText.trim();
+            const tecnico = row.querySelector('.audit-tecnico').innerText.trim();
+            const orden = row.querySelector('.audit-orden') ? row.querySelector('.audit-orden').innerText.trim() : '-';
+            const factura = row.querySelector('.audit-factura') ? row.querySelector('.audit-factura').innerText.trim() : '-';
+            const estado = row.querySelector('.audit-estado').innerText.trim();
 
-        const rowData = [nroSol, asunto, fecha, tecnico, orden, estado];
-        csvContent += rowData.map(val => `"${val}"`).join(",") + "\r\n";
-    });
+            const rowData = [nroSol, asunto, fecha, tecnico, orden, factura, estado];
+            csvContent += rowData.map(val => `"${val}"`).join(",") + "\r\n";
+        });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    
-    link.setAttribute("download", `auditoria_notas_credito_${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `auditoria_notas_credito_${new Date().toISOString().slice(0,10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        // XLSX ENTERPRISE con ExcelJS
+        const btn = document.querySelector('button[onclick="exportarAuditoriaNC(\'excel\')"]');
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando...';
+
+        cargarExcelJS().then(async () => {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'SGN - Novitecnologia';
+            wb.created = new Date();
+
+            const ws = wb.addWorksheet('Auditoría NC', {
+                views: [{ showGridLines: true }]
+            });
+
+            // Definición de Anchos de Columna
+            ws.columns = [
+                { width: 16 }, // Nro. Solicitud
+                { width: 35 }, // Asunto
+                { width: 14 }, // Fecha
+                { width: 28 }, // Técnico Solicitante
+                { width: 18 }, // Orden Relacionada
+                { width: 18 }, // Factura
+                { width: 15 }  // Estado
+            ];
+
+            const C = {
+                azulO: '1E3A8A', azul: '1E40AF', azulL: 'DBEAFE', azulXL: 'EFF6FF',
+                verdeO: '065F46', verde: '166534', verdeL: 'DCFCE7', verdeXL: 'ECFDF5',
+                ambar: '854D0E', ambarL: 'FEF9C3', rojo: '991B1B', rojoL: 'FEE2E2',
+                gris: 'F8FAFC', grisMed: 'E2E8F0', grisOsc: '64748B', blanco: 'FFFFFF', negro: '0F172A'
+            };
+
+            const fl = color => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + color } });
+            const bd = (color = 'E2E8F0') => {
+                const borderStyle = { style: 'thin', color: { argb: 'FF' + color } };
+                return { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+            };
+            const fn = (bold, size, color, extra = {}) => Object.assign({ name: 'Arial', bold: !!bold, size: size || 10, color: { argb: 'FF' + (color || C.negro) } }, extra);
+            const al = (h = 'left', v = 'middle') => ({ horizontal: h, vertical: v });
+
+            // 1. Fila de Título
+            ws.mergeCells('A1:G1');
+            const t1 = ws.getCell('A1');
+            t1.value = 'REPORTE DE AUDITORÍA — NOTAS DE CRÉDITO';
+            t1.fill = fl(C.azulO);
+            t1.font = fn(true, 14, C.blanco);
+            t1.alignment = al('center');
+            ws.getRow(1).height = 30;
+
+            // 2. Fila de Metadatos
+            ws.mergeCells('A2:G2');
+            const t2 = ws.getCell('A2');
+            t2.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   Registros: ${rows.length}`;
+            t2.fill = fl(C.azulL);
+            t2.font = fn(false, 10, C.azulO, { italic: true });
+            t2.alignment = al('center');
+            ws.getRow(2).height = 16;
+
+            // Calcular KPIs
+            let aprobadas = 0, pendientes = 0, rechazadas = 0;
+            const dataRows = rows.map(row => {
+                const nroSol = row.querySelector('.audit-nro-sol').innerText.trim();
+                const asunto = row.querySelector('.audit-asunto').innerText.trim();
+                const fecha = row.querySelector('.audit-fecha').innerText.trim();
+                const tecnico = row.querySelector('.audit-tecnico').innerText.trim();
+                const orden = row.querySelector('.audit-orden') ? row.querySelector('.audit-orden').innerText.trim() : '-';
+                const factura = row.querySelector('.audit-factura') ? row.querySelector('.audit-factura').innerText.trim() : '-';
+                const estado = row.querySelector('.audit-estado').innerText.trim();
+
+                const stUpper = estado.toUpperCase();
+                if (stUpper === 'APROBADA') aprobadas++;
+                else if (stUpper === 'RECHAZADA') rechazadas++;
+                else pendientes++;
+
+                return [nroSol, asunto, fecha, tecnico, orden, factura, estado];
+            });
+
+            const total = rows.length;
+            const pp = n => ((n / total) * 100).toFixed(1) + '%';
+
+            // Definir todas las celdas en el bloque de KPIs (Columnas A a G, filas 4 a 6) con sus fills y borders
+            const kpiFills = {
+                A: { bg: C.azulXL }, B: { bg: C.azulXL },
+                C: { bg: C.verdeL }, D: { bg: C.verdeL },
+                E: { bg: C.ambarL },
+                F: { bg: C.rojoL }, G: { bg: C.rojoL }
+            };
+
+            for (let r = 4; r <= 6; r++) {
+                ws.getRow(r).height = (r === 5) ? 28 : 14;
+                ['A','B','C','D','E','F','G'].forEach(col => {
+                    const cell = ws.getCell(`${col}${r}`);
+                    cell.fill = fl(kpiFills[col].bg);
+                    cell.border = bd();
+                });
+            }
+
+            // Ahora combinar y definir valores, fuentes y alineaciones para las celdas principales del KPI
+            ws.mergeCells('A4:B4'); ws.getCell('A4').value = 'TOTAL SOLICITUDES'; ws.getCell('A4').font = fn(true, 8, C.azul); ws.getCell('A4').alignment = al('center');
+            ws.mergeCells('A5:B5'); ws.getCell('A5').value = total;              ws.getCell('A5').font = fn(true, 16, C.azul); ws.getCell('A5').alignment = al('center');
+            ws.mergeCells('A6:B6'); ws.getCell('A6').value = 'Registros Filtrados'; ws.getCell('A6').font = fn(false, 9, C.azul); ws.getCell('A6').alignment = al('center');
+
+            ws.mergeCells('C4:D4'); ws.getCell('C4').value = 'APROBADAS';         ws.getCell('C4').font = fn(true, 8, C.verde); ws.getCell('C4').alignment = al('center');
+            ws.mergeCells('C5:D5'); ws.getCell('C5').value = aprobadas;          ws.getCell('C5').font = fn(true, 16, C.verde); ws.getCell('C5').alignment = al('center');
+            ws.mergeCells('C6:D6'); ws.getCell('C6').value = `${pp(aprobadas)} del total`; ws.getCell('C6').font = fn(false, 9, C.verde); ws.getCell('C6').alignment = al('center');
+
+            ws.getCell('E4').value = 'PENDIENTES'; ws.getCell('E4').font = fn(true, 8, C.ambar); ws.getCell('E4').alignment = al('center');
+            ws.getCell('E5').value = pendientes;   ws.getCell('E5').font = fn(true, 16, C.ambar); ws.getCell('E5').alignment = al('center');
+            ws.getCell('E6').value = pp(pendientes); ws.getCell('E6').font = fn(false, 9, C.ambar); ws.getCell('E6').alignment = al('center');
+
+            ws.mergeCells('F4:G4'); ws.getCell('F4').value = 'RECHAZADAS';         ws.getCell('F4').font = fn(true, 8, C.rojo); ws.getCell('F4').alignment = al('center');
+            ws.mergeCells('F5:G5'); ws.getCell('F5').value = rechazadas;          ws.getCell('F5').font = fn(true, 16, C.rojo); ws.getCell('F5').alignment = al('center');
+            ws.mergeCells('F6:G6'); ws.getCell('F6').value = pp(rechazadas);       ws.getCell('F6').font = fn(false, 9, C.rojo); ws.getCell('F6').alignment = al('center');
+
+            // Fila de separación
+            ws.getRow(7).height = 10;
+
+            // 3. Fila de Encabezados
+            const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Técnico Solicitante", "Orden Relacionada", "Factura", "Estado"];
+            ws.getRow(8).height = 22;
+            headers.forEach((h, idx) => {
+                const cell = ws.getCell(8, idx + 1);
+                cell.value = h;
+                cell.fill = fl(C.azulO);
+                cell.font = fn(true, 10, C.blanco);
+                cell.alignment = al('center');
+                cell.border = bd('1D4ED8');
+            });
+            ws.autoFilter = 'A8:G8';
+
+            // 4. Datos
+            const EC = {
+                'PENDIENTE': { bg: C.ambarL, fg: C.ambar },
+                'APROBADA': { bg: C.verdeL, fg: C.verde },
+                'RECHAZADA': { bg: C.rojoL, fg: C.rojo }
+            };
+
+            dataRows.forEach((rData, idx) => {
+                const rNum = idx + 9;
+                const row = ws.getRow(rNum);
+                row.height = 16;
+                const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
+
+                rData.forEach((val, colIdx) => {
+                    const cell = row.getCell(colIdx + 1);
+                    cell.value = val;
+                    cell.border = bd();
+                    cell.font = fn(false, 9, C.negro);
+                    cell.alignment = al('left', 'middle');
+                    cell.fill = fl(bgBase);
+
+                    if (colIdx === 0) {
+                        cell.font = fn(true, 9, C.azul, { name: 'Courier New' });
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 2) {
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 4 || colIdx === 5) {
+                        cell.font = fn(true, 9, colIdx === 4 ? C.azul : C.negro);
+                        cell.alignment = al('center', 'middle');
+                    } else if (colIdx === 6) {
+                        const stateUpper = val.toUpperCase();
+                        const stStyle = EC[stateUpper] || { bg: C.gris, fg: C.grisOsc };
+                        cell.fill = fl(stStyle.bg);
+                        cell.font = fn(true, 8, stStyle.fg);
+                        cell.alignment = al('center', 'middle');
+                    }
+                });
+            });
+
+            // Guardar
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `auditoria_notas_credito_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }).catch(err => {
+            alert('Error al generar Excel: ' + err.message);
+        }).finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        });
+    }
+};
+@endverbatim
+
+window.abrirReporteImpresion = function() {
+    const q = document.getElementById('filtro-q').value.trim();
+    const estado = document.getElementById('filtro-estado').value;
+    const sucursal = document.getElementById('filtro-sucursal').value;
+    const tecnico = document.getElementById('filtro-tecnico').value.trim();
+    const desde = document.getElementById('filtro-fecha-desde').value;
+    const hasta = document.getElementById('filtro-fecha-hasta').value;
+
+    const params = new URLSearchParams();
+    if (q) params.append('q', q);
+    if (estado) params.append('estado', estado);
+    if (sucursal) params.append('sucursal_id', sucursal);
+    if (tecnico) params.append('tecnico', tecnico);
+    if (desde) params.append('desde', desde);
+    if (hasta) params.append('hasta', hasta);
+
+    const url = '{{ route("notas_credito.imprimir_reporte") }}?' + params.toString();
+    window.open(url, '_blank');
 }
 
 let _ncaPager = null;

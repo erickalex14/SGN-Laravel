@@ -1,11 +1,13 @@
 <?php
 
 namespace App\Services\Identity;
-use App\Repositories\Identity\UsuarioRepository;
+
 use App\DTOs\Identity\UsuarioDTO;
 use App\Models\Identity\Usuario;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\Identity\UsuarioRepository;
 use Exception;
+use Illuminate\Support\Facades\Log;
+
 class UsuarioService
 {
     protected UsuarioRepository $repository;
@@ -18,7 +20,7 @@ class UsuarioService
     /**
      * @throws Exception
      */
-    //Guardar un nuevo usuario
+    // Guardar un nuevo usuario
     public function guardarUsuario(UsuarioDTO $dto): string
     {
         if ($this->repository->existeUsuario($dto->usuario, $dto->id)) {
@@ -27,28 +29,32 @@ class UsuarioService
 
         if ($dto->id) {
             $usuario = $this->repository->buscarPorId($dto->id);
-            if (!$usuario) throw new Exception("Usuario no encontrado.");
-            $mensaje = "Usuario actualizado exitosamente.";
+            if (! $usuario) {
+                throw new Exception('Usuario no encontrado.');
+            }
+            $mensaje = 'Usuario actualizado exitosamente.';
 
-            if (!empty($dto->clave)) {
-                $usuario->clave = $dto->clave; // Legacy: Se guarda tal cual
+            if (! empty($dto->clave)) {
+                $usuario->establecerClaveSegura($dto->clave);
             }
         } else {
-            $usuario = new Usuario();
-            $usuario->clave = $dto->clave; // Requerido en creacion
-            $mensaje = "Usuario creado exitosamente.";
+            $usuario = new Usuario;
+            $usuario->establecerClaveSegura((string) $dto->clave);
+            $mensaje = 'Usuario creado exitosamente.';
         }
 
-        $usuario->usuario        = $dto->usuario;
+        $usuario->usuario = $dto->usuario;
         $usuario->nombre_tecnico = $dto->nombre_tecnico;
-        $usuario->telefono       = $dto->telefono;
-        $usuario->correo_tec     = $dto->correo_tec;
-        $usuario->rol_id         = $dto->rol_id;
-        $usuario->grupo_id       = $dto->grupo_id;
-        $usuario->sucursal_id    = $dto->sucursal_id;
-        $usuario->acceso_nc      = $dto->acceso_nc;
+        $usuario->telefono = $dto->telefono;
+        $usuario->correo_tec = $dto->correo_tec;
+        $usuario->rol_id = $dto->rol_id;
+        $usuario->grupo_id = $dto->grupo_id;
+        $usuario->sucursal_id = $dto->sucursal_id;
+        $usuario->acceso_nc = $dto->acceso_nc;
         // Al crear, se marca activo por defecto
-        if (!$dto->id) $usuario->activo = 1;
+        if (! $dto->id) {
+            $usuario->activo = 1;
+        }
 
         $usuario->save();
 
@@ -63,12 +69,15 @@ class UsuarioService
     public function toogleActivo(int $id): bool
     {
         $usuario = $this->repository->buscarPorId($id);
-        if (!$usuario) throw new Exception("Usuario no encontrado.");
+        if (! $usuario) {
+            throw new Exception('Usuario no encontrado.');
+        }
 
-        $usuario->activo = !$usuario->activo;
+        $usuario->activo = ! $usuario->activo;
         $usuario->save();
 
-        Log::info('Usuario ' . ($usuario->activo ? 'activado' : 'desactivado'), ['usuario_id' => $usuario->id]);
+        Log::info('Usuario '.($usuario->activo ? 'activado' : 'desactivado'), ['usuario_id' => $usuario->id]);
+
         return $usuario->activo;
     }
 }

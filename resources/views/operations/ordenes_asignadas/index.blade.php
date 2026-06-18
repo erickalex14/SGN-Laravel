@@ -228,9 +228,13 @@
     $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
     $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $tienePermisoEditar = session('es_superadmin') === true 
+        || !empty(session('permisos', [])['ordenes_editar']['editar']) 
+        || !empty(session('permisos', [])['ordenes_editar']['ver']);
     $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || $tienePermisoEditar;
 @endphp
 <script>
 const PUEDE_EDITAR = @json($esAdminOAdminMaster);

@@ -2,20 +2,24 @@
 
 namespace App\Models\Identity;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Models\Directory\Sucursal;
 use App\Models\Directory\Cas;
+use App\Models\Directory\Sucursal;
 use App\Models\Operations\Orden;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Hash;
 
 class Usuario extends Authenticatable
 {
     protected $table = 'usuarios';
+
     protected $primaryKey = 'id';
+
     public $timestamps = false;
 
     protected $fillable = [
         'usuario',
         'clave', // Legacy naming, se debe mantener
+        'clave_hash',
         'nombre_tecnico',
         'telefono',
         'correo_tec',
@@ -23,11 +27,12 @@ class Usuario extends Authenticatable
         'rol_id',
         'grupo_id',
         'sucursal_id',
-        'activo'
+        'activo',
     ];
 
     protected $hidden = [
         'clave',
+        'clave_hash',
     ];
 
     protected $casts = [
@@ -68,5 +73,27 @@ class Usuario extends Authenticatable
     public function ordenesTecnico()
     {
         return $this->hasMany(Orden::class, 'tecnico_id', 'id');
+    }
+
+    public function validarClave(string $clave): bool
+    {
+        $claveNormalizada = trim($clave);
+
+        if ($this->clave_hash !== null && $this->clave_hash !== '') {
+            return Hash::check($claveNormalizada, $this->clave_hash);
+        }
+
+        return (string) $this->clave === $claveNormalizada;
+    }
+
+    public function usaClaveLegacy(): bool
+    {
+        return ($this->clave_hash === null || $this->clave_hash === '') && (string) $this->clave !== '';
+    }
+
+    public function establecerClaveSegura(string $clave): void
+    {
+        $this->clave_hash = Hash::make(trim($clave));
+        $this->clave = '';
     }
 }

@@ -2,30 +2,40 @@
 
 namespace App\Http\Controllers\Operations;
 
+use App\DTOs\Operations\ActualizarOrdenDTO;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Operations\GuardarEdicionOrdenRequest;
 use App\Http\Requests\Operations\GuardarEdicionOrdenEmpresaRequest;
-use App\Services\Operations\ActualizarOrdenService;
+use App\Http\Requests\Operations\GuardarEdicionOrdenRequest;
+use App\Models\Directory\SucursalCliente;
+use App\Repositories\Directory\CasRepository;
+use App\Repositories\Directory\SucursalClienteRepository;
+use App\Repositories\Identity\UsuarioRepository;
+use App\Repositories\Inventory\MarcaRepository;
+use App\Repositories\Inventory\ProductoRepository;
+use App\Repositories\Inventory\TipoDispositivoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\PrecioEstandarRepository;
-use App\Repositories\Inventory\ProductoRepository;
 use App\Repositories\Operations\TipoServicioRepository;
-use App\Repositories\Identity\UsuarioRepository;
-use App\DTOs\Operations\ActualizarOrdenDTO;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use App\Services\Operations\ActualizarOrdenService;
 use Exception;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class EdicionOrdenController extends Controller
 {
     protected ActualizarOrdenService $service;
+
     protected OrdenRepository $ordenRepo;
+
     protected PrecioEstandarRepository $precioRepo;
+
     protected ProductoRepository $productoRepo;
+
     protected TipoServicioRepository $tipoServicioRepo;
+
     protected UsuarioRepository $usuarioRepo;
 
     public function __construct(
@@ -46,13 +56,13 @@ class EdicionOrdenController extends Controller
 
     public function edit(int $id): View
     {
-        if (!$this->esUsuarioAdminOAdminMaster()) {
+        if (! $this->esUsuarioAdminOAdminMaster()) {
             abort(403, 'Acceso denegado: Solo los administradores pueden editar órdenes.');
         }
 
         $orden = $this->ordenRepo->obtenerOrdenCompleta($id);
 
-        if (!$orden) {
+        if (! $orden) {
             abort(404, 'La orden solicitada no fue encontrada.');
         }
 
@@ -60,9 +70,9 @@ class EdicionOrdenController extends Controller
         $productos = $this->productoRepo->obtenerTodos();
         $tiposServicio = $this->tipoServicioRepo->obtenerTodos()->where('activo', 1);
 
-        $casRepo = app(\App\Repositories\Directory\CasRepository::class);
+        $casRepo = app(CasRepository::class);
         $cas = $casRepo->obtenerActivos();
-        $sucursalesCliente = app(\App\Repositories\Directory\SucursalClienteRepository::class)->obtenerTodas();
+        $sucursalesCliente = app(SucursalClienteRepository::class)->obtenerTodas();
 
         $verTodosTecnicos = (bool) session('es_superadmin', false)
             || $this->tienePermisoSesion('usuarios_crear', 'ver')
@@ -75,16 +85,29 @@ class EdicionOrdenController extends Controller
             (int) session('tecnico_id')
         );
 
-        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio', 'cas', 'sucursalesCliente', 'tecnicos'));
+        $marcas = app(MarcaRepository::class)->obtenerTodas();
+        $tiposDispositivo = app(TipoDispositivoRepository::class)->obtenerTodos();
+
+        return view('operations.ordenes.editar', compact('orden', 'precios', 'productos', 'tiposServicio', 'cas', 'sucursalesCliente', 'tecnicos', 'marcas', 'tiposDispositivo'));
     }
 
     public function update(GuardarEdicionOrdenRequest $request): JsonResponse
     {
-        if (!$this->esUsuarioAdminOAdminMaster()) {
+        if (! $this->esUsuarioAdminOAdminMaster()) {
             return response()->json(['ok' => false, 'error' => 'Acceso denegado: Solo administradores pueden realizar esta acción.'], 403);
         }
 
         try {
+            $nroSucursalCliente = $request->input('nro_sucursal_cliente') ? (string) $request->input('nro_sucursal_cliente') : null;
+            if ($nroSucursalCliente !== null && $nroSucursalCliente !== '') {
+                if (is_numeric($nroSucursalCliente)) {
+                    $suc = SucursalCliente::where('numero', (int) $nroSucursalCliente)->first();
+                    if ($suc) {
+                        $nroSucursalCliente = $suc->codigo;
+                    }
+                }
+            }
+
             $dto = new ActualizarOrdenDTO(
                 (int) $request->input('orden_id'),
                 (int) $request->input('equipo_id'),
@@ -97,28 +120,39 @@ class EdicionOrdenController extends Controller
                 $request->input('fecha_prometido'),
                 session('tecnico_id'),
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
-                
+
                 $request->input('cli_identificacion'),
                 $request->input('cli_nombres'),
                 $request->input('cli_apellidos'),
                 $request->input('cli_telefono'),
                 $request->input('cli_correo'),
                 $request->input('cli_direccion'),
-                
+
                 $request->input('nro_factura'),
                 $request->input('nro_factura_2'),
-                $request->input('nro_sucursal_cliente') ? (int) $request->input('nro_sucursal_cliente') : null,
+                $nroSucursalCliente,
                 $request->input('fecha_facturacion'),
-                
+
                 $request->input('series', []),
-                (int) $request->input('tecnico_id')
+                (int) $request->input('tecnico_id'),
+
+                // Nuevos campos de equipo
+                $request->input('eq_tipo'),
+                $request->input('eq_marca'),
+                $request->input('eq_modelo'),
+                $request->input('eq_contrasena'),
+
+                // Nuevos campos de orden
+                $request->input('motivo_ingreso'),
+                $request->input('garantia_tipo'),
+                $request->input('observacion_orden')
             );
 
             $this->service->actualizarOrden($dto);
 
             return response()->json([
-                'ok'      => true,
-                'mensaje' => 'Orden actualizada correctamente.'
+                'ok' => true,
+                'mensaje' => 'Orden actualizada correctamente.',
             ]);
 
         } catch (Exception $e) {
@@ -166,10 +200,10 @@ class EdicionOrdenController extends Controller
                     }
                 });
 
-            if (!$esSuperadmin && $sucursalId > 0) {
+            if (! $esSuperadmin && $sucursalId > 0) {
                 $query->where('vo.sucursal_id', $sucursalId);
             }
-            if (!$puedeVerTodo && $tecnicoId > 0) {
+            if (! $puedeVerTodo && $tecnicoId > 0) {
                 $query->where('vo.tecnico_id', $tecnicoId);
             }
 
@@ -179,20 +213,20 @@ class EdicionOrdenController extends Controller
         }
 
         return response()->json([
-            'ok'      => true,
-            'ordenes' => $resultados
+            'ok' => true,
+            'ordenes' => $resultados,
         ]);
     }
 
     public function editEmpresa(int $id): View
     {
-        if (!$this->esUsuarioAdminOAdminMaster()) {
+        if (! $this->esUsuarioAdminOAdminMaster()) {
             abort(403, 'Acceso denegado: Solo los administradores pueden editar órdenes.');
         }
 
         $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta($id);
 
-        if (!$orden) {
+        if (! $orden) {
             abort(404, 'La orden corporativa solicitada no fue encontrada.');
         }
 
@@ -207,15 +241,18 @@ class EdicionOrdenController extends Controller
             (int) session('tecnico_id')
         );
 
-        $casRepo = app(\App\Repositories\Directory\CasRepository::class);
+        $casRepo = app(CasRepository::class);
         $cas = $casRepo->obtenerActivos();
 
-        return view('operations.ordenes.editar_empresa', compact('orden', 'tecnicos', 'cas'));
+        $marcas = app(MarcaRepository::class)->obtenerTodas();
+        $tiposDispositivo = app(TipoDispositivoRepository::class)->obtenerTodos();
+
+        return view('operations.ordenes.editar_empresa', compact('orden', 'tecnicos', 'cas', 'marcas', 'tiposDispositivo'));
     }
 
     public function updateEmpresa(GuardarEdicionOrdenEmpresaRequest $request): JsonResponse
     {
-        if (!$this->esUsuarioAdminOAdminMaster()) {
+        if (! $this->esUsuarioAdminOAdminMaster()) {
             return response()->json(['ok' => false, 'error' => 'Acceso denegado: Solo administradores pueden realizar esta acción.'], 403);
         }
 
@@ -223,8 +260,8 @@ class EdicionOrdenController extends Controller
             $this->service->actualizarOrdenEmpresa($request->all(), (int) session('tecnico_id'));
 
             return response()->json([
-                'ok'      => true,
-                'mensaje' => 'Orden de empresa actualizada correctamente.'
+                'ok' => true,
+                'mensaje' => 'Orden de empresa actualizada correctamente.',
             ]);
 
         } catch (Exception $e) {
@@ -236,14 +273,23 @@ class EdicionOrdenController extends Controller
     {
         $permisos = (array) session('permisos', []);
         $acciones = (array) ($permisos[$modulo] ?? []);
+
         return (bool) ($acciones[$accion] ?? false);
     }
 
     private function esUsuarioAdminOAdminMaster(): bool
     {
         $usuario = auth()->user();
-        if (!$usuario) {
+        if (! $usuario) {
             return false;
+        }
+
+        if (session('es_superadmin') === true) {
+            return true;
+        }
+
+        if ($this->tienePermisoSesion('ordenes_editar', 'editar') || $this->tienePermisoSesion('ordenes_editar', 'ver')) {
+            return true;
         }
 
         $rol = $usuario->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';

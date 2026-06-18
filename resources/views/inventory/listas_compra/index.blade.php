@@ -135,7 +135,10 @@
                         @forelse($listas as $lst)
                             @php
                                 $estadoRaw = trim((string) ($lst->estado ?? ''));
-                                $estadoUi = $estadoRaw === 'Pendiente' ? 'GENERADA' : strtoupper($estadoRaw);
+                                $estadoUi = match ($estadoRaw) {
+                                    'Pendiente', 'Generada', 'Completada', 'Aprobada' => 'APROBADA',
+                                    default => strtoupper($estadoRaw),
+                                };
                             @endphp
                             <tr data-row="lc-historial">
                                 <td><span class="badge-lc">{{ $lst->nro_lista }}</span></td>

@@ -3,14 +3,20 @@
 namespace App\Repositories\Operations;
 
 use App\Models\Operations\SolicitudNc;
-use App\Models\Operations\Orden;
 use Illuminate\Database\Eloquent\Collection;
 
 class NotaCreditoRepository
 {
-    public function obtenerTodas(): Collection
+    public function obtenerTodas(?int $sucursalId = null): Collection
     {
-        return SolicitudNc::with(['orden.informes', 'orden.sucursal', 'tecnico'])->orderBy('creado_en', 'desc')->get();
+        $query = SolicitudNc::with(['orden.informes', 'orden.sucursal', 'tecnico']);
+        if ($sucursalId !== null && $sucursalId > 0) {
+            $query->whereHas('orden', function ($o) use ($sucursalId) {
+                $o->where('sucursal_id', $sucursalId);
+            });
+        }
+
+        return $query->orderBy('creado_en', 'desc')->get();
     }
 
     public function obtenerPorTecnico(int $tecnicoId): Collection
@@ -60,11 +66,18 @@ class NotaCreditoRepository
             $secuencial = SolicitudNc::count() + 1;
         }
 
-        return 'SOL-NC-' . str_pad((string) $secuencial, 6, '0', STR_PAD_LEFT);
+        return 'SOL-NC-'.str_pad((string) $secuencial, 6, '0', STR_PAD_LEFT);
     }
 
-    public function contarSolicitudesNcPendientes(): int
+    public function contarSolicitudesNcPendientes(?int $sucursalId = null): int
     {
-        return SolicitudNc::where('estado', 'Pendiente')->count();
+        $query = SolicitudNc::where('estado', 'Pendiente');
+        if ($sucursalId !== null && $sucursalId > 0) {
+            $query->whereHas('orden', function ($o) use ($sucursalId) {
+                $o->where('sucursal_id', $sucursalId);
+            });
+        }
+
+        return $query->count();
     }
 }

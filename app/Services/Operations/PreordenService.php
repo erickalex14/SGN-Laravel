@@ -4,16 +4,18 @@ namespace App\Services\Operations;
 
 use App\DTOs\Operations\IngresarPreordenDTO;
 use App\DTOs\Operations\VerificarPreordenDTO;
+use App\Models\Operations\Orden;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\PreordenRepository;
+use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB;
-use Exception;
 
 class PreordenService
 {
     protected PreordenRepository $repository;
+
     protected OrdenRepository $ordenRepository;
 
     public function __construct(PreordenRepository $repository, OrdenRepository $ordenRepository)
@@ -35,19 +37,19 @@ class PreordenService
      */
     public function ingresar(IngresarPreordenDTO $dto): array
     {
-        if (!$dto->es_superadmin && $dto->sucursal_sesion_id > 0) {
+        if (! $dto->es_superadmin && $dto->sucursal_sesion_id > 0) {
             $tecnicoValido = $this->repository->tecnicoValidoEnSucursal($dto->tecnico_id, $dto->sucursal_sesion_id);
-            if (!$tecnicoValido) {
+            if (! $tecnicoValido) {
                 throw new Exception('El tecnico no pertenece a tu sucursal.');
             }
         }
 
         $resultado = DB::transaction(function () use ($dto) {
             $preorden = $this->repository->obtenerPreordenConBloqueo($dto->preorden_id);
-            if (!$preorden) {
+            if (! $preorden) {
                 throw new Exception('Pre-orden no encontrada.');
             }
-            if (!empty($preorden->orden_id)) {
+            if (! empty($preorden->orden_id)) {
                 throw new Exception('Esta pre-orden ya fue ingresada.');
             }
 
@@ -62,14 +64,14 @@ class PreordenService
             $lockAdquirido = false;
             try {
                 $lockAdquirido = $this->repository->adquirirLockSecuenciaOrden($sucursalOrdenId);
-                if (!$lockAdquirido) {
+                if (! $lockAdquirido) {
                     throw new Exception('No se pudo obtener el lock. Intente de nuevo.');
                 }
 
                 $nroOrdenCandidato = preg_replace('/^PRE(OR)?-/i', '', (string) ($preorden->nro_preorden ?? ''));
                 $nroOrdenCandidato = trim((string) $nroOrdenCandidato);
                 $nroOrden = $this->ordenRepository->generarNumeroOrden($sucursalOrdenId);
-                if ($nroOrdenCandidato !== '' && !$this->repository->existeNumeroOrden($nroOrdenCandidato)) {
+                if ($nroOrdenCandidato !== '' && ! $this->repository->existeNumeroOrden($nroOrdenCandidato)) {
                     $nroOrden = $nroOrdenCandidato;
                 }
 
@@ -77,7 +79,7 @@ class PreordenService
                 $ciGenerica = ($ci === '' || preg_match('/^0+$/', $ci) === 1);
 
                 $cliente = null;
-                if (!$ciGenerica) {
+                if (! $ciGenerica) {
                     $cliente = $this->repository->buscarClientePorIdentificacion($ci);
                 }
 
@@ -137,7 +139,7 @@ class PreordenService
                     'nro_factura' => (string) ($preorden->nro_factura ?? ''),
                     'nro_factura_2' => '',
                     'motivo_ingreso' => 'Validacion de Garantia',
-                    'nro_sucursal_cliente' => $preorden->nro_sucursal_cliente ?: null,
+                    'nro_sucursal_cliente' => $preorden->sucursalCliente ? $preorden->sucursalCliente->codigo : null,
                     'estado_repuesto' => 'No requerido',
                     'nro_orden' => $nroOrden,
                     'estado_garantia' => 'Pendiente',
@@ -163,9 +165,9 @@ class PreordenService
         });
 
         try {
-            $ordenCompleta = \App\Models\Operations\Orden::find((int) $resultado['orden_id']);
+            $ordenCompleta = Orden::find((int) $resultado['orden_id']);
             if ($ordenCompleta) {
-                \App\Services\Operations\SgnMailService::enviarOrdenCreada($ordenCompleta);
+                SgnMailService::enviarOrdenCreada($ordenCompleta);
             }
         } catch (\Throwable $e) {
             Log::error('Error al enviar notificacion de nueva orden desde preorden', ['error' => $e->getMessage()]);
@@ -194,7 +196,7 @@ class PreordenService
 
     private function generarIdentificacionTemporal(): string
     {
-        return substr('0' . str_pad((string) (time() . random_int(100, 999)), 12, '0', STR_PAD_LEFT), 0, 13);
+        return substr('0'.str_pad((string) (time().random_int(100, 999)), 12, '0', STR_PAD_LEFT), 0, 13);
     }
 
     private function normalizarSerie(string $serie): string
@@ -204,7 +206,7 @@ class PreordenService
             $valor === '' ||
             preg_match('/^(s[\/\-]?n|sin[\s_\-]?(serie|numero|num)?|n[\/\-]?a|na|ninguna|none|no[\s_]?aplica|-)$/i', $valor)
         ) {
-            return 'SN-' . strtoupper(substr(md5(uniqid('', true)), 0, 8));
+            return 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
         }
 
         return strtoupper($valor);
@@ -221,16 +223,16 @@ class PreordenService
             $correoTecnico = $this->repository->obtenerCorreoTecnico($tecnicoId);
             $correosAdmin = $this->repository->obtenerCorreosAdministradores($sucursalId, $correoTecnico);
 
-            if (!$correoTecnico && empty($correosAdmin)) {
+            if (! $correoTecnico && empty($correosAdmin)) {
                 return;
             }
 
             $usuarioAccion = (string) (session('nombre') ?: session('usuario') ?: 'Usuario');
             if ($usuarioSesionId > 0 && $usuarioAccion === 'Usuario') {
-                $usuarioAccion = 'ID ' . $usuarioSesionId;
+                $usuarioAccion = 'ID '.$usuarioSesionId;
             }
 
-            $asunto = '[SGN] Nueva Orden (Pre-Orden): ' . $nroOrden;
+            $asunto = '[SGN] Nueva Orden (Pre-Orden): '.$nroOrden;
             $cuerpo = view('emails.preorden_creada', [
                 'nro_orden' => $nroOrden,
                 'motivo_ingreso' => $motivoIngreso,
@@ -240,7 +242,7 @@ class PreordenService
 
             $destinatario = $correoTecnico;
             $correosCc = $correosAdmin;
-            if (!$destinatario && !empty($correosCc)) {
+            if (! $destinatario && ! empty($correosCc)) {
                 $destinatario = array_shift($correosCc);
             }
 
@@ -249,7 +251,7 @@ class PreordenService
                     $message->to($destinatario);
                 }
 
-                if (!empty($correosCc)) {
+                if (! empty($correosCc)) {
                     $message->cc($correosCc);
                 }
 

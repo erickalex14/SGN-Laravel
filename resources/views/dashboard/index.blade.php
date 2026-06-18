@@ -61,6 +61,8 @@
 .badge-pending { background: #fffbeb; color: #b45309; }
 .tec-bar-wrap { width: 100px; height: 8px; background: #e2e8f0; border-radius: 6px; overflow: hidden; }
 .tec-bar { height: 8px; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 6px; }
+.tec-progress { display: flex; align-items: center; gap: 10px; min-width: 152px; }
+.tec-progress-label { font-size: 11px; font-weight: 700; color: #334155; min-width: 38px; }
 .chart-dom-wrap { position: relative; width: 100%; overflow: hidden; }
 .dash-error { display: none; margin-bottom: 18px; background: #fef2f2; border: 1.5px solid #fecaca; color: #991b1b; border-radius: 12px; padding: 12px 16px; font-size: 13.5px; font-weight: 600; }
 @media (max-width: 1280px) { .kpi-grid.admin { grid-template-columns: repeat(3, minmax(0, 1fr)); } .charts-row.cols-3 { grid-template-columns: 1fr; } .charts-row.cols-2 { grid-template-columns: 1fr; } }
@@ -93,7 +95,7 @@
             <div class="kpi-card"><div class="kpi-icon blue"><i class="bi bi-clipboard-check"></i></div><div><div class="kpi-val" id="t-mis-ordenes">0</div><div class="kpi-lbl">Mis ordenes</div></div></div>
             <div class="kpi-card"><div class="kpi-icon amber"><i class="bi bi-hourglass-split"></i></div><div><div class="kpi-val" id="t-pendientes">0</div><div class="kpi-lbl">Pendientes</div></div></div>
             <div class="kpi-card"><div class="kpi-icon purple"><i class="bi bi-tools"></i></div><div><div class="kpi-val" id="t-en-proceso">0</div><div class="kpi-lbl">En proceso</div></div></div>
-            <div class="kpi-card"><div class="kpi-icon green"><i class="bi bi-check2-circle"></i></div><div><div class="kpi-val" id="t-entregadas">0</div><div class="kpi-lbl">Entregadas</div></div></div>
+            <div class="kpi-card"><div class="kpi-icon green"><i class="bi bi-check2-circle"></i></div><div><div class="kpi-val" id="t-entregadas">0</div><div class="kpi-lbl">Resueltas</div></div></div>
         </div>
 
         <div class="res-wrap">
@@ -154,7 +156,7 @@
                 <div style="overflow:auto;">
                     <table class="tec-table">
                         <thead>
-                            <tr><th>Técnico</th><th>Total</th><th>Entregadas</th><th>Pendientes</th><th>Progreso</th></tr>
+                            <tr><th>Técnico</th><th>Total</th><th>Resueltas</th><th>Pendientes</th><th>Resolución</th></tr>
                         </thead>
                         <tbody id="g-tec-body"></tbody>
                     </table>
@@ -261,7 +263,7 @@ function renderTech(data) {
     setText('t-mis-ordenes', k.mis_ordenes ?? 0);
     setText('t-pendientes', k.pendientes ?? 0);
     setText('t-en-proceso', k.en_proceso ?? 0);
-    setText('t-entregadas', k.entregadas ?? 0);
+    setText('t-entregadas', k.resueltas ?? k.entregadas ?? 0);
 
     const tasa = Number(k.tasa_resolucion ?? 0);
     const color = tasa >= 75 ? '#10b981' : (tasa >= 50 ? '#f59e0b' : '#ef4444');
@@ -395,16 +397,15 @@ function renderAdmin(data) {
     setText('g-cas', `${k.cas_totales ?? 0} (${k.ordenes_cas ?? 0})`);
 
     const tecs = Array.isArray(data.tecnicos) ? data.tecnicos : [];
-    const maxTotal = tecs.length ? Math.max(...tecs.map(t => Number(t.total || 0))) : 1;
     $('g-tec-body').innerHTML = tecs.length
         ? tecs.map(t => {
-            const pct = maxTotal > 0 ? Math.round((Number(t.total || 0) / maxTotal) * 100) : 0;
+            const pct = Math.max(0, Math.min(100, Number(t.tasa_resolucion || 0)));
             return `<tr>
                 <td>${escapeHtml(t.nombre || '-')}</td>
                 <td><span class="badge-num badge-total">${Number(t.total || 0)}</span></td>
-                <td><span class="badge-num badge-ok">${Number(t.entregadas || 0)}</span></td>
+                <td><span class="badge-num badge-ok">${Number(t.resueltas || t.entregadas || 0)}</span></td>
                 <td><span class="badge-num badge-pending">${Number(t.pendientes || 0)}</span></td>
-                <td><div class="tec-bar-wrap"><div class="tec-bar" style="width:${pct}%"></div></div></td>
+                <td><div class="tec-progress"><div class="tec-bar-wrap"><div class="tec-bar" style="width:${pct}%"></div></div><span class="tec-progress-label">${pct}%</span></div></td>
             </tr>`;
         }).join('')
         : '<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:14px;">Sin datos de técnicos.</td></tr>';

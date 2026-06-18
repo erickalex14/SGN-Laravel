@@ -79,8 +79,22 @@ class ListaCompraController extends Controller
         abort_if(!$lista, 404);
 
         $items = $this->repository->obtenerItemsPorLista($id);
+        $tecnicoId = (int) session('tecnico_id', 0);
+        $esAdmin = $this->esAdminRepuestos();
+        $esPropietario = $tecnicoId > 0 && $items->contains(fn ($item) => (int) ($item->tecnico_id ?? 0) === $tecnicoId);
+        abort_unless($esAdmin || $esPropietario, 403);
+
         $totalCantidad = (int) $items->sum('cantidad');
 
         return view('inventory.listas_compra.imprimir', compact('lista', 'items', 'totalCantidad'));
+    }
+
+    private function esAdminRepuestos(): bool
+    {
+        $permisos = (array) session('permisos', []);
+
+        return (bool) session('es_superadmin', false)
+            || (($permisos['repuestos_admin']['ver'] ?? false) === true)
+            || (($permisos['repuestos_admin']['editar'] ?? false) === true);
     }
 }

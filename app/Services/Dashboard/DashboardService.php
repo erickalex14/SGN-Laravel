@@ -2,18 +2,21 @@
 
 namespace App\Services\Dashboard;
 
+use App\Repositories\Dashboard\DashboardRepository;
+use App\Repositories\Operations\NotaCreditoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\SolicitudRepuestoRepository;
-use App\Repositories\Operations\NotaCreditoRepository;
-use App\Repositories\Dashboard\DashboardRepository;
-use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class DashboardService
 {
     protected OrdenRepository $ordenRepo;
+
     protected SolicitudRepuestoRepository $repuestoRepo;
+
     protected NotaCreditoRepository $ncRepo;
+
     protected DashboardRepository $dashboardRepo;
 
     public function __construct(
@@ -33,14 +36,14 @@ class DashboardService
         try {
             $metricas = [
                 'mis_ordenes_activas' => $this->ordenRepo->contarOrdenesActivasPorTecnico($tecnicoId),
-                'equipos_reparados_mes' => $this->ordenRepo->contarEquiposReparadosMesActual()
+                'equipos_reparados_mes' => $this->ordenRepo->contarEquiposReparadosMesActual(),
             ];
 
             // Las metricas administrativas se cargan solo si el usuario tiene privilegios
             if ($esAdmin) {
                 $metricas['ordenes_activas_globales'] = $this->ordenRepo->contarOrdenesActivasGlobales();
                 $metricas['repuestos_pendientes'] = $this->repuestoRepo->contarSolicitudesPendientes();
-                $metricas['nc_pendientes'] = $this->ncRepo->contarSolicitudesNcPendientes();
+                $metricas['nc_pendientes'] = $this->ncRepo->contarSolicitudesNcPendientes($esSuperadmin ? null : $sucursalId);
 
                 $metricas['dashboard'] = $this->dashboardRepo->obtenerDatosGestion($esSuperadmin, $sucursalId);
             } else {

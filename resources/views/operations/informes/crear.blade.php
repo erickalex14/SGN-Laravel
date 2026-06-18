@@ -181,7 +181,7 @@
     <div class="ci-hdr">
         <div>
             <h2><i class="bi bi-file-earmark-plus" style="color:#2563eb;"></i>Crear / Editar Informe</h2>
-            <p>Busca la orden de servicio y redacta el informe tecnico.</p>
+            <p>{{ !empty($modoEdicionAdmin) ? 'Edita el informe tecnico seleccionado.' : 'Busca la orden de servicio y redacta el informe tecnico.' }}</p>
         </div>
         <a href="{{ route('informes.mis') }}" class="ci-btn-mis">
             <i class="bi bi-journal-text"></i>Mis Informes
@@ -347,9 +347,10 @@ window.onerror = function(msg, url, line, col, error) {
     'use strict';
 
     /*  Config  */
-    var URL_BUSCAR   = @json(route('informes.crear.buscar'));
+    var URL_BUSCAR   = @json(!empty($modoEdicionAdmin) ? route('informes.editar.buscar') : route('informes.crear.buscar'));
     var URL_VER      = @json(route('informes.ver'));
     var URL_GUARDAR  = @json(route('informes.store'));
+    var URL_ACTUALIZAR_BASE = @json(url('/operaciones/informes'));
     var URL_IMPRIMIR = @json(url('/operaciones/informes'));
     var CSRF         = @json(csrf_token());
     // Se añade soporte para evitar el error si el controlador no envía la variable, usando como respaldo el nombre del usuario autenticado
@@ -357,6 +358,8 @@ window.onerror = function(msg, url, line, col, error) {
     var LOGO_URL     = @json(asset('Novitecpdf.png'));
     var FECHA_HOY    = @json(date('Y-m-d'));
     var ORDEN_ID_PRECARGADO = @json((int)$ordenIdPrecargado);
+    var INFORME_ID_EDICION = @json((int)($informeIdEdicion ?? 0));
+    var MODO_EDICION_ADMIN = @json((bool)($modoEdicionAdmin ?? false));
 
     /* Estado  */
     var _orden    = null;
@@ -428,6 +431,10 @@ window.onerror = function(msg, url, line, col, error) {
                     elRes.style.display = 'flex';
                     return;
                 }
+                if (tipo === 'id' && (data.ordenes || []).length === 1) {
+                    _seleccionarOrden(data.ordenes[0]);
+                    return;
+                }
                 _renderResultados(data.ordenes || []);
             })
             .catch(function () {
@@ -466,9 +473,17 @@ window.onerror = function(msg, url, line, col, error) {
     }
 
     /*  Seleccionar orden  */
+    function _debeBloquearEstado(estadoOrden) {
+        var estado = String(estadoOrden || '').toLowerCase().trim();
+        if (MODO_EDICION_ADMIN && estado === 'nota de credito') {
+            return false;
+        }
+        return ESTADOS_BLOQUEO.indexOf(estado) !== -1;
+    }
+
     function _seleccionarOrden(o) {
         _orden     = o;
-        _bloqueado = ESTADOS_BLOQUEO.indexOf((o.estado_orden || '').toLowerCase().trim()) !== -1;
+        _bloqueado = _debeBloquearEstado(o.estado_orden);
 
         // UI
         document.getElementById('ci-titulo-orden').textContent = o.nro_orden;
@@ -561,11 +576,15 @@ window.onerror = function(msg, url, line, col, error) {
                 }
             }
 
-            var resp = await fetch(URL_GUARDAR, { method: 'POST', body: fd });
+            var urlGuardar = MODO_EDICION_ADMIN && INFORME_ID_EDICION > 0
+                ? URL_ACTUALIZAR_BASE + '/' + INFORME_ID_EDICION + '/actualizar'
+                : URL_GUARDAR;
+
+            var resp = await fetch(urlGuardar, { method: 'POST', body: fd });
             var data = await resp.json();
 
             if (data.ok) {
-                _msgForm('ok', data.mensaje || 'Informe guardado correctamente.');
+                _msgForm('ok', data.mensaje || (MODO_EDICION_ADMIN ? 'Informe actualizado correctamente.' : 'Informe guardado correctamente.'));
                 _orden.tiene_informe = true;
                 _fotasOrig = _fotos.length;
                 _fotos = _fotos.map(function (f) {

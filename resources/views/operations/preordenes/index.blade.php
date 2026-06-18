@@ -196,14 +196,20 @@ function poBuscar() {
     });
     document.getElementById('po-count').textContent = vis + ' pendiente(s)';
 }
+function poFotoUrl(url) {
+    var src = String(url || '').trim();
+    if (!src) return '';
+    if (/^https?:\/\//i.test(src)) return src;
+    src = src.replace(/^\/+/, '');
+    return window.location.origin + '/' + src;
+}
 function poVerFotos(fotos) {
     var labels = ['Lado derecho', 'Lado izquierdo', 'De frente', 'Parte trasera'];
     var grid = document.getElementById('pof-grid'); grid.innerHTML = '';
     fotos.forEach(function(url, i){
         if (!url) return;
         var div = document.createElement('div');
-        var src = String(url).replace(/^\//, '');
-        var fullSrc = src.startsWith('http') ? src : '/warranties/' + src;
+        var fullSrc = poFotoUrl(url);
         div.innerHTML = '<a href="' + fullSrc + '" target="_blank"><img class="pof-img" src="' + fullSrc + '" onerror="this.style.display=\'none\'" loading="lazy"></a><div class="pof-lbl">' + labels[i] + '</div>';
         grid.appendChild(div);
     });

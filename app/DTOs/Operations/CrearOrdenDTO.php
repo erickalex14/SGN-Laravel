@@ -37,7 +37,7 @@ readonly class CrearOrdenDTO
         public ?string $nro_factura_2,
         public ?string $fecha_facturacion,
         public ?string $fecha_prometido,
-        public ?int $nro_sucursal_cliente,
+        public ?string $nro_sucursal_cliente,
         public ?string $estado_repuesto,
         public ?string $garantia_tipo,
         public ?int $cas_id,

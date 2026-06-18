@@ -2,27 +2,28 @@
 
 namespace App\Services\Operations;
 
-use App\Repositories\Operations\SolicitudRepuestoRepository;
-use App\Repositories\Operations\OrdenRepository;
-use App\DTOs\Operations\SolicitudRepuestoDTO;
 use App\DTOs\Operations\GestionarSolicitudRepuestoDTO;
-use App\Models\Operations\SolicitudRepuesto;
+use App\DTOs\Operations\SolicitudRepuestoDTO;
 use App\Models\Inventory\Repuesto;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Operations\OrdenRepuesto;
+use App\Models\Operations\SolicitudRepuesto;
+use App\Repositories\Operations\OrdenRepository;
+use App\Repositories\Operations\SolicitudRepuestoRepository;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SolicitudRepuestoService
 {
     protected SolicitudRepuestoRepository $repository;
+
     protected OrdenRepository $ordenRepository;
 
     public function __construct(
         SolicitudRepuestoRepository $repository,
         OrdenRepository $ordenRepository
-    )
-    {
+    ) {
         $this->repository = $repository;
         $this->ordenRepository = $ordenRepository;
     }
@@ -33,11 +34,11 @@ class SolicitudRepuestoService
     public function registrarSolicitud(SolicitudRepuestoDTO $dto, bool $esAdmin = false): string
     {
         $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
-        if (!$orden) {
+        if (! $orden) {
             throw new Exception('Orden no encontrada.');
         }
 
-        if (!$esAdmin && (int) $orden->tecnico_id !== (int) $dto->tecnico_id) {
+        if (! $esAdmin && (int) $orden->tecnico_id !== (int) $dto->tecnico_id) {
             throw new Exception('No puedes solicitar repuesto para una orden que no te esta asignada.');
         }
 
@@ -54,18 +55,18 @@ class SolicitudRepuestoService
             $nro = DB::transaction(function () use ($dto, &$sol) {
                 $nro = $this->repository->generarNumeroSolicitud();
 
-                $sol = new SolicitudRepuesto();
-                $sol->nro_solicitud   = $nro;
-                $sol->orden_id        = $dto->orden_id;
-                $sol->tecnico_id      = $dto->tecnico_id;
-                $sol->tecnico_nombre  = $dto->tecnico_nombre;
+                $sol = new SolicitudRepuesto;
+                $sol->nro_solicitud = $nro;
+                $sol->orden_id = $dto->orden_id;
+                $sol->tecnico_id = $dto->tecnico_id;
+                $sol->tecnico_nombre = $dto->tecnico_nombre;
                 $sol->repuesto_nombre = $dto->repuesto_nombre;
                 $sol->repuesto_inv_id = $dto->repuesto_inv_id; // Relación con el catalogo si la hay
-                $sol->nro_parte       = $dto->nro_parte;
-                $sol->link_compra     = $dto->link_compra;
-                $sol->cantidad        = $dto->cantidad;
-                $sol->descripcion     = $dto->descripcion;
-                $sol->estado          = 'Pendiente';
+                $sol->nro_parte = $dto->nro_parte;
+                $sol->link_compra = $dto->link_compra;
+                $sol->cantidad = $dto->cantidad;
+                $sol->descripcion = $dto->descripcion;
+                $sol->estado = 'Pendiente';
                 $sol->fecha_solicitud = Carbon::now('America/Guayaquil');
                 $sol->save();
 
@@ -77,12 +78,13 @@ class SolicitudRepuestoService
                 }
 
                 Log::info('Solicitud de repuesto creada', ['sr_id' => $sol->id, 'orden_id' => $dto->orden_id]);
+
                 return $nro;
             });
 
             if ($sol) {
                 try {
-                    \App\Services\Operations\SgnMailService::enviarSolicitudRepuestoCreada($sol);
+                    SgnMailService::enviarSolicitudRepuestoCreada($sol);
                 } catch (\Throwable $e) {
                     Log::error('Error al enviar notificacion de solicitud de repuesto creada', ['error' => $e->getMessage()]);
                 }
@@ -101,8 +103,12 @@ class SolicitudRepuestoService
     public function gestionar(GestionarSolicitudRepuestoDTO $dto): void
     {
         $solicitud = $this->repository->buscarPorId($dto->solicitud_id);
-        if (!$solicitud) throw new Exception('Solicitud no encontrada.');
-        if ($solicitud->estado !== 'Pendiente') throw new Exception("La solicitud ya fue procesada ({$solicitud->estado}).");
+        if (! $solicitud) {
+            throw new Exception('Solicitud no encontrada.');
+        }
+        if ($solicitud->estado !== 'Pendiente') {
+            throw new Exception("La solicitud ya fue procesada ({$solicitud->estado}).");
+        }
 
         try {
             DB::transaction(function () use ($solicitud, $dto) {
@@ -118,6 +124,10 @@ class SolicitudRepuestoService
                 $solicitud->fecha_gestion = Carbon::now('America/Guayaquil');
                 $solicitud->repuesto_id = null;
 
+                if ($dto->cantidad !== null && $dto->cantidad > 0) {
+                    $solicitud->cantidad = $dto->cantidad;
+                }
+
                 if ($estadoFinal === 'Rechazada') {
                     $solicitud->motivo_rechazo = trim($dto->motivo_rechazo);
                 } else {
@@ -125,27 +135,47 @@ class SolicitudRepuestoService
                 }
 
                 $orden = $this->ordenRepository->buscarPorId((int) $solicitud->orden_id);
-                if (!$orden) {
+                if (! $orden) {
                     throw new Exception('La orden asociada a la solicitud no existe.');
                 }
 
-                if ($estadoFinal === 'Aprobada' && !$esCompra) {
+                if ($estadoFinal === 'Aprobada' && ! $esCompra) {
                     $repuestoIdAsignado = $dto->repuesto_id ?: $solicitud->repuesto_inv_id;
                     $repuestoIdAsignado = $repuestoIdAsignado ? (int) $repuestoIdAsignado : null;
 
-                    if (!$repuestoIdAsignado) {
+                    if (! $repuestoIdAsignado) {
                         throw new Exception('Seleccione un repuesto para aprobar y despachar, o use la opcion Mandar a compras.');
                     }
 
                     $repuesto = Repuesto::find($repuestoIdAsignado);
-                    if (!$repuesto) {
+                    if (! $repuesto) {
                         throw new Exception('El repuesto seleccionado no existe.');
                     }
                     if ($repuesto->stock < (int) $solicitud->cantidad) {
-                        throw new Exception("Stock insuficiente del repuesto '{$repuesto->nombre}'.");
+                        throw new Exception("Stock insuficiente del repuesto '{$repuesto->nombre}' (Solicitado: {$solicitud->cantidad}, Stock: {$repuesto->stock}).");
                     }
                     $repuesto->stock -= (int) $solicitud->cantidad;
                     $repuesto->save();
+
+                    // Log in the audit history (orden_repuestos)
+                    $existeVinculo = OrdenRepuesto::query()
+                        ->where('orden_id', $solicitud->orden_id)
+                        ->where('repuesto_id', $repuestoIdAsignado)
+                        ->first();
+
+                    if ($existeVinculo) {
+                        $existeVinculo->cantidad += $solicitud->cantidad;
+                        $existeVinculo->fecha = Carbon::now('America/Guayaquil');
+                        $existeVinculo->save();
+                    } else {
+                        $ordenRepuesto = new OrdenRepuesto;
+                        $ordenRepuesto->orden_id = $solicitud->orden_id;
+                        $ordenRepuesto->repuesto_id = $repuestoIdAsignado;
+                        $ordenRepuesto->cantidad = $solicitud->cantidad;
+                        $ordenRepuesto->usuario_id = $solicitud->tecnico_id; // El tecnico que solicito el repuesto
+                        $ordenRepuesto->fecha = Carbon::now('America/Guayaquil');
+                        $ordenRepuesto->save();
+                    }
 
                     $solicitud->repuesto_id = $repuestoIdAsignado;
                     $orden->estado_repuesto = 'Con stock';
@@ -169,7 +199,7 @@ class SolicitudRepuestoService
             });
 
             try {
-                \App\Services\Operations\SgnMailService::enviarSolicitudRepuestoGestionada($solicitud);
+                SgnMailService::enviarSolicitudRepuestoGestionada($solicitud);
             } catch (\Throwable $e) {
                 Log::error('Error al enviar notificacion de solicitud de repuesto gestionada', ['error' => $e->getMessage()]);
             }

@@ -1020,7 +1020,7 @@ async function exportarXLSX() {
     const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,16,12,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
-        views: [{ state:'frozen', ySplit:20 }],
+        views: [{ showGridLines: true }],
         pageSetup: { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1 }
     });
     ws1.columns = widths1.map(w => ({ width:w }));
@@ -1113,7 +1113,6 @@ async function exportarXLSX() {
         c.font = fn(true, 9, C.blanco); c.alignment = al('center'); c.border = bd('1D4ED8');
     });
     ws1.autoFilter = { from:{ row:hRowN, column:1 }, to:{ row:hRowN, column:nc } };
-    ws1.views = [{ state:'frozen', ySplit:hRowN }];
 
     // Datos
     _filtered.forEach((r, idx) => {

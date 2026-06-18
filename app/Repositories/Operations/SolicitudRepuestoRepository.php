@@ -10,14 +10,14 @@ class SolicitudRepuestoRepository
 {
     public function obtenerTodas(): Collection
     {
-        return SolicitudRepuesto::with(['orden', 'repuestoAsignado'])
+        return SolicitudRepuesto::with(['orden', 'repuestoAsignado', 'tecnico', 'repuestoCatalogo'])
             ->orderBy('fecha_solicitud', 'desc')
             ->get();
     }
 
     public function obtenerPorTecnico(int $tecnicoId): Collection
     {
-        return SolicitudRepuesto::with('orden')
+        return SolicitudRepuesto::with(['orden', 'listaCompra'])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('fecha_solicitud', 'desc')
             ->get();
@@ -49,8 +49,8 @@ class SolicitudRepuestoRepository
         $anio = Carbon::now('America/Guayaquil')->year;
         $sec = SolicitudRepuesto::whereYear('created_at', $anio)->count() + 1;
 
-        $nro = 'SR-' . $anio . '-' . str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
-        if (!SolicitudRepuesto::where('nro_solicitud', $nro)->exists()) {
+        $nro = 'SR-'.$anio.'-'.str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
+        if (! SolicitudRepuesto::where('nro_solicitud', $nro)->exists()) {
             return $nro;
         }
 
@@ -63,7 +63,7 @@ class SolicitudRepuestoRepository
             $sec = ((int) $matches[1]) + 1;
         }
 
-        return 'SR-' . $anio . '-' . str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
+        return 'SR-'.$anio.'-'.str_pad((string) $sec, 4, '0', STR_PAD_LEFT);
     }
 
     public function contarSolicitudesPendientes(): int
