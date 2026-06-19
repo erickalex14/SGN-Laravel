@@ -29,6 +29,7 @@ class PreordenService
         return [
             'tecnicos' => $this->repository->obtenerTecnicosDisponibles($esSuperadmin, $sucursalSesion),
             'preordenes' => $this->repository->obtenerPreordenesPendientes($esSuperadmin, $sucursalSesion),
+            'preordenesIngresadas' => $this->repository->obtenerPreordenesIngresadas($esSuperadmin, $sucursalSesion),
         ];
     }
 
@@ -51,6 +52,12 @@ class PreordenService
             }
             if (! empty($preorden->orden_id)) {
                 throw new Exception('Esta pre-orden ya fue ingresada.');
+            }
+
+            if (! $dto->es_superadmin && $dto->sucursal_sesion_id > 0) {
+                if ($preorden->sucursal_id !== null && (int) $preorden->sucursal_id !== (int) $dto->sucursal_sesion_id) {
+                    throw new Exception('No tienes permisos para ingresar una pre-orden de otra sucursal.');
+                }
             }
 
             $sucursalOrdenId = $dto->es_superadmin
@@ -188,9 +195,10 @@ class PreordenService
 
     public function verificarPreorden(VerificarPreordenDTO $dto): ?object
     {
-        return $this->repository->buscarPendientePorCiOCodigo(
+        return $this->repository->buscarPendientePorCiOCodigoOSerie(
             trim($dto->ci),
-            trim($dto->codigo)
+            trim($dto->codigo),
+            trim($dto->serie)
         );
     }
 

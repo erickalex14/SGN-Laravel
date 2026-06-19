@@ -304,8 +304,17 @@ class OrdenRepository
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
                     'cas_nombre' => (string) ($orden->cas->nombre ?? ''),
-                    'dias_transcurridos' => $fechaIngreso ? now()->diffInDays(Carbon::parse($fechaIngreso)) : null,
+                    'dias_transcurridos' => $fechaIngreso ? (
+                        in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
+                        ? Carbon::parse($fechaIngreso)->diffInDays(Carbon::parse($fechaEntrega ?: ($orden->fecha_finalizacion ?: now())))
+                        : now()->diffInDays(Carbon::parse($fechaIngreso))
+                    ) : null,
                     'vencida' => $fechaPrometida && !$fechaEntrega ? Carbon::parse($fechaPrometida)->isPast() : false,
+                    'falla_reportada' => $orden->equipo->falla ?? '',
+                    'observacion' => $orden->equipo->observacion ?? '',
+                    'tecnico_lider' => '',
+                    'tecnicos_asignados' => '',
+                    'horas_trabajadas' => 0,
                     'cliente' => $orden->cliente ? [
                         'nombres' => $orden->cliente->nombres,
                         'apellidos' => $orden->cliente->apellidos,
@@ -419,7 +428,7 @@ class OrdenRepository
                     'nro_orden' => $orden->nro_orden,
                     'fecha_de_ingreso' => $orden->fecha_ingreso,
                     'fecha_prometido' => $orden->fecha_prometido,
-                    'fecha_entrega' => null,
+                    'fecha_entrega' => $orden->fecha_entrega,
                     'motivo_ingreso' => $orden->subtipo,
                     'estado_repuesto' => 'No requerido',
                     'estado_garantia' => '',
@@ -438,8 +447,17 @@ class OrdenRepository
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
                     'cas_nombre' => '',
-                    'dias_transcurridos' => $fechaIngreso ? now()->diffInDays(Carbon::parse($fechaIngreso)) : null,
+                    'dias_transcurridos' => $fechaIngreso ? (
+                        in_array($orden->estado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
+                        ? Carbon::parse($fechaIngreso)->diffInDays(Carbon::parse($orden->fecha_entrega ?: ($orden->fecha_finalizacion ?: now())))
+                        : now()->diffInDays(Carbon::parse($fechaIngreso))
+                    ) : null,
                     'vencida' => $orden->fecha_prometido ? Carbon::parse($orden->fecha_prometido)->isPast() : false,
+                    'falla_reportada' => $esNovisolutionsServicio ? $orden->descripcion : ($orden->equipo->falla ?? ''),
+                    'observacion' => $orden->equipo->observacion ?? '',
+                    'tecnico_lider' => $esNovisolutionsServicio ? ($orden->tecnico->nombre_tecnico ?? '') : '',
+                    'tecnicos_asignados' => $esNovisolutionsServicio ? $orden->tecnicos->pluck('nombre_tecnico')->implode(', ') : '',
+                    'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($orden->horas_trabajadas ?? 0) : 0,
                     'cliente' => [
                         'nombres' => $nombreEmpresa,
                         'apellidos' => '',

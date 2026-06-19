@@ -257,7 +257,25 @@ class EdicionOrdenController extends Controller
         }
 
         try {
-            $this->service->actualizarOrdenEmpresa($request->all(), (int) session('tecnico_id'));
+            $orden = $this->ordenRepo->obtenerOrdenEmpresaCompleta((int) $request->input('orden_id'));
+            if (! $orden) {
+                throw new Exception('La orden corporativa solicitada no fue encontrada.');
+            }
+
+            if ($orden->subtipo === 'Servicios') {
+                $tecnicosAsignados = $request->input('tecnicos_asignados', []);
+                if (! is_array($tecnicosAsignados)) {
+                    $tecnicosAsignados = [$tecnicosAsignados];
+                }
+                foreach ($tecnicosAsignados as $tecId) {
+                    $this->validarTecnicoAsignable((int) $tecId);
+                }
+                $this->validarTecnicoAsignable((int) $request->input('tecnico_encargado'));
+            } elseif ((int) $request->input('tecnico_id') > 0) {
+                $this->validarTecnicoAsignable((int) $request->input('tecnico_id'));
+            }
+
+            $this->service->actualizarOrdenEmpresa($request->validated(), (int) session('tecnico_id'));
 
             return response()->json([
                 'ok' => true,
@@ -301,5 +319,22 @@ class EdicionOrdenController extends Controller
         return in_array($rol, $rolesAdmitidos, true)
             || in_array($grupo, $rolesAdmitidos, true)
             || in_array($sessionGrupo, $rolesAdmitidos, true);
+    }
+
+    private function validarTecnicoAsignable(int $tecnicoId): void
+    {
+        $puedeVerTodos = (bool) session('es_superadmin', false)
+            || $this->tienePermisoSesion('usuarios_crear', 'ver')
+            || $this->tienePermisoSesion('usuarios', 'crear')
+            || $this->tienePermisoSesion('usuarios', 'ver');
+
+        if (! $this->usuarioRepo->tecnicoAsignable(
+            $tecnicoId,
+            $puedeVerTodos,
+            (int) session('sucursal_id'),
+            (int) session('tecnico_id')
+        )) {
+            throw new Exception('Solo puedes asignar tecnicos de tu sucursal o CAS.');
+        }
     }
 }

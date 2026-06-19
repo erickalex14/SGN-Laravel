@@ -25,12 +25,13 @@ class PreordenController extends Controller
     public function index(): View
     {
         $sucursalSesion = (int) session('sucursal_id', 0);
-        $esSuperadmin = (bool) session('es_superadmin', false);
+        $esSuperadmin = $this->esSuperAdminOMaster();
         $contexto = $this->service->obtenerContextoIndex($esSuperadmin, $sucursalSesion);
 
         return view('operations.preordenes.index', [
             'tecnicos' => $contexto['tecnicos'],
             'preordenes' => $contexto['preordenes'],
+            'preordenesIngresadas' => $contexto['preordenesIngresadas'],
         ]);
     }
 
@@ -42,7 +43,7 @@ class PreordenController extends Controller
                 (int) $request->input('tecnico_id'),
                 (int) session('tecnico_id', 0),
                 (int) session('sucursal_id', 0),
-                (bool) session('es_superadmin', false),
+                $this->esSuperAdminOMaster(),
                 mb_strtoupper(trim((string) $request->input('direccion', ''))),
                 trim((string) $request->input('serie', '')),
                 trim((string) $request->input('observacion', '')),
@@ -72,6 +73,13 @@ class PreordenController extends Controller
                     $data['orden_ref'] = $this->service->obtenerNumeroOrdenPorId((int) $data['orden_id']);
                 }
 
+                if (! $this->esSuperAdminOMaster()) {
+                    $sucursalSesion = (int) session('sucursal_id', 0);
+                    if (isset($data['sucursal_id']) && (int) $data['sucursal_id'] !== $sucursalSesion) {
+                        abort(403, 'No tienes permisos para ver el reporte de esta pre-orden.');
+                    }
+                }
+
                 return view('operations.preordenes.reporte', ['o' => (object) $data]);
             }
         }
@@ -79,6 +87,13 @@ class PreordenController extends Controller
         $preordenId = (int) $request->input('preorden_id', 0);
         $preorden = $this->service->obtenerReporte($preordenId);
         abort_unless($preorden, 404);
+
+        if (! $this->esSuperAdminOMaster()) {
+            $sucursalSesion = (int) session('sucursal_id', 0);
+            if (isset($preorden->sucursal_id) && (int) $preorden->sucursal_id !== $sucursalSesion) {
+                abort(403, 'No tienes permisos para ver el reporte de esta pre-orden.');
+            }
+        }
 
         return view('operations.preordenes.reporte', ['o' => $preorden]);
     }
@@ -88,7 +103,8 @@ class PreordenController extends Controller
         try {
             $dto = new VerificarPreordenDTO(
                 trim((string) $request->query('ci', '')),
-                trim((string) $request->query('codigo', ''))
+                trim((string) $request->query('codigo', '')),
+                trim((string) $request->query('serie', ''))
             );
 
             $preorden = $this->service->verificarPreorden($dto);
@@ -104,5 +120,26 @@ class PreordenController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function esSuperAdminOMaster(): bool
+    {
+        $usuario = auth()->user();
+        if (! $usuario) {
+            return false;
+        }
+
+        $rol = $usuario->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+        $grupo = $usuario->grupo ? mb_strtolower(trim((string) $usuario->grupo->nombre)) : '';
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+
+        $superRoles = [
+            'admin master', 'administrador master', 'superadmin', 'superadministrador',
+        ];
+
+        return session('es_superadmin') === true
+            || in_array($rol, $superRoles, true)
+            || in_array($grupo, $superRoles, true)
+            || in_array($sessionGrupo, $superRoles, true);
     }
 }

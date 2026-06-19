@@ -8,11 +8,15 @@ use Illuminate\Database\Eloquent\Collection;
 
 class SolicitudRepuestoRepository
 {
-    public function obtenerTodas(): Collection
+    public function obtenerTodas(?int $sucursalId = null): Collection
     {
-        return SolicitudRepuesto::with(['orden', 'repuestoAsignado', 'tecnico', 'repuestoCatalogo'])
-            ->orderBy('fecha_solicitud', 'desc')
-            ->get();
+        $query = SolicitudRepuesto::with(['orden', 'repuestoAsignado', 'tecnico', 'repuestoCatalogo']);
+        if ($sucursalId !== null && $sucursalId > 0) {
+            $query->whereHas('orden', function ($o) use ($sucursalId) {
+                $o->where('sucursal_id', $sucursalId);
+            });
+        }
+        return $query->orderBy('fecha_solicitud', 'desc')->get();
     }
 
     public function obtenerPorTecnico(int $tecnicoId): Collection

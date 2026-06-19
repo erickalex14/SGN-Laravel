@@ -22,3 +22,23 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# AI / Agent folders
+/.ai
+/.codex
+/.gemini
+/.junie
+/agents
+/scratch
+
+# Temp / Test / Dump files
+/output.html
+/test_tinker.php
+/estructurabd/
+/REPORTESACTIVIDADS
+/ReportesActividades
+/ReportesActividaes
+
+# Local storage and cache logs
+/storage/appdata
+/bootstrap/cache/*.php

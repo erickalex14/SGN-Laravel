@@ -120,6 +120,9 @@
             <div class="eo-meta-item"><label>Sucursal Cliente</label><span>{{ $orden->nro_sucursal_cliente ?? '-' }}</span></div>
             <div class="eo-meta-item"><label>Sucursal Interna</label><span>{{ $orden->sucursal->nombre ?? '-' }}</span></div>
             <div class="eo-meta-item full"><label>Técnico(s) Asignado(s)</label><span>{{ $nombreTecnico }}</span></div>
+            @if($orden->subtipo === 'Servicios')
+                <div class="eo-meta-item"><label>Técnico Encargado</label><span>{{ $orden->tecnico->nombre_tecnico ?? '-' }}</span></div>
+            @endif
 
             @if($orden->subtipo === 'Servicios')
                 <div class="eo-meta-item"><label>Tarifa por Hora</label><span>${{ number_format($orden->valor_hora, 2) }}</span></div>
@@ -276,10 +279,22 @@
                         @foreach($tecnicos as $tec)
                             @php $checked = in_array($tec->id, $idsAsignados) ? 'checked' : ''; @endphp
                             <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; padding: 4px; color: #1e293b; font-size: 13px;">
-                                <input type="checkbox" name="tecnicos_asignados[]" value="{{ $tec->id }}" {{ $checked }} class="chk-tecnico-emp" style="width: 16px; height: 16px; cursor: pointer;">
+                                <input type="checkbox" name="tecnicos_asignados[]" value="{{ $tec->id }}" data-nombre="{{ $tec->nombre_tecnico }}" {{ $checked }} class="chk-tecnico-emp" style="width: 16px; height: 16px; cursor: pointer;">
                                 {{ $tec->nombre_tecnico }}
                             </label>
                         @endforeach
+                    </div>
+                    <div class="campo">
+                        <label>Técnico Encargado <span class="req">*</span></label>
+                        <select id="tecnico_encargado" name="tecnico_encargado">
+                            <option value="">-- Seleccione al encargado --</option>
+                            @foreach($tecnicos as $tec)
+                                @if(in_array($tec->id, $idsAsignados))
+                                    <option value="{{ $tec->id }}" {{ (int) $orden->tecnico_id === (int) $tec->id ? 'selected' : '' }}>{{ $tec->nombre_tecnico }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                        <small style="display:block;margin-top:4px;color:#64748b;">Debe ser uno de los técnicos asignados y será quien realice el reporte.</small>
                     </div>
                 </div>
             </div>
@@ -326,6 +341,33 @@ function mostrarMensaje(isError, texto) {
 }
 
 @if($orden->subtipo === 'Servicios')
+function actualizarTecnicoEncargadoEmpresa() {
+    const select = document.getElementById('tecnico_encargado');
+    if (!select) return;
+
+    const seleccionados = Array.from(document.querySelectorAll('.chk-tecnico-emp:checked'));
+    const valorActual = select.value;
+
+    select.innerHTML = '<option value="">-- Seleccione al encargado --</option>';
+
+    seleccionados.forEach((chk) => {
+        const option = document.createElement('option');
+        option.value = chk.value;
+        option.textContent = chk.dataset.nombre || chk.closest('label')?.textContent?.trim() || `Técnico ${chk.value}`;
+        select.appendChild(option);
+    });
+
+    select.disabled = seleccionados.length === 0;
+
+    if (seleccionados.length === 0) {
+        select.value = '';
+        return;
+    }
+
+    const existeActual = seleccionados.some((chk) => chk.value === valorActual);
+    select.value = existeActual ? valorActual : seleccionados[0].value;
+}
+
 function calcularPrecioEmpresa() {
     const chks = document.querySelectorAll('.chk-tecnico-emp:checked');
     const numTecnicos = chks.length;
@@ -363,10 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 chk.checked = false;
                 alert('Puedes asignar un máximo de 5 técnicos.');
             }
+            actualizarTecnicoEncargadoEmpresa();
             calcularPrecioEmpresa();
         });
     });
 
+    actualizarTecnicoEncargadoEmpresa();
     calcularPrecioEmpresa();
 });
 @endif
@@ -408,9 +452,15 @@ async function guardarActualizacionEmpresa() {
             Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Debe asignar al menos 1 técnico.', confirmButtonColor: '#2563eb' });
             return;
         }
+        const tecnicoEncargado = document.getElementById('tecnico_encargado').value;
+        if (!tecnicoEncargado) {
+            Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Debe seleccionar el técnico encargado.', confirmButtonColor: '#2563eb' });
+            return;
+        }
         chks.forEach(chk => {
             fd.append('tecnicos_asignados[]', chk.value);
         });
+        fd.append('tecnico_encargado', tecnicoEncargado);
     @endif
 
     const btn = document.getElementById('btn-actualizar');

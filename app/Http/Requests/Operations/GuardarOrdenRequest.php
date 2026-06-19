@@ -116,7 +116,7 @@ class GuardarOrdenRequest extends FormRequest
                 'emp_falla' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_observacion' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_tipo_servicio_id' => ['nullable', 'integer', 'exists:tiposservicio,id'],
-                'emp_fecha_prometido' => ['required', 'date', 'after_or_equal:'.$todayEcuador],
+                'emp_fecha_prometido' => ['required', 'date'],
                 'nro_sucursal_cliente' => [
                     $subtipo === 'Stock' ? 'required' : 'nullable',
                     'string',
@@ -139,6 +139,26 @@ class GuardarOrdenRequest extends FormRequest
                 'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
                 'tecnicos_asignados' => [$esNovisolutionsServicio ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
                 'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
+                'tecnico_encargado' => [
+                    $esNovisolutionsServicio ? 'required' : 'nullable',
+                    'integer',
+                    'exists:usuarios,id',
+                    function ($attribute, $value, $fail) use ($esNovisolutionsServicio) {
+                        if (! $esNovisolutionsServicio || $value === null || $value === '') {
+                            return;
+                        }
+
+                        $tecnicosAsignados = $this->input('tecnicos_asignados', []);
+                        if (! is_array($tecnicosAsignados)) {
+                            $tecnicosAsignados = [$tecnicosAsignados];
+                        }
+
+                        $idsAsignados = array_map('intval', array_filter($tecnicosAsignados));
+                        if (! in_array((int) $value, $idsAsignados, true)) {
+                            $fail('El técnico encargado debe estar dentro de los técnicos asignados.');
+                        }
+                    },
+                ],
                 'cas_id_empresa' => ['nullable', 'integer', 'exists:cas,id'],
             ]);
 
@@ -157,7 +177,6 @@ class GuardarOrdenRequest extends FormRequest
             'cli_apellidos.regex' => 'El apellido del cliente sólo debe contener letras, tildes y espacios.',
             'fecha_facturacion.before_or_equal' => 'La fecha de facturación no puede ser superior al día de hoy.',
             'fecha_prometido.after_or_equal' => 'La fecha prometida de entrega no puede ser anterior al día de hoy.',
-            'emp_fecha_prometido.after_or_equal' => 'La fecha prometida de entrega no puede ser anterior al día de hoy.',
         ];
     }
 
@@ -183,6 +202,9 @@ class GuardarOrdenRequest extends FormRequest
         }
         if ($this->has('cas_id_empresa') && $this->input('cas_id_empresa') === '') {
             $this->merge(['cas_id_empresa' => null]);
+        }
+        if ($this->has('tecnico_encargado') && $this->input('tecnico_encargado') === '') {
+            $this->merge(['tecnico_encargado' => null]);
         }
     }
 

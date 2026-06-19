@@ -121,6 +121,7 @@ class OrdenController extends Controller
                 foreach ($tecnicosAsignados as $tecId) {
                     $this->validarTecnicoAsignable((int) $tecId);
                 }
+                $this->validarTecnicoAsignable((int) $request->input('tecnico_encargado'));
             } else {
                 $this->validarTecnicoAsignable((int) $request->input('ord_tecnico_id'));
             }

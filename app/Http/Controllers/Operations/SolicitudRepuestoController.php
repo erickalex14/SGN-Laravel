@@ -40,7 +40,12 @@ class SolicitudRepuestoController extends Controller
 
     public function indexAdmin(): View
     {
-        $solicitudes = $this->srRepository->obtenerTodas();
+        $sucursalId = null;
+        if (! $this->esSuperAdminOMaster()) {
+            $sucursalId = (int) session('sucursal_id');
+        }
+
+        $solicitudes = $this->srRepository->obtenerTodas($sucursalId);
         $repuestos = $this->repuestoRepository->buscarParaOrden('', true);
 
         return view('operations.solicitudes_repuestos.admin', compact('solicitudes', 'repuestos'));
@@ -88,6 +93,13 @@ class SolicitudRepuestoController extends Controller
 
     public function gestionar(GestionarSolicitudRepuestoRequest $request): JsonResponse
     {
+        if (! $this->esSuperAdminOMaster()) {
+            $solicitud = $this->srRepository->buscarPorId((int) $request->input('solicitud_id'));
+            if ($solicitud && $solicitud->orden && (int) $solicitud->orden->sucursal_id !== (int) session('sucursal_id')) {
+                return response()->json(['ok' => false, 'error' => 'No tienes permisos para gestionar solicitudes de repuestos de otra sucursal.']);
+            }
+        }
+
         try {
             $dto = new GestionarSolicitudRepuestoDTO(
                 (int) $request->input('solicitud_id'),
@@ -117,6 +129,12 @@ class SolicitudRepuestoController extends Controller
         $esPropietario = (int) $solicitud->tecnico_id === $tecnicoId;
         abort_unless($esAdmin || $esPropietario, 403);
 
+        if (! $this->esSuperAdminOMaster() && ! $esPropietario) {
+            if ($solicitud->orden && (int) $solicitud->orden->sucursal_id !== (int) session('sucursal_id')) {
+                abort(403, 'No tienes permisos para ver solicitudes de repuestos de otra sucursal.');
+            }
+        }
+
         return view('operations.solicitudes_repuestos.imprimir', compact('solicitud'));
     }
 
@@ -127,5 +145,26 @@ class SolicitudRepuestoController extends Controller
         return (bool) session('es_superadmin', false)
             || (($permisos['repuestos_admin']['ver'] ?? false) === true)
             || (($permisos['repuestos_admin']['editar'] ?? false) === true);
+    }
+
+    private function esSuperAdminOMaster(): bool
+    {
+        $usuario = auth()->user();
+        if (! $usuario) {
+            return false;
+        }
+
+        $rol = $usuario->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+        $grupo = $usuario->grupo ? mb_strtolower(trim((string) $usuario->grupo->nombre)) : '';
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+
+        $superRoles = [
+            'admin master', 'administrador master', 'superadmin', 'superadministrador',
+        ];
+
+        return session('es_superadmin') === true
+            || in_array($rol, $superRoles, true)
+            || in_array($grupo, $superRoles, true)
+            || in_array($sessionGrupo, $superRoles, true);
     }
 }

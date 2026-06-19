@@ -171,6 +171,11 @@ class ActualizarOrdenService
                     if (! $orden->fecha_finalizacion) {
                         $orden->fecha_finalizacion = $orden->fecha_modificacion;
                     }
+                    if ($orden->estado_orden === 'Entregada' || $orden->estado_orden === 'ENTREGADO') {
+                        if (! $orden->fecha_entrega) {
+                            $orden->fecha_entrega = $orden->fecha_modificacion;
+                        }
+                    }
                 }
 
                 $orden->save();
@@ -221,6 +226,23 @@ class ActualizarOrdenService
                 $orden->fecha_prometido = $data['fecha_prometido'];
                 $orden->descripcion = trim($data['descripcion']);
 
+                // Cierre y entrega automática para empresas
+                if (in_array($orden->estado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
+                    if (!$orden->fecha_finalizacion) {
+                        $orden->fecha_finalizacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                    }
+                    if ($orden->estado === 'Entregada' || $orden->estado === 'ENTREGADO') {
+                        if (!$orden->fecha_entrega) {
+                            $orden->fecha_entrega = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                        }
+                    } else {
+                        $orden->fecha_entrega = null;
+                    }
+                } else {
+                    $orden->fecha_finalizacion = null;
+                    $orden->fecha_entrega = null;
+                }
+
                 $esServicios = ($orden->subtipo === 'Servicios');
 
                 if ($esServicios) {
@@ -232,9 +254,12 @@ class ActualizarOrdenService
                         $tecnicosAsignados = [$tecnicosAsignados];
                     }
                     $tecnicosAsignados = array_map('intval', array_filter($tecnicosAsignados));
+                    $tecnicoEncargado = isset($data['tecnico_encargado']) && $data['tecnico_encargado'] !== ''
+                        ? (int) $data['tecnico_encargado']
+                        : null;
 
                     if (! empty($tecnicosAsignados)) {
-                        $orden->tecnico_id = (int) $tecnicosAsignados[0];
+                        $orden->tecnico_id = $tecnicoEncargado ?: (int) $tecnicosAsignados[0];
                         $orden->tecnicos()->sync($tecnicosAsignados);
                     }
                 } else {

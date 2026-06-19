@@ -20,6 +20,11 @@ class ListaCompra extends Model
         'estado',
         'observacion'
     ];
+
+    public function solicitudes()
+    {
+        return $this->hasMany(\App\Models\Operations\SolicitudRepuesto::class, 'lista_compra_id', 'id');
+    }
 }
 
 //En el modelo de la BD no hay FK en el creado por osea no hay una relacion con quien creo esa lista
