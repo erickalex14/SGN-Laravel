@@ -374,7 +374,21 @@ class InformeRepository
                     break;
 
                 case 'serie':
-                    $query->whereRaw("eq.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
+                    $qClean = str_replace(['-', ' '], '', $q);
+                    $qCleanLike = '%' . $qClean . '%';
+                    $query->where(function ($inner) use ($qLike, $qCleanLike) {
+                        $inner->whereRaw("eq.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike])
+                              ->orWhereRaw("REPLACE(REPLACE(eq.serie, '-', ''), ' ', '') COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qCleanLike])
+                              ->orWhereExists(function ($sub) use ($qLike, $qCleanLike) {
+                                  $sub->select(DB::raw(1))
+                                      ->from('equiposseries as es')
+                                      ->whereRaw('es.equipo_id = eq.id')
+                                      ->where(function ($subInner) use ($qLike, $qCleanLike) {
+                                          $subInner->whereRaw("es.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike])
+                                                   ->orWhereRaw("REPLACE(REPLACE(es.serie, '-', ''), ' ', '') COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qCleanLike]);
+                                      });
+                              });
+                    });
                     break;
             }
         }

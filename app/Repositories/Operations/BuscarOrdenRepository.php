@@ -101,7 +101,21 @@ class BuscarOrdenRepository
                 break;
 
             case 'serie':
-                $query->whereRaw("vo.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike]);
+                $qClean = str_replace(['-', ' '], '', $q);
+                $qCleanLike = '%' . $qClean . '%';
+                $query->where(function ($inner) use ($qLike, $qCleanLike) {
+                    $inner->whereRaw("vo.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike])
+                          ->orWhereRaw("REPLACE(REPLACE(vo.serie, '-', ''), ' ', '') COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qCleanLike])
+                          ->orWhereExists(function ($sub) use ($qLike, $qCleanLike) {
+                              $sub->select(DB::raw(1))
+                                  ->from('equiposseries as es')
+                                  ->whereRaw('es.equipo_id = vo.equipo_id')
+                                  ->where(function ($subInner) use ($qLike, $qCleanLike) {
+                                      $subInner->whereRaw("es.serie COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qLike])
+                                               ->orWhereRaw("REPLACE(REPLACE(es.serie, '-', ''), ' ', '') COLLATE utf8mb4_0900_ai_ci LIKE ?", [$qCleanLike]);
+                                  });
+                          });
+                });
                 break;
 
             case 'factura':
