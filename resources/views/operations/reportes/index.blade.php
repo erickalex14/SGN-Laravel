@@ -917,7 +917,7 @@ function exportarCSV() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Técnico','Sucursal','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida',
+        'Técnico','Sucursal','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
     const rows = _filtered.map(r => {
@@ -935,7 +935,7 @@ function exportarCSV() {
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia,
             r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.cas_nombre,
-            r.dias_transcurridos, r.fecha_prometido || '', r.fecha_entrega || '',
+            r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
             r.valor_otra_empresa,
@@ -1021,7 +1021,7 @@ async function exportarXLSX() {
 
     /* ══ HOJA 1: DETALLE ══ */
     const cols1 = [
-        'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Días','Vencida',
+        'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Vencida',
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Horas Trabajadas',
@@ -1036,7 +1036,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,14,18,14,18,22,20,16,16,12,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,14,18,14,18,22,20,16,16,12,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1145,7 +1145,7 @@ async function exportarXLSX() {
 
         const vals = [
             r.nro_orden, r.fecha_de_ingreso, r.fecha_prometido || '', r.fecha_entrega || '',
-            r.dias_transcurridos ?? '', r.vencida ? 'Sí' : 'No',
+            r.vencida ? 'Sí' : 'No',
             r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.horas_trabajadas || '',
@@ -1161,16 +1161,16 @@ async function exportarXLSX() {
         ];
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = 24;
+        const estadoIdx = 23;
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 29 || ci === 30) { 
+            else if (ci === 28 || ci === 29) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 29 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 28 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }
