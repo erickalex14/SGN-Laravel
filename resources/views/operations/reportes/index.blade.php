@@ -520,6 +520,7 @@ function normalizeRow(raw) {
         fecha_prometido   : raw.fecha_prometido || '',
         fecha_entrega     : raw.fecha_entrega || '',
         tipo_orden        : raw.tipo_orden || 'personal',
+        subtipo           : raw.subtipo || '',
         cliente_nombre    : clienteNombre,
         identificacion    : raw.identificacion || raw.cliente?.identificacion || '-',
         cliente_telefono  : raw.cliente_telefono || raw.cliente?.numero_contacto || '-',
@@ -913,7 +914,7 @@ function exportarCSV() {
     if (!_filtered.length) { alert('No hay datos para exportar.'); return; }
     const BOM = '\uFEFF'; // UTF-8 BOM para Excel
     const headers = [
-        'Nro. Orden','Fecha Ingreso','Tipo Orden','Cliente','C.I./RUC','Teléfono','Correo',
+        'Nro. Orden','Fecha Ingreso','Tipo Orden','Subtipo Empresa','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
@@ -929,7 +930,7 @@ function exportarCSV() {
             ? `{{ url('/') }}/operaciones/informes/${r.informe_id}/imprimir` 
             : '';
         return [
-            r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.cliente_nombre, r.identificacion,
+            r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.subtipo, r.cliente_nombre, r.identificacion,
             r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
             r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.horas_trabajadas || '',
@@ -1030,13 +1031,14 @@ async function exportarXLSX() {
         'Sucursal',
         'CAS',
         'Tipo Orden',
+        'Subtipo Empresa',
         'Valor Cobro Novicompu',
         'Valor Cobro RB-HEALTH',
         'Link PDF Orden',
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,14,18,14,18,22,20,16,16,12,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,14,18,14,18,22,20,16,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1154,6 +1156,7 @@ async function exportarXLSX() {
             r.sucursal_nombre,
             r.cas_nombre,
             r.tipo_orden,
+            r.subtipo,
             Number(r.valor_novicompu ?? 0),
             Number(r.valor_otra_empresa ?? 0),
             '', // Link PDF Orden
@@ -1166,11 +1169,11 @@ async function exportarXLSX() {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 28 || ci === 29) { 
+            else if (ci === 29 || ci === 30) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 28 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 29 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }
