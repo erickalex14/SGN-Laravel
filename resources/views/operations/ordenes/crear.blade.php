@@ -395,7 +395,7 @@
                             </div>
                             <div class="tec-dropdown-list" id="tec-dropdown-list-emp">
                                 <div class="tec-search-wrap">
-                                    <input type="text" class="tec-search-inp" placeholder="Buscar técnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list-emp')" autocomplete="off">
+                                    <input type="text" class="tec-search-inp" placeholder="Buscar tecnico..." oninput="filtrarTecnicos(this, 'tec-dropdown-list-emp')" autocomplete="off">
                                 </div>
                                 <div class="tec-search-empty" id="tec-empty-emp">Sin coincidencias</div>
                                 <div class="tec-items-scroll" id="tec-items-emp">
@@ -422,8 +422,8 @@
                                          onclick="seleccionarTecnicoEmp(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
                                         <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
                                         <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
-                                        @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
-                                        <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
+                                        @if($esTuMismo)<span class="tec-yo-badge">Tu</span>@endif
+                                        <span class="tec-item-stats">{{ $pendientes }}P ? {{ $enProceso }}EP</span>
                                         <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
                                     </div>
                                 @endforeach
@@ -432,21 +432,28 @@
                         </div>
                     </div>
 
-                    {{-- Checklist de técnicos para NOVISOLUTIONS --}}
+                    {{-- Checklist de tecnicos para NOVISOLUTIONS --}}
                     <div class="campo hidden" id="bloque-multi-tecnicos" style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
-                        <label style="font-size: 13px; font-weight: 600; color: #475569;">Técnicos Asignados <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;text-transform:none;">(máximo 5 técnicos)</span></label>
+                        <label style="font-size: 13px; font-weight: 600; color: #475569;">Tecnicos Asignados <span class="req">*</span> <span style="font-size:11px;font-weight:400;color:#94a3b8;text-transform:none;">(maximo 5 tecnicos)</span></label>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 8px; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; max-height: 250px; overflow-y: auto; background: #fff;">
                             @foreach($tecnicos as $tec)
                                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; padding: 4px; color: #1e293b; font-size: 13px;">
-                                    <input type="checkbox" name="tecnicos_asignados[]" value="{{ $tec->id }}" class="chk-tecnico-emp" style="width: 16px; height: 16px; cursor: pointer;">
+                                    <input type="checkbox" name="tecnicos_asignados[]" value="{{ $tec->id }}" data-nombre="{{ $tec->nombre_tecnico }}" class="chk-tecnico-emp" style="width: 16px; height: 16px; cursor: pointer;">
                                     {{ $tec->nombre_tecnico }}
                                 </label>
                             @endforeach
                         </div>
+                        <div class="campo" style="margin-top: 10px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #475569;">Tecnico Encargado <span class="req">*</span></label>
+                            <select id="tecnico_encargado" name="tecnico_encargado" disabled>
+                                <option value="">-- Seleccione al encargado --</option>
+                            </select>
+                            <small style="display:block;margin-top:4px;color:#64748b;">Debe ser uno de los tecnicos asignados y sera quien realice el reporte.</small>
+                        </div>
                     </div>
                     <div class="campo">
                         <label>Fecha Prometido <span class="req">*</span></label>
-                        <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido" min="{{ \Carbon\Carbon::now('America/Guayaquil')->format('Y-m-d') }}">
+                        <input type="date" name="emp_fecha_prometido" id="emp_fecha_prometido">
                     </div>
                     <div class="campo hidden" id="bloque-cas-empresa">
                         <label>Asignar CAS <span style="font-size:11px;font-weight:400;color:#94a3b8;">(Opcional)</span></label>
@@ -459,7 +466,7 @@
                     </div>
                 </div>
 
-                {{-- Bloque de cálculo para NOVISOLUTIONS --}}
+                {{-- Bloque de calculo para NOVISOLUTIONS --}}
                 <div id="bloque-calculo-novisolutions" class="hidden" style="margin-top: 20px; padding: 16px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; color: #166534; box-shadow: 0 2px 8px rgba(16,185,129,0.05);">
                     <h4 style="margin: 0 0 14px; font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; color: #166534;"><i class="bi bi-calculator"></i> Desglose de Costo de Servicio Corporativo</h4>
                     <div class="grid-2" style="margin-bottom: 14px; gap: 14px;">
@@ -473,7 +480,7 @@
                         </div>
                     </div>
                     <div style="font-size: 14px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #86efac; padding-top: 12px; flex-wrap: wrap; gap: 10px;">
-                        <span>Fórmula: <span id="formula-lbl" style="font-family: monospace; font-size: 13px; color: #15803d;">0 técnicos * 1.00 horas * $50.00/hr</span></span>
+                        <span>Formula: <span id="formula-lbl" style="font-family: monospace; font-size: 13px; color: #15803d;">0 tecnicos * 1.00 horas * $50.00/hr</span></span>
                         <span style="font-size: 16px; color: #14532d;">Subtotal Estimado: <strong id="cobro-total-lbl" style="font-size: 19px; color: #166534;">$0.00</strong></span>
                     </div>
                 </div>
@@ -516,7 +523,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN DE GARANTÍA Y FACTURACIÓN (SE MUESTRA SOLO EN VALIDACIÓN DE GARANTÍA) -->
+        <!-- SECCIÃƒâ€œN DE GARANTÃƒÂA Y FACTURACIÃƒâ€œN (SE MUESTRA SOLO EN VALIDACIÃƒâ€œN DE GARANTÃƒÂA) -->
         <div id="bloque-garantia-facturacion" class="seccion-form bloque-motivo bloque-personal hidden">
             <div class="seccion-hdr"><i class="bi bi-shield-check"></i> Garantia y Facturacion</div>
             <div class="seccion-body">
@@ -633,7 +640,7 @@
                                      onclick="seleccionarTecnico(this, {{ $tec->id }}, '{{ addslashes($tec->nombre_tecnico) }}', '{{ $esTuMismo ? '#2563eb' : $color }}', '{{ $etiqueta }}', {{ $pendientes }}, {{ $enProceso }}, {{ $esTuMismo ? 'true' : 'false' }})">
                                     <div class="tec-item-avatar" style="background:{{ $esTuMismo ? '#2563eb' : $color }};">{{ strtoupper(substr($tec->nombre_tecnico, 0, 1)) }}</div>
                                     <span class="tec-item-nombre">{{ $tec->nombre_tecnico }}</span>
-                                    @if($esTuMismo)<span class="tec-yo-badge">Tú</span>@endif
+                                    @if($esTuMismo)<span class="tec-yo-badge">TÃƒº</span>@endif
                                     <span class="tec-item-stats">{{ $pendientes }}P · {{ $enProceso }}EP</span>
                                     <span class="tec-item-badge" style="background:{{ $color }}20;color:{{ $color }};border:1px solid {{ $color }}66;">{{ $etiqueta }}</span>
                                 </div>
@@ -707,7 +714,7 @@
                     <label>Serie</label>
                     <div class="lista-lineas" id="series-container">
                         <div class="linea-item" style="display: flex; gap: 10px; align-items: center; width: 100%;">
-                            <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Número de serie" style="flex: 1;">
+                            <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="NÃƒºmero de serie" style="flex: 1;">
                             <button type="button" class="btn-mini" onclick="agregarSerie()" style="height: 38px; padding: 0 14px;">+</button>
                         </div>
                     </div>
@@ -765,7 +772,7 @@
                     <div id="repuestos-ocultos-inputs"></div>
                     <input type="hidden" id="repuesto_inventario_id" name="repuesto_inventario_id" value="">
                     <div id="repuestos-lista-visual-resumen" style="font-size:13px; color:#475569; padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; font-style:italic;">
-                        Ningún repuesto de stock seleccionado.
+                        NingÃƒºn repuesto de stock seleccionado.
                     </div>
                 </div>
 
@@ -780,7 +787,7 @@
                 </div>
 
                 <div id="credenciales-container" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
-                    <!-- Tarjetas dinámicas se agregarán aquí -->
+                    <!-- Tarjetas dinÃƒ¡micas se agregarÃƒ¡n aquÃƒÂ­ -->
                 </div>
 
                 <div class="campo" style="margin-bottom: 18px;">
@@ -846,7 +853,7 @@ function toggleTecDropdown() {
     const trigger = document.getElementById('tec-trigger');
     const list    = document.getElementById('tec-dropdown-list');
     if (!trigger || !list) return;
-    // Cerrar el otro dropdown si está abierto
+    // Cerrar el otro dropdown si estÃƒ¡ abierto
     _cerrarDropdownEmp();
     const open = list.classList.contains('open');
     trigger.classList.toggle('open', !open);
@@ -862,7 +869,7 @@ function toggleTecDropdownEmp() {
     const trigger = document.getElementById('tec-trigger-emp');
     const list    = document.getElementById('tec-dropdown-list-emp');
     if (!trigger || !list) return;
-    // Cerrar el otro dropdown si está abierto
+    // Cerrar el otro dropdown si estÃƒ¡ abierto
     _cerrarDropdownPer();
     const open = list.classList.contains('open');
     trigger.classList.toggle('open', !open);
@@ -924,7 +931,7 @@ function seleccionarTecnico(item, tecId, nombre, color, _etiqueta, pend, enproc,
     }
     if (nm) {
         nm.innerHTML = escHtml(nombre || '-- Seleccionar técnico --')
-            + (esTu ? ' <span class="tec-trigger-yo">★ Tú</span>' : '');
+            + (esTu ? ' <span class="tec-trigger-yo">Ã¢Ëœâ€¦ TÃƒº</span>' : '');
     }
     if (st) st.textContent = `${pend} pend. · ${enproc} en proc.`;
 
@@ -949,7 +956,7 @@ function seleccionarTecnicoEmp(item, tecId, nombre, color, _etiqueta, pend, enpr
     }
     if (nm) {
         nm.innerHTML = escHtml(nombre || '-- Seleccionar técnico --')
-            + (esTu ? ' <span class="tec-trigger-yo">★ Tú</span>' : '');
+            + (esTu ? ' <span class="tec-trigger-yo">Ã¢Ëœâ€¦ TÃƒº</span>' : '');
     }
     if (st) st.textContent = `${pend} pend. · ${enproc} en proc.`;
 
@@ -1027,6 +1034,15 @@ function escHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+function obtenerSeriePreorden() {
+    const inputs = document.querySelectorAll('#series-container input[name="series[]"]');
+    for (const input of inputs) {
+        const valor = (input.value || '').trim();
+        if (valor) return valor.toUpperCase();
+    }
+    return '';
+}
+
 function verificarPreorden() {
     if (_preordenIgnorada) return;
 
@@ -1038,8 +1054,9 @@ function verificarPreorden() {
 
     const ci = (document.getElementById('cli_identificacion').value || '').trim();
     const codigo = (document.getElementById('producto_inventario_codigo').value || '').trim();
+    const serie = obtenerSeriePreorden();
 
-    if (!ci && !codigo) {
+    if (!ci && !codigo && !serie) {
         ocultarAvisoPreorden();
         return;
     }
@@ -1050,6 +1067,7 @@ function verificarPreorden() {
             const params = [];
             if (ci) params.push('ci=' + encodeURIComponent(ci));
             if (codigo) params.push('codigo=' + encodeURIComponent(codigo));
+            if (serie) params.push('serie=' + encodeURIComponent(serie));
 
             const r = await fetch(_urlVerificarPreorden + '?' + params.join('&'), { cache: 'no-store' });
             const d = await r.json();
@@ -1074,8 +1092,10 @@ function mostrarAvisoPreorden(pre) {
     detalle.innerHTML =
         '<strong>Preorden:</strong> ' + escHtml(pre.nro_preorden || '-') + ' &nbsp;|&nbsp; ' +
         '<strong>Cliente:</strong> ' + escHtml((pre.nombres || '') + ' ' + (pre.apellidos || '')) + ' (' + escHtml(pre.identificacion || '-') + ')<br>' +
-        '<strong>Equipo:</strong> ' + escHtml((pre.tipo_producto || '-') + ' ' + (pre.marca_producto || '')) + (pre.desc_producto ? ' â€” ' + escHtml(pre.desc_producto) : '') + '<br>' +
-        '<strong>CÃ³digo:</strong> ' + escHtml(pre.codigo_producto || '-') + ' &nbsp;|&nbsp; ' +
+        '<strong>Equipo:</strong> ' + escHtml((pre.tipo_producto || '-') + ' ' + (pre.marca_producto || '')) + (pre.desc_producto ? ' ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ' + escHtml(pre.desc_producto) : '') + '<br>' +
+        '<strong>Codigo:</strong> ' + escHtml(pre.codigo_producto || '-') + ' &nbsp;|&nbsp; ' +
+        '<strong>Serie:</strong> ' + escHtml(pre.serie || '-') + '<br>' +
+        '<strong>Factura:</strong> ' + escHtml(pre.nro_factura || '-') + ' &nbsp;|&nbsp; ' +
         '<strong>Registrada:</strong> ' + escHtml(fecha);
 
     aviso.style.display = 'block';
@@ -1159,6 +1179,33 @@ function buscarProductoPorCodigo(codigo) {
 
             if (!d.ok || !d.producto) {
                 mostrarBadgeProducto('warn', 'Codigo no encontrado. Complete los datos y se registrara como producto nuevo.');
+                
+                // Desplegar modal para ingresar la descripcion del nuevo producto
+                Swal.fire({
+                    title: 'Código no encontrado',
+                    html: `El código de producto <strong>"${escHtml(q)}"</strong> no está registrado en la base de datos.<br><br>Ingrese la <strong>descripción</strong> del producto (ej: Tv 43 pulgadas LG, etc.):<br><small style="color: #ef4444; font-weight: 700;">Escríbala correctamente ya que esto se guardará en la base de datos.</small>`,
+                    input: 'text',
+                    inputPlaceholder: 'Descripción del producto',
+                    showCancelButton: true,
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Guardar Descripción',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    inputValidator: (value) => {
+                        if (!value || value.trim().length < 3) {
+                            return 'Debe ingresar una descripción válida (mínimo 3 caracteres)';
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed && result.value) {
+                        const desc = result.value.trim().toUpperCase();
+                        document.getElementById('eq_modelo').value = desc;
+                        mostrarBadgeProducto('warn', `Codigo no encontrado (se registrará como: ${desc})`);
+                    } else {
+                        document.getElementById('eq_modelo').value = '';
+                    }
+                });
                 return;
             }
 
@@ -1235,7 +1282,7 @@ function renderRepuestosResultado(repuestos) {
         item.className = 'rep-item';
         item.innerHTML =
             '<code style="font-size:12px;color:#b45309;font-weight:700;white-space:nowrap;">' + escHtml(r.codigo) + '</code>' +
-            '<span style="font-size:13px;color:#1e293b;">' + escHtml(r.nombre) + (r.descripcion ? '<span style="color:#94a3b8;font-size:11.5px;"> â€” ' + escHtml(r.descripcion) + '</span>' : '') + '</span>' +
+            '<span style="font-size:13px;color:#1e293b;">' + escHtml(r.nombre) + (r.descripcion ? '<span style="color:#94a3b8;font-size:11.5px;"> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ' + escHtml(r.descripcion) + '</span>' : '') + '</span>' +
             '<span style="background:#dcfce7;color:#166534;font-size:10.5px;padding:1px 7px;border-radius:10px;font-weight:700;">Stock: ' + (r.stock || 0) + '</span>';
         item.onclick = () => seleccionarRepuesto(r);
         lista.appendChild(item);
@@ -1260,7 +1307,7 @@ function actualizarTablaRepuestos() {
     if (_repuestosSeleccionados.length === 0) {
         if (container) container.style.display = 'none';
         if (visualResumen) {
-            visualResumen.textContent = 'Ningún repuesto de stock seleccionado.';
+            visualResumen.textContent = 'NingÃƒºn repuesto de stock seleccionado.';
             visualResumen.style.fontStyle = 'italic';
         }
         if (hiddenLegacy) hiddenLegacy.value = '';
@@ -1576,7 +1623,7 @@ function autoseleccionarSucursalPorFactura(valor) {
 
         Swal.fire({
             title: 'Seleccionar Sucursal',
-            text: `Se encontraron múltiples sucursales con el número ${prefix}. Por favor seleccione una:`,
+            text: `Se encontraron mÃƒºltiples sucursales con el nÃƒºmero ${prefix}. Por favor seleccione una:`,
             input: 'select',
             inputOptions: inputOptions,
             inputPlaceholder: '-- Seleccione la sucursal --',
@@ -1863,7 +1910,7 @@ function drawPattern(canvasId, selectedDots, currentPos) {
         const isSelected = selectedDots.includes(idx);
         ctx.beginPath();
         if (isSelected) {
-            // Anillo exterior translúcido
+            // Anillo exterior translÃƒºcido
             ctx.arc(dot.x, dot.y, 16, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
             ctx.fill();
@@ -1999,6 +2046,42 @@ function initPatternLock(cardId) {
 async function guardarOrden() {
     const modelInp = document.getElementById('eq_modelo');
     const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim();
+    const badge = document.getElementById('prod-badge');
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
+    const isEmpresa = motivo === 'Servicios a Empresas';
+
+    if (!isEmpresa && cod !== '') {
+        const isNewProduct = badge && badge.style.display !== 'none' && badge.textContent.includes('no encontrado');
+        if (isNewProduct && (!modelInp.value || modelInp.value.trim() === '' || modelInp.value.trim() === cod || modelInp.value.trim() === 'GENERICO')) {
+            Swal.fire({
+                title: 'Descripción Requerida',
+                html: `El código <strong>"${escHtml(cod)}"</strong> es nuevo y no tiene descripción.<br><br>Ingrese la <strong>descripción</strong> del producto para poder continuar (ej: Tv 43 pulgadas LG, etc.):<br><small style="color: #ef4444; font-weight: 700;">Escríbala correctamente ya que esto se guardará en la base de datos.</small>`,
+                input: 'text',
+                inputPlaceholder: 'Descripción del producto',
+                showCancelButton: true,
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Guardar y Continuar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                inputValidator: (value) => {
+                    if (!value || value.trim().length < 3) {
+                        return 'Debe ingresar una descripción válida (mínimo 3 caracteres)';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    const desc = result.value.trim().toUpperCase();
+                    modelInp.value = desc;
+                    mostrarBadgeProducto('warn', `Codigo no encontrado (se registrará como: ${desc})`);
+                    // Re-try save
+                    guardarOrden();
+                }
+            });
+            return;
+        }
+    }
+
     if (modelInp && !modelInp.value) {
         modelInp.value = cod || 'GENERICO';
     }
@@ -2029,7 +2112,7 @@ async function guardarOrden() {
             console.error('Response error details:', r.status, errorText);
 
             if (r.status === 419) {
-                mostrarMensaje(true, 'La sesión ha expirado (Error 419). Por favor, recarga la página e intenta de nuevo.');
+                mostrarMensaje(true, 'La sesiÃƒÂ³n ha expirado (Error 419). Por favor, recarga la pÃƒ¡gina e intenta de nuevo.');
                 return;
             }
 
@@ -2088,25 +2171,26 @@ document.addEventListener('DOMContentLoaded', () => {
     onEstadoRepuestoChange(document.getElementById('estado_repuesto').value || 'No requerido');
     sincronizarTecnicoDesdeSelect();
 
-    // Configurar validaciones dinámicas
+    // Configurar validaciones dinÃƒ¡micas
     setupDynamicValidation(document.getElementById('cli_identificacion'), EcuadorianValidator.validarIdentificacion, (v) => {
         if (v.length === 0) return 'La identificación es requerida.';
-        if (/[^a-zA-Z0-9]/.test(v)) return 'La identificación sólo debe contener letras y números.';
-        return 'Debe ser una cédula (10 dígitos), RUC (13 dígitos) de Ecuador, o un pasaporte válido (5 a 20 caracteres alfanuméricos).';
+        if (/[^a-zA-Z0-9]/.test(v)) return 'La identificaciÃƒÂ³n sÃƒÂ³lo debe contener letras y nÃƒºmeros.';
+        return 'Debe ser una cÃƒÂ©dula (10 dÃƒÂ­gitos), RUC (13 dÃƒÂ­gitos) de Ecuador, o un pasaporte vÃƒ¡lido (5 a 20 caracteres alfanumÃƒÂ©ricos).';
     });
 
     setupDynamicValidation(document.getElementById('cli_telefono'), EcuadorianValidator.validarTelefono, (v) => {
         if (v.length === 0) return 'El teléfono es requerido.';
-        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
+        if (/[^\d]/.test(v)) return 'El telÃƒÂ©fono sÃƒÂ³lo debe contener nÃƒºmeros.';
         return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
     });
 
     setupDynamicValidation(document.getElementById('cli_correo'), EcuadorianValidator.validarEmail, (v) => {
-        return 'El correo electrónico no tiene un formato válido.';
+        return 'El correo electrÃƒÂ³nico no tiene un formato vÃƒ¡lido.';
     });
 
     const inpCi = document.getElementById('cli_identificacion');
     const inpCod = document.getElementById('producto_inventario_codigo');
+    const seriesContainer = document.getElementById('series-container');
     if (inpCi) {
         inpCi.addEventListener('input', () => {
             _preordenIgnorada = false;
@@ -2142,6 +2226,13 @@ document.addEventListener('DOMContentLoaded', () => {
             verificarPreorden();
         });
     }
+    if (seriesContainer) {
+        seriesContainer.addEventListener('input', (event) => {
+            if (!event.target || event.target.name !== 'series[]') return;
+            _preordenIgnorada = false;
+            verificarPreorden();
+        });
+    }
 
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('tec-dropdown');
@@ -2165,11 +2256,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const checked = document.querySelectorAll('.chk-tecnico-emp:checked');
             if (checked.length > 5) {
                 chk.checked = false;
-                alert('Puedes asignar un máximo de 5 técnicos.');
+                alert('Puedes asignar un maximo de 5 tecnicos.');
             }
+            actualizarTecnicoEncargadoEmpresa();
             calcularPrecioNovisolutions();
         });
     });
+    actualizarTecnicoEncargadoEmpresa();
 });
 
 function verificarNovisolutions() {
@@ -2191,6 +2284,7 @@ function verificarNovisolutions() {
             document.getElementById('ord_tecnico_id_empresa').disabled = true;
             document.getElementById('ord_tecnico_id_empresa').required = false;
             document.querySelectorAll('.chk-tecnico-emp').forEach(chk => chk.disabled = false);
+            actualizarTecnicoEncargadoEmpresa();
         } else {
             bloqueMultiTecnicos.classList.add('hidden');
             defaultTecnicoDropdown.classList.remove('hidden');
@@ -2199,6 +2293,12 @@ function verificarNovisolutions() {
                 chk.disabled = true;
                 chk.checked = false;
             });
+            const encargado = document.getElementById('tecnico_encargado');
+            if (encargado) {
+                encargado.innerHTML = '<option value="">-- Seleccione al encargado --</option>';
+                encargado.value = '';
+                encargado.disabled = true;
+            }
         }
     }
     
@@ -2230,6 +2330,33 @@ function verificarNovisolutions() {
     calcularPrecioNovisolutions();
 }
 
+function actualizarTecnicoEncargadoEmpresa() {
+    const select = document.getElementById('tecnico_encargado');
+    if (!select) return;
+
+    const seleccionados = Array.from(document.querySelectorAll('.chk-tecnico-emp:checked'));
+    const valorActual = select.value;
+
+    select.innerHTML = '<option value="">-- Seleccione al encargado --</option>';
+
+    seleccionados.forEach((chk) => {
+        const option = document.createElement('option');
+        option.value = chk.value;
+        option.textContent = chk.dataset.nombre || chk.closest('label')?.textContent?.trim() || `Tecnico ${chk.value}`;
+        select.appendChild(option);
+    });
+
+    select.disabled = seleccionados.length === 0;
+
+    if (seleccionados.length === 0) {
+        select.value = '';
+        return;
+    }
+
+    const existeActual = seleccionados.some((chk) => chk.value === valorActual);
+    select.value = existeActual ? valorActual : seleccionados[0].value;
+}
+
 function calcularPrecioNovisolutions() {
     const chks = document.querySelectorAll('.chk-tecnico-emp:checked');
     const numTecnicos = chks.length;
@@ -2246,7 +2373,7 @@ function calcularPrecioNovisolutions() {
     const totalLbl = document.getElementById('cobro-total-lbl');
     
     if (formulaLbl) {
-        formulaLbl.textContent = `${numTecnicos} técnico(s) * ${horas.toFixed(2)} hora(s) * $${valorHora.toFixed(2)}/hr`;
+        formulaLbl.textContent = `${numTecnicos} tecnico(s) * ${horas.toFixed(2)} hora(s) * $${valorHora.toFixed(2)}/hr`;
     }
     if (totalLbl) {
         totalLbl.textContent = `$${total.toFixed(2)}`;

@@ -18,6 +18,7 @@ class VerificarPreordenRequest extends FormRequest
         return [
             'ci' => ['nullable', 'string', 'max:20'],
             'codigo' => ['nullable', 'string', 'max:120'],
+            'serie' => ['nullable', 'string', 'max:100'],
         ];
     }
 
@@ -29,4 +30,3 @@ class VerificarPreordenRequest extends FormRequest
         ], 422));
     }
 }
-

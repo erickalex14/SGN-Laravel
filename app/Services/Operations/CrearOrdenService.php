@@ -280,9 +280,10 @@ class CrearOrdenService
                         $tecnicosAsignados = [$tecnicosAsignados];
                     }
                     $tecnicosAsignados = array_map('intval', array_filter($tecnicosAsignados));
+                    $tecnicoEncargado = ! empty($data['tecnico_encargado']) ? (int) $data['tecnico_encargado'] : null;
 
-                    $primaryTecnicoId = $esNovisolutionsServicio && ! empty($tecnicosAsignados)
-                        ? (int) $tecnicosAsignados[0]
+                    $primaryTecnicoId = $esNovisolutionsServicio
+                        ? ($tecnicoEncargado ?: (! empty($tecnicosAsignados) ? (int) $tecnicosAsignados[0] : 0))
                         : (int) $data['ord_tecnico_id'];
 
                     $nroOrden = $this->ordenRepo->generarNumeroOrden($sucursalId);

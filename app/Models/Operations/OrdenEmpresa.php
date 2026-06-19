@@ -32,7 +32,9 @@ class OrdenEmpresa extends Model
         'nro_sucursal_cliente',
         'valor_hora',
         'horas_trabajadas',
-        'cas_id'
+        'cas_id',
+        'fecha_finalizacion',
+        'fecha_entrega'
     ];
 
     public function tecnicos()

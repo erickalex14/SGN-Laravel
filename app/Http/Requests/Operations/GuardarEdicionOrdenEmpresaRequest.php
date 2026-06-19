@@ -42,6 +42,26 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
             'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
             'tecnicos_asignados' => [$requiereServicioCampos ? 'required' : 'nullable', 'array', 'min:1', 'max:5'],
             'tecnicos_asignados.*' => ['integer', 'exists:usuarios,id'],
+            'tecnico_encargado' => [
+                $requiereServicioCampos ? 'required' : 'nullable',
+                'integer',
+                'exists:usuarios,id',
+                function ($attribute, $value, $fail) use ($requiereServicioCampos) {
+                    if (! $requiereServicioCampos || $value === null || $value === '') {
+                        return;
+                    }
+
+                    $tecnicosAsignados = $this->input('tecnicos_asignados', []);
+                    if (! is_array($tecnicosAsignados)) {
+                        $tecnicosAsignados = [$tecnicosAsignados];
+                    }
+
+                    $idsAsignados = array_map('intval', array_filter($tecnicosAsignados));
+                    if (! in_array((int) $value, $idsAsignados, true)) {
+                        $fail('El técnico encargado debe estar dentro de los técnicos asignados.');
+                    }
+                },
+            ],
             'nro_sucursal_cliente' => [
                 'nullable',
                 'string',
@@ -84,6 +104,9 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
         }
         if ($this->has('cas_id_empresa') && $this->input('cas_id_empresa') === '') {
             $this->merge(['cas_id_empresa' => null]);
+        }
+        if ($this->has('tecnico_encargado') && $this->input('tecnico_encargado') === '') {
+            $this->merge(['tecnico_encargado' => null]);
         }
     }
 

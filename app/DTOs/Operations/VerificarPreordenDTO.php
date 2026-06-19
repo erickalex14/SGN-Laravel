@@ -6,8 +6,8 @@ readonly class VerificarPreordenDTO
 {
     public function __construct(
         public string $ci,
-        public string $codigo
+        public string $codigo,
+        public string $serie
     ) {
     }
 }
-

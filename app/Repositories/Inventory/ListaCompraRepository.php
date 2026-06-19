@@ -8,27 +8,39 @@ use Illuminate\Database\Eloquent\Collection;
 
 class ListaCompraRepository
 {
-    public function obtenerTodas(): Collection
+    public function obtenerTodas(?int $sucursalId = null): Collection
     {
-        return ListaCompra::orderBy('id', 'desc')->get();
+        $query = ListaCompra::query();
+        if ($sucursalId !== null && $sucursalId > 0) {
+            $query->whereHas('solicitudes.orden', function ($o) use ($sucursalId) {
+                $o->where('sucursal_id', $sucursalId);
+            });
+        }
+        return $query->orderBy('id', 'desc')->get();
     }
 
-    public function obtenerSolicitudesPendientesDeCompra(): Collection
+    public function obtenerSolicitudesPendientesDeCompra(?int $sucursalId = null): Collection
     {
         // Compatibilidad legacy:
         // - Datos antiguos: estado = 'COMPRA'
         // - Datos actuales (enum): estado = 'Aprobada' + sin repuesto asignado
-        return SolicitudRepuesto::with('orden')
-            ->where(function ($query) {
-                $query->where('estado', 'COMPRA')
+        $query = SolicitudRepuesto::with('orden')
+            ->where(function ($q) {
+                $q->where('estado', 'COMPRA')
                     ->orWhere(function ($inner) {
                         $inner->where('estado', 'Aprobada')
                             ->whereNull('repuesto_id');
                     });
             })
-            ->whereNull('lista_compra_id')
-            ->orderBy('fecha_solicitud', 'asc')
-            ->get();
+            ->whereNull('lista_compra_id');
+
+        if ($sucursalId !== null && $sucursalId > 0) {
+            $query->whereHas('orden', function ($o) use ($sucursalId) {
+                $o->where('sucursal_id', $sucursalId);
+            });
+        }
+
+        return $query->orderBy('fecha_solicitud', 'asc')->get();
     }
 
     public function generarNumeroLista(): string

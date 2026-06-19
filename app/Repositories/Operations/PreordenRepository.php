@@ -46,11 +46,34 @@ class PreordenRepository
             ->selectRaw(
                 'po.id, po.nro_preorden, po.nombres, po.apellidos, po.telefono, po.correo,' .
                 'po.nro_factura, po.fecha_facturacion, po.codigo_producto, po.desc_producto,' .
-                'po.marca_producto, po.tipo_producto, po.detalle_equipo, po.foto_1, po.foto_2, po.foto_3, po.foto_4,' .
+                'po.marca_producto, po.tipo_producto, po.detalle_equipo, po.serie, po.foto_1, po.foto_2, po.foto_3, po.foto_4,' .
                 'po.nro_sucursal_cliente, po.sucursal_id, po.fecha_registro, po.orden_id, po.ciudad_procedencia,' .
                 's.secuencial, s.ciudad AS sucursal_ciudad, sc.nombre AS sucursal_cliente_nombre, sc.numero AS sucursal_cliente_numero'
             )
             ->whereNull('po.orden_id')
+            ->when(!$esSuperadmin && $sucursalSesion > 0, function ($q) use ($sucursalSesion) {
+                $q->where('po.sucursal_id', $sucursalSesion);
+            })
+            ->orderByDesc('po.fecha_registro')
+            ->limit(100)
+            ->get();
+    }
+
+    public function obtenerPreordenesIngresadas(bool $esSuperadmin, int $sucursalSesion): Collection
+    {
+        return DB::table('preordenes as po')
+            ->leftJoin('sucursales as s', 'po.sucursal_id', '=', 's.id')
+            ->leftJoin('sucursalescliente as sc', 'po.nro_sucursal_cliente', '=', 'sc.id')
+            ->leftJoin('ordenes as o', 'po.orden_id', '=', 'o.id')
+            ->selectRaw(
+                'po.id, po.nro_preorden, po.nombres, po.apellidos, po.telefono, po.correo,' .
+                'po.nro_factura, po.fecha_facturacion, po.codigo_producto, po.desc_producto,' .
+                'po.marca_producto, po.tipo_producto, po.detalle_equipo, po.serie, po.foto_1, po.foto_2, po.foto_3, po.foto_4,' .
+                'po.nro_sucursal_cliente, po.sucursal_id, po.fecha_registro, po.orden_id, po.ciudad_procedencia, po.estado,' .
+                's.secuencial, s.ciudad AS sucursal_ciudad, sc.nombre AS sucursal_cliente_nombre, sc.numero AS sucursal_cliente_numero,' .
+                'o.nro_orden as orden_ref'
+            )
+            ->whereNotNull('po.orden_id')
             ->when(!$esSuperadmin && $sucursalSesion > 0, function ($q) use ($sucursalSesion) {
                 $q->where('po.sucursal_id', $sucursalSesion);
             })
@@ -124,6 +147,7 @@ class PreordenRepository
     public function enlazarPreordenConOrden(Preorden $preorden, int $ordenId): void
     {
         $preorden->orden_id = $ordenId;
+        $preorden->estado = 'atendida';
         $preorden->save();
     }
 
@@ -147,12 +171,13 @@ class PreordenRepository
         return $row ? (string) $row->nro_orden : null;
     }
 
-    public function buscarPendientePorCiOCodigo(string $ci, string $codigo): ?object
+    public function buscarPendientePorCiOCodigoOSerie(string $ci, string $codigo, string $serie): ?object
     {
         $ci = trim($ci);
         $codigo = trim($codigo);
+        $serie = mb_strtoupper(trim($serie));
 
-        if ($ci === '' && $codigo === '') {
+        if ($ci === '' && $codigo === '' && $serie === '') {
             return null;
         }
 
@@ -167,20 +192,29 @@ class PreordenRepository
                 'p.desc_producto',
                 'p.marca_producto',
                 'p.tipo_producto',
+                'p.nro_factura',
+                'p.serie',
                 'p.estado',
                 DB::raw('COALESCE(p.created_at, p.fecha_registro) as created_at'),
             ])
-            ->where('p.estado', '=', 'pendiente')
             ->whereNull('p.orden_id');
 
-        if ($ci !== '' && $codigo !== '') {
-            $query->where('p.identificacion', '=', $ci)
-                ->where('p.codigo_producto', '=', $codigo);
-        } elseif ($ci !== '') {
-            $query->where('p.identificacion', '=', $ci);
-        } else {
-            $query->where('p.codigo_producto', '=', $codigo);
-        }
+        $query->where(function ($q) use ($ci, $codigo, $serie) {
+            if ($ci !== '' && $codigo !== '') {
+                $q->orWhere(function ($inner) use ($ci, $codigo) {
+                    $inner->where('p.identificacion', '=', $ci)
+                        ->where('p.codigo_producto', '=', $codigo);
+                });
+            } elseif ($ci !== '') {
+                $q->orWhere('p.identificacion', '=', $ci);
+            } elseif ($codigo !== '') {
+                $q->orWhere('p.codigo_producto', '=', $codigo);
+            }
+
+            if ($serie !== '') {
+                $q->orWhereRaw('UPPER(TRIM(COALESCE(p.serie, ""))) = ?', [$serie]);
+            }
+        });
 
         return $query->orderByDesc('created_at')->first();
     }

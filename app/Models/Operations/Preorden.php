@@ -30,6 +30,7 @@ class Preorden extends Model
         'marca_producto',
         'tipo_producto',
         'detalle_equipo',
+        'serie',
         'foto_1',
         'foto_2',
         'foto_3',
