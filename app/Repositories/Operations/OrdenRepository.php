@@ -315,6 +315,7 @@ class OrdenRepository
                     'observacion' => $orden->equipo->observacion ?? '',
                     'tecnico_lider' => '',
                     'tecnicos_asignados' => '',
+                    'cantidad_tecnicos' => 1,
                     'horas_trabajadas' => 0,
                     'cliente' => $orden->cliente ? [
                         'nombres' => $orden->cliente->nombres,
@@ -459,6 +460,7 @@ class OrdenRepository
                     'observacion' => $orden->equipo->observacion ?? '',
                     'tecnico_lider' => $esNovisolutionsServicio ? ($orden->tecnico->nombre_tecnico ?? '') : '',
                     'tecnicos_asignados' => $esNovisolutionsServicio ? $orden->tecnicos->pluck('nombre_tecnico')->implode(', ') : '',
+                    'cantidad_tecnicos' => $esNovisolutionsServicio ? $cantTecnicos : 1,
                     'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($orden->horas_trabajadas ?? 0) : 0,
                     'cliente' => [
                         'nombres' => $nombreEmpresa,

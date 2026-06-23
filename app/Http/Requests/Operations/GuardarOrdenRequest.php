@@ -45,7 +45,31 @@ class GuardarOrdenRequest extends FormRequest
             // Validacion de Equipo
             'eq_tipo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
             'eq_marca' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
-            'eq_modelo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100'],
+            'eq_modelo' => [
+                $esEmpresa ? 'nullable' : 'required',
+                'string',
+                'max:100',
+                function ($attribute, $value, $fail) use ($esEmpresa) {
+                    if ($esEmpresa) {
+                        return;
+                    }
+
+                    $codigo = strtoupper(trim((string) $this->input('producto_inventario_codigo', '')));
+                    if ($codigo === '') {
+                        return;
+                    }
+
+                    $existe = \App\Models\Inventory\ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [$codigo])->exists();
+                    if ($existe) {
+                        return;
+                    }
+
+                    $descripcion = strtoupper(trim((string) $value));
+                    if ($descripcion === '' || $descripcion === $codigo || $descripcion === 'GENERICO' || mb_strlen($descripcion) < 3) {
+                        $fail('Debes ingresar una descripcion valida para el producto nuevo antes de crear la orden.');
+                    }
+                },
+            ],
             'eq_contrasena' => ['nullable', 'string', 'max:100'],
             'eq_falla' => [$esEmpresa ? 'nullable' : 'required', 'string'],
             'eq_observacion' => ['nullable', 'string'],
@@ -216,3 +240,6 @@ class GuardarOrdenRequest extends FormRequest
         ]));
     }
 }
+
+
+
