@@ -6,24 +6,24 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    REPORTES ENTERPRISE — SGN Novitecnología
-═══════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .rep-wrap { max-width: 1420px; margin: 0 auto; padding: 24px 20px; font-family: 'Inter', system-ui, sans-serif; }
 
-/* ── Encabezado ── */
+/* â”€â”€ Encabezado â”€â”€ */
 .rep-hero { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
 .rep-hero-left h2 { margin: 0 0 3px; font-size: 24px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
 .rep-hero-left p { margin: 0; color: #64748b; font-size: 13px; }
 .rep-hero-badge { background: linear-gradient(135deg,#dbeafe,#eff6ff); border: 1px solid #bfdbfe; border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; color: #1e40af; display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; }
 
-/* ── Cards ── */
+/* â”€â”€ Cards â”€â”€ */
 .rep-card { background: #fff; border-radius: 16px; border: 1px solid #e8edf3; box-shadow: 0 2px 16px rgba(0,0,0,.05); margin-bottom: 18px; overflow: hidden; }
 .rep-card-head { display: flex; align-items: center; gap: 8px; padding: 13px 20px; background: linear-gradient(135deg,#f0f6ff,#e4effe); border-bottom: 1px solid #c7d8f5; font-size: 12px; font-weight: 800; color: #1a40af; text-transform: uppercase; letter-spacing: .05em; flex-wrap: wrap; }
 .rep-card-head .ch-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-/* ── Filtros ── */
+/* â”€â”€ Filtros â”€â”€ */
 .rep-filtros-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(175px,1fr)); gap: 12px; padding: 18px 20px 0; }
 .rep-campo { display: flex; flex-direction: column; gap: 4px; }
 .rep-campo label { font-size: 10.5px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; }
@@ -42,7 +42,7 @@
 .rep-pill { background: #dbeafe; color: #1e40af; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
 .rep-pill button { background: none; border: none; cursor: pointer; color: #1e40af; font-size: 15px; line-height: 1; padding: 0; }
 
-/* ── Botones ── */
+/* â”€â”€ Botones â”€â”€ */
 .rep-btns-row { display: flex; gap: 8px; padding: 14px 20px 18px; flex-wrap: wrap; align-items: center; }
 .rep-btn { display: inline-flex; align-items: center; gap: 6px; border: none; padding: 9px 16px; border-radius: 9px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
 .rep-btn:hover { transform: translateY(-1px); }
@@ -60,13 +60,13 @@
 .rep-btn-sm { padding: 6px 12px; font-size: 11.5px; }
 .rep-divider-v { width: 1px; height: 28px; background: #e2e8f0; margin: 0 2px; }
 
-/* ── Spinner ── */
+/* â”€â”€ Spinner â”€â”€ */
 .rep-spinner { display: none; align-items: center; justify-content: center; padding: 50px; gap: 14px; color: #2563eb; font-size: 14px; font-weight: 600; }
 .rep-spinner.show { display: flex; }
 .spin-ring { width: 28px; height: 28px; border: 3px solid #dbeafe; border-top-color: #2563eb; border-radius: 50%; animation: repSpin .7s linear infinite; }
 @keyframes repSpin { to { transform: rotate(360deg); } }
 
-/* ── KPIs ── */
+/* â”€â”€ KPIs â”€â”€ */
 .rep-kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; margin-bottom: 18px; }
 .rep-kpi { background: #fff; border: 1px solid #e8edf3; border-radius: 14px; border-top: 3px solid transparent; padding: 16px; text-align: center; transition: box-shadow .2s, transform .2s; cursor: default; }
 .rep-kpi:hover { box-shadow: 0 6px 20px rgba(0,0,0,.1); transform: translateY(-2px); }
@@ -81,7 +81,7 @@
 .rep-kpi.c-green { border-top-color: #10b981; } .rep-kpi.c-green i, .rep-kpi.c-green .rep-kpi-pct { color: #10b981; }
 .rep-kpi.c-rose { border-top-color: #f43f5e; } .rep-kpi.c-rose i, .rep-kpi.c-rose .rep-kpi-pct { color: #f43f5e; }
 
-/* ── Gráficos ── */
+/* â”€â”€ Gráficos â”€â”€ */
 .rep-charts-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .rep-charts-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .rep-chart-card { background: #fff; border: 1px solid #e8edf3; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
@@ -89,18 +89,18 @@
 .rep-chart-body { padding: 10px 16px 14px; height: 220px; }
 .rep-chart-body canvas { max-height: 100%; }
 
-/* ── Stats row ── */
+/* â”€â”€ Stats row â”€â”€ */
 .rep-stats-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid #f1f5f9; background: #fafbfc; }
 .rep-stat-chip { background: #f1f5f9; border-radius: 8px; padding: 5px 11px; font-size: 11.5px; color: #374151; display: flex; align-items: center; gap: 5px; }
 .rep-stat-chip b { color: #1e40af; }
 
-/* ── Tabla ── */
+/* â”€â”€ Tabla â”€â”€ */
 .rep-tbl-outer { overflow-x: auto; }
 .rep-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .rep-tbl th { background: #f8fafc; padding: 9px 12px; text-align: left; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid #e2e8f0; white-space: nowrap; cursor: pointer; user-select: none; }
 .rep-tbl th:hover { background: #f1f5f9; color: #1e40af; }
-.rep-tbl th.sort-asc::after { content: ' ▲'; opacity: .7; font-size: 9px; }
-.rep-tbl th.sort-desc::after { content: ' ▼'; opacity: .7; font-size: 9px; }
+.rep-tbl th.sort-asc::after { content: ' â–²'; opacity: .7; font-size: 9px; }
+.rep-tbl th.sort-desc::after { content: ' â–¼'; opacity: .7; font-size: 9px; }
 .rep-tbl td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: #1e293b; white-space: nowrap; }
 .rep-tbl tr:last-child td { border-bottom: none; }
 .rep-tbl tr:hover td { background: #f8fbff; }
@@ -113,24 +113,24 @@
 .tipo-badge.personal { background: #f0fdf4; color: #166534; }
 .tipo-badge.empresa { background: #eff6ff; color: #1e40af; }
 
-/* ── Paginación ── */
+/* â”€â”€ Paginación â”€â”€ */
 .rep-pagination { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b; flex-wrap: wrap; gap: 8px; }
 .rep-pag-btns { display: flex; gap: 3px; }
 .rep-pag-btn { border: 1.5px solid #e2e8f0; background: #fff; color: #475569; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .rep-pag-btn:hover, .rep-pag-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .rep-pag-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── Buscar ── */
+/* â”€â”€ Buscar â”€â”€ */
 .rep-search-box { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; font-size: 12px; width: 220px; font-family: inherit; transition: border-color .2s; }
 .rep-search-box:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 
-/* ── Empty ── */
+/* â”€â”€ Empty â”€â”€ */
 .rep-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 24px; color: #94a3b8; text-align: center; gap: 10px; }
 .rep-empty i { font-size: 48px; }
 .rep-empty h4 { font-size: 16px; font-weight: 700; color: #64748b; margin: 0; }
 .rep-empty p { font-size: 13px; margin: 0; }
 
-/* ── Media queries ── */
+/* â”€â”€ Media queries â”€â”€ */
 @media(max-width:1200px) { .rep-charts-3 { grid-template-columns: 1fr 1fr; } }
 @media(max-width:960px) { .rep-charts-2, .rep-charts-3 { grid-template-columns: 1fr; } .rep-kpis { grid-template-columns: repeat(3,1fr); } }
 @media(max-width:600px) { .rep-kpis { grid-template-columns: repeat(2,1fr); } .rep-filtros-grid { grid-template-columns: 1fr 1fr; } }
@@ -140,7 +140,7 @@
 @section('contenido')
 <div class="rep-wrap">
 
-    {{-- ════ ENCABEZADO ════ --}}
+    {{-- â•â•â•â• ENCABEZADO â•â•â•â• --}}
     <div class="rep-hero">
         <div class="rep-hero-left">
             <h2>
@@ -157,7 +157,7 @@
     </div>
 
     @if(session('es_superadmin') || !empty(session('permisos')['inv_repuestos']['ver']))
-    {{-- ════ BANNER AUDITORÍA DE REPUESTOS ════ --}}
+    {{-- â•â•â•â• BANNER AUDITORÍA DE REPUESTOS â•â•â•â• --}}
     <div class="rep-card" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25); position: relative; overflow: hidden; margin-bottom: 18px;">
         <div style="position: absolute; right: -50px; bottom: -50px; font-size: 220px; color: rgba(255, 255, 255, 0.05); pointer-events: none; line-height: 1;">
             <i class="bi bi-shield-check"></i>
@@ -186,7 +186,7 @@
     </div>
     @endif
 
-    {{-- ════ FILTROS ════ --}}
+    {{-- â•â•â•â• FILTROS â•â•â•â• --}}
     <div class="rep-card">
         <div class="rep-card-head">
             <i class="bi bi-funnel-fill"></i> Filtros de búsqueda
@@ -341,12 +341,12 @@
         </form>
     </div>
 
-    {{-- ════ SPINNER ════ --}}
+    {{-- â•â•â•â• SPINNER â•â•â•â• --}}
     <div class="rep-spinner" id="rep-spinner">
         <div class="spin-ring"></div> Procesando datos del reporte…
     </div>
 
-    {{-- ════ RESULTADOS ════ --}}
+    {{-- â•â•â•â• RESULTADOS â•â•â•â• --}}
     <div id="rep-resultados" style="display:none;">
 
         {{-- KPIs --}}
@@ -421,7 +421,7 @@
             <div class="rep-card-head">
                 <i class="bi bi-table"></i> Detalle — <strong id="rep-count">0</strong>&nbsp;órdenes
                 <div class="ch-right">
-                    <input type="text" class="rep-search-box" id="rep-buscar" placeholder="🔍 Buscar…" oninput="filtrarTabla(this.value)">
+                    <input type="text" class="rep-search-box" id="rep-buscar" placeholder="ðŸ” Buscar…" oninput="filtrarTabla(this.value)">
                 </div>
             </div>
 
@@ -491,7 +491,7 @@ const ES_MASTER = @json($esMaster);
 const RUTA_FILTRAR = @json(route('reportes.filtrar'));
 
 
-/* ═══════════ COLORES ESTADO ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• COLORES ESTADO â•â•â•â•â•â•â•â•â•â•â• */
 const ESTADO_C = {
     'Pendiente'       : { bg:'#fef9c3', fg:'#854d0e', ch:'#f59e0b' },
     'En proceso'      : { bg:'#dbeafe', fg:'#1e40af', ch:'#3b82f6' },
@@ -502,7 +502,7 @@ const ESTADO_C = {
 };
 const PAL = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#14b8a6'];
 
-/* ═══════════ HELPERS ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• HELPERS â•â•â•â•â•â•â•â•â•â•â• */
 function esc(v) { return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function pct(n, t) { return t > 0 ? Math.round(n / t * 100) + '%' : '0%'; }
 function countBy(arr, k) { const o = {}; arr.forEach(r => { const v = r[k] || '(Sin dato)'; o[v] = (o[v] || 0) + 1; }); return o; }
@@ -535,6 +535,7 @@ function normalizeRow(raw) {
         observacion       : raw.observacion || '-',
         tecnico_lider     : raw.tecnico_lider || '-',
         tecnicos_asignados: raw.tecnicos_asignados || '-',
+        cantidad_tecnicos : raw.cantidad_tecnicos ?? 1,
         horas_trabajadas  : raw.horas_trabajadas ?? 0,
         estado_repuesto   : raw.estado_repuesto || '-',
         estado_garantia   : raw.estado_garantia || '-',
@@ -549,7 +550,7 @@ function normalizeRow(raw) {
     };
 }
 
-/* ═══════════ PILLS FILTROS ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• PILLS FILTROS â•â•â•â•â•â•â•â•â•â•â• */
 const FILTROS = [
     { id:'f-tecnico',   label:'Técnico',     sel:true  },
     { id:'f-sucursal',  label:'Sucursal',    sel:true  },
@@ -679,7 +680,7 @@ async function generarReporte() {
     }
 }
 
-/* ═══════════ KPIS ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• KPIS â•â•â•â•â•â•â•â•â•â•â• */
 function renderKpis() {
     const total = _all.length;
     const c = { Pendiente:0, 'En proceso':0, Finalizada:0, Entregada:0, 'Nota de Credito':0 };
@@ -697,7 +698,7 @@ function renderKpis() {
     document.getElementById('k-nc-pct').textContent   = pct(c['Nota de Credito'], total);
 }
 
-/* ═══════════ GRÁFICOS ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• GRÁFICOS â•â•â•â•â•â•â•â•â•â•â• */
 function dc(id) { if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; } }
 function renderCharts() {
     const rows = _all;
@@ -744,7 +745,7 @@ function renderCharts() {
     });
 }
 
-/* ═══════════ TABLA ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• TABLA â•â•â•â•â•â•â•â•â•â•â• */
 function renderTabla() {
     const total = _filtered.length;
     document.getElementById('rep-count').textContent = total;
@@ -856,7 +857,7 @@ window.sortTabla = function(col, key) {
     renderTabla();
 };
 
-/* ═══════════ LIMPIAR ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• LIMPIAR â•â•â•â•â•â•â•â•â•â•â• */
 window.limpiarFiltros = function() {
     FILTROS.forEach(f => { const el = document.getElementById(f.id); if (el) { el.value = ''; el.classList.remove('filter-active'); } });
     document.getElementById('rep-pills').innerHTML = '';
@@ -868,7 +869,7 @@ window.limpiarFiltros = function() {
     ['btn-pdf','btn-xlsx','btn-csv'].forEach(id => document.getElementById(id).disabled = true);
 };
 
-/* ═══════════ HELPERS FILTROS TEXTO ═══════════ */
+/* â•â•â•â•â•â•â•â•â•â•â• HELPERS FILTROS TEXTO â•â•â•â•â•â•â•â•â•â•â• */
 function getFiltrosTxt() {
     const partes = [];
     FILTROS.forEach(f => {
@@ -879,9 +880,9 @@ function getFiltrosTxt() {
     return partes;
 }
 
-/* ════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PDF ENTERPRISE — igual formato que imprimir.blade.php
-════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.getElementById('btn-pdf').addEventListener('click', generarPDFEnterprise);
 
 function generarPDFEnterprise() {
@@ -905,9 +906,9 @@ function generarPDFEnterprise() {
     window.open(url, '_blank');
 }
 
-/* ════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    CSV ENTERPRISE
-════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.getElementById('btn-csv').addEventListener('click', exportarCSV);
 
 function exportarCSV() {
@@ -916,7 +917,7 @@ function exportarCSV() {
     const headers = [
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Subtipo Empresa','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
-        'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Horas Trabajadas',
+        'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
         'Técnico','Sucursal','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
@@ -933,7 +934,7 @@ function exportarCSV() {
             r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.subtipo, r.cliente_nombre, r.identificacion,
             r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
             r.tipo_equipo, r.motivo_ingreso,
-            r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.horas_trabajadas || '',
+            r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia,
             r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.cas_nombre,
             r.fecha_prometido || '', r.fecha_entrega || '',
@@ -953,9 +954,9 @@ function exportarCSV() {
     a.click(); URL.revokeObjectURL(url);
 }
 
-/* ════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    XLSX ENTERPRISE con ExcelJS
-════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 document.getElementById('btn-xlsx').addEventListener('click', () => {
     document.getElementById('btn-xlsx').disabled = true;
     document.getElementById('btn-xlsx').innerHTML = '<i class="bi bi-hourglass-split"></i> Generando…';
@@ -1020,12 +1021,12 @@ async function exportarXLSX() {
     const tT2 = topN(countBy(_filtered, 'tecnico_nombre'), 10);
     const tiT2 = topN(countBy(_filtered, 'tipo_equipo'), 10);
 
-    /* ══ HOJA 1: DETALLE ══ */
+    /* â•â• HOJA 1: DETALLE â•â• */
     const cols1 = [
         'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Vencida',
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
-        'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Horas Trabajadas',
+        'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
         'Técnico','Ingresado por',
         'Sucursal',
@@ -1038,7 +1039,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,14,18,14,18,22,20,16,16,12,16,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,20,16,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1150,7 +1151,7 @@ async function exportarXLSX() {
             r.vencida ? 'Sí' : 'No',
             r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
-            r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.horas_trabajadas || '',
+            r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
             r.tecnico_nombre, '',
             r.sucursal_nombre,
@@ -1164,16 +1165,16 @@ async function exportarXLSX() {
         ];
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = 23;
+        const estadoIdx = 24;
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 29 || ci === 30) { 
+            else if (ci === 30 || ci === 31) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 29 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 30 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }
@@ -1201,7 +1202,7 @@ async function exportarXLSX() {
         cellInforme.fill = fl(bgBase);
     });
 
-    /* ══ HOJA 2: ESTADÍSTICAS ══ */
+    /* â•â• HOJA 2: ESTADÍSTICAS â•â• */
     const ws2 = wb.addWorksheet('Estadísticas', { views:[{ showGridLines:false }] });
     ws2.columns = [{ width:2 },{ width:30 },{ width:13 },{ width:10 },{ width:20 },{ width:3 },{ width:30 },{ width:13 },{ width:10 },{ width:20 }];
 
