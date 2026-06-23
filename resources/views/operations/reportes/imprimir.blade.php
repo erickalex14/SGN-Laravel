@@ -277,7 +277,8 @@
                 <th style="width: 11%;">Cliente / Identificación</th>
                 <th style="width: 11%;">Equipo / Marca / Serie</th>
                 <th style="width: 8%;">Motivo</th>
-                <th style="width: 8%;">Técnico</th>
+                <th style="width: 7%;">Técnico</th>
+                <th style="width: 4%;">Cant. Téc.</th>
                 <th style="width: 8%;">Sucursal / CAS</th>
                 <th style="width: 8%;">Repuesto / Garantía</th>
                 <th style="width: 6.5%;">Estado</th>
@@ -315,6 +316,7 @@
                     </td>
                     <td>{{ $r['motivo_ingreso'] }}</td>
                     <td>{{ $r['tecnico_nombre'] }}</td>
+                    <td style="text-align: center; font-weight: 700;">{{ $r['cantidad_tecnicos'] ?? 1 }}</td>
                     <td>
                         <strong>{{ $r['sucursal_nombre'] }}</strong>
                         @if(!empty($r['cas_nombre']) && $r['cas_nombre'] !== '-')
@@ -359,7 +361,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="14" style="text-align: center; color: #94a3b8; padding: 15px;">
+                    <td colspan="15" style="text-align: center; color: #94a3b8; padding: 15px;">
                         No se encontraron registros con los filtros aplicados.
                     </td>
                 </tr>

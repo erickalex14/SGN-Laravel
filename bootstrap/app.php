@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Middleware\Identity\VerificarPermisoLegacy;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->append(SecurityHeaders::class);
 
         $middleware->trustProxies(
             at: '*',
@@ -25,10 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->alias([
-            'verificar.permiso.legacy' => \App\Http\Middleware\Identity\VerificarPermisoLegacy::class,
-            'permiso' => \App\Http\Middleware\Identity\VerificarPermisoLegacy::class,
+            'verificar.permiso.legacy' => VerificarPermisoLegacy::class,
+            'permiso' => VerificarPermisoLegacy::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (TokenMismatchException $exception, Request $request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+
+            return response()->view('errors.419', [], 419);
+        });
     })->create();
