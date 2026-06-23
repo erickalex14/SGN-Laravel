@@ -6,9 +6,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-    /* ═══════════════════════════════════════════════════
+    /* •••••••••••••••••••••••••••••••••••••••••••••••••••
        AUDITORÍA DE INVENTARIO — SGN Premium Theme
-    ═══════════════════════════════════════════════════ */
+    ••••••••••••••••••••••••••••••••••••••••••••••••••• */
     .aud-wrap { max-width: 1420px; margin: 0 auto; padding: 24px 20px; font-family: 'Inter', system-ui, sans-serif; }
     
     .aud-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
@@ -18,7 +18,7 @@
     .btn-back { background: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
     .btn-back:hover { background: #e2e8f0; color: #0f172a; }
 
-    /* ── KPIs ── */
+    /* Ã¢”â‚¬Ã¢”â‚¬ KPIs Ã¢”â‚¬Ã¢”â‚¬ */
     .aud-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
     .aud-kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; border-top: 4px solid transparent; padding: 18px 16px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,.04); transition: box-shadow .2s, transform .2s; }
     .aud-kpi:hover { box-shadow: 0 8px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
@@ -30,7 +30,7 @@
     .aud-kpi.c-amber { border-top-color: #f59e0b; } .aud-kpi.c-amber i { color: #f59e0b; }
     .aud-kpi.c-blue { border-top-color: #3b82f6; } .aud-kpi.c-blue i { color: #3b82f6; }
 
-    /* ── Card & Filtros ── */
+    /* Ã¢”â‚¬Ã¢”â‚¬ Card & Filtros Ã¢”â‚¬Ã¢”â‚¬ */
     .aud-card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 2px 16px rgba(0,0,0,.04); margin-bottom: 24px; overflow: hidden; }
     .aud-card-head { display: flex; align-items: center; gap: 8px; padding: 14px 20px; background: linear-gradient(135deg,#f8fafc,#f1f5f9); border-bottom: 1.5px solid #e2e8f0; font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: .05em; }
     .ch-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
@@ -56,7 +56,7 @@
     .input-search-box { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 13px; width: 230px; font-family: inherit; transition: border-color .2s; outline: none; }
     .input-search-box:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
 
-    /* ── Tabla ── */
+    /* Ã¢”â‚¬Ã¢”â‚¬ Tabla Ã¢”â‚¬Ã¢”â‚¬ */
     .aud-tbl-outer { overflow-x: auto; }
     .aud-tbl { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
     .aud-tbl th { background: #f8fafc; padding: 12px 16px; font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; border-bottom: 2px solid #e2e8f0; white-space: nowrap; cursor: pointer; user-select: none; }
@@ -80,7 +80,7 @@
     .aud-empty h4 { font-size: 16px; font-weight: 700; color: #64748b; margin: 0; }
     .aud-empty p { font-size: 13px; margin: 0; }
 
-    /* ── IMPRESIÓN / PRINT CSS ── */
+    /* Ã¢”â‚¬Ã¢”â‚¬ IMPRESIÃƒ“N / PRINT CSS Ã¢”â‚¬Ã¢”â‚¬ */
     @media print {
         header, footer, nav, aside, .btn-back, .aud-card-head, .aud-filtros-grid, .aud-btns-row, .aud-pagination, #buscador-container {
             display: none !important;
@@ -335,7 +335,30 @@
                                 'tipo_orden' => $tipoOrden,
                                 'cantidad' => $a->cantidad,
                                 'costo_u' => $costoUnit,
-                                'costo_t' => $costoTotal
+                                'costo_t' => $costoTotal,
+                                'fecha_ingreso_orden' => $a->orden->fecha_de_ingreso ?? '',
+                                'fecha_prometido_orden' => $a->orden->fecha_prometido ?? '',
+                                'fecha_entrega_orden' => $a->orden->fecha_entrega ?? '',
+                                'estado_orden' => $a->orden->estado_orden ?? '',
+                                'estado_repuesto_orden' => $a->orden->estado_repuesto ?? '',
+                                'estado_garantia_orden' => $a->orden->estado_garantia ?? '',
+                                'factura' => $a->orden->nro_factura ?? '',
+                                'factura_2' => $a->orden->nro_factura_2 ?? '',
+                                'cliente' => trim((($a->orden->cliente->nombres ?? '') . ' ' . ($a->orden->cliente->apellidos ?? ''))),
+                                'cliente_identificacion' => $a->orden->cliente->identificacion ?? '',
+                                'cliente_telefono' => $a->orden->cliente->numero_contacto ?? '',
+                                'cliente_correo' => $a->orden->cliente->correo ?? '',
+                                'cliente_direccion' => $a->orden->cliente->direccion_clientes ?? '',
+                                'tipo_equipo' => $a->orden->equipo->tipo ?? '',
+                                'equipo' => trim((($a->orden->equipo->tipo ?? '') . ' ' . ($a->orden->equipo->marca ?? '') . ' ' . ($a->orden->equipo->modelo ?? ''))),
+                                'marca' => $a->orden->equipo->marca ?? '',
+                                'modelo' => $a->orden->equipo->modelo ?? '',
+                                'serie_equipo' => $a->orden->equipo->serie ?? '',
+                                'sucursal' => $a->orden->sucursal->ciudad ?? '',
+                                'cas' => $a->orden->cas->nombre ?? '',
+                                'motivo_ingreso' => $a->orden->motivo_ingreso ?? '',
+                                'falla_reportada' => $a->orden->equipo->falla ?? '',
+                                'observacion_equipo' => $a->orden->equipo->observacion ?? ''
                             ]) }}">
                                 <td style="font-size:12px; white-space:nowrap;">{{ $fechaHora }}</td>
                                 <td class="aud-code">{{ $a->repuesto->codigo ?? '-' }}</td>
@@ -557,21 +580,27 @@
             wb.creator = 'SGN - Novitecnologia';
             wb.created = new Date();
 
+            const headers = [
+                'Fecha / Hora', 'Código', 'Nombre del Repuesto', 'Usuario / Técnico', 'Orden de Servicio', 'Tipo de Orden',
+                'Cant', 'Costo Unit ($)', 'Costo Total ($)', 'F. Ingreso Orden', 'F. Prometido', 'F. Entrega',
+                'Estado Orden', 'Estado Repuesto', 'Estado Garantía', 'Factura', 'Factura 2', 'Cliente',
+                'C.I./RUC Cliente', 'Teléfono Cliente', 'Correo Cliente', 'Dirección Cliente', 'Tipo Equipo',
+                'Equipo', 'Marca', 'Modelo', 'Serie Equipo', 'Sucursal', 'CAS', 'Motivo Ingreso',
+                'Falla Reportada', 'Observación Equipo'
+            ];
+            const totalCols = headers.length;
+
             const ws = wb.addWorksheet('Auditoría Repuestos', {
                 views: [{ showGridLines: true }]
             });
 
-            // Column Widths
             ws.columns = [
-                { width: 18 }, // Fecha / Hora
-                { width: 15 }, // Código
-                { width: 35 }, // Nombre del Repuesto
-                { width: 28 }, // Usuario / Técnico
-                { width: 18 }, // Orden de Servicio
-                { width: 25 }, // Tipo de Orden
-                { width: 8 },  // Cant
-                { width: 15 }, // Costo Unit ($)
-                { width: 15 }  // Costo Total ($)
+                { width: 18 }, { width: 15 }, { width: 35 }, { width: 28 }, { width: 18 }, { width: 24 },
+                { width: 8 }, { width: 15 }, { width: 15 }, { width: 16 }, { width: 14 }, { width: 14 },
+                { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 18 }, { width: 28 },
+                { width: 18 }, { width: 16 }, { width: 24 }, { width: 30 }, { width: 16 }, { width: 28 },
+                { width: 16 }, { width: 18 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 24 },
+                { width: 28 }, { width: 28 }
             ];
 
             const C = {
@@ -590,25 +619,22 @@
             const fn = (bold, size, color, extra = {}) => Object.assign({ name: 'Arial', bold: !!bold, size: size || 10, color: { argb: 'FF' + (color || C.negro) } }, extra);
             const al = (h = 'left', v = 'middle') => ({ horizontal: h, vertical: v });
 
-            // 1. Title Row
-            ws.mergeCells('A1:I1');
-            const t1 = ws.getCell('A1');
-            t1.value = 'REPORTE DE AUDITORÍA — STOCK DE REPUESTOS';
+            ws.mergeCells(1, 1, 1, totalCols);
+            const t1 = ws.getCell(1, 1);
+            t1.value = 'REPORTE DE AUDITORÍA - STOCK DE REPUESTOS';
             t1.fill = fl(C.indigo);
             t1.font = fn(true, 14, C.blanco);
             t1.alignment = al('center');
             ws.getRow(1).height = 30;
 
-            // 2. Metadata Row
-            ws.mergeCells('A2:I2');
-            const t2 = ws.getCell('A2');
+            ws.mergeCells(2, 1, 2, totalCols);
+            const t2 = ws.getCell(2, 1);
             t2.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   Registros: ${_filteredRows.length}`;
             t2.fill = fl(C.indigoL);
             t2.font = fn(false, 10, C.indigo, { italic: true });
             t2.alignment = al('center');
             ws.getRow(2).height = 16;
 
-            // Calculate metrics based on filtered rows
             let totalItems = 0;
             let totalCosto = 0;
             const repCounts = {};
@@ -630,9 +656,40 @@
                     tecCounts[d.tecnico] = (tecCounts[d.tecnico] || 0) + qty;
                 }
 
-                const fechaStr = new Date(d.fecha).toLocaleString('es-EC');
-
-                return [fechaStr, d.codigo, d.nombre, d.tecnico, d.orden || 'N/A', d.tipo_orden || 'N/A', qty, costU, costT];
+                return [
+                    new Date(d.fecha).toLocaleString('es-EC'),
+                    d.codigo || '',
+                    d.nombre || '',
+                    d.tecnico || '',
+                    d.orden || 'N/A',
+                    d.tipo_orden || 'N/A',
+                    qty,
+                    costU,
+                    costT,
+                    d.fecha_ingreso_orden || '',
+                    d.fecha_prometido_orden || '',
+                    d.fecha_entrega_orden || '',
+                    d.estado_orden || '',
+                    d.estado_repuesto_orden || '',
+                    d.estado_garantia_orden || '',
+                    d.factura || '',
+                    d.factura_2 || '',
+                    d.cliente || '',
+                    d.cliente_identificacion || '',
+                    d.cliente_telefono || '',
+                    d.cliente_correo || '',
+                    d.cliente_direccion || '',
+                    d.tipo_equipo || '',
+                    d.equipo || '',
+                    d.marca || '',
+                    d.modelo || '',
+                    d.serie_equipo || '',
+                    d.sucursal || '',
+                    d.cas || '',
+                    d.motivo_ingreso || '',
+                    d.falla_reportada || '',
+                    d.observacion_equipo || ''
+                ];
             });
 
             let repuestoMasUsado = 'Ninguno';
@@ -653,12 +710,11 @@
                 }
             });
 
-            // Set up cell background fills and borders for KPIs (Cols A-I, Rows 4-6)
             const kpiColumnFills = {
                 A: C.indigoL, B: C.indigoL,
-                C: C.verdeL,  D: C.verdeL,
-                E: C.ambarL,  F: C.ambarL, G: C.ambarL,
-                H: C.azulL,   I: C.azulL
+                C: C.verdeL, D: C.verdeL,
+                E: C.ambarL, F: C.ambarL, G: C.ambarL,
+                H: C.azulL, I: C.azulL
             };
 
             for (let r = 4; r <= 6; r++) {
@@ -670,32 +726,25 @@
                 });
             }
 
-            // KPI 1: TOTAL UTILIZADOS (Cols A-B)
             ws.mergeCells('A4:B4'); ws.getCell('A4').value = 'REPUESTOS UTILIZADOS'; ws.getCell('A4').font = fn(true, 8, C.indigo); ws.getCell('A4').alignment = al('center');
-            ws.mergeCells('A5:B5'); ws.getCell('A5').value = `${totalItems} uds`;           ws.getCell('A5').font = fn(true, 16, C.indigo); ws.getCell('A5').alignment = al('center');
-            ws.mergeCells('A6:B6'); ws.getCell('A6').value = 'Movimientos Totales';    ws.getCell('A6').font = fn(false, 9, C.indigo); ws.getCell('A6').alignment = al('center');
+            ws.mergeCells('A5:B5'); ws.getCell('A5').value = `${totalItems} uds`; ws.getCell('A5').font = fn(true, 16, C.indigo); ws.getCell('A5').alignment = al('center');
+            ws.mergeCells('A6:B6'); ws.getCell('A6').value = 'Movimientos Totales'; ws.getCell('A6').font = fn(false, 9, C.indigo); ws.getCell('A6').alignment = al('center');
 
-            // KPI 2: COSTO TOTAL SALIDAS (Cols C-D)
             ws.mergeCells('C4:D4'); ws.getCell('C4').value = 'COSTO TOTAL SALIDAS'; ws.getCell('C4').font = fn(true, 8, C.verde); ws.getCell('C4').alignment = al('center');
-            ws.mergeCells('C5:D5'); ws.getCell('C5').value = totalCosto;            ws.getCell('C5').font = fn(true, 16, C.verde); ws.getCell('C5').alignment = al('center');
+            ws.mergeCells('C5:D5'); ws.getCell('C5').value = totalCosto; ws.getCell('C5').font = fn(true, 16, C.verde); ws.getCell('C5').alignment = al('center');
             ws.getCell('C5').numFormat = '$#,##0.00';
-            ws.mergeCells('C6:D6'); ws.getCell('C6').value = 'Valor Financiero';     ws.getCell('C6').font = fn(false, 9, C.verde); ws.getCell('C6').alignment = al('center');
+            ws.mergeCells('C6:D6'); ws.getCell('C6').value = 'Valor Financiero'; ws.getCell('C6').font = fn(false, 9, C.verde); ws.getCell('C6').alignment = al('center');
 
-            // KPI 3: REPUESTO MÁS USADO (Cols E-G)
-            ws.mergeCells('E4:G4'); ws.getCell('E4').value = 'REPUESTO MÁS USADO';  ws.getCell('E4').font = fn(true, 8, C.ambar); ws.getCell('E4').alignment = al('center');
-            ws.mergeCells('E5:G5'); ws.getCell('E5').value = repuestoMasUsado;      ws.getCell('E5').font = fn(true, 11, C.ambar); ws.getCell('E5').alignment = al('center');
+            ws.mergeCells('E4:G4'); ws.getCell('E4').value = 'REPUESTO MÁS USADO'; ws.getCell('E4').font = fn(true, 8, C.ambar); ws.getCell('E4').alignment = al('center');
+            ws.mergeCells('E5:G5'); ws.getCell('E5').value = repuestoMasUsado; ws.getCell('E5').font = fn(true, 11, C.ambar); ws.getCell('E5').alignment = al('center');
             ws.mergeCells('E6:G6'); ws.getCell('E6').value = `Consumo: ${repuestoMasUsadoCant} uds`; ws.getCell('E6').font = fn(false, 9, C.ambar); ws.getCell('E6').alignment = al('center');
 
-            // KPI 4: TÉCNICO MÁS ACTIVO (Cols H-I)
-            ws.mergeCells('H4:I4'); ws.getCell('H4').value = 'TÉCNICO MÁS ACTIVO';  ws.getCell('H4').font = fn(true, 8, C.azul); ws.getCell('H4').alignment = al('center');
-            ws.mergeCells('H5:I5'); ws.getCell('H5').value = tecnicoLider;          ws.getCell('H5').font = fn(true, 11, C.azul); ws.getCell('H5').alignment = al('center');
+            ws.mergeCells('H4:I4'); ws.getCell('H4').value = 'TÉCNICO MÁS ACTIVO'; ws.getCell('H4').font = fn(true, 8, C.azul); ws.getCell('H4').alignment = al('center');
+            ws.mergeCells('H5:I5'); ws.getCell('H5').value = tecnicoLider; ws.getCell('H5').font = fn(true, 11, C.azul); ws.getCell('H5').alignment = al('center');
             ws.mergeCells('H6:I6'); ws.getCell('H6').value = `Consumo: ${tecnicoLiderCant} uds`; ws.getCell('H6').font = fn(false, 9, C.azul); ws.getCell('H6').alignment = al('center');
 
-            // Separator Row
             ws.getRow(7).height = 10;
 
-            // 3. Table Headers Row 8
-            const headers = ["Fecha / Hora", "Código", "Nombre del Repuesto", "Usuario / Técnico", "Orden de Servicio", "Tipo de Orden", "Cant", "Costo Unit ($)", "Costo Total ($)"];
             ws.getRow(8).height = 22;
             headers.forEach((h, idx) => {
                 const cell = ws.getCell(8, idx + 1);
@@ -705,9 +754,8 @@
                 cell.alignment = al('center');
                 cell.border = bd('4338CA');
             });
-            ws.autoFilter = 'A8:I8';
+            ws.autoFilter = { from: { row: 8, column: 1 }, to: { row: 8, column: totalCols } };
 
-            // 4. Data Rows
             dataRows.forEach((rData, idx) => {
                 const rNum = idx + 9;
                 const row = ws.getRow(rNum);
@@ -730,8 +778,6 @@
                     } else if (colIdx === 4) {
                         cell.font = fn(true, 9, C.indigo);
                         cell.alignment = al('center', 'middle');
-                    } else if (colIdx === 5) {
-                        cell.alignment = al('left', 'middle');
                     } else if (colIdx === 6) {
                         cell.font = fn(true, 9, C.negro);
                         cell.alignment = al('center', 'middle');
@@ -743,7 +789,6 @@
                 });
             });
 
-            // Save
             const buffer = await wb.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
