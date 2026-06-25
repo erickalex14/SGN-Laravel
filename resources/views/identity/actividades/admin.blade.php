@@ -168,7 +168,7 @@
                 </select>
 
                 <label for="fecha-filtro" style="font-size: 13.5px; font-weight: 700; color: #475569;">Fecha:</label>
-                <input type="date" id="fecha-filtro" class="act-input" value="{{ $fechaHoy }}">
+                <input type="date" id="fecha-filtro" class="act-input" value="{{ $fechaHoy }}" min="2026-06-25" max="{{ $fechaHoy }}">
 
                 <button class="act-btn act-btn-green" id="btn-exportar" disabled>
                     <i class="bi bi-file-earmark-excel-fill"></i>
