@@ -342,7 +342,7 @@
                                         <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
                                     </a>
-                                    @if (auth()->check() && in_array((int) auth()->user()->rol_id, [2, 4], true))
+                                    @if (auth()->check() && auth()->user()->debeLlenarActividades())
                                         <a data-tip="Mis Actividades" href="{{ route('actividades.index') }}">
                                             <i class="bi bi-journal-check" style="flex-shrink:0;"></i>
                                             <span class="nav-label" style="margin-left:10px;">Mis Actividades</span>
@@ -1448,7 +1448,7 @@
     }
 </style>
 
-@if (auth()->check() && in_array((int) auth()->user()->rol_id, [2, 4], true))
+@if (auth()->check() && auth()->user()->debeLlenarActividades())
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         verificarAlertaFinJornada();

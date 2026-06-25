@@ -23,6 +23,11 @@ class ActividadDiariaController extends Controller
      */
     public function index(): View
     {
+        $usuario = auth()->user();
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
+            abort(403, 'No tienes permiso para acceder a esta sección.');
+        }
+
         $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
         $nombreTecnico = session('nombre') ?? session('usuario') ?? 'Técnico';
         return view('identity.actividades.index', compact('fechaHoy', 'nombreTecnico'));
@@ -36,6 +41,11 @@ class ActividadDiariaController extends Controller
         $tecnicoId = (int) session('tecnico_id', 0);
         if ($tecnicoId === 0) {
             return response()->json(['ok' => false, 'error' => 'Sesión no identificada.'], 403);
+        }
+
+        $usuario = auth()->user();
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
+            return response()->json(['ok' => false, 'error' => 'No tienes permiso para registrar actividades.'], 403);
         }
 
         $fecha = $request->query('fecha') ?: Carbon::now('America/Guayaquil')->toDateString();
@@ -83,6 +93,11 @@ class ActividadDiariaController extends Controller
      */
     public function historial(): View
     {
+        $usuario = auth()->user();
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
+            abort(403, 'No tienes permiso para acceder a esta sección.');
+        }
+
         $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
         $nombreTecnico = session('nombre') ?? session('usuario') ?? 'Técnico';
         return view('identity.actividades.historial', compact('fechaHoy', 'nombreTecnico'));
@@ -96,6 +111,11 @@ class ActividadDiariaController extends Controller
         $tecnicoId = (int) session('tecnico_id', 0);
         if ($tecnicoId === 0) {
             return response()->json(['ok' => false, 'error' => 'Sesión no identificada.'], 403);
+        }
+
+        $usuario = auth()->user();
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
+            return response()->json(['ok' => false, 'error' => 'No tienes permiso para registrar actividades.'], 403);
         }
 
         $fecha = $request->input('fecha');

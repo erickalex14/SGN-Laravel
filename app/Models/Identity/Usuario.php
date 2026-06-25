@@ -96,4 +96,29 @@ class Usuario extends Authenticatable
         $this->clave_hash = Hash::make(trim($clave));
         $this->clave = '';
     }
+
+    public function debeLlenarActividades(): bool
+    {
+        $nombresExcluidos = [
+            'jahaira cisneros',
+            'carlos ramos',
+            'antonio pulido',
+            'evelin vaca'
+        ];
+        $usuariosExcluidos = [
+            '1725324782', // Jahaira Cisneros
+            '1721443610', // Carlos Ramos
+            '0921998878', // Antonio Pulido
+            '0957967847'  // Evelin Vaca
+        ];
+
+        $nombreNorm = mb_strtolower(trim($this->nombre_tecnico));
+        $usuarioNorm = trim($this->usuario);
+
+        if (in_array($nombreNorm, $nombresExcluidos, true) || in_array($usuarioNorm, $usuariosExcluidos, true)) {
+            return false;
+        }
+
+        return true;
+    }
 }
