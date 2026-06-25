@@ -108,14 +108,14 @@ test('login aplica throttle tras multiples fallos', function () {
 test('login con metacaracteres redirige siempre al login con error', function () {
     $this->post(route('auth.validar'), [
         'usuario' => "admin' OR '1'='1",
-        'clave' => 'x',
+        'clave' => 'xxx',
     ])->assertRedirect(route('login', ['error' => '1']));
 });
 
 test('login con tautologia redirige siempre al login con error', function () {
     $this->post(route('auth.validar'), [
         'usuario' => "' OR 1=1 --",
-        'clave' => 'x',
+        'clave' => 'xxx',
     ])->assertRedirect(route('login', ['error' => '1']));
 });
 
