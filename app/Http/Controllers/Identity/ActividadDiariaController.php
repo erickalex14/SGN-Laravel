@@ -49,6 +49,9 @@ class ActividadDiariaController extends Controller
         }
 
         $fecha = $request->query('fecha') ?: Carbon::now('America/Guayaquil')->toDateString();
+        if ($fecha < '2026-06-25') {
+            $fecha = '2026-06-25';
+        }
         $actividades = $this->service->obtenerActividadesDelDia($tecnicoId, $fecha);
 
         return response()->json([
@@ -79,6 +82,9 @@ class ActividadDiariaController extends Controller
         }
 
         $fecha = $request->query('fecha') ?: Carbon::now('America/Guayaquil')->toDateString();
+        if ($fecha < '2026-06-25') {
+            $fecha = '2026-06-25';
+        }
         $actividades = $this->service->obtenerActividadesDelDia($tecnicoId, $fecha);
 
         return response()->json([

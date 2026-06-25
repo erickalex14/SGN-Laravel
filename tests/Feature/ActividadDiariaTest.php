@@ -222,7 +222,7 @@ test('servicio de actividad diaria no registra para usuarios excluidos pero si p
 });
 
 test('guardar actividades diarias permite registrar manual y recuperarlas', function () {
-    Carbon::setTestNow(Carbon::create(2026, 6, 24, 15, 0, 0, 'UTC'));
+    Carbon::setTestNow(Carbon::create(2026, 6, 25, 15, 0, 0, 'UTC'));
     $usuario = crearUsuarioTecnicoPrueba();
     $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
 
@@ -301,7 +301,7 @@ test('guardar actividades diarias permite registrar manual y recuperarlas', func
 });
 
 test('guardar actividades diarias rechaza fechas distintas a hoy', function () {
-    Carbon::setTestNow(Carbon::create(2026, 6, 24, 15, 0, 0, 'UTC'));
+    Carbon::setTestNow(Carbon::create(2026, 6, 25, 15, 0, 0, 'UTC'));
     $usuario = crearUsuarioTecnicoPrueba();
     $fechaAyer = Carbon::now('America/Guayaquil')->subDay()->toDateString();
 
@@ -329,7 +329,7 @@ test('guardar actividades diarias rechaza fechas distintas a hoy', function () {
 });
 
 test('guardar actividades diarias rechaza guardar despues de las 6:30 PM', function () {
-    Carbon::setTestNow(Carbon::create(2026, 6, 24, 23, 31, 0, 'UTC'));
+    Carbon::setTestNow(Carbon::create(2026, 6, 25, 23, 31, 0, 'UTC'));
     $usuario = crearUsuarioTecnicoPrueba();
     $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
 
