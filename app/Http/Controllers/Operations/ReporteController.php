@@ -12,6 +12,7 @@ use App\Repositories\Directory\SucursalRepository;
 use App\Repositories\Directory\CasRepository;
 use App\Repositories\Identity\UsuarioRepository;
 use App\Services\Operations\ReporteService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -23,17 +24,20 @@ class ReporteController extends Controller
     protected UsuarioRepository $usuarioRepo;
     protected SucursalRepository $sucursalRepo;
     protected CasRepository $casRepo;
+    protected ActividadDiariaService $actividadService;
 
     public function __construct(
         ReporteService $service,
         UsuarioRepository $usuarioRepo,
         SucursalRepository $sucursalRepo,
-        CasRepository $casRepo
+        CasRepository $casRepo,
+        ActividadDiariaService $actividadService
     ) {
         $this->service = $service;
         $this->usuarioRepo = $usuarioRepo;
         $this->sucursalRepo = $sucursalRepo;
         $this->casRepo = $casRepo;
+        $this->actividadService = $actividadService;
     }
 
     public function index(): View
@@ -426,6 +430,7 @@ class ReporteController extends Controller
                     || mb_strpos(mb_strtolower($r['serie'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['tecnico_nombre'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['sucursal_nombre'] ?? ''), $buscarLower) !== false
+                    || mb_strpos(mb_strtolower($r['sucursal_cliente'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['motivo_ingreso'] ?? ''), $buscarLower) !== false;
             });
         }
@@ -502,11 +507,23 @@ class ReporteController extends Controller
                     || mb_strpos(mb_strtolower($r['serie'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['tecnico_nombre'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['sucursal_nombre'] ?? ''), $buscarLower) !== false
+                    || mb_strpos(mb_strtolower($r['sucursal_cliente'] ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($r['motivo_ingreso'] ?? ''), $buscarLower) !== false;
             });
         }
 
         $filtrosTxt = $this->obtenerTextoFiltros($request);
+
+        $this->actividadService->registrar(
+            usuarioId: (int) session('tecnico_id'),
+            tipoAccion: 'imprimir_reporte_tecnico',
+            descripcion: 'Imprimió reporte de órdenes técnica',
+            modulo: 'reportes',
+            metadata: [
+                'filtros' => $filtrosTxt,
+                'cantidad_registros' => $resultados->count()
+            ]
+        );
 
         return view('operations.reportes.imprimir', [
             'resultados' => $resultados,

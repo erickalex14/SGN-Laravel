@@ -29,6 +29,7 @@ use App\Http\Controllers\Operations\PresupuestoController;
 use App\Http\Controllers\Operations\RecuperarOrdenController;
 use App\Http\Controllers\Operations\ReporteController; // Controlador de autenticación heredado
 use App\Http\Controllers\Operations\SolicitudRepuestoController;
+use App\Http\Controllers\Identity\ActividadDiariaController;
 use Illuminate\Support\Facades\Route;
 
 // ═════════════════════════════════════════════════════════════════
@@ -439,6 +440,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/mi-cuenta', [MiCuentaController::class, 'index'])->name('mi_cuenta.index');
         Route::get('/configuracion', [MiCuentaController::class, 'index'])->name('configuracion.index');
         Route::post('/mi-cuenta/guardar', [MiCuentaController::class, 'guardar'])->name('mi_cuenta.guardar');
+    });
+
+    // -------------------------------------------------------
+    // -------------MODULO ACTIVIDADES DIARIAS----------------
+    // -------------------------------------------------------
+    Route::get('/mis-actividades', [ActividadDiariaController::class, 'index'])->name('actividades.index');
+    Route::get('/mis-actividades/listar', [ActividadDiariaController::class, 'listar'])->name('actividades.listar');
+    Route::get('/mis-actividades/historial', [ActividadDiariaController::class, 'historial'])->name('actividades.historial');
+    Route::post('/mis-actividades/guardar', [ActividadDiariaController::class, 'guardar'])->name('actividades.guardar');
+
+    Route::middleware(['permiso:reportes,ver'])->group(function () {
+        Route::get('/gestion/actividades-tecnicos', [ActividadDiariaController::class, 'indexAdmin'])->name('actividades.admin');
+        Route::get('/gestion/actividades-tecnicos/listar', [ActividadDiariaController::class, 'listarAdmin'])->name('actividades.admin.listar');
     });
 
 });

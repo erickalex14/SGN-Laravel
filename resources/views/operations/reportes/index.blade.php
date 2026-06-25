@@ -447,6 +447,7 @@
                         <th onclick="sortTabla(14,'horas_trabajadas')">Horas Trab.</th>
                         <th onclick="sortTabla(15,'tecnico_nombre')">Técnico</th>
                         <th onclick="sortTabla(16,'sucursal_nombre')">Sucursal</th>
+                        <th onclick="sortTabla(29,'sucursal_cliente')">Sucursal Cliente</th>
                         <th onclick="sortTabla(17,'cas_nombre')">CAS</th>
                         <th onclick="sortTabla(18,'tipo_orden')">Tipo orden</th>
                         <th onclick="sortTabla(19,'estado_repuesto')">Repuesto</th>
@@ -542,6 +543,7 @@ function normalizeRow(raw) {
         estado_orden      : raw.estado_orden || '-',
         tecnico_nombre    : raw.tecnico_nombre || raw.tecnico?.nombre_tecnico || '-',
         sucursal_nombre   : raw.sucursal_nombre || raw.sucursal?.ciudad || '-',
+        sucursal_cliente  : raw.sucursal_cliente || '-',
         cas_nombre        : raw.cas_nombre || '-',
         dias_transcurridos: raw.dias_transcurridos ?? '-',
         vencida           : raw.vencida || false,
@@ -779,6 +781,7 @@ function renderTabla() {
             : `<td style="text-align:center;color:#cbd5e1;">—</td>`;
 
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
+        const sucCliente = `<td style="font-size:11px;">${esc(r.sucursal_cliente)}</td>`;
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
         const valNovicompu = (r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? Number(r.valor_novicompu).toFixed(2) : '0.00';
         const valOtraEmpresa = (r.valor_otra_empresa !== undefined && r.valor_otra_empresa !== null) ? Number(r.valor_otra_empresa).toFixed(2) : '0.00';
@@ -800,6 +803,7 @@ function renderTabla() {
             <td style="font-size:11px;text-align:center;">${r.horas_trabajadas ? Number(r.horas_trabajadas).toFixed(1) : '—'}</td>
             <td style="font-size:11px;">${esc(r.tecnico_nombre)}</td>
             ${suc}
+            ${sucCliente}
             ${casCol}
             <td>${tB}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
@@ -919,7 +923,7 @@ function exportarCSV() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Técnico','Sucursal','CAS','F. Prometido','F. Entrega','Vencida',
+        'Técnico','Sucursal','Sucursal Cliente','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
     const rows = _filtered.map(r => {
@@ -936,7 +940,7 @@ function exportarCSV() {
             r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia,
-            r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.cas_nombre,
+            r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
             r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
@@ -1030,6 +1034,7 @@ async function exportarXLSX() {
         'Estado Repuesto','Estado Garantía','Estado Orden',
         'Técnico','Ingresado por',
         'Sucursal',
+        'Sucursal Cliente',
         'CAS',
         'Tipo Orden',
         'Subtipo Empresa',
@@ -1039,7 +1044,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,20,16,16,12,16,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,20,16,22,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1155,6 +1160,7 @@ async function exportarXLSX() {
             r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
             r.tecnico_nombre, '',
             r.sucursal_nombre,
+            r.sucursal_cliente || '',
             r.cas_nombre,
             r.tipo_orden,
             r.subtipo,
@@ -1170,11 +1176,11 @@ async function exportarXLSX() {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 30 || ci === 31) { 
+            else if (ci === 31 || ci === 32) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 30 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 31 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }

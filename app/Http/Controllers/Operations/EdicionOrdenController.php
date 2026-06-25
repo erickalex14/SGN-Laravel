@@ -17,6 +17,7 @@ use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\PrecioEstandarRepository;
 use App\Repositories\Operations\TipoServicioRepository;
 use App\Services\Operations\ActualizarOrdenService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -38,13 +39,16 @@ class EdicionOrdenController extends Controller
 
     protected UsuarioRepository $usuarioRepo;
 
+    protected ActividadDiariaService $actividadService;
+
     public function __construct(
         ActualizarOrdenService $service,
         OrdenRepository $ordenRepo,
         PrecioEstandarRepository $precioRepo,
         ProductoRepository $productoRepo,
         TipoServicioRepository $tipoServicioRepo,
-        UsuarioRepository $usuarioRepo
+        UsuarioRepository $usuarioRepo,
+        ActividadDiariaService $actividadService
     ) {
         $this->service = $service;
         $this->ordenRepo = $ordenRepo;
@@ -52,6 +56,7 @@ class EdicionOrdenController extends Controller
         $this->productoRepo = $productoRepo;
         $this->tipoServicioRepo = $tipoServicioRepo;
         $this->usuarioRepo = $usuarioRepo;
+        $this->actividadService = $actividadService;
     }
 
     public function edit(int $id): View
@@ -149,6 +154,27 @@ class EdicionOrdenController extends Controller
             );
 
             $this->service->actualizarOrden($dto);
+
+            $orden = $this->ordenRepo->obtenerOrdenCompleta((int) $request->input('orden_id'));
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'editar_orden',
+                    descripcion: "Editó orden #{$orden->nro_orden}",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                        'estado_garantia' => $orden->estado_garantia ?? 'sn'
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,
@@ -276,6 +302,24 @@ class EdicionOrdenController extends Controller
             }
 
             $this->service->actualizarOrdenEmpresa($request->validated(), (int) session('tecnico_id'));
+
+            $this->actividadService->registrar(
+                usuarioId: (int) session('tecnico_id'),
+                tipoAccion: 'editar_orden_empresa',
+                descripcion: "Editó orden de empresa #{$orden->nro_orden}",
+                modulo: 'ordenes',
+                referenciaId: $orden->id,
+                referenciaTipo: 'orden_empresa',
+                metadata: [
+                    'nro_orden' => $orden->nro_orden,
+                    'cliente' => $orden->empresa?->nombre ?? '',
+                    'serie' => $orden->equipo?->serie ?? 'sn',
+                    'marca' => $orden->equipo?->marca ?? 'sn',
+                    'tipo' => $orden->equipo?->tipo ?? 'sn',
+                    'estado_orden' => $orden->estado ?? 'Pendiente',
+                    'estado_garantia' => 'sn'
+                ]
+            );
 
             return response()->json([
                 'ok' => true,

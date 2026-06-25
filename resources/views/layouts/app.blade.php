@@ -342,6 +342,12 @@
                                         <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Mis Informes</span>
                                     </a>
+                                    @if (auth()->check() && in_array((int) auth()->user()->rol_id, [2, 4], true))
+                                        <a data-tip="Mis Actividades" href="{{ route('actividades.index') }}">
+                                            <i class="bi bi-journal-check" style="flex-shrink:0;"></i>
+                                            <span class="nav-label" style="margin-left:10px;">Mis Actividades</span>
+                                        </a>
+                                    @endif
                                     {{--
                                     <a data-tip="Reportes" href="{{ route('reportes.tecnico') }}">
                                         <i class="bi bi-bar-chart-line" style="flex-shrink:0;"></i>
@@ -390,6 +396,10 @@
                                     <a data-tip="Reportes" href="{{ route('reportes.index') }}">
                                         <i class="bi bi-bar-chart-line" style="flex-shrink:0;"></i>
                                         <span class="nav-label" style="margin-left:10px;">Reportes</span>
+                                    </a>
+                                    <a data-tip="Actividades Técnicos" href="{{ route('actividades.admin') }}">
+                                        <i class="bi bi-people" style="flex-shrink:0;"></i>
+                                        <span class="nav-label" style="margin-left:10px;">Actividades Técnicos</span>
                                     </a>
                                 @endif
                                 @if ($can('notas_credito', 'ver'))
@@ -1438,6 +1448,460 @@
     }
 </style>
 
+@if (auth()->check() && in_array((int) auth()->user()->rol_id, [2, 4], true))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        verificarAlertaFinJornada();
+        setInterval(verificarAlertaFinJornada, 60000);
+    });
+
+    function verificarAlertaFinJornada() {
+        const opciones = { timeZone: 'America/Guayaquil', hour: '2-digit', minute: '2-digit', hour12: false };
+        const formatterTime = new Intl.DateTimeFormat('es-EC', opciones);
+        const timeParts = formatterTime.formatToParts(new Date());
+        
+        let hora = 0;
+        let minuto = 0;
+        timeParts.forEach(part => {
+            if (part.type === 'hour') hora = parseInt(part.value);
+            if (part.type === 'minute') minuto = parseInt(part.value);
+        });
+
+        if (hora > 17 || (hora === 17 && minuto >= 45)) {
+            const opcionesFecha = { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' };
+            const formatterFecha = new Intl.DateTimeFormat('es-EC', opcionesFecha);
+            const dateParts = formatterFecha.formatToParts(new Date());
+            
+            let yyyy = '', mm = '', dd = '';
+            dateParts.forEach(part => {
+                if (part.type === 'year') yyyy = part.value;
+                if (part.type === 'month') mm = part.value;
+                if (part.type === 'day') dd = part.value;
+            });
+            const hoyKey = `${yyyy}-${mm}-${dd}`;
+            const storageKey = `sgn_actividades_alert_${hoyKey}`;
+
+            if (localStorage.getItem(storageKey)) {
+                return;
+            }
+
+            fetch(`{{ route('actividades.listar') }}?fecha=${hoyKey}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.ok) {
+                        const count = res.actividades.length;
+                        localStorage.setItem(storageKey, 'true');
+
+                        Swal.fire({
+                            title: '🎯 ¡Jornada Laboral Finalizada!',
+                            html: `
+                                <p style="font-size: 14px; color: #475569; margin-bottom: 15px;">
+                                    Son las 5:45 PM (hora de Ecuador). Tu reporte de actividades diarias para hoy <strong>${dd}-${mm}-${yyyy}</strong> está listo.
+                                </p>
+                                <div style="display: flex; justify-content: center; gap: 20px; margin: 15px 0;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 24px; font-weight: 800; color: #2563eb;">${count}</div>
+                                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Actividades</div>
+                                    </div>
+                                </div>
+                            `,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonText: '<i class="bi bi-file-earmark-excel-fill"></i> Descargar Excel',
+                            cancelButtonText: 'Ver mis actividades',
+                            confirmButtonColor: '#16a34a',
+                            cancelButtonColor: '#2563eb',
+                            customClass: {
+                                popup: 'sgn-alert-popup',
+                                title: 'sgn-alert-title',
+                                htmlContainer: 'sgn-alert-body',
+                                confirmButton: 'sgn-alert-confirm',
+                                cancelButton: 'btn btn-primary btn-sm'
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                descargarReporteAutomatico(hoyKey);
+                            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                                window.location.href = "{{ route('actividades.index') }}";
+                            }
+                        });
+                    }
+                })
+                .catch(err => console.error('Error al verificar actividades al fin de jornada:', err));
+        }
+    }
+
+    async function descargarReporteAutomatico(fecha) {
+        if (typeof ExcelJS === 'undefined') {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        const tecnicoNombre = @json(session('nombre') ?? session('usuario') ?? 'Técnico');
+        
+        fetch(`{{ route('actividades.listar') }}?fecha=${fecha}`)
+            .then(res => res.json())
+            .then(async res => {
+                if (!res.ok) {
+                    Swal.fire('Error', 'No se pudieron recuperar las actividades para exportar.', 'error');
+                    return;
+                }
+
+                const acts = res.actividades;
+                const wb = new ExcelJS.Workbook();
+                wb.creator = 'SGN - Novitecnologia';
+                wb.created = new Date();
+
+                const dateParts = fecha.split('-');
+                const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+                const mesNombre = meses[dateObj.getMonth()];
+                const sheetName = `ACTIVIDADES DIARIAS MES ${mesNombre}`;
+
+                const ws = wb.addWorksheet(sheetName, {
+                    views: [{ showGridLines: true }]
+                });
+
+                const borderStyle = {
+                    top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+                };
+
+                ws.columns = [
+                    { width: 22 }, // A: Fecha
+                    { width: 15 }, // B: Horario
+                    { width: 30 }, // C: Actividad
+                    { width: 20 }, // D: Novedad
+                    { width: 16 }, // E: Estado
+                    { width: 14 }, // F: Modalidad
+                    { width: 26 }, // G: Tecnico
+                    { width: 18 }, // H: OT o Ticket
+                    { width: 10 }, // I: Cantidad
+                    { width: 16 }, // J: Codigo equipo
+                    { width: 18 }, // K: Clase
+                    { width: 22 }, // L: Serie equipo
+                    { width: 65 }, // M: Observacion
+                    { width: 35 }  // N: Codigo repuesto
+                ];
+
+                const formattedHeaderDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const headers = [
+                    `FECHA F: ${formattedHeaderDate}`,
+                    'HORARIO ',
+                    'ACTIVIDAD/DETALLE PRODUCTO ',
+                    'NOVEDAD ',
+                    'ESTADO ',
+                    'MODALIDAD ',
+                    'TECNICO RESPONSABLE ',
+                    'OT O TICKET ',
+                    'CANTIDAD',
+                    'CODIGO EQUIPO ',
+                    'CLASE ',
+                    'SERIE EQUIPO',
+                    'OBSERVACION',
+                    'CODIGO REPUESTO UTILIZADO EN OT DE GARANTIA'
+                ];
+
+                const headerRow = ws.addRow(headers);
+                headerRow.height = 24;
+                headerRow.eachCell((cell, colNum) => {
+                    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    cell.alignment = { horizontal: colNum === 1 || colNum === 13 ? 'left' : 'center', vertical: 'middle' };
+                    cell.border = borderStyle;
+                });
+
+                const horasJornada = [
+                    { key: 9,  label: "9:00 a  10:00" },
+                    { key: 10, label: "10:00 a 11:00" },
+                    { key: 11, label: "11:00 a 12:00" },
+                    { key: 12, label: "12:00 a 13:00" },
+                    { key: 13, label: "13:00 a 14:00" },
+                    { key: 14, label: "14:00 a 15:00", esAlmuerzo: true },
+                    { key: 15, label: "15:00 a 16:00" },
+                    { key: 16, label: "16:00 a 17:00" },
+                    { key: 17, label: "17:00 a 18:00" }
+                ];
+
+                function parseHour(fechaHoraStr) {
+                    try {
+                        const timePart = fechaHoraStr.includes('T') ? fechaHoraStr.split('T')[1] : fechaHoraStr.split(' ')[1];
+                        return parseInt(timePart.split(':')[0]);
+                    } catch (e) {
+                        return 9;
+                    }
+                }
+
+                function mapClase(tipo) {
+                    if (!tipo) return 'sn';
+                    const t = tipo.toUpperCase().trim();
+                    if (t.includes('LAPTOP') || t.includes('PORTATIL') || t.includes('NOTEBOOK')) return 'LAPTOPS';
+                    if (t.includes('MONITOR') || t.includes('PANTALLA')) return 'MONITORES';
+                    if (t.includes('CELULAR') || t.includes('TELEFONO') || t.includes('IPHONE')) return 'CELULARES';
+                    if (t.includes('IMPRESORA') || t.includes('MULTIFUNCIONAL')) return 'IMPRESORAS';
+                    if (t.includes('TV') || t.includes('TELEVISOR') || t.includes('SMART TV')) return 'TVS';
+                    if (t.includes('MOTO')) return 'MOTOS';
+                    if (t.includes('CONSOLA') || t.includes('PLAYSTATION') || t.includes('NINTENDO') || t.includes('XBOX')) return 'CONSOLAS';
+                    if (t.includes('TABLET') || t.includes('IPAD')) return 'TABLETS ';
+                    if (t.includes('COMPUTADORA') || t.includes('ESCRITORIO') || t.includes('PC') || t.includes('CASE')) return 'PC';
+                    if (t.includes('AIO') || t.includes('ALL IN ONE')) return 'AIO';
+                    if (t.includes('ACCESORIO') || t.includes('TECLADO') || t.includes('MOUSE') || t.includes('AUDIFONOS')) return 'ACCESORIO';
+                    if (t.includes('GYM') || t.includes('TREADMILL') || t.includes('CAMINADORA') || t.includes('ELIPTICA')) return 'EQUIPO GYM';
+                    if (t.includes('BLANCA') || t.includes('REFRIGERADORA') || t.includes('LAVADORA') || t.includes('MICROONDAS')) return 'LINEA BLANCA';
+                    if (t.includes('JUGUETE')) return 'JUGUETES';
+                    if (t.includes('SOPORTE')) return 'SOPORTE';
+                    if (t.includes('SERVICIO')) return 'SERVICIO';
+                    if (t.includes('OFICINA')) return 'OFICINA';
+                    if (t.includes('HOGAR')) return 'HOGAR';
+                    if (t.includes('BICICLETA')) return 'BICICLETAS';
+                    return 'sn';
+                }
+
+                horasJornada.forEach((slot, idx) => {
+                    let slotActs = acts.filter(act => {
+                        const hour = parseHour(act.fecha_hora);
+                        if (slot.key === 9) return hour <= 9;
+                        if (slot.key === 17) return hour >= 17;
+                        return hour === slot.key;
+                    });
+
+                    let valActividad = 'sn';
+                    let valNovedad = 'sn';
+                    let valEstado = 'sn';
+                    let ots = 'sn';
+                    let clase = 'sn';
+                    let serie = 'sn';
+                    let observaciones = 'sn';
+                    let repuestoCode = 'sn';
+                    let equipoCode = 'sn';
+
+                    if (slot.esAlmuerzo) {
+                        valActividad = 'almuerzo';
+                        valNovedad = 'Oficina';
+                        valEstado = 'realizado ';
+                        observaciones = 'Almuerzo';
+                    }
+
+                    if (slotActs.length > 0) {
+                        observaciones = slotActs.map(a => a.descripcion).join(' | ');
+                        if (slot.esAlmuerzo) {
+                            observaciones = 'Almuerzo | ' + observaciones;
+                        }
+
+                        const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
+                        if (otsEnSlot.length > 0) {
+                            ots = [...new Set(otsEnSlot)].join(', ');
+                        }
+
+                        const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
+                        if (mainAct) {
+                            clase = mapClase(mainAct.metadata_json?.tipo);
+                            serie = mainAct.metadata_json?.serie || 'sn';
+                            
+                            if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
+                                valActividad = 'ticket';
+                            } else if (mainAct.tipo_accion.includes('estado')) {
+                                valActividad = 'reparacion';
+                            } else {
+                                valActividad = 'ticket';
+                            }
+
+                            if (mainAct.metadata_json?.estado_garantia && mainAct.metadata_json?.estado_garantia.toUpperCase() !== 'NO APLICA') {
+                                valNovedad = 'garantia';
+                            } else {
+                                valNovedad = 'Oficina';
+                            }
+
+                            const est = mainAct.metadata_json?.estado_orden ? mainAct.metadata_json?.estado_orden.toUpperCase() : '';
+                            if (est.includes('PROCESO')) {
+                                valEstado = 'en proceso';
+                            } else if (est.includes('PENDIENTE')) {
+                                valEstado = 'pendiente';
+                            } else if (est.includes('NOTA') || est.includes('CREDITO')) {
+                                valEstado = 'nota credito';
+                            } else {
+                                valEstado = 'realizado ';
+                            }
+
+                            if (mainAct.metadata_json?.repuesto_inventario_id) {
+                                repuestoCode = mainAct.metadata_json?.repuesto_inventario_id;
+                            }
+                        } else {
+                            valActividad = 'ticket';
+                            valNovedad = 'Oficina';
+                            valEstado = 'realizado ';
+                        }
+                    }
+
+                    const excelRowValues = [
+                        dateObj,
+                        slot.label,
+                        valActividad,
+                        valNovedad,
+                        valEstado,
+                        'presencial',
+                        tecnicoNombre,
+                        ots,
+                        ots !== 'sn' ? [...new Set(ots.split(', '))].length : 'sn',
+                        equipoCode,
+                        clase,
+                        serie,
+                        observaciones,
+                        repuestoCode
+                    ];
+
+                    const row = ws.addRow(excelRowValues);
+                    row.height = 20;
+                    row.eachCell((cell, colNum) => {
+                        cell.font = { name: 'Calibri', size: 11, bold: false };
+                        cell.border = borderStyle;
+                        
+                        if (colNum === 1) {
+                            cell.numFormat = 'yyyy-mm-dd';
+                            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                        } else if (colNum === 13) {
+                            cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                        } else {
+                            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                        }
+                    });
+                });
+
+                ws.addRow([]); // Fila 11
+                const commitRow = ws.addRow([]); // Fila 12
+                commitRow.getCell(13).value = 'Comits del dia de hoy:';
+                commitRow.getCell(13).font = { name: 'Calibri', size: 11, bold: true };
+
+                const wsBase = wb.addWorksheet('HOJA BASE ', { views: [{ showGridLines: true }] });
+                wsBase.columns = [
+                    { width: 5 },
+                    { width: 15 },
+                    { width: 25 },
+                    { width: 20 },
+                    { width: 16 },
+                    { width: 14 },
+                    { width: 26 },
+                    { width: 5 },
+                    { width: 5 },
+                    { width: 5 },
+                    { width: 20 }
+                ];
+
+                const baseHeaders = ['', 'HORARIO ', 'ACTIVIDAD/DETALLE PRODUCTO ', 'NOVEDAD ', 'ESTADO ', 'MODALIDAD ', 'TECNICO RESPONSABLE ', '', '', '', 'CLASE'];
+                const baseHeaderRow = wsBase.addRow(baseHeaders);
+                baseHeaderRow.eachCell((cell, colNum) => {
+                    if (colNum > 1 && cell.value) {
+                        cell.font = { name: 'Calibri', size: 11, bold: true };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                        cell.border = borderStyle;
+                    }
+                });
+
+                const options = {
+                    B: ["9:00 a  10:00", "10:00 a 11:00", "11:00 a 12:00", "12:00 a 13:00", "13:00 a 14:00", "14:00 a 15:00", "15:00 a 16:00", "16:00 a 17:00", "17:00 a 18:00", "9:00 a 18:00"],
+                    C: ["revision ", "reparacion", "instalacion ", "soporte", "ticket", "atencion", "almuerzo", "deligencia externa", "capacitacion ", "sn"],
+                    D: ["tienda", "outlet", "incinerox", "autoconsumo", "garantia", "Oficina", "Empresa", "bodega", "servicio tecnico", "sn"],
+                    E: ["realizado ", "no realizado", "pendiente", "en proceso", "aprobado", "no aprobado", "nota credito", "sn"],
+                    F: ["virtual", "presencial", "sn"],
+                    G: ["ERICK MINA", "FRANKLIN BASANTES", "OMAR ALMEIDA", "JIMMY BALCAZAR", "JOSE PUCHA ", "LUIS MORALES ", "FRANKLIN RUIZ ", "JOSUE ROMERO ", "ALEJANDRO YEPEZ ", "ALEXANDER CHAVARREA "],
+                    K: ["LAPTOPS", "ACCESORIO", "EQUIPO GYM", "LINEA BLANCA", "MONITORES", "JUGUETES", "SOPORTE", "SERVICIO", "PC", "AIO", "CELULARES", "IMPRESORAS", "TVS", "MOTOS", "CONSOLAS", "OFICINA", "HOGAR", "BICICLETAS", "TABLETS ", "sn"]
+                };
+
+                const maxOptionsLength = Math.max(
+                    options.B.length, options.C.length, options.D.length,
+                    options.E.length, options.F.length, options.G.length,
+                    options.K.length
+                );
+
+                for (let r = 0; r < maxOptionsLength; r++) {
+                    const rowData = [
+                        '',
+                        options.B[r] || '',
+                        options.C[r] || '',
+                        options.D[r] || '',
+                        options.E[r] || '',
+                        options.F[r] || '',
+                        options.G[r] || '',
+                        '',
+                        '',
+                        '',
+                        options.K[r] || ''
+                    ];
+                    const baseRow = wsBase.addRow(rowData);
+                    baseRow.eachCell((cell, colNum) => {
+                        if (colNum > 1 && cell.value) {
+                            cell.font = { name: 'Calibri', size: 11 };
+                            cell.border = borderStyle;
+                        }
+                    });
+                }
+
+                for (let r = 2; r <= 10; r++) {
+                    ws.getCell(`C${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$C$2:$C$11"]
+                    };
+                    ws.getCell(`D${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$D$2:$D$11"]
+                    };
+                    ws.getCell(`E${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$E$2:$E$9"]
+                    };
+                    ws.getCell(`F${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$F$2:$F$4"]
+                    };
+                    ws.getCell(`G${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$G$2:$G$11"]
+                    };
+                    ws.getCell(`K${r}`).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ["'HOJA BASE '!$K$2:$K$20"]
+                    };
+                }
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Reporte Actividades ${tecnicoNombre} ${fecha.split('-').reverse().join('-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Descarga Exitosa',
+                    text: 'Tu reporte de actividades diarias se ha generado correctamente.',
+                    confirmButtonColor: '#2563eb',
+                    timer: 2500
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Hubo un error al generar el archivo Excel.', 'error');
+            });
+    }
+</script>
+@endif
 @stack('js_adicional')
 </body>
 </html>

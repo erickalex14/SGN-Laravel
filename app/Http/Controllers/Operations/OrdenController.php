@@ -17,6 +17,7 @@ use App\Repositories\Inventory\TipoDispositivoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\TipoServicioRepository;
 use App\Services\Operations\CrearOrdenService;
+use App\Services\Identity\ActividadDiariaService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +48,8 @@ class OrdenController extends Controller
 
     protected OrdenRepository $ordenRepo;
 
+    protected ActividadDiariaService $actividadService;
+
     public function __construct(
         CrearOrdenService $service,
         ClienteRepository $clienteRepo,
@@ -58,7 +61,8 @@ class OrdenController extends Controller
         SucursalClienteRepository $sucursalClienteRepo,
         EmpresaRepository $empresaRepo,
         ProductoRepository $productoRepo,
-        OrdenRepository $ordenRepo
+        OrdenRepository $ordenRepo,
+        ActividadDiariaService $actividadService
     ) {
         $this->service = $service;
         $this->clienteRepo = $clienteRepo;
@@ -71,6 +75,7 @@ class OrdenController extends Controller
         $this->empresaRepo = $empresaRepo;
         $this->productoRepo = $productoRepo;
         $this->ordenRepo = $ordenRepo;
+        $this->actividadService = $actividadService;
     }
 
     public function create(): View
@@ -132,6 +137,24 @@ class OrdenController extends Controller
                     'ingresado_por' => (int) session('tecnico_id'),
                     'fecha_ingreso' => $fechaIngreso,
                 ]));
+
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'crear_orden_empresa',
+                    descripcion: "Creó orden de empresa #{$orden->nro_orden} para cliente {$orden->empresa?->nombre}",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden_empresa',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->empresa?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado ?? 'Pendiente',
+                        'estado_garantia' => 'sn'
+                    ]
+                );
 
                 return response()->json([
                     'ok' => true,
@@ -219,6 +242,24 @@ class OrdenController extends Controller
             );
 
             $orden = $this->service->crearOrden($dto);
+
+            $this->actividadService->registrar(
+                usuarioId: (int) session('tecnico_id'),
+                tipoAccion: 'crear_orden',
+                descripcion: "Creó orden #{$orden->nro_orden} para cliente " . ($orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? ''),
+                modulo: 'ordenes',
+                referenciaId: $orden->id,
+                referenciaTipo: 'orden',
+                metadata: [
+                    'nro_orden' => $orden->nro_orden,
+                    'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                    'serie' => $orden->equipo?->serie ?? 'sn',
+                    'marca' => $orden->equipo?->marca ?? 'sn',
+                    'tipo' => $orden->equipo?->tipo ?? 'sn',
+                    'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                    'estado_garantia' => $orden->estado_garantia ?? 'sn'
+                ]
+            );
 
             return response()->json([
                 'ok' => true,

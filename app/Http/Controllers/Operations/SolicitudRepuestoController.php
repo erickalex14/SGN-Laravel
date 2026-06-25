@@ -12,6 +12,7 @@ use App\Repositories\Inventory\RepuestoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Repositories\Operations\SolicitudRepuestoRepository;
 use App\Services\Operations\SolicitudRepuestoService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -25,17 +26,20 @@ class SolicitudRepuestoController extends Controller
     protected OrdenRepository $ordenRepository;
 
     protected RepuestoRepository $repuestoRepository;
+    protected ActividadDiariaService $actividadService;
 
     public function __construct(
         SolicitudRepuestoService $service,
         SolicitudRepuestoRepository $srRepository,
         OrdenRepository $ordenRepository,
-        RepuestoRepository $repuestoRepository
+        RepuestoRepository $repuestoRepository,
+        ActividadDiariaService $actividadService
     ) {
         $this->service = $service;
         $this->srRepository = $srRepository;
         $this->ordenRepository = $ordenRepository;
         $this->repuestoRepository = $repuestoRepository;
+        $this->actividadService = $actividadService;
     }
 
     public function indexAdmin(): View
@@ -84,6 +88,28 @@ class SolicitudRepuestoController extends Controller
             );
 
             $nro = $this->service->registrarSolicitud($dto, $esAdmin);
+
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->ordenId);
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'solicitar_repuesto',
+                    descripcion: "Solicitó repuesto a bodega para orden #{$orden->nro_orden}",
+                    modulo: 'repuestos',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'repuesto_nombre' => $dto->repuestoNombre,
+                        'cantidad' => $dto->cantidad,
+                        'nro_ticket' => $nro
+                    ]
+                );
+            }
 
             return response()->json(['ok' => true, 'mensaje' => "Ticket {$nro} enviado a bodega."]);
         } catch (Exception $e) {

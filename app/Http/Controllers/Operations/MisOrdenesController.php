@@ -15,6 +15,7 @@ use App\DTOs\Operations\CambiarEstadoRepuestoDTO;
 use App\DTOs\Operations\CambiarEstadoGarantiaDTO;
 use App\DTOs\Operations\AsignarRepuestoOrdenDTO;
 use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
+use App\Services\Identity\ActividadDiariaService;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use Exception;
@@ -24,16 +25,19 @@ class MisOrdenesController extends Controller
     protected GestionOrdenService $service;
     protected OrdenRepository $repository;
     protected \App\Repositories\Identity\UsuarioRepository $usuarioRepo;
+    protected ActividadDiariaService $actividadService;
 
     public function __construct(
         GestionOrdenService $service,
         OrdenRepository $repository,
-        \App\Repositories\Identity\UsuarioRepository $usuarioRepo
+        \App\Repositories\Identity\UsuarioRepository $usuarioRepo,
+        ActividadDiariaService $actividadService
     )
     {
         $this->service = $service;
         $this->repository = $repository;
         $this->usuarioRepo = $usuarioRepo;
+        $this->actividadService = $actividadService;
     }
 
     public function index(): View
@@ -60,8 +64,18 @@ class MisOrdenesController extends Controller
     public function cambiarEstado(CambiarEstadoOrdenRequest $request): JsonResponse
     {
         try {
+            $ordenId = (int) $request->input('id');
+            $tipoOrden = $request->input('tipo_orden');
+            if ($tipoOrden === 'empresa') {
+                $orden = \App\Models\Operations\OrdenEmpresa::with(['empresa', 'equipo'])->find($ordenId);
+                $estadoAnterior = $orden ? $orden->estado : '';
+            } else {
+                $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+                $estadoAnterior = $orden ? $orden->estado_orden : '';
+            }
+
             $dto = new CambiarEstadoOrdenDTO(
-                (int) $request->input('id'),
+                $ordenId,
                 (string) $request->input('estado'),
                 $request->input('nc_asunto'),
                 $request->input('nc_detalles')
@@ -71,13 +85,34 @@ class MisOrdenesController extends Controller
             $tecnicoNombre = (string) (session('nombre_tecnico') ?? session('nombre') ?? session('usuario') ?? '');
             $esAdmin = $this->resolverEsAdmin();
 
-            if ($request->input('tipo_orden') === 'empresa') {
+            if ($tipoOrden === 'empresa') {
                 $this->service->actualizarEstadoEmpresa(
-                    (int) $request->input('id'),
+                    $ordenId,
                     (string) $request->input('estado'),
                     $usuarioModificacionId,
                     $esAdmin
                 );
+
+                if ($orden) {
+                    $estadoNuevo = $request->input('estado');
+                    $this->actividadService->registrar(
+                        usuarioId: $usuarioModificacionId,
+                        tipoAccion: 'cambiar_estado_empresa',
+                        descripcion: "Cambió estado de orden de empresa #{$orden->nro_orden} de '{$estadoAnterior}' a '{$estadoNuevo}'",
+                        modulo: 'ordenes',
+                        referenciaId: $orden->id,
+                        referenciaTipo: 'orden_empresa',
+                        metadata: [
+                            'nro_orden' => $orden->nro_orden,
+                            'cliente' => $orden->empresa?->nombre ?? '',
+                            'serie' => $orden->equipo?->serie ?? 'sn',
+                            'marca' => $orden->equipo?->marca ?? 'sn',
+                            'tipo' => $orden->equipo?->tipo ?? 'sn',
+                            'estado_anterior' => $estadoAnterior,
+                            'estado_nuevo' => $estadoNuevo
+                        ]
+                    );
+                }
 
                 return response()->json([
                     'ok' => true,
@@ -86,6 +121,27 @@ class MisOrdenesController extends Controller
             }
 
             $this->service->actualizarEstado($dto, $usuarioModificacionId, $tecnicoNombre, $esAdmin);
+
+            if ($orden) {
+                $estadoNuevo = $request->input('estado');
+                $this->actividadService->registrar(
+                    usuarioId: $usuarioModificacionId,
+                    tipoAccion: 'cambiar_estado',
+                    descripcion: "Cambió estado de orden #{$orden->nro_orden} de '{$estadoAnterior}' a '{$estadoNuevo}'",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_anterior' => $estadoAnterior,
+                        'estado_nuevo' => $estadoNuevo
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok'      => true,
@@ -102,8 +158,12 @@ class MisOrdenesController extends Controller
     public function cambiarEstadoRepuesto(CambiarEstadoRepuestoRequest $request): JsonResponse
     {
         try {
+            $ordenId = (int) $request->input('orden_id');
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+            $estadoAnterior = $orden ? $orden->estado_repuesto : '';
+
             $dto = new CambiarEstadoRepuestoDTO(
-                (int) $request->input('orden_id'),
+                $ordenId,
                 (string) $request->input('estado_repuesto')
             );
 
@@ -112,6 +172,27 @@ class MisOrdenesController extends Controller
                 (int) session('tecnico_id', 0),
                 $this->resolverEsAdmin()
             );
+
+            if ($orden) {
+                $estadoNuevo = $request->input('estado_repuesto');
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'cambiar_estado_repuesto',
+                    descripcion: "Cambió estado repuesto orden #{$orden->nro_orden} a '{$estadoNuevo}'",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_anterior' => $estadoAnterior,
+                        'estado_nuevo' => $estadoNuevo
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,
@@ -128,8 +209,12 @@ class MisOrdenesController extends Controller
     public function cambiarEstadoGarantia(CambiarEstadoGarantiaRequest $request): JsonResponse
     {
         try {
+            $ordenId = (int) $request->input('orden_id');
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+            $estadoAnterior = $orden ? $orden->estado_garantia : '';
+
             $dto = new CambiarEstadoGarantiaDTO(
-                (int) $request->input('orden_id'),
+                $ordenId,
                 (string) $request->input('estado_garantia')
             );
 
@@ -138,6 +223,27 @@ class MisOrdenesController extends Controller
                 (int) session('tecnico_id', 0),
                 $this->resolverEsAdmin()
             );
+
+            if ($orden) {
+                $estadoNuevo = $request->input('estado_garantia');
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'cambiar_estado_garantia',
+                    descripcion: "Cambió estado garantía orden #{$orden->nro_orden} a '{$estadoNuevo}'",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_anterior' => $estadoAnterior,
+                        'estado_nuevo' => $estadoNuevo
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,
@@ -154,8 +260,11 @@ class MisOrdenesController extends Controller
     public function asignarRepuesto(AsignarRepuestoOrdenRequest $request): JsonResponse
     {
         try {
+            $ordenId = (int) $request->input('orden_id');
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+
             $dto = new AsignarRepuestoOrdenDTO(
-                (int) $request->input('orden_id'),
+                $ordenId,
                 (int) $request->input('repuesto_inventario_id')
             );
 
@@ -164,6 +273,25 @@ class MisOrdenesController extends Controller
                 (int) session('tecnico_id', 0),
                 $this->resolverEsAdmin()
             );
+
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'asignar_repuesto',
+                    descripcion: "Asignó repuesto a orden #{$orden->nro_orden}",
+                    modulo: 'repuestos',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'repuesto_inventario_id' => (int) $request->input('repuesto_inventario_id')
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,
@@ -214,6 +342,12 @@ class MisOrdenesController extends Controller
                 throw new Exception('ID de orden o técnico inválido.');
             }
 
+            if ($tipoOrden === 'empresa') {
+                $orden = \App\Models\Operations\OrdenEmpresa::with(['empresa', 'equipo'])->find($ordenId);
+            } else {
+                $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+            }
+
             // Validar que el nuevo técnico es asignable (pertenece al mismo CAS o sucursal del creador/logueado)
             $tecnicoActualId = (int) session('tecnico_id');
             $esAdmin = $this->resolverEsAdmin();
@@ -229,6 +363,47 @@ class MisOrdenesController extends Controller
 
             // Reasignar la orden
             $this->service->reasignarTecnico($ordenId, $nuevoTecnicoId, $tipoOrden);
+
+            if ($orden) {
+                $nuevoTecnico = \App\Models\Identity\Usuario::find($nuevoTecnicoId);
+                $nuevoTecnicoNombre = $nuevoTecnico ? $nuevoTecnico->nombre_tecnico : 'desconocido';
+
+                if ($tipoOrden === 'empresa') {
+                    $this->actividadService->registrar(
+                        usuarioId: $tecnicoActualId,
+                        tipoAccion: 'reasignar_tecnico_empresa',
+                        descripcion: "Reasignó técnico de orden de empresa #{$orden->nro_orden} a {$nuevoTecnicoNombre}",
+                        modulo: 'ordenes',
+                        referenciaId: $orden->id,
+                        referenciaTipo: 'orden_empresa',
+                        metadata: [
+                            'nro_orden' => $orden->nro_orden,
+                            'cliente' => $orden->empresa?->nombre ?? '',
+                            'serie' => $orden->equipo?->serie ?? 'sn',
+                            'marca' => $orden->equipo?->marca ?? 'sn',
+                            'tipo' => $orden->equipo?->tipo ?? 'sn',
+                            'nuevo_tecnico' => $nuevoTecnicoNombre
+                        ]
+                    );
+                } else {
+                    $this->actividadService->registrar(
+                        usuarioId: $tecnicoActualId,
+                        tipoAccion: 'reasignar_tecnico',
+                        descripcion: "Reasignó técnico de orden #{$orden->nro_orden} a {$nuevoTecnicoNombre}",
+                        modulo: 'ordenes',
+                        referenciaId: $orden->id,
+                        referenciaTipo: 'orden',
+                        metadata: [
+                            'nro_orden' => $orden->nro_orden,
+                            'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                            'serie' => $orden->equipo?->serie ?? 'sn',
+                            'marca' => $orden->equipo?->marca ?? 'sn',
+                            'tipo' => $orden->equipo?->tipo ?? 'sn',
+                            'nuevo_tecnico' => $nuevoTecnicoNombre
+                        ]
+                    );
+                }
+            }
 
             return response()->json([
                 'ok' => true,

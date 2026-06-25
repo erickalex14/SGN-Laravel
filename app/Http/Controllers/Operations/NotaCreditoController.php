@@ -13,6 +13,7 @@ use App\Repositories\Directory\SucursalRepository;
 use App\Repositories\Operations\NotaCreditoRepository;
 use App\Repositories\Operations\OrdenRepository;
 use App\Services\Operations\NotaCreditoService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,17 +28,20 @@ class NotaCreditoController extends Controller
     protected OrdenRepository $ordenRepository;
 
     protected SucursalClienteRepository $sucursalClienteRepo;
+    protected ActividadDiariaService $actividadService;
 
     public function __construct(
         NotaCreditoService $service,
         NotaCreditoRepository $ncRepository,
         OrdenRepository $ordenRepository,
-        SucursalClienteRepository $sucursalClienteRepo
+        SucursalClienteRepository $sucursalClienteRepo,
+        ActividadDiariaService $actividadService
     ) {
         $this->service = $service;
         $this->ncRepository = $ncRepository;
         $this->ordenRepository = $ordenRepository;
         $this->sucursalClienteRepo = $sucursalClienteRepo;
+        $this->actividadService = $actividadService;
     }
 
     public function indexAdmin(): View
@@ -90,6 +94,29 @@ class NotaCreditoController extends Controller
             );
 
             $nroSolicitud = $this->service->solicitar($dto, $esAdmin);
+
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->ordenId);
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'solicitar_nc',
+                    descripcion: "Solicitó nota de crédito para orden #{$orden->nro_orden}",
+                    modulo: 'notas_credito',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                        'estado_garantia' => $orden->estado_garantia ?? 'sn',
+                        'nro_solicitud' => $nroSolicitud,
+                        'asunto' => $dto->asunto
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,

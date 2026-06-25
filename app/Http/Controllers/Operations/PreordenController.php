@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\IngresarPreordenRequest;
 use App\Http\Requests\Operations\VerificarPreordenRequest;
 use App\Services\Operations\PreordenService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +17,12 @@ use Illuminate\View\View;
 class PreordenController extends Controller
 {
     protected PreordenService $service;
+    protected ActividadDiariaService $actividadService;
 
-    public function __construct(PreordenService $service)
+    public function __construct(PreordenService $service, ActividadDiariaService $actividadService)
     {
         $this->service = $service;
+        $this->actividadService = $actividadService;
     }
 
     public function index(): View
@@ -51,6 +54,27 @@ class PreordenController extends Controller
             );
 
             $resultado = $this->service->ingresar($dto);
+
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($resultado['orden_id']);
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'ingresar_preorden',
+                    descripcion: "Creó orden #{$orden->nro_orden} desde preorden",
+                    modulo: 'ordenes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                        'estado_garantia' => $orden->estado_garantia ?? 'sn'
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,

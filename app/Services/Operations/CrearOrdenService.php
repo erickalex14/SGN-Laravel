@@ -316,7 +316,7 @@ class CrearOrdenService
                         'fecha_prometido' => $data['emp_fecha_prometido'],
                         'estado' => 'Pendiente',
                         'fecha_ingreso' => $data['fecha_ingreso'],
-                        'nro_sucursal_cliente' => $subtipo === 'Stock' ? (string) ($data['nro_sucursal_cliente'] ?? null) : null,
+                        'nro_sucursal_cliente' => in_array($subtipo, ['Stock', 'Servicios', 'Autoconsumo'], true) ? (string) ($data['nro_sucursal_cliente'] ?? null) : null,
                         'valor_hora' => $esNovisolutionsServicio ? (float) ($data['valor_hora'] ?? 0) : null,
                         'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($data['horas_trabajadas'] ?? 0) : null,
                     ]);
