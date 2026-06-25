@@ -195,14 +195,17 @@ test('listarAdmin retorna actividades de un técnico', function () {
     expect($response->json('actividades.0.tipo_accion'))->toBe('crear_informe');
 });
 
-test('servicio de actividad diaria solo registra para tecnicos', function () {
-    $admin = crearUsuarioAdminPrueba(); // rol_id = 1
+test('servicio de actividad diaria no registra para usuarios excluidos pero si para el resto', function () {
+    $excluido = crearUsuarioAdminPrueba(); // rol_id = 1
+    $excluido->nombre_tecnico = 'Jahaira Cisneros';
+    $excluido->save();
+
     $tecnico = crearUsuarioTecnicoPrueba(); // rol_id = 2
 
     $service = app(ActividadDiariaService::class);
 
-    // Intentar registrar para admin (no técnico, rol_id 1)
-    $service->registrar($admin->id, 'crear_orden', 'Intento admin', 'ordenes');
+    // Intentar registrar para excluido
+    $service->registrar($excluido->id, 'crear_orden', 'Intento excluido', 'ordenes');
     
     // Intentar registrar para técnico (rol_id 2)
     $service->registrar($tecnico->id, 'crear_orden', 'Intento tecnico', 'ordenes');
@@ -210,10 +213,10 @@ test('servicio de actividad diaria solo registra para tecnicos', function () {
     $fecha = Carbon::now('America/Guayaquil')->toDateString();
     
     // Verificar en BD
-    $actividadesAdmin = ActividadDiaria::where('usuario_id', $admin->id)->where('fecha', $fecha)->get();
+    $actividadesExcluido = ActividadDiaria::where('usuario_id', $excluido->id)->where('fecha', $fecha)->get();
     $actividadesTecnico = ActividadDiaria::where('usuario_id', $tecnico->id)->where('fecha', $fecha)->get();
 
-    expect($actividadesAdmin)->toHaveCount(0);
+    expect($actividadesExcluido)->toHaveCount(0);
     expect($actividadesTecnico)->toHaveCount(1);
     expect($actividadesTecnico->first()->descripcion)->toBe('Intento tecnico');
 });

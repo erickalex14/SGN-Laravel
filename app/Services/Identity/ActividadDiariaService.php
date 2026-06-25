@@ -30,7 +30,7 @@ class ActividadDiariaService
     ): void {
         try {
             $usuario = Usuario::find($usuarioId);
-            if (!$usuario || !in_array((int) $usuario->rol_id, [2, 4], true)) {
+            if (!$usuario || !$usuario->debeLlenarActividades()) {
                 return;
             }
 
@@ -101,7 +101,7 @@ class ActividadDiariaService
     public function guardarRegistroManual(int $usuarioId, string $fecha, int $hora, array $data): void
     {
         $usuario = Usuario::find($usuarioId);
-        if (!$usuario || !in_array((int) $usuario->rol_id, [2, 4], true)) {
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
             return;
         }
 
@@ -166,8 +166,22 @@ class ActividadDiariaService
      */
     public function obtenerTecnicosActivos(): Collection
     {
-        return Usuario::whereIn('rol_id', [2, 4])
-            ->where('activo', true)
+        $nombresExcluidos = [
+            'Jahaira Cisneros',
+            'Carlos Ramos',
+            'Antonio Pulido',
+            'Evelin Vaca'
+        ];
+        $usuariosExcluidos = [
+            '1725324782',
+            '1721443610',
+            '0921998878',
+            '0957967847'
+        ];
+
+        return Usuario::where('activo', true)
+            ->whereNotIn('nombre_tecnico', $nombresExcluidos)
+            ->whereNotIn('usuario', $usuariosExcluidos)
             ->orderBy('nombre_tecnico', 'asc')
             ->get();
     }
