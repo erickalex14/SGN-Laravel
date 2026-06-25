@@ -142,7 +142,7 @@ class GuardarOrdenRequest extends FormRequest
                 'emp_tipo_servicio_id' => ['nullable', 'integer', 'exists:tiposservicio,id'],
                 'emp_fecha_prometido' => ['required', 'date'],
                 'nro_sucursal_cliente' => [
-                    $subtipo === 'Stock' ? 'required' : 'nullable',
+                    'nullable',
                     'string',
                     'max:50',
                     function ($attribute, $value, $fail) {

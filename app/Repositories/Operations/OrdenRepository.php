@@ -204,6 +204,21 @@ class OrdenRepository
 
     public function filtrarParaReporte(ReporteFiltroDTO $filtro, bool $esMaster, int $sucursalSesion): BaseCollection
     {
+        $sucursalesCliente = \App\Models\Directory\SucursalCliente::all();
+        $resolverSucursalCliente = function($nroSuc) use ($sucursalesCliente) {
+            if ($nroSuc === null || $nroSuc === '') return '';
+            if ($nroSuc === '999' || $nroSuc === '999 - SERVICIO EXTERNO') return '999 - SERVICIO EXTERNO';
+            $suc = $sucursalesCliente->firstWhere('codigo', $nroSuc);
+            if ($suc) return $suc->codigo . ' - ' . $suc->nombre;
+            $numeroInt = (int) $nroSuc;
+            if ($numeroInt > 0) {
+                $suc = $sucursalesCliente->firstWhere('numero', $numeroInt);
+                if ($suc) return $suc->codigo . ' - ' . $suc->nombre;
+                return 'Nro. ' . str_pad((string) $numeroInt, 3, '0', STR_PAD_LEFT);
+            }
+            return $nroSuc;
+        };
+
         $incluirPersonal = $filtro->tipo_orden === null || $filtro->tipo_orden === '' || $filtro->tipo_orden === 'personal';
         $incluirEmpresa = $filtro->tipo_orden === null || $filtro->tipo_orden === '' || $filtro->tipo_orden === 'empresa';
         $resultados = collect();
@@ -305,6 +320,7 @@ class OrdenRepository
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
                     'cas_nombre' => (string) ($orden->cas->nombre ?? ''),
+                    'sucursal_cliente' => $resolverSucursalCliente($orden->nro_sucursal_cliente),
                     'dias_transcurridos' => $fechaIngreso ? (
                         in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
                         ? Carbon::parse($fechaIngreso)->diffInDays(Carbon::parse($fechaEntrega ?: ($orden->fecha_finalizacion ?: now())))
@@ -450,6 +466,7 @@ class OrdenRepository
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
                     'cas_nombre' => '',
+                    'sucursal_cliente' => $resolverSucursalCliente($orden->nro_sucursal_cliente),
                     'dias_transcurridos' => $fechaIngreso ? (
                         in_array($orden->estado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
                         ? Carbon::parse($fechaIngreso)->diffInDays(Carbon::parse($orden->fecha_entrega ?: ($orden->fecha_finalizacion ?: now())))
@@ -487,7 +504,7 @@ class OrdenRepository
 
         return $resultados
             ->sortByDesc(function (array $fila) {
-                return strtotime((string) ($fila['fecha_de_ingreso'] ?? '1970-01-01 00:00:00'));
+                return (string) ($fila['nro_orden'] ?? '');
             })
             ->values();
     }

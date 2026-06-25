@@ -20,11 +20,15 @@ class DashboardController extends Controller
     {
         $permisos = session('permisos', []);
         $esSuperadmin = session('es_superadmin') === true;
-        $puedeVerGestion = $esSuperadmin
+
+        $usuario = auth()->user();
+        $esTecnico = $usuario && in_array((int) $usuario->rol_id, [2, 4], true);
+
+        $puedeVerGestion = !$esTecnico && ($esSuperadmin
             || (($permisos['reportes']['ver'] ?? false) === true)
             || (($permisos['usuarios_crear']['ver'] ?? false) === true)
             || (($permisos['repuestos_admin']['ver'] ?? false) === true)
-            || (($permisos['ordenes_asignadas']['ver'] ?? false) === true);
+            || (($permisos['ordenes_asignadas']['ver'] ?? false) === true));
 
         return view('dashboard.index', [
             'esSuperadmin' => $esSuperadmin,
@@ -39,10 +43,14 @@ class DashboardController extends Controller
             $permisos = session('permisos', []);
             $esSuperadmin = session('es_superadmin') === true;
             $sucursalId = (int) session('sucursal_id', 0);
-            $esAdmin = $esSuperadmin
+
+            $usuario = auth()->user();
+            $esTecnico = $usuario && in_array((int) $usuario->rol_id, [2, 4], true);
+
+            $esAdmin = !$esTecnico && ($esSuperadmin
                 || (($permisos['reportes']['ver'] ?? false) === true)
                 || (($permisos['repuestos_admin']['ver'] ?? false) === true)
-                || (($permisos['ordenes_asignadas']['ver'] ?? false) === true);
+                || (($permisos['ordenes_asignadas']['ver'] ?? false) === true));
 
             $metricas = $this->service->obtenerMetricasGlobales($tecnicoId, $esAdmin, $esSuperadmin, $sucursalId);
 

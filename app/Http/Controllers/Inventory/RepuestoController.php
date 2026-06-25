@@ -109,7 +109,9 @@ class RepuestoController extends Controller
     public function auditoria(Request $request): View
     {
         $query = OrdenRepuesto::with(['repuesto', 'orden.cliente', 'orden.equipo', 'orden.tecnico', 'orden.sucursal', 'orden.cas', 'usuario'])
-            ->orderBy('fecha', 'desc');
+            ->join('ordenes', 'orden_repuestos.orden_id', '=', 'ordenes.id')
+            ->select('orden_repuestos.*')
+            ->orderBy('ordenes.nro_orden', 'desc');
 
         if ($request->filled('repuesto_id')) {
             $query->where('repuesto_id', $request->input('repuesto_id'));
@@ -135,7 +137,9 @@ class RepuestoController extends Controller
     public function imprimirReporte(Request $request): View
     {
         $query = OrdenRepuesto::with(['repuesto', 'orden.cliente', 'orden.equipo', 'orden.tecnico', 'orden.sucursal', 'orden.cas', 'usuario'])
-            ->orderBy('fecha', 'desc');
+            ->join('ordenes', 'orden_repuestos.orden_id', '=', 'ordenes.id')
+            ->select('orden_repuestos.*')
+            ->orderBy('ordenes.nro_orden', 'desc');
 
         if ($request->filled('repuesto_id')) {
             $query->where('repuesto_id', $request->input('repuesto_id'));

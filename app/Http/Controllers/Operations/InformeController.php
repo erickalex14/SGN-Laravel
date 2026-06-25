@@ -8,6 +8,7 @@ use App\Http\Requests\Operations\GuardarInformeRequest;
 use App\Repositories\Operations\InformeRepository;
 use App\Services\Operations\InformeAiService;
 use App\Services\Operations\InformeService;
+use App\Services\Identity\ActividadDiariaService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,11 +20,16 @@ class InformeController extends Controller
     protected InformeService $service;
 
     protected InformeRepository $repository;
+    protected ActividadDiariaService $actividadService;
 
-    public function __construct(InformeService $service, InformeRepository $repository)
-    {
+    public function __construct(
+        InformeService $service,
+        InformeRepository $repository,
+        ActividadDiariaService $actividadService
+    ) {
         $this->service = $service;
         $this->repository = $repository;
+        $this->actividadService = $actividadService;
     }
 
     /**
@@ -146,6 +152,27 @@ class InformeController extends Controller
             $contexto = $this->resolverContextoInformes();
             $this->service->procesarInforme($dto, $contexto['puede_escribir_informe'], $contexto['es_master'], $contexto['sucursal_id']);
 
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->orden_id);
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'crear_informe',
+                    descripcion: "Creó informe técnico para orden #{$orden->nro_orden}",
+                    modulo: 'informes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                        'estado_garantia' => $orden->estado_garantia ?? 'sn'
+                    ]
+                );
+            }
+
             return response()->json([
                 'ok' => true,
                 'mensaje' => 'Informe técnico guardado correctamente.',
@@ -186,6 +213,27 @@ class InformeController extends Controller
             );
 
             $this->service->actualizarInformeComoAdmin($id, $dto, $contexto['es_master'], $contexto['sucursal_id']);
+
+            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->orden_id);
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'editar_informe',
+                    descripcion: "Editó informe técnico orden #{$orden->nro_orden}",
+                    modulo: 'informes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn',
+                        'estado_orden' => $orden->estado_orden ?? 'Pendiente',
+                        'estado_garantia' => $orden->estado_garantia ?? 'sn'
+                    ]
+                );
+            }
 
             return response()->json([
                 'ok' => true,
@@ -342,7 +390,34 @@ class InformeController extends Controller
         }
 
         try {
-            $borrador = $aiService->generarBorradorInforme($notas);
+            $borrador = $aiService->generarBorradorInforme($notes = $notas);
+
+            $ordenId = $request->input('orden_id') ? (int) $request->input('orden_id') : null;
+            $orden = $ordenId ? \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId) : null;
+            if ($orden) {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'generar_informe_ia',
+                    descripcion: "Generó borrador de informe con IA para orden #{$orden->nro_orden}",
+                    modulo: 'informes',
+                    referenciaId: $orden->id,
+                    referenciaTipo: 'orden',
+                    metadata: [
+                        'nro_orden' => $orden->nro_orden,
+                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'serie' => $orden->equipo?->serie ?? 'sn',
+                        'marca' => $orden->equipo?->marca ?? 'sn',
+                        'tipo' => $orden->equipo?->tipo ?? 'sn'
+                    ]
+                );
+            } else {
+                $this->actividadService->registrar(
+                    usuarioId: (int) session('tecnico_id'),
+                    tipoAccion: 'generar_informe_ia',
+                    descripcion: "Generó borrador de informe con IA",
+                    modulo: 'informes'
+                );
+            }
 
             return response()->json([
                 'ok' => true,
