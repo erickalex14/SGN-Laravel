@@ -34,7 +34,9 @@ class OrdenEmpresa extends Model
         'horas_trabajadas',
         'cas_id',
         'fecha_finalizacion',
-        'fecha_entrega'
+        'fecha_entrega',
+        'estado_repuesto',
+        'repuesto_inventario_id'
     ];
 
     public function tecnicos()
@@ -75,5 +77,25 @@ class OrdenEmpresa extends Model
     public function ingresadoPor()
     {
         return $this->belongsTo(Usuario::class, 'ingresado_por', 'id');
+    }
+
+    public function llamadas()
+    {
+        return $this->hasMany(LlamadaOrden::class, 'orden_empresa_id')->latest('fecha_hora');
+    }
+
+    public function repuestoInventario()
+    {
+        return $this->belongsTo(\App\Models\Inventory\Repuesto::class, 'repuesto_inventario_id', 'id');
+    }
+
+    public function solicitudesRepuesto()
+    {
+        return $this->hasMany(SolicitudRepuesto::class, 'orden_empresa_id', 'id');
+    }
+
+    public function ordenRepuestos()
+    {
+        return $this->hasMany(OrdenRepuesto::class, 'orden_empresa_id', 'id');
     }
 }

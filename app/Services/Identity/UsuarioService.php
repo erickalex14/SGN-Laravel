@@ -66,7 +66,7 @@ class UsuarioService
         return $mensaje;
     }
 
-    public function toogleActivo(int $id): bool
+    public function toggleActivo(int $id): bool
     {
         $usuario = $this->repository->buscarPorId($id);
         if (! $usuario) {

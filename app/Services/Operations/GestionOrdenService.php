@@ -281,9 +281,13 @@ class GestionOrdenService
     /**
      * @throws Exception
      */
-    public function actualizarEstadoRepuesto(CambiarEstadoRepuestoDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    public function actualizarEstadoRepuesto(CambiarEstadoRepuestoDTO $dto, int $usuarioId, bool $esAdmin = false, string $tipoOrden = 'personal'): void
     {
-        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if ($tipoOrden === 'empresa') {
+            $orden = \App\Models\Operations\OrdenEmpresa::find($dto->orden_id);
+        } else {
+            $orden = $this->repository->buscarPorId($dto->orden_id);
+        }
         if (!$orden) {
             throw new Exception('La orden especificada no existe.');
         }
@@ -292,21 +296,24 @@ class GestionOrdenService
             throw new Exception('Sin permiso sobre esta orden.');
         }
 
-        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+        $estadoOrden = $tipoOrden === 'empresa' ? $orden->estado : $orden->estado_orden;
+        if (in_array((string) $estadoOrden, ['Entregada', 'Nota de Credito'], true)) {
             throw new Exception('La orden no puede modificarse en su estado actual.');
         }
 
-        $estado = trim($dto->estado_repuesto);
-        if (!in_array($estado, ['No requerido', 'Requerido', 'Con stock'], true)) {
+        $styleEstado = trim($dto->estado_repuesto);
+        if (!in_array($styleEstado, ['No requerido', 'Requerido', 'Con stock'], true)) {
             throw new Exception('Estado de repuesto no permitido.');
         }
 
-        $orden->estado_repuesto = $estado;
-        if ($estado !== 'Con stock') {
+        $orden->estado_repuesto = $styleEstado;
+        if ($styleEstado !== 'Con stock') {
             $orden->repuesto_inventario_id = null;
         }
-        $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
-        $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+        if ($tipoOrden !== 'empresa') {
+            $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+            $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+        }
         $orden->save();
     }
 
@@ -346,9 +353,13 @@ class GestionOrdenService
     /**
      * @throws Exception
      */
-    public function asignarRepuesto(AsignarRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    public function asignarRepuesto(AsignarRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false, string $tipoOrden = 'personal'): void
     {
-        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if ($tipoOrden === 'empresa') {
+            $orden = \App\Models\Operations\OrdenEmpresa::find($dto->orden_id);
+        } else {
+            $orden = $this->repository->buscarPorId($dto->orden_id);
+        }
         if (!$orden) {
             throw new Exception('La orden especificada no existe.');
         }
@@ -357,22 +368,26 @@ class GestionOrdenService
             throw new Exception('Sin permiso sobre esta orden.');
         }
 
-        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+        $estadoOrden = $tipoOrden === 'empresa' ? $orden->estado : $orden->estado_orden;
+        if (in_array((string) $estadoOrden, ['Entregada', 'Nota de Credito'], true)) {
             throw new Exception('La orden no puede modificarse en su estado actual.');
         }
 
-        DB::transaction(function () use ($dto, $orden, $usuarioId): void {
+        DB::transaction(function () use ($dto, $orden, $usuarioId, $tipoOrden): void {
             $this->ordenRepuestoRepository->asignarRepuestoEnOrden(
                 (int) $orden->id,
                 (int) $dto->repuesto_inventario_id,
                 $usuarioId,
-                true
+                true,
+                $tipoOrden
             );
 
             $orden->repuesto_inventario_id = (int) $dto->repuesto_inventario_id;
             $orden->estado_repuesto = 'Con stock';
-            $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
-            $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            if ($tipoOrden !== 'empresa') {
+                $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+                $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            }
             $orden->save();
         });
     }
@@ -380,25 +395,37 @@ class GestionOrdenService
     /**
      * @throws Exception
      */
-    public function revertirRepuesto(RevertirRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false): void
+    public function revertirRepuesto(RevertirRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false, string $tipoOrden = 'personal'): void
     {
         if (!$esAdmin) {
             throw new Exception('No autorizado para revertir repuestos.');
         }
 
-        $orden = $this->repository->buscarPorId($dto->orden_id);
+        if ($tipoOrden === 'empresa') {
+            $orden = \App\Models\Operations\OrdenEmpresa::find($dto->orden_id);
+        } else {
+            $orden = $this->repository->buscarPorId($dto->orden_id);
+        }
         if (!$orden) {
             throw new Exception('La orden especificada no existe.');
         }
 
-        DB::transaction(function () use ($dto, $orden, $usuarioId): void {
+        DB::transaction(function () use ($dto, $orden, $usuarioId, $tipoOrden): void {
             $this->ordenRepuestoRepository->revertirRepuestosDeOrden(
                 (int) $orden->id,
-                $dto->repuesto_id
+                $dto->repuesto_id,
+                $tipoOrden
             );
 
             // Verificar si aún quedan repuestos asignados en la orden
-            $restantes = \App\Models\Operations\OrdenRepuesto::where('orden_id', $orden->id)->get();
+            $queryRestantes = \App\Models\Operations\OrdenRepuesto::query();
+            if ($tipoOrden === 'empresa') {
+                $queryRestantes->where('orden_empresa_id', $orden->id);
+            } else {
+                $queryRestantes->where('orden_id', $orden->id);
+            }
+
+            $restantes = $queryRestantes->get();
             if ($restantes->isNotEmpty()) {
                 $orden->repuesto_inventario_id = $restantes->first()->repuesto_id;
                 $orden->estado_repuesto = 'Con stock';
@@ -406,8 +433,10 @@ class GestionOrdenService
                 $orden->repuesto_inventario_id = null;
                 $orden->estado_repuesto = 'No requerido';
             }
-            $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
-            $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            if ($tipoOrden !== 'empresa') {
+                $orden->modificado_por = $usuarioId > 0 ? $usuarioId : null;
+                $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            }
             $orden->save();
         });
     }

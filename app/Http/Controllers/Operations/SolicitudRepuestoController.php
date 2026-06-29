@@ -75,6 +75,8 @@ class SolicitudRepuestoController extends Controller
             $tecnico = Usuario::find($tecnicoId);
             $tecnicoNombre = $tecnico ? $tecnico->nombre_tecnico : (session('nombre') ?? session('usuario') ?? '');
 
+            $tipoOrden = $request->input('tipo_orden', 'personal');
+
             $dto = new SolicitudRepuestoDTO(
                 (int) $request->input('orden_id'),
                 $tecnicoId,
@@ -84,27 +86,38 @@ class SolicitudRepuestoController extends Controller
                 $request->input('link_compra'),
                 (int) $request->input('cantidad'),
                 $request->input('descripcion'),
-                $request->input('repuesto_inv_id') ? (int) $request->input('repuesto_inv_id') : null
+                $request->input('repuesto_inv_id') ? (int) $request->input('repuesto_inv_id') : null,
+                $tipoOrden
             );
 
             $nro = $this->service->registrarSolicitud($dto, $esAdmin);
 
-            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->ordenId);
+            $esEmpresa = $tipoOrden === 'empresa';
+            if ($esEmpresa) {
+                $orden = \App\Models\Operations\OrdenEmpresa::with(['empresa', 'equipo'])->find($dto->orden_id);
+            } else {
+                $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($dto->orden_id);
+            }
+
             if ($orden) {
+                $clienteNombre = $esEmpresa
+                    ? ($orden->empresa?->nombre ?? '')
+                    : ($orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '');
+
                 $this->actividadService->registrar(
                     usuarioId: (int) session('tecnico_id'),
                     tipoAccion: 'solicitar_repuesto',
                     descripcion: "Solicitó repuesto a bodega para orden #{$orden->nro_orden}",
                     modulo: 'repuestos',
                     referenciaId: $orden->id,
-                    referenciaTipo: 'orden',
+                    referenciaTipo: $esEmpresa ? 'orden_empresa' : 'orden',
                     metadata: [
                         'nro_orden' => $orden->nro_orden,
-                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'cliente' => $clienteNombre,
                         'serie' => $orden->equipo?->serie ?? 'sn',
                         'marca' => $orden->equipo?->marca ?? 'sn',
                         'tipo' => $orden->equipo?->tipo ?? 'sn',
-                        'repuesto_nombre' => $dto->repuestoNombre,
+                        'repuesto_nombre' => $dto->repuesto_nombre,
                         'cantidad' => $dto->cantidad,
                         'nro_ticket' => $nro
                     ]

@@ -122,4 +122,9 @@ class Orden extends Model
     {
         return $this->hasMany(PrecioOrden::class, 'orden_id', 'id');
     }
+
+    public function llamadas()
+    {
+        return $this->hasMany(LlamadaOrden::class, 'orden_id')->latest('fecha_hora');
+    }
 }

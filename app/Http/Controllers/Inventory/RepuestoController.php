@@ -108,10 +108,30 @@ class RepuestoController extends Controller
 
     public function auditoria(Request $request): View
     {
-        $query = OrdenRepuesto::with(['repuesto', 'orden.cliente', 'orden.equipo', 'orden.tecnico', 'orden.sucursal', 'orden.cas', 'usuario'])
-            ->join('ordenes', 'orden_repuestos.orden_id', '=', 'ordenes.id')
+        $query = OrdenRepuesto::with([
+                'repuesto',
+                'orden.cliente',
+                'orden.equipo',
+                'orden.tecnico',
+                'orden.sucursal',
+                'orden.cas',
+                'ordenEmpresa.empresa',
+                'ordenEmpresa.equipo',
+                'ordenEmpresa.tecnico',
+                'ordenEmpresa.sucursal',
+                'usuario'
+            ])
+            ->join('vista_ordenes', function ($join) {
+                $join->on(function ($query) {
+                    $query->on('orden_repuestos.orden_id', '=', 'vista_ordenes.orden_id')
+                          ->where('vista_ordenes.tipo_orden', '=', 'personal');
+                })->orOn(function ($query) {
+                    $query->on('orden_repuestos.orden_empresa_id', '=', 'vista_ordenes.orden_id')
+                          ->where('vista_ordenes.tipo_orden', '=', 'empresa');
+                });
+            })
             ->select('orden_repuestos.*')
-            ->orderBy('ordenes.nro_orden', 'desc');
+            ->orderBy('vista_ordenes.nro_orden', 'desc');
 
         if ($request->filled('repuesto_id')) {
             $query->where('repuesto_id', $request->input('repuesto_id'));
@@ -136,10 +156,30 @@ class RepuestoController extends Controller
 
     public function imprimirReporte(Request $request): View
     {
-        $query = OrdenRepuesto::with(['repuesto', 'orden.cliente', 'orden.equipo', 'orden.tecnico', 'orden.sucursal', 'orden.cas', 'usuario'])
-            ->join('ordenes', 'orden_repuestos.orden_id', '=', 'ordenes.id')
+        $query = OrdenRepuesto::with([
+                'repuesto',
+                'orden.cliente',
+                'orden.equipo',
+                'orden.tecnico',
+                'orden.sucursal',
+                'orden.cas',
+                'ordenEmpresa.empresa',
+                'ordenEmpresa.equipo',
+                'ordenEmpresa.tecnico',
+                'ordenEmpresa.sucursal',
+                'usuario'
+            ])
+            ->join('vista_ordenes', function ($join) {
+                $join->on(function ($query) {
+                    $query->on('orden_repuestos.orden_id', '=', 'vista_ordenes.orden_id')
+                          ->where('vista_ordenes.tipo_orden', '=', 'personal');
+                })->orOn(function ($query) {
+                    $query->on('orden_repuestos.orden_empresa_id', '=', 'vista_ordenes.orden_id')
+                          ->where('vista_ordenes.tipo_orden', '=', 'empresa');
+                });
+            })
             ->select('orden_repuestos.*')
-            ->orderBy('ordenes.nro_orden', 'desc');
+            ->orderBy('vista_ordenes.nro_orden', 'desc');
 
         if ($request->filled('repuesto_id')) {
             $query->where('repuesto_id', $request->input('repuesto_id'));
@@ -160,13 +200,17 @@ class RepuestoController extends Controller
         if ($buscar !== '') {
             $buscarLower = mb_strtolower($buscar);
             $auditorias = $auditorias->filter(function ($a) use ($buscarLower) {
-                $tecnicoNombre = $a->usuario->nombre_tecnico ?? $a->orden->tecnico->nombre_tecnico ?? 'N/A';
+                $tecnicoNombre = $a->usuario->nombre_tecnico ?? $a->orden->tecnico->nombre_tecnico ?? $a->ordenEmpresa->tecnico->nombre_tecnico ?? 'N/A';
+                $nroOrden = $a->orden ? ($a->orden->nro_orden ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->nro_orden ?? '') : '');
+                $tipoOrden = $a->orden 
+                    ? ($a->orden->motivo_ingreso ?? 'N/A') 
+                    : ($a->ordenEmpresa ? ('Empresa - ' . ($a->ordenEmpresa->subtipo ?? '')) : 'N/A');
 
                 return mb_strpos(mb_strtolower($a->repuesto->codigo ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($a->repuesto->nombre ?? ''), $buscarLower) !== false
                     || mb_strpos(mb_strtolower($tecnicoNombre), $buscarLower) !== false
-                    || mb_strpos(mb_strtolower($a->orden->nro_orden ?? ''), $buscarLower) !== false
-                    || mb_strpos(mb_strtolower($a->orden->motivo_ingreso ?? ''), $buscarLower) !== false;
+                    || mb_strpos(mb_strtolower($nroOrden), $buscarLower) !== false
+                    || mb_strpos(mb_strtolower($tipoOrden), $buscarLower) !== false;
             });
         }
 

@@ -34,7 +34,7 @@ class OrdenRepuestoRepository
     /**
      * @throws Exception
      */
-    public function asignarRepuestoEnOrden(int $ordenId, int $repuestoId, int $usuarioId, bool $descontarStock = true): void
+    public function asignarRepuestoEnOrden(int $ordenId, int $repuestoId, int $usuarioId, bool $descontarStock = true, string $tipoOrden = 'personal'): void
     {
         $this->asegurarTablaOrdenRepuestos();
 
@@ -43,10 +43,16 @@ class OrdenRepuestoRepository
             throw new Exception('El repuesto seleccionado no existe.');
         }
 
-        $existeVinculo = OrdenRepuesto::query()
-            ->where('orden_id', $ordenId)
-            ->where('repuesto_id', $repuestoId)
-            ->exists();
+        $query = OrdenRepuesto::query()
+            ->where('repuesto_id', $repuestoId);
+
+        if ($tipoOrden === 'empresa') {
+            $query->where('orden_empresa_id', $ordenId);
+        } else {
+            $query->where('orden_id', $ordenId);
+        }
+
+        $existeVinculo = $query->exists();
 
         if ($existeVinculo) {
             throw new Exception('Este repuesto ya fue agregado a esta orden.');
@@ -57,18 +63,28 @@ class OrdenRepuestoRepository
         }
 
         $item = new OrdenRepuesto();
-        $item->orden_id = $ordenId;
+        if ($tipoOrden === 'empresa') {
+            $item->orden_empresa_id = $ordenId;
+        } else {
+            $item->orden_id = $ordenId;
+        }
         $item->repuesto_id = $repuestoId;
         $item->cantidad = 1;
         $item->usuario_id = $usuarioId > 0 ? $usuarioId : null;
         $item->save();
     }
 
-    public function revertirRepuestosDeOrden(int $ordenId, ?int $repuestoId = null): void
+    public function revertirRepuestosDeOrden(int $ordenId, ?int $repuestoId = null, string $tipoOrden = 'personal'): void
     {
         $this->asegurarTablaOrdenRepuestos();
 
-        $query = OrdenRepuesto::query()->where('orden_id', $ordenId);
+        $query = OrdenRepuesto::query();
+        if ($tipoOrden === 'empresa') {
+            $query->where('orden_empresa_id', $ordenId);
+        } else {
+            $query->where('orden_id', $ordenId);
+        }
+
         if ($repuestoId !== null && $repuestoId > 0) {
             $query->where('repuesto_id', $repuestoId);
         }

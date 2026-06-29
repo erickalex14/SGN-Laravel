@@ -20,6 +20,7 @@ class SolicitudRepuesto extends Model
     protected $fillable = [
         'nro_solicitud',
         'orden_id',
+        'orden_empresa_id',
         'tecnico_id',
         'tecnico_nombre',
         'repuesto_nombre',
@@ -43,6 +44,11 @@ class SolicitudRepuesto extends Model
     {
         // RELATION_REQUIRES_CONFIRMATION: Falta FK formal a nivel SQL, pero por nombre se infiere
         return $this->belongsTo(Orden::class, 'orden_id', 'id');
+    }
+
+    public function ordenEmpresa()
+    {
+        return $this->belongsTo(OrdenEmpresa::class, 'orden_empresa_id', 'id');
     }
 
     public function tecnico()

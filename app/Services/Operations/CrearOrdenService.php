@@ -378,7 +378,7 @@ class CrearOrdenService
         }
 
         if (empty($resultado)) {
-            $resultado[] = '';
+            $resultado[] = 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
         }
 
         return $resultado;

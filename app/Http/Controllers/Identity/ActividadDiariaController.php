@@ -30,7 +30,10 @@ class ActividadDiariaController extends Controller
 
         $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
         $nombreTecnico = session('nombre') ?? session('usuario') ?? 'Técnico';
-        return view('identity.actividades.index', compact('fechaHoy', 'nombreTecnico'));
+        
+        $esSistemas = $usuario->grupo && mb_strtolower($usuario->grupo->nombre) === 'sistemas';
+
+        return view('identity.actividades.index', compact('fechaHoy', 'nombreTecnico', 'esSistemas'));
     }
 
     /**
@@ -54,10 +57,13 @@ class ActividadDiariaController extends Controller
         }
         $actividades = $this->service->obtenerActividadesDelDia($tecnicoId, $fecha);
 
+        $esSistemas = $usuario->grupo && mb_strtolower($usuario->grupo->nombre) === 'sistemas';
+
         return response()->json([
             'ok' => true,
             'fecha' => $fecha,
-            'actividades' => $actividades
+            'actividades' => $actividades,
+            'esSistemas' => $esSistemas
         ]);
     }
 
@@ -87,10 +93,14 @@ class ActividadDiariaController extends Controller
         }
         $actividades = $this->service->obtenerActividadesDelDia($tecnicoId, $fecha);
 
+        $tecnico = \App\Models\Identity\Usuario::find($tecnicoId);
+        $esSistemas = $tecnico && $tecnico->grupo && mb_strtolower($tecnico->grupo->nombre) === 'sistemas';
+
         return response()->json([
             'ok' => true,
             'fecha' => $fecha,
-            'actividades' => $actividades
+            'actividades' => $actividades,
+            'esSistemas' => $esSistemas
         ]);
     }
 
@@ -106,7 +116,10 @@ class ActividadDiariaController extends Controller
 
         $fechaHoy = Carbon::now('America/Guayaquil')->toDateString();
         $nombreTecnico = session('nombre') ?? session('usuario') ?? 'Técnico';
-        return view('identity.actividades.historial', compact('fechaHoy', 'nombreTecnico'));
+
+        $esSistemas = $usuario->grupo && mb_strtolower($usuario->grupo->nombre) === 'sistemas';
+
+        return view('identity.actividades.historial', compact('fechaHoy', 'nombreTecnico', 'esSistemas'));
     }
 
     /**
@@ -152,6 +165,39 @@ class ActividadDiariaController extends Controller
         return response()->json([
             'ok' => true,
             'mensaje' => 'Actividades de hoy guardadas correctamente.'
+        ]);
+    }
+
+    /**
+     * Buscar detalles de una orden para autocompletar.
+     */
+    public function buscarOt(Request $request): JsonResponse
+    {
+        $usuario = auth()->user();
+        if (!$usuario || !$usuario->debeLlenarActividades()) {
+            return response()->json(['ok' => false, 'error' => 'No autorizado.'], 403);
+        }
+
+        $otStr = trim((string) $request->query('ot', ''));
+        if ($otStr === '') {
+            return response()->json(['ok' => false, 'error' => 'Debe ingresar un número de orden.'], 422);
+        }
+
+        $orden = \App\Models\Operations\Orden::with('equipo')
+            ->where('nro_orden', $otStr)
+            ->first();
+
+        if (!$orden) {
+            return response()->json(['ok' => false, 'error' => 'Orden no encontrada.']);
+        }
+
+        $equipo = $orden->equipo;
+        return response()->json([
+            'ok' => true,
+            'nro_orden' => $orden->nro_orden,
+            'clase' => $equipo ? $equipo->tipo : 'sn',
+            'serie' => $equipo ? $equipo->serie : 'sn',
+            'codigo_equipo' => $equipo ? $equipo->producto_inventario_codigo : 'sn'
         ]);
     }
 }

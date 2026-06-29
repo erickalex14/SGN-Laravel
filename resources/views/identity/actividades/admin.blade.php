@@ -79,6 +79,13 @@
         background: #15803d;
         box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
     }
+    #btn-exportar-zip {
+        background: #7c3aed;
+    }
+    #btn-exportar-zip:hover:not(:disabled) {
+        background: #6d28d9;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
     .act-stats {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -174,6 +181,11 @@
                     <i class="bi bi-file-earmark-excel-fill"></i>
                     Descargar Excel
                 </button>
+
+                <button class="act-btn" id="btn-exportar-zip">
+                    <i class="bi bi-file-earmark-zip-fill"></i>
+                    Descargar ZIP Sucursal
+                </button>
             </div>
         </div>
 
@@ -212,11 +224,12 @@
                 <thead>
                     <tr>
                         <th style="width: 140px;">Horario</th>
-                        <th style="width: 120px;">Actividad</th>
-                        <th style="width: 130px;">OT / Ticket</th>
-                        <th style="width: 130px;">Clase</th>
-                        <th style="width: 150px;">Serie</th>
-                        <th>Observaciones (Bitácora de Acciones)</th>
+                        <th style="width: 120px;" class="col-detalle">Actividad</th>
+                        <th style="width: 130px;" class="col-detalle">OT / Ticket</th>
+                        <th style="width: 130px;" class="col-detalle">Clase</th>
+                        <th style="width: 150px;" class="col-detalle">Serie</th>
+                        <th style="width: 150px;" class="col-detalle">Código Equipo</th>
+                        <th style="min-width: 350px;">Observaciones (Bitácora de Acciones)</th>
                     </tr>
                 </thead>
                 <tbody id="body-actividades">
@@ -233,8 +246,9 @@
 @endsection
 
 @push('js_adicional')
-<!-- Cargar ExcelJS desde CDN -->
+<!-- Cargar ExcelJS y JSZip desde CDN -->
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
     let actividadesRaw = [];
 
@@ -242,6 +256,7 @@
         document.getElementById('tecnico-filtro').addEventListener('change', cargarActividades);
         document.getElementById('fecha-filtro').addEventListener('change', cargarActividades);
         document.getElementById('btn-exportar').addEventListener('click', exportarExcel);
+        document.getElementById('btn-exportar-zip').addEventListener('click', exportarTodoZip);
     });
 
     // Definición de las 9 horas de la jornada
@@ -278,7 +293,8 @@
             .then(res => {
                 if (res.ok) {
                     actividadesRaw = res.actividades;
-                    renderizarTabla(fecha);
+                    window.esSistemasActual = res.esSistemas || false;
+                    renderizarTabla(fecha, res.esSistemas || false);
                     btnExportar.disabled = false;
                 } else {
                     container.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">${res.error}</td></tr>`;
@@ -290,6 +306,40 @@
                 container.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error al obtener actividades.</td></tr>';
                 actualizarEstadisticasVacias();
             });
+    }
+
+    function formatearBitacoraAutomatica(slotActs, esAlmuerzo) {
+        let lines = [];
+        if (esAlmuerzo) {
+            lines.push('Almuerzo');
+        }
+
+        if (slotActs.length === 0) {
+            return esAlmuerzo ? 'Almuerzo' : 'sn';
+        }
+
+        let groups = {};
+        let others = [];
+        slotActs.forEach(a => {
+            let ot = a.metadata_json?.nro_orden;
+            if (ot) {
+                if (!groups[ot]) groups[ot] = [];
+                groups[ot].push(a.descripcion.trim());
+            } else {
+                others.push(a.descripcion.trim());
+            }
+        });
+
+        for (let ot in groups) {
+            let uniqueDescs = [...new Set(groups[ot])];
+            lines.push(`Orden #${ot}:\n  - ` + uniqueDescs.join('\n  - '));
+        }
+
+        others.forEach(desc => {
+            lines.push(desc);
+        });
+
+        return lines.join('\n');
     }
 
     function parseHour(fechaHoraStr) {
@@ -326,9 +376,16 @@
         return 'sn';
     }
 
-    function renderizarTabla(fecha) {
+    function renderizarTabla(fecha, esSistemas = false) {
         const container = document.getElementById('body-actividades');
         container.innerHTML = '';
+
+        const colsDetalle = document.querySelectorAll('.col-remove, .col-detalle');
+        if (esSistemas) {
+            colsDetalle.forEach(c => c.style.display = 'none');
+        } else {
+            colsDetalle.forEach(c => c.style.display = '');
+        }
 
         let totalAcciones = actividadesRaw.length;
         let totalOts = 0;
@@ -350,6 +407,7 @@
             let ots = 'sn';
             let clase = 'sn';
             let serie = 'sn';
+            let codigoEquipo = 'sn';
             let observaciones = 'sn';
 
             if (slot.esAlmuerzo) {
@@ -369,6 +427,7 @@
                 ots = meta.ot || 'sn';
                 clase = meta.clase || 'sn';
                 serie = meta.serie || 'sn';
+                codigoEquipo = meta.codigo_equipo || 'sn';
                 observaciones = manualAct.descripcion || 'sn';
                 if (!slot.esAlmuerzo) {
                     horasTrabajadas++;
@@ -381,10 +440,7 @@
                     horasTrabajadas++;
                 }
 
-                observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                if (slot.esAlmuerzo) {
-                    observaciones = 'Almuerzo | ' + observaciones;
-                }
+                observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                 const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                 if (otsEnSlot.length > 0) {
@@ -396,6 +452,7 @@
                 if (mainAct) {
                     clase = mapClase(mainAct.metadata_json?.tipo);
                     serie = mainAct.metadata_json?.serie || 'sn';
+                    codigoEquipo = mainAct.metadata_json?.codigo_equipo || 'sn';
                     
                     if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                         valActividad = 'ticket';
@@ -428,18 +485,41 @@
                 }
             }
 
+            if (esSistemas) {
+                valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                valNovedad = 'sn';
+                valEstado = 'sn';
+                valModalidad = 'sn';
+                ots = 'sn';
+                clase = 'sn';
+                serie = 'sn';
+                if (manualAct) {
+                    observaciones = manualAct.descripcion || 'sn';
+                }
+            }
+
             const badgeEstado = valEstado === 'sn' ? 'sn' : (valEstado === 'realizado ' ? 'realizado' : (valEstado === 'pendiente' ? 'pendiente' : (valEstado === 'en proceso' ? 'proceso' : 'almuerzo')));
 
-            rowHtml = `
-                <tr>
-                    <td style="font-weight: 700; color: #475569;">${slot.label}</td>
-                    <td><span class="act-badge act-badge-${badgeEstado === 'almuerzo' && slot.esAlmuerzo ? 'almuerzo' : badgeEstado}">${valActividad}</span></td>
-                    <td><span style="font-family: monospace; font-weight: 700; color: #2563eb;">${ots}</span></td>
-                    <td>${clase}</td>
-                    <td style="font-family: monospace;">${serie}</td>
-                    <td style="font-weight: 500; font-size: 12.5px;">${observaciones}</td>
-                </tr>
-            `;
+            if (esSistemas) {
+                rowHtml = `
+                    <tr>
+                        <td style="font-weight: 700; color: #475569;">${slot.label}</td>
+                        <td style="font-weight: 500; font-size: 12.5px; white-space: pre-line;">${observaciones === 'sn' ? '' : observaciones}</td>
+                    </tr>
+                `;
+            } else {
+                rowHtml = `
+                    <tr>
+                        <td style="font-weight: 700; color: #475569;">${slot.label}</td>
+                        <td><span class="act-badge act-badge-${badgeEstado === 'almuerzo' && slot.esAlmuerzo ? 'almuerzo' : badgeEstado}">${valActividad}</span></td>
+                        <td><span style="font-family: monospace; font-weight: 700; color: #2563eb;">${ots}</span></td>
+                        <td>${clase}</td>
+                        <td style="font-family: monospace;">${serie}</td>
+                        <td style="font-family: monospace;">${codigoEquipo}</td>
+                        <td style="font-weight: 500; font-size: 12.5px; white-space: pre-line;">${observaciones}</td>
+                    </tr>
+                `;
+            }
             container.innerHTML += rowHtml;
         });
 
@@ -452,6 +532,314 @@
         document.getElementById('stat-horas').textContent = '0/8';
         document.getElementById('stat-acciones').textContent = '0';
         document.getElementById('stat-ots').textContent = '0';
+    }
+
+    async function generarExcelWorkbook(acts, esSistemas, tecnicoNombre, fecha) {
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'SGN - Novitecnologia';
+        wb.created = new Date();
+
+        const dateParts = fecha.split('-');
+        const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        const mesNombre = meses[dateObj.getMonth()];
+        const sheetName = `ACTIVIDADES DIARIAS MES ${mesNombre}`;
+
+        const ws = wb.addWorksheet(sheetName, {
+            views: [{ showGridLines: true }]
+        });
+
+        const borderStyle = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+        };
+
+        ws.columns = [
+            { width: 22 }, // A: Fecha
+            { width: 15 }, // B: Horario
+            { width: 30 }, // C: Actividad
+            { width: 20 }, // D: Novedad
+            { width: 16 }, // E: Estado
+            { width: 14 }, // F: Modalidad
+            { width: 26 }, // G: Tecnico
+            { width: 18 }, // H: OT o Ticket
+            { width: 10 }, // I: Cantidad
+            { width: 16 }, // J: Codigo equipo
+            { width: 18 }, // K: Clase
+            { width: 22 }, // L: Serie equipo
+            { width: 65 }, // M: Observacion
+            { width: 35 }  // N: Codigo repuesto
+        ];
+
+        const formattedHeaderDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+        const headers = [
+            `FECHA F: ${formattedHeaderDate}`,
+            'HORARIO ',
+            'ACTIVIDAD/DETALLE PRODUCTO ',
+            'NOVEDAD ',
+            'ESTADO ',
+            'MODALIDAD ',
+            'TECNICO RESPONSABLE ',
+            'OT O TICKET ',
+            'CANTIDAD',
+            'CODIGO EQUIPO ',
+            'CLASE ',
+            'SERIE EQUIPO',
+            'OBSERVACION',
+            'CODIGO REPUESTO UTILIZADO EN OT DE GARANTIA'
+        ];
+
+        const headerRow = ws.addRow(headers);
+        headerRow.height = 24;
+        headerRow.eachCell((cell, colNum) => {
+            cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+            cell.alignment = { horizontal: colNum === 1 || colNum === 13 ? 'left' : 'center', vertical: 'middle' };
+            cell.border = borderStyle;
+        });
+
+        horasJornada.forEach((slot, idx) => {
+            let slotActs = acts.filter(act => {
+                const hour = parseHour(act.fecha_hora);
+                if (slot.key === 9) return hour <= 9;
+                if (slot.key === 17) return hour >= 17;
+                return hour === slot.key;
+            });
+
+            let valActividad = 'sn';
+            let valNovedad = 'sn';
+            let valEstado = 'sn';
+            let valModalidad = 'presencial';
+            let ots = 'sn';
+            let clase = 'sn';
+            let serie = 'sn';
+            let observaciones = 'sn';
+            let repuestoCode = 'sn';
+            let equipoCode = 'sn';
+
+            if (slot.esAlmuerzo) {
+                valActividad = 'almuerzo';
+                valNovedad = 'Oficina';
+                valEstado = 'realizado ';
+                observaciones = 'Almuerzo';
+            }
+
+            const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
+            if (manualAct) {
+                const meta = manualAct.metadata_json || {};
+                valActividad = meta.actividad || 'sn';
+                valNovedad = meta.novedad || 'sn';
+                valEstado = meta.estado || 'sn';
+                valModalidad = meta.modalidad || 'presencial';
+                ots = meta.ot || 'sn';
+                clase = meta.clase || 'sn';
+                serie = meta.serie || 'sn';
+                observaciones = manualAct.descripcion || 'sn';
+                repuestoCode = meta.codigo_repuesto || 'sn';
+                equipoCode = meta.codigo_equipo || 'sn';
+            } else if (slotActs.length > 0) {
+                observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
+
+                const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
+                if (otsEnSlot.length > 0) {
+                    ots = [...new Set(otsEnSlot)].join(', ');
+                }
+
+                const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
+                if (mainAct) {
+                    clase = mapClase(mainAct.metadata_json?.tipo);
+                    serie = mainAct.metadata_json?.serie || 'sn';
+                    equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
+                    
+                    if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
+                        valActividad = 'ticket';
+                    } else if (mainAct.tipo_accion.includes('estado')) {
+                        valActividad = 'reparacion';
+                    } else {
+                        valActividad = 'ticket';
+                    }
+
+                    if (mainAct.metadata_json?.estado_garantia && mainAct.metadata_json?.estado_garantia.toUpperCase() !== 'NO APLICA') {
+                        valNovedad = 'garantia';
+                    } else {
+                        valNovedad = 'Oficina';
+                    }
+
+                    const est = mainAct.metadata_json?.estado_orden ? mainAct.metadata_json?.estado_orden.toUpperCase() : '';
+                    if (est.includes('PROCESO')) {
+                        valEstado = 'en proceso';
+                    } else if (est.includes('PENDIENTE')) {
+                        valEstado = 'pendiente';
+                    } else if (est.includes('NOTA') || est.includes('CREDITO')) {
+                        valEstado = 'nota credito';
+                    } else {
+                        valEstado = 'realizado ';
+                    }
+
+                    if (mainAct.metadata_json?.repuesto_inventario_id) {
+                        repuestoCode = mainAct.metadata_json?.repuesto_inventario_id;
+                    }
+                } else {
+                    valActividad = 'ticket';
+                    valNovedad = 'Oficina';
+                    valEstado = 'realizado ';
+                }
+            }
+
+            if (esSistemas) {
+                valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                valNovedad = 'sn';
+                valEstado = 'sn';
+                valModalidad = 'sn';
+                ots = 'sn';
+                clase = 'sn';
+                serie = 'sn';
+                equipoCode = 'sn';
+                repuestoCode = 'sn';
+                if (manualAct) {
+                    observaciones = manualAct.descripcion || 'sn';
+                }
+            }
+
+            const excelRowValues = [
+                dateObj,
+                slot.label,
+                valActividad,
+                valNovedad,
+                valEstado,
+                valModalidad,
+                tecnicoNombre,
+                ots,
+                ots !== 'sn' ? [...new Set(ots.split(', '))].length : 'sn',
+                equipoCode,
+                clase,
+                serie,
+                observaciones,
+                repuestoCode
+            ];
+
+            const row = ws.addRow(excelRowValues);
+            row.height = 20;
+            row.eachCell((cell, colNum) => {
+                cell.font = { name: 'Calibri', size: 11, bold: false };
+                cell.border = borderStyle;
+                
+                if (colNum === 1) {
+                    cell.numFormat = 'yyyy-mm-dd';
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                } else if (colNum === 13) {
+                    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                } else {
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                }
+            });
+        });
+
+        ws.addRow([]); // Fila 11
+        const commitRow = ws.addRow([]); // Fila 12
+        commitRow.getCell(13).value = 'Comits del dia de hoy:';
+        commitRow.getCell(13).font = { name: 'Calibri', size: 11, bold: true };
+
+        const wsBase = wb.addWorksheet('HOJA BASE ', { views: [{ showGridLines: true }] });
+        wsBase.columns = [
+            { width: 5 },
+            { width: 15 },
+            { width: 25 },
+            { width: 20 },
+            { width: 16 },
+            { width: 14 },
+            { width: 26 },
+            { width: 5 },
+            { width: 5 },
+            { width: 5 },
+            { width: 20 }
+        ];
+
+        const baseHeaders = ['', 'HORARIO ', 'ACTIVIDAD/DETALLE PRODUCTO ', 'NOVEDAD ', 'ESTADO ', 'MODALIDAD ', 'TECNICO RESPONSABLE ', '', '', '', 'CLASE'];
+        const baseHeaderRow = wsBase.addRow(baseHeaders);
+        baseHeaderRow.eachCell((cell, colNum) => {
+            if (colNum > 1 && cell.value) {
+                cell.font = { name: 'Calibri', size: 11, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.border = borderStyle;
+            }
+        });
+
+        const options = {
+            B: ["9:00 a  10:00", "10:00 a 11:00", "11:00 a 12:00", "12:00 a 13:00", "13:00 a 14:00", "14:00 a 15:00", "15:00 a 16:00", "16:00 a 17:00", "17:00 a 18:00", "9:00 a 18:00"],
+            C: ["revision ", "reparacion", "instalacion ", "soporte", "ticket", "atencion", "almuerzo", "deligencia externa", "capacitacion ", "sn"],
+            D: ["tienda", "outlet", "incinerox", "autoconsumo", "garantia", "Oficina", "Empresa", "bodega", "servicio tecnico", "sn"],
+            E: ["realizado ", "no realizado", "pendiente", "en proceso", "aprobado", "no aprobado", "nota credito", "sn"],
+            F: ["virtual", "presencial", "sn"],
+            G: ["ERICK MINA", "FRANKLIN BASANTES", "OMAR ALMEIDA", "JIMMY BALCAZAR", "JOSE PUCHA ", "LUIS MORALES ", "FRANKLIN RUIZ ", "JOSUE ROMERO ", "ALEJANDRO YEPEZ ", "ALEXANDER CHAVARREA "],
+            K: ["LAPTOPS", "ACCESORIO", "EQUIPO GYM", "LINEA BLANCA", "MONITORES", "JUGUETES", "SOPORTE", "SERVICIO", "PC", "AIO", "CELULARES", "IMPRESORAS", "TVS", "MOTOS", "CONSOLAS", "OFICINA", "HOGAR", "BICICLETAS", "TABLETS ", "sn"]
+        };
+
+        const maxOptionsLength = Math.max(
+            options.B.length, options.C.length, options.D.length,
+            options.E.length, options.F.length, options.G.length,
+            options.K.length
+        );
+
+        for (let r = 0; r < maxOptionsLength; r++) {
+            const rowData = [
+                '',
+                options.B[r] || '',
+                options.C[r] || '',
+                options.D[r] || '',
+                options.E[r] || '',
+                options.F[r] || '',
+                options.G[r] || '',
+                '',
+                '',
+                '',
+                options.K[r] || ''
+            ];
+            const baseRow = wsBase.addRow(rowData);
+            baseRow.eachCell((cell, colNum) => {
+                if (colNum > 1 && cell.value) {
+                    cell.font = { name: 'Calibri', size: 11 };
+                    cell.border = borderStyle;
+                }
+            });
+        }
+
+        for (let r = 2; r <= 10; r++) {
+            ws.getCell(`C${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$C$2:$C$11"]
+            };
+            ws.getCell(`D${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$D$2:$D$11"]
+            };
+            ws.getCell(`E${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$E$2:$E$9"]
+            };
+            ws.getCell(`F${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$F$2:$F$4"]
+            };
+            ws.getCell(`G${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$G$2:$G$11"]
+            };
+            ws.getCell(`K${r}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ["'HOJA BASE '!$K$2:$K$20"]
+            };
+        }
+
+        return wb;
     }
 
     async function exportarExcel() {
@@ -473,297 +861,8 @@
         btn.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Generando...';
 
         try {
-            const wb = new ExcelJS.Workbook();
-            wb.creator = 'SGN - Novitecnologia';
-            wb.created = new Date();
-
-            const dateParts = fecha.split('-');
-            const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-            const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
-            const mesNombre = meses[dateObj.getMonth()];
-            const sheetName = `ACTIVIDADES DIARIAS MES ${mesNombre}`;
-
-            const ws = wb.addWorksheet(sheetName, {
-                views: [{ showGridLines: true }]
-            });
-
-            const borderStyle = {
-                top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-                left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-                bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-                right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
-            };
-
-            ws.columns = [
-                { width: 22 }, // A: Fecha
-                { width: 15 }, // B: Horario
-                { width: 30 }, // C: Actividad
-                { width: 20 }, // D: Novedad
-                { width: 16 }, // E: Estado
-                { width: 14 }, // F: Modalidad
-                { width: 26 }, // G: Tecnico
-                { width: 18 }, // H: OT o Ticket
-                { width: 10 }, // I: Cantidad
-                { width: 16 }, // J: Codigo equipo
-                { width: 18 }, // K: Clase
-                { width: 22 }, // L: Serie equipo
-                { width: 65 }, // M: Observacion
-                { width: 35 }  // N: Codigo repuesto
-            ];
-
-            const formattedHeaderDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-            const headers = [
-                `FECHA F: ${formattedHeaderDate}`,
-                'HORARIO ',
-                'ACTIVIDAD/DETALLE PRODUCTO ',
-                'NOVEDAD ',
-                'ESTADO ',
-                'MODALIDAD ',
-                'TECNICO RESPONSABLE ',
-                'OT O TICKET ',
-                'CANTIDAD',
-                'CODIGO EQUIPO ',
-                'CLASE ',
-                'SERIE EQUIPO',
-                'OBSERVACION',
-                'CODIGO REPUESTO UTILIZADO EN OT DE GARANTIA'
-            ];
-
-            const headerRow = ws.addRow(headers);
-            headerRow.height = 24;
-            headerRow.eachCell((cell, colNum) => {
-                cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-                cell.alignment = { horizontal: colNum === 1 || colNum === 13 ? 'left' : 'center', vertical: 'middle' };
-                cell.border = borderStyle;
-            });
-
-            horasJornada.forEach((slot, idx) => {
-                let slotActs = actividadesRaw.filter(act => {
-                    const hour = parseHour(act.fecha_hora);
-                    if (slot.key === 9) return hour <= 9;
-                    if (slot.key === 17) return hour >= 17;
-                    return hour === slot.key;
-                });
-
-                let valActividad = 'sn';
-                let valNovedad = 'sn';
-                let valEstado = 'sn';
-                let valModalidad = 'presencial';
-                let ots = 'sn';
-                let clase = 'sn';
-                let serie = 'sn';
-                let observaciones = 'sn';
-                let repuestoCode = 'sn';
-                let equipoCode = 'sn';
-
-                if (slot.esAlmuerzo) {
-                    valActividad = 'almuerzo';
-                    valNovedad = 'Oficina';
-                    valEstado = 'realizado ';
-                    observaciones = 'Almuerzo';
-                }
-
-                const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
-                if (manualAct) {
-                    const meta = manualAct.metadata_json || {};
-                    valActividad = meta.actividad || 'sn';
-                    valNovedad = meta.novedad || 'sn';
-                    valEstado = meta.estado || 'sn';
-                    valModalidad = meta.modalidad || 'presencial';
-                    ots = meta.ot || 'sn';
-                    clase = meta.clase || 'sn';
-                    serie = meta.serie || 'sn';
-                    observaciones = manualAct.descripcion || 'sn';
-                    repuestoCode = meta.codigo_repuesto || 'sn';
-                    equipoCode = meta.codigo_equipo || 'sn';
-                } else if (slotActs.length > 0) {
-                    observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                    if (slot.esAlmuerzo) {
-                        observaciones = 'Almuerzo | ' + observaciones;
-                    }
-
-                    const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
-                    if (otsEnSlot.length > 0) {
-                        ots = [...new Set(otsEnSlot)].join(', ');
-                    }
-
-                    const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
-                    if (mainAct) {
-                        clase = mapClase(mainAct.metadata_json?.tipo);
-                        serie = mainAct.metadata_json?.serie || 'sn';
-                        
-                        if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
-                            valActividad = 'ticket';
-                        } else if (mainAct.tipo_accion.includes('estado')) {
-                            valActividad = 'reparacion';
-                        } else {
-                            valActividad = 'ticket';
-                        }
-
-                        if (mainAct.metadata_json?.estado_garantia && mainAct.metadata_json?.estado_garantia.toUpperCase() !== 'NO APLICA') {
-                            valNovedad = 'garantia';
-                        } else {
-                            valNovedad = 'Oficina';
-                        }
-
-                        const est = mainAct.metadata_json?.estado_orden ? mainAct.metadata_json?.estado_orden.toUpperCase() : '';
-                        if (est.includes('PROCESO')) {
-                            valEstado = 'en proceso';
-                        } else if (est.includes('PENDIENTE')) {
-                            valEstado = 'pendiente';
-                        } else if (est.includes('NOTA') || est.includes('CREDITO')) {
-                            valEstado = 'nota credito';
-                        } else {
-                            valEstado = 'realizado ';
-                        }
-
-                        if (mainAct.metadata_json?.repuesto_inventario_id) {
-                            repuestoCode = mainAct.metadata_json?.repuesto_inventario_id;
-                        }
-                    } else {
-                        valActividad = 'ticket';
-                        valNovedad = 'Oficina';
-                        valEstado = 'realizado ';
-                    }
-                }
-
-                const excelRowValues = [
-                    dateObj,
-                    slot.label,
-                    valActividad,
-                    valNovedad,
-                    valEstado,
-                    valModalidad,
-                    tecnicoNombre,
-                    ots,
-                    ots !== 'sn' ? [...new Set(ots.split(', '))].length : 'sn',
-                    equipoCode,
-                    clase,
-                    serie,
-                    observaciones,
-                    repuestoCode
-                ];
-
-                const row = ws.addRow(excelRowValues);
-                row.height = 20;
-                row.eachCell((cell, colNum) => {
-                    cell.font = { name: 'Calibri', size: 11, bold: false };
-                    cell.border = borderStyle;
-                    
-                    if (colNum === 1) {
-                        cell.numFormat = 'yyyy-mm-dd';
-                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                    } else if (colNum === 13) {
-                        cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-                    } else {
-                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                    }
-                });
-            });
-
-            ws.addRow([]); // Fila 11
-            const commitRow = ws.addRow([]); // Fila 12
-            commitRow.getCell(13).value = 'Comits del dia de hoy:';
-            commitRow.getCell(13).font = { name: 'Calibri', size: 11, bold: true };
-
-            const wsBase = wb.addWorksheet('HOJA BASE ', { views: [{ showGridLines: true }] });
-            wsBase.columns = [
-                { width: 5 },
-                { width: 15 },
-                { width: 25 },
-                { width: 20 },
-                { width: 16 },
-                { width: 14 },
-                { width: 26 },
-                { width: 5 },
-                { width: 5 },
-                { width: 5 },
-                { width: 20 }
-            ];
-
-            const baseHeaders = ['', 'HORARIO ', 'ACTIVIDAD/DETALLE PRODUCTO ', 'NOVEDAD ', 'ESTADO ', 'MODALIDAD ', 'TECNICO RESPONSABLE ', '', '', '', 'CLASE'];
-            const baseHeaderRow = wsBase.addRow(baseHeaders);
-            baseHeaderRow.eachCell((cell, colNum) => {
-                if (colNum > 1 && cell.value) {
-                    cell.font = { name: 'Calibri', size: 11, bold: true };
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-                    cell.border = borderStyle;
-                }
-            });
-
-            const options = {
-                B: ["9:00 a  10:00", "10:00 a 11:00", "11:00 a 12:00", "12:00 a 13:00", "13:00 a 14:00", "14:00 a 15:00", "15:00 a 16:00", "16:00 a 17:00", "17:00 a 18:00", "9:00 a 18:00"],
-                C: ["revision ", "reparacion", "instalacion ", "soporte", "ticket", "atencion", "almuerzo", "deligencia externa", "capacitacion ", "sn"],
-                D: ["tienda", "outlet", "incinerox", "autoconsumo", "garantia", "Oficina", "Empresa", "bodega", "servicio tecnico", "sn"],
-                E: ["realizado ", "no realizado", "pendiente", "en proceso", "aprobado", "no aprobado", "nota credito", "sn"],
-                F: ["virtual", "presencial", "sn"],
-                G: ["ERICK MINA", "FRANKLIN BASANTES", "OMAR ALMEIDA", "JIMMY BALCAZAR", "JOSE PUCHA ", "LUIS MORALES ", "FRANKLIN RUIZ ", "JOSUE ROMERO ", "ALEJANDRO YEPEZ ", "ALEXANDER CHAVARREA "],
-                K: ["LAPTOPS", "ACCESORIO", "EQUIPO GYM", "LINEA BLANCA", "MONITORES", "JUGUETES", "SOPORTE", "SERVICIO", "PC", "AIO", "CELULARES", "IMPRESORAS", "TVS", "MOTOS", "CONSOLAS", "OFICINA", "HOGAR", "BICICLETAS", "TABLETS ", "sn"]
-            };
-
-            const maxOptionsLength = Math.max(
-                options.B.length, options.C.length, options.D.length,
-                options.E.length, options.F.length, options.G.length,
-                options.K.length
-            );
-
-            for (let r = 0; r < maxOptionsLength; r++) {
-                const rowData = [
-                    '',
-                    options.B[r] || '',
-                    options.C[r] || '',
-                    options.D[r] || '',
-                    options.E[r] || '',
-                    options.F[r] || '',
-                    options.G[r] || '',
-                    '',
-                    '',
-                    '',
-                    options.K[r] || ''
-                ];
-                const baseRow = wsBase.addRow(rowData);
-                baseRow.eachCell((cell, colNum) => {
-                    if (colNum > 1 && cell.value) {
-                        cell.font = { name: 'Calibri', size: 11 };
-                        cell.border = borderStyle;
-                    }
-                });
-            }
-
-            for (let r = 2; r <= 10; r++) {
-                ws.getCell(`C${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$C$2:$C$11"]
-                };
-                ws.getCell(`D${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$D$2:$D$11"]
-                };
-                ws.getCell(`E${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$E$2:$E$9"]
-                };
-                ws.getCell(`F${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$F$2:$F$4"]
-                };
-                ws.getCell(`G${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$G$2:$G$11"]
-                };
-                ws.getCell(`K${r}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: ["'HOJA BASE '!$K$2:$K$20"]
-                };
-            }
-
+            const esSistemas = window.esSistemasActual || false;
+            const wb = await generarExcelWorkbook(actividadesRaw, esSistemas, tecnicoNombre, fecha);
             const buffer = await wb.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
@@ -793,6 +892,87 @@
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-file-earmark-excel-fill"></i> Descargar Excel';
+        }
+    }
+
+    async function exportarTodoZip() {
+        const fecha = document.getElementById('fecha-filtro').value;
+        const adminSucursalId = @json(auth()->user()->sucursal_id);
+        const adminSucursalNombre = @json(auth()->user()->sucursalPrincipal?->ciudad ?? 'Sucursal');
+        
+        // Filtrar técnicos pertenecientes a la sucursal del admin
+        const tecnicos = @json($tecnicos);
+        const tecnicosSucursal = tecnicos.filter(t => t.sucursal_id === adminSucursalId);
+
+        if (tecnicosSucursal.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin Técnicos',
+                text: 'No se encontraron técnicos activos en la sucursal de tu cuenta.',
+                confirmButtonColor: '#2563eb'
+            });
+            return;
+        }
+
+        const btn = document.getElementById('btn-exportar-zip');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Generando ZIP...';
+
+        Swal.fire({
+            title: 'Generando ZIP de la sucursal...',
+            html: 'Procesando reportes de técnicos de la sucursal. Por favor, espere...<br><br><b id="zip-progress">0</b> de ' + tecnicosSucursal.length + ' completados.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const zip = new JSZip();
+            let completados = 0;
+
+            for (const t of tecnicosSucursal) {
+                const url = `{{ route('actividades.admin.listar') }}?tecnico_id=${t.id}&fecha=${fecha}`;
+                const res = await fetch(url).then(r => r.json());
+
+                if (res.ok) {
+                    const acts = res.actividades || [];
+                    const esSistemas = res.esSistemas || false;
+                    
+                    const wb = await generarExcelWorkbook(acts, esSistemas, t.nombre_tecnico, fecha);
+                    const buffer = await wb.xlsx.writeBuffer();
+                    
+                    const safeName = t.nombre_tecnico.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    zip.file(`actividades_${fecha}_${safeName}.xlsx`, buffer);
+                }
+                
+                completados++;
+                const progEl = document.getElementById('zip-progress');
+                if (progEl) progEl.textContent = completados;
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = window.URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Reportes_Actividades_${fecha}_${adminSucursalNombre.replace(/[^a-z0-9]/gi, '_')}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ZIP Descargado',
+                text: 'Se han empaquetado y descargado todos los reportes de la sucursal.',
+                confirmButtonColor: '#2563eb'
+            });
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'No se pudo generar el archivo ZIP de la sucursal: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-file-earmark-zip-fill"></i> Descargar ZIP Sucursal';
         }
     }
 </script>

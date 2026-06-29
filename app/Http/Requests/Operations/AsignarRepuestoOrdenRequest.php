@@ -15,9 +15,11 @@ class AsignarRepuestoOrdenRequest extends FormRequest
 
     public function rules(): array
     {
+        $table = $this->input('tipo_orden') === 'empresa' ? 'ordenesempresas' : 'ordenes';
         return [
-            'orden_id' => ['required', 'integer', 'exists:ordenes,id'],
+            'orden_id' => ['required', 'integer', "exists:{$table},id"],
             'repuesto_inventario_id' => ['required', 'integer', 'exists:repuestos,id'],
+            'tipo_orden' => ['nullable', 'string', 'in:personal,empresa']
         ];
     }
 

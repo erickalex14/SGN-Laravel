@@ -148,7 +148,7 @@
     .act-badge-sn { background: #f1f5f9; color: #64748b; }
     .act-badge-almuerzo { background: #fee2e2; color: #b91c1c; }
     
-    .act-table select, .act-table input {
+    .act-table select, .act-table input, .act-table textarea {
         width: 100%;
         padding: 5px 8px;
         border: 1px solid #cbd5e1;
@@ -240,18 +240,21 @@
         </div>
 
         <div class="act-table-container" style="overflow-x: auto;">
-            <table class="act-table" id="tabla-actividades" style="min-width: 1100px;">
+            <table class="act-table" id="tabla-actividades" style="min-width: {{ $esSistemas ? '600px' : '1250px' }};">
                 <thead>
                     <tr>
-                        <th style="width: 130px;">Horario</th>
-                        <th style="width: 140px;">Actividad</th>
-                        <th style="width: 130px;">Novedad</th>
-                        <th style="width: 130px;">Estado</th>
-                        <th style="width: 110px;">Modalidad</th>
-                        <th style="width: 120px;">OT / Ticket</th>
-                        <th style="width: 140px;">Clase</th>
-                        <th style="width: 130px;">Serie</th>
-                        <th>Observaciones (Bitácora de Acciones)</th>
+                        <th style="width: 150px;">Horario</th>
+                        @if(!$esSistemas)
+                            <th style="width: 140px;">Actividad</th>
+                            <th style="width: 130px;">Novedad</th>
+                            <th style="width: 130px;">Estado</th>
+                            <th style="width: 110px;">Modalidad</th>
+                            <th style="width: 120px;">OT / Ticket</th>
+                            <th style="width: 140px;">Clase</th>
+                            <th style="width: 130px;">Serie</th>
+                            <th style="width: 130px;">Código Equipo</th>
+                        @endif
+                        <th style="min-width: 350px;">Observaciones (Bitácora de Acciones)</th>
                     </tr>
                 </thead>
                 <tbody id="body-actividades">
@@ -269,6 +272,7 @@
 <script>
     const tecnicoNombre = @json($nombreTecnico);
     const puedeEditar = @json($puedeEditar);
+    const esSistemas = @json($esSistemas);
     let actividadesRaw = [];
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -312,6 +316,40 @@
                 console.error(err);
                 container.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">Error al obtener actividades.</td></tr>';
             });
+    }
+
+    function formatearBitacoraAutomatica(slotActs, esAlmuerzo) {
+        let lines = [];
+        if (esAlmuerzo) {
+            lines.push('Almuerzo');
+        }
+
+        if (slotActs.length === 0) {
+            return esAlmuerzo ? 'Almuerzo' : 'sn';
+        }
+
+        let groups = {};
+        let others = [];
+        slotActs.forEach(a => {
+            let ot = a.metadata_json?.nro_orden;
+            if (ot) {
+                if (!groups[ot]) groups[ot] = [];
+                groups[ot].push(a.descripcion.trim());
+            } else {
+                others.push(a.descripcion.trim());
+            }
+        });
+
+        for (let ot in groups) {
+            let uniqueDescs = [...new Set(groups[ot])];
+            lines.push(`Orden #${ot}:\n  - ` + uniqueDescs.join('\n  - '));
+        }
+
+        others.forEach(desc => {
+            lines.push(desc);
+        });
+
+        return lines.join('\n');
     }
 
     function parseHour(fechaHoraStr) {
@@ -389,6 +427,7 @@
             let ots = 'sn';
             let clase = 'sn';
             let serie = 'sn';
+            let codigoEquipo = 'sn';
             let observaciones = 'sn';
 
             if (slot.esAlmuerzo) {
@@ -408,16 +447,14 @@
                 ots = meta.ot || 'sn';
                 clase = meta.clase || 'sn';
                 serie = meta.serie || 'sn';
+                codigoEquipo = meta.codigo_equipo || 'sn';
                 observaciones = manualAct.descripcion || 'sn';
             } else if (slotActs.length > 0) {
                 if (!slot.esAlmuerzo) {
                     horasTrabajadas++;
                 }
 
-                observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                if (slot.esAlmuerzo) {
-                    observaciones = 'Almuerzo | ' + observaciones;
-                }
+                observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                 const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                 if (otsEnSlot.length > 0) {
@@ -429,6 +466,7 @@
                 if (mainAct) {
                     clase = mapClase(mainAct.metadata_json?.tipo);
                     serie = mainAct.metadata_json?.serie || 'sn';
+                    codigoEquipo = mainAct.metadata_json?.codigo_equipo || 'sn';
                     
                     if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                         valActividad = 'ticket';
@@ -461,19 +499,51 @@
                 }
             }
 
-            const rowHtml = `
-                <tr data-row-slot="${slot.key}">
-                    <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
-                    <td style="vertical-align: middle;">${buildSelectHtml('actividad', optionsActividad, valActividad, slot.key)}</td>
-                    <td style="vertical-align: middle;">${buildSelectHtml('novedad', optionsNovedad, valNovedad, slot.key)}</td>
-                    <td style="vertical-align: middle;">${buildSelectHtml('estado', optionsEstado, valEstado, slot.key)}</td>
-                    <td style="vertical-align: middle;">${buildSelectHtml('modalidad', optionsModalidad, valModalidad, slot.key)}</td>
-                    <td style="vertical-align: middle;"><input type="text" name="ot" value="${ots === 'sn' ? '' : ots}" placeholder="sn" ${puedeEditar ? '' : 'disabled'}></td>
-                    <td style="vertical-align: middle;">${buildSelectHtml('clase', optionsClase, clase, slot.key)}</td>
-                    <td style="vertical-align: middle;"><input type="text" name="serie" value="${serie === 'sn' ? '' : serie}" placeholder="sn" ${puedeEditar ? '' : 'disabled'}></td>
-                    <td style="vertical-align: middle;"><input type="text" name="observacion" value="${observaciones === 'sn' ? '' : observaciones}" placeholder="sn" ${puedeEditar ? '' : 'disabled'}></td>
-                </tr>
-            `;
+            if (esSistemas) {
+                valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                valNovedad = 'sn';
+                valEstado = 'sn';
+                valModalidad = 'sn';
+                ots = 'sn';
+                clase = 'sn';
+                serie = 'sn';
+                if (manualAct) {
+                    observaciones = manualAct.descripcion || 'sn';
+                }
+            }
+
+            let rowHtml = '';
+            if (esSistemas) {
+                rowHtml = `
+                    <tr data-row-slot="${slot.key}">
+                        <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
+                        <input type="hidden" name="actividad" value="${valActividad}">
+                        <input type="hidden" name="novedad" value="${valNovedad}">
+                        <input type="hidden" name="estado" value="${valEstado}">
+                        <input type="hidden" name="modalidad" value="${valModalidad}">
+                        <input type="hidden" name="ot" value="${ots}">
+                        <input type="hidden" name="clase" value="${clase}">
+                        <input type="hidden" name="serie" value="${serie}">
+                        <input type="hidden" name="codigo_equipo" value="${codigoEquipo}">
+                        <td style="vertical-align: middle;"><textarea name="observacion" placeholder="Escribe tu actividad aquí..." ${puedeEditar ? '' : 'disabled'} style="resize: vertical; min-height: 48px; line-height: 1.4;">${observaciones === 'sn' ? '' : observaciones}</textarea></td>
+                    </tr>
+                `;
+            } else {
+                rowHtml = `
+                    <tr data-row-slot="${slot.key}">
+                        <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
+                        <td style="vertical-align: middle;">${buildSelectHtml('actividad', optionsActividad, valActividad, slot.key)}</td>
+                        <td style="vertical-align: middle;">${buildSelectHtml('novedad', optionsNovedad, valNovedad, slot.key)}</td>
+                        <td style="vertical-align: middle;">${buildSelectHtml('estado', optionsEstado, valEstado, slot.key)}</td>
+                        <td style="vertical-align: middle;">${buildSelectHtml('modalidad', optionsModalidad, valModalidad, slot.key)}</td>
+                        <td style="vertical-align: middle;"><input type="text" name="ot" value="${ots === 'sn' ? '' : ots}" placeholder="sn" ${puedeEditar ? '' : 'disabled'} onchange="buscarDetallesOt(this)"></td>
+                        <td style="vertical-align: middle;">${buildSelectHtml('clase', optionsClase, clase, slot.key)}</td>
+                        <td style="vertical-align: middle;"><input type="text" name="serie" value="${serie === 'sn' ? '' : serie}" placeholder="sn" ${puedeEditar ? '' : 'disabled'}></td>
+                        <td style="vertical-align: middle;"><input type="text" name="codigo_equipo" value="${codigoEquipo === 'sn' ? '' : codigoEquipo}" placeholder="sn" ${puedeEditar ? '' : 'disabled'}></td>
+                        <td style="vertical-align: middle;"><textarea name="observacion" placeholder="sn" ${puedeEditar ? '' : 'disabled'} style="resize: vertical; min-height: 48px; line-height: 1.4;">${observaciones === 'sn' ? '' : observaciones}</textarea></td>
+                    </tr>
+                `;
+            }
             container.innerHTML += rowHtml;
         });
 
@@ -500,6 +570,7 @@
                     ot: row.querySelector('[name="ot"]').value,
                     clase: row.querySelector('[name="clase"]').value,
                     serie: row.querySelector('[name="serie"]').value,
+                    codigo_equipo: row.querySelector('[name="codigo_equipo"]').value,
                     observacion: row.querySelector('[name="observacion"]').value
                 };
             }
@@ -673,10 +744,7 @@
                     repuestoCode = meta.codigo_repuesto || 'sn';
                     equipoCode = meta.codigo_equipo || 'sn';
                 } else if (slotActs.length > 0) {
-                    observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                    if (slot.esAlmuerzo) {
-                        observaciones = 'Almuerzo | ' + observaciones;
-                    }
+                    observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                     const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                     if (otsEnSlot.length > 0) {
@@ -687,6 +755,7 @@
                     if (mainAct) {
                         clase = mapClase(mainAct.metadata_json?.tipo);
                         serie = mainAct.metadata_json?.serie || 'sn';
+                        equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
                         
                         if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                             valActividad = 'ticket';
@@ -720,6 +789,20 @@
                         valActividad = 'ticket';
                         valNovedad = 'Oficina';
                         valEstado = 'realizado ';
+                    }
+                }
+                if (esSistemas) {
+                    valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                    valNovedad = 'sn';
+                    valEstado = 'sn';
+                    valModalidad = 'sn';
+                    ots = 'sn';
+                    clase = 'sn';
+                    serie = 'sn';
+                    equipoCode = 'sn';
+                    repuestoCode = 'sn';
+                    if (manualAct) {
+                        observaciones = manualAct.descripcion || 'sn';
                     }
                 }
 
@@ -889,6 +972,36 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-file-earmark-excel-fill"></i> Descargar Excel';
         }
+    }
+
+    function buscarDetallesOt(inputElement) {
+        const otVal = inputElement.value.trim();
+        if (!otVal || otVal === 'sn') return;
+
+        const row = inputElement.closest('tr');
+        if (!row) return;
+
+        fetch(`{{ route('actividades.buscar_ot') }}?ot=${otVal}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.ok) {
+                    const selectClase = row.querySelector('[name="clase"]');
+                    const inputSerie = row.querySelector('[name="serie"]');
+                    const inputCodigo = row.querySelector('[name="codigo_equipo"]');
+
+                    if (selectClase) {
+                        const mapped = mapClase(res.clase);
+                        selectClase.value = mapped;
+                    }
+                    if (inputSerie) {
+                        inputSerie.value = res.serie === 'sn' ? '' : res.serie;
+                    }
+                    if (inputCodigo) {
+                        inputCodigo.value = res.codigo_equipo === 'sn' ? '' : res.codigo_equipo;
+                    }
+                }
+            })
+            .catch(err => console.error('Error fetching OT details:', err));
     }
 </script>
 @endpush

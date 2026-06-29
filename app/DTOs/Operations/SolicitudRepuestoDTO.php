@@ -14,6 +14,7 @@ readonly class SolicitudRepuestoDTO
         public int $cantidad,
         public ?string $descripcion,
         // Si seleccionó uno del catálogo existente:
-        public ?int $repuesto_inv_id 
+        public ?int $repuesto_inv_id,
+        public string $tipo_orden = 'personal'
     ) {}
 }

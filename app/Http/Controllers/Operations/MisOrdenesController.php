@@ -159,8 +159,15 @@ class MisOrdenesController extends Controller
     {
         try {
             $ordenId = (int) $request->input('orden_id');
-            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
-            $estadoAnterior = $orden ? $orden->estado_repuesto : '';
+            $tipoOrden = $request->input('tipo_orden', 'personal');
+
+            if ($tipoOrden === 'empresa') {
+                $orden = \App\Models\Operations\OrdenEmpresa::with(['empresa', 'equipo'])->find($ordenId);
+                $estadoAnterior = $orden ? $orden->estado_repuesto : '';
+            } else {
+                $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+                $estadoAnterior = $orden ? $orden->estado_repuesto : '';
+            }
 
             $dto = new CambiarEstadoRepuestoDTO(
                 $ordenId,
@@ -170,21 +177,26 @@ class MisOrdenesController extends Controller
             $this->service->actualizarEstadoRepuesto(
                 $dto,
                 (int) session('tecnico_id', 0),
-                $this->resolverEsAdmin()
+                $this->resolverEsAdmin(),
+                $tipoOrden
             );
 
             if ($orden) {
                 $estadoNuevo = $request->input('estado_repuesto');
+                $clienteNombre = $tipoOrden === 'empresa'
+                    ? ($orden->empresa?->nombre ?? '')
+                    : ($orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '');
+
                 $this->actividadService->registrar(
                     usuarioId: (int) session('tecnico_id'),
                     tipoAccion: 'cambiar_estado_repuesto',
                     descripcion: "Cambió estado repuesto orden #{$orden->nro_orden} a '{$estadoNuevo}'",
                     modulo: 'ordenes',
                     referenciaId: $orden->id,
-                    referenciaTipo: 'orden',
+                    referenciaTipo: $tipoOrden === 'empresa' ? 'orden_empresa' : 'orden',
                     metadata: [
                         'nro_orden' => $orden->nro_orden,
-                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'cliente' => $clienteNombre,
                         'serie' => $orden->equipo?->serie ?? 'sn',
                         'marca' => $orden->equipo?->marca ?? 'sn',
                         'tipo' => $orden->equipo?->tipo ?? 'sn',
@@ -261,7 +273,13 @@ class MisOrdenesController extends Controller
     {
         try {
             $ordenId = (int) $request->input('orden_id');
-            $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+            $tipoOrden = $request->input('tipo_orden', 'personal');
+
+            if ($tipoOrden === 'empresa') {
+                $orden = \App\Models\Operations\OrdenEmpresa::with(['empresa', 'equipo'])->find($ordenId);
+            } else {
+                $orden = \App\Models\Operations\Orden::with(['cliente', 'equipo'])->find($ordenId);
+            }
 
             $dto = new AsignarRepuestoOrdenDTO(
                 $ordenId,
@@ -271,20 +289,25 @@ class MisOrdenesController extends Controller
             $this->service->asignarRepuesto(
                 $dto,
                 (int) session('tecnico_id', 0),
-                $this->resolverEsAdmin()
+                $this->resolverEsAdmin(),
+                $tipoOrden
             );
 
             if ($orden) {
+                $clienteNombre = $tipoOrden === 'empresa'
+                    ? ($orden->empresa?->nombre ?? '')
+                    : ($orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '');
+
                 $this->actividadService->registrar(
                     usuarioId: (int) session('tecnico_id'),
                     tipoAccion: 'asignar_repuesto',
                     descripcion: "Asignó repuesto a orden #{$orden->nro_orden}",
                     modulo: 'repuestos',
                     referenciaId: $orden->id,
-                    referenciaTipo: 'orden',
+                    referenciaTipo: $tipoOrden === 'empresa' ? 'orden_empresa' : 'orden',
                     metadata: [
                         'nro_orden' => $orden->nro_orden,
-                        'cliente' => $orden->cliente?->nombre_completo ?? $orden->cliente?->nombre ?? '',
+                        'cliente' => $clienteNombre,
                         'serie' => $orden->equipo?->serie ?? 'sn',
                         'marca' => $orden->equipo?->marca ?? 'sn',
                         'tipo' => $orden->equipo?->tipo ?? 'sn',
@@ -308,6 +331,7 @@ class MisOrdenesController extends Controller
     public function revertirRepuesto(RevertirRepuestoOrdenRequest $request): JsonResponse
     {
         try {
+            $tipoOrden = $request->input('tipo_orden', 'personal');
             $dto = new RevertirRepuestoOrdenDTO(
                 (int) $request->input('orden_id'),
                 $request->filled('repuesto_id') ? (int) $request->input('repuesto_id') : null
@@ -316,7 +340,8 @@ class MisOrdenesController extends Controller
             $this->service->revertirRepuesto(
                 $dto,
                 (int) session('tecnico_id', 0),
-                $this->resolverEsAdmin()
+                $this->resolverEsAdmin(),
+                $tipoOrden
             );
 
             return response()->json([
@@ -410,6 +435,134 @@ class MisOrdenesController extends Controller
                 'mensaje' => 'La orden ha sido reasignada correctamente.'
             ]);
         } catch (Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function registrarLlamada(\Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'orden_id' => 'required_without:orden_empresa_id|nullable|integer',
+                'orden_empresa_id' => 'required_without:orden_id|nullable|integer',
+                'observacion' => 'nullable|string|max:1000',
+            ]);
+
+            $ordenId = $request->input('orden_id') ? (int) $request->input('orden_id') : null;
+            $ordenEmpresaId = $request->input('orden_empresa_id') ? (int) $request->input('orden_empresa_id') : null;
+            $observacion = trim((string) $request->input('observacion'));
+            $tecnicoId = (int) session('tecnico_id');
+
+            if ($ordenId) {
+                $orden = \App\Models\Operations\Orden::find($ordenId);
+            } else {
+                $orden = \App\Models\Operations\OrdenEmpresa::find($ordenEmpresaId);
+            }
+
+            if (!$orden) {
+                throw new \Exception('Orden no encontrada.');
+            }
+
+            $llamada = \App\Models\Operations\LlamadaOrden::create([
+                'orden_id' => $ordenId,
+                'orden_empresa_id' => $ordenEmpresaId,
+                'usuario_id' => $tecnicoId,
+                'fecha_hora' => \Carbon\Carbon::now('America/Guayaquil'),
+                'observacion' => $observacion !== '' ? $observacion : null,
+            ]);
+
+            // Registrar en la bitácora
+            $this->actividadService->registrar(
+                usuarioId: $tecnicoId,
+                tipoAccion: 'llamada_cliente',
+                descripcion: "Registró llamada a cliente para orden #{$orden->nro_orden}" . ($observacion !== '' ? ": {$observacion}" : ""),
+                modulo: 'ordenes',
+                referenciaId: $llamada->id,
+                referenciaTipo: 'llamada_orden',
+                metadata: [
+                    'nro_orden' => $orden->nro_orden,
+                    'observacion' => $observacion
+                ]
+            );
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Llamada registrada con éxito.',
+                'llamada' => [
+                    'id' => $llamada->id,
+                    'fecha_hora' => $llamada->fecha_hora->format('d/m/Y H:i'),
+                    'usuario_nombre' => session('nombre') ?? session('usuario') ?? 'Técnico',
+                    'observacion' => $llamada->observacion ?? 'Llamada registrada sin observaciones.',
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function enviarEmailCliente(\Illuminate\Http\Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'orden_id' => 'required_without:orden_empresa_id|nullable|integer',
+                'orden_empresa_id' => 'required_without:orden_id|nullable|integer',
+                'asunto' => 'required|string|max:200',
+                'contenido' => 'required|string|max:5000',
+            ]);
+
+            $ordenId = $request->input('orden_id') ? (int) $request->input('orden_id') : null;
+            $ordenEmpresaId = $request->input('orden_empresa_id') ? (int) $request->input('orden_empresa_id') : null;
+            $asunto = trim((string) $request->input('asunto'));
+            $contenido = trim((string) $request->input('contenido'));
+            $tecnicoId = (int) session('tecnico_id');
+
+            if ($ordenId) {
+                $orden = \App\Models\Operations\Orden::with('cliente')->find($ordenId);
+                $correo = $orden ? ($orden->cliente->correo ?? '') : '';
+            } else {
+                $orden = \App\Models\Operations\OrdenEmpresa::with('empresa')->find($ordenEmpresaId);
+                $correo = $orden ? ($orden->empresa->correo ?? '') : '';
+            }
+
+            if (!$orden) {
+                throw new \Exception('Orden no encontrada.');
+            }
+
+            if (empty($correo)) {
+                throw new \Exception('El cliente no tiene un correo electrónico registrado.');
+            }
+
+            // Enviar correo
+            \App\Services\Operations\SgnMailService::enviarEmailCliente($orden, $asunto, $contenido);
+
+            // Registrar en bitácora
+            $this->actividadService->registrar(
+                usuarioId: $tecnicoId,
+                tipoAccion: 'enviar_email_cliente',
+                descripcion: "Envió correo al cliente para orden #{$orden->nro_orden}: {$asunto}",
+                modulo: 'ordenes',
+                referenciaId: $orden->id,
+                referenciaTipo: $ordenId ? 'orden' : 'orden_empresa',
+                metadata: [
+                    'nro_orden' => $orden->nro_orden,
+                    'asunto' => $asunto,
+                    'correo_cliente' => $correo
+                ]
+            );
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Correo electrónico enviado al cliente correctamente.'
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'ok' => false,
                 'error' => $e->getMessage()
