@@ -33,7 +33,13 @@ class SolicitudRepuestoService
      */
     public function registrarSolicitud(SolicitudRepuestoDTO $dto, bool $esAdmin = false): string
     {
-        $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
+        $esEmpresa = $dto->tipo_orden === 'empresa';
+
+        if ($esEmpresa) {
+            $orden = \App\Models\Operations\OrdenEmpresa::find($dto->orden_id);
+        } else {
+            $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
+        }
         if (! $orden) {
             throw new Exception('Orden no encontrada.');
         }
@@ -42,22 +48,29 @@ class SolicitudRepuestoService
             throw new Exception('No puedes solicitar repuesto para una orden que no te esta asignada.');
         }
 
-        if (in_array((string) $orden->estado_orden, ['Entregada', 'Nota de Credito'], true)) {
+        $estadoOrden = $esEmpresa ? $orden->estado : $orden->estado_orden;
+        if (in_array((string) $estadoOrden, ['Entregada', 'Nota de Credito'], true)) {
             throw new Exception('La orden no admite cambios en su estado actual.');
         }
 
-        if ($this->repository->existeSolicitudParaOrden($dto->orden_id)) {
+        if ($this->repository->existeSolicitudParaOrden($dto->orden_id, $dto->tipo_orden)) {
             throw new Exception('Esta orden ya tiene una solicitud de repuesto registrada.');
         }
 
         $sol = null;
         try {
-            $nro = DB::transaction(function () use ($dto, &$sol) {
+            $nro = DB::transaction(function () use ($dto, $esEmpresa, $orden, &$sol) {
                 $nro = $this->repository->generarNumeroSolicitud();
 
                 $sol = new SolicitudRepuesto;
                 $sol->nro_solicitud = $nro;
-                $sol->orden_id = $dto->orden_id;
+                if ($esEmpresa) {
+                    $sol->orden_empresa_id = $dto->orden_id;
+                    $sol->orden_id = null;
+                } else {
+                    $sol->orden_id = $dto->orden_id;
+                    $sol->orden_empresa_id = null;
+                }
                 $sol->tecnico_id = $dto->tecnico_id;
                 $sol->tecnico_nombre = $dto->tecnico_nombre;
                 $sol->repuesto_nombre = $dto->repuesto_nombre;
@@ -71,13 +84,10 @@ class SolicitudRepuestoService
                 $sol->save();
 
                 // Legacy: al registrar solicitud se marca estado de repuesto como requerido.
-                $orden = $this->ordenRepository->buscarPorId($dto->orden_id);
-                if ($orden) {
-                    $orden->estado_repuesto = 'Requerido';
-                    $orden->save();
-                }
+                $orden->estado_repuesto = 'Requerido';
+                $orden->save();
 
-                Log::info('Solicitud de repuesto creada', ['sr_id' => $sol->id, 'orden_id' => $dto->orden_id]);
+                Log::info('Solicitud de repuesto creada', ['sr_id' => $sol->id, 'orden_id' => $dto->orden_id, 'tipo_orden' => $dto->tipo_orden]);
 
                 return $nro;
             });
@@ -134,7 +144,12 @@ class SolicitudRepuestoService
                     $solicitud->motivo_rechazo = null;
                 }
 
-                $orden = $this->ordenRepository->buscarPorId((int) $solicitud->orden_id);
+                $esEmpresa = ($solicitud->orden_empresa_id !== null && $solicitud->orden_empresa_id > 0);
+                if ($esEmpresa) {
+                    $orden = \App\Models\Operations\OrdenEmpresa::find($solicitud->orden_empresa_id);
+                } else {
+                    $orden = $this->ordenRepository->buscarPorId((int) $solicitud->orden_id);
+                }
                 if (! $orden) {
                     throw new Exception('La orden asociada a la solicitud no existe.');
                 }
@@ -158,10 +173,14 @@ class SolicitudRepuestoService
                     $repuesto->save();
 
                     // Log in the audit history (orden_repuestos)
-                    $existeVinculo = OrdenRepuesto::query()
-                        ->where('orden_id', $solicitud->orden_id)
-                        ->where('repuesto_id', $repuestoIdAsignado)
-                        ->first();
+                    $queryVinculo = OrdenRepuesto::query()
+                        ->where('repuesto_id', $repuestoIdAsignado);
+                    if ($esEmpresa) {
+                        $queryVinculo->where('orden_empresa_id', $solicitud->orden_empresa_id);
+                    } else {
+                        $queryVinculo->where('orden_id', $solicitud->orden_id);
+                    }
+                    $existeVinculo = $queryVinculo->first();
 
                     if ($existeVinculo) {
                         $existeVinculo->cantidad += $solicitud->cantidad;
@@ -169,7 +188,11 @@ class SolicitudRepuestoService
                         $existeVinculo->save();
                     } else {
                         $ordenRepuesto = new OrdenRepuesto;
-                        $ordenRepuesto->orden_id = $solicitud->orden_id;
+                        if ($esEmpresa) {
+                            $ordenRepuesto->orden_empresa_id = $solicitud->orden_empresa_id;
+                        } else {
+                            $ordenRepuesto->orden_id = $solicitud->orden_id;
+                        }
                         $ordenRepuesto->repuesto_id = $repuestoIdAsignado;
                         $ordenRepuesto->cantidad = $solicitud->cantidad;
                         $ordenRepuesto->usuario_id = $solicitud->tecnico_id; // El tecnico que solicito el repuesto

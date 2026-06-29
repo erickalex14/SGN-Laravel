@@ -124,6 +124,7 @@
     font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .btn-mini-rep.danger { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.btn-mini-rep.violet { border-color: #ddd6fe; background: #f5f3ff; color: #6d28d9; }
 .rep-picker { margin-top: 10px; position: relative; }
 .rep-input {
     width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 12.5px; outline: none;
@@ -205,7 +206,7 @@
             'id' => (int) $ord->id,
             'nro_orden' => (string) $ord->nro_orden,
             'estado_orden' => (string) ($esEmpresa ? ($ord->estado ?? '') : ($ord->estado_orden ?? '')),
-            'estado_repuesto' => (string) ($esEmpresa ? 'No requerido' : ($ord->estado_repuesto ?: 'No requerido')),
+            'estado_repuesto' => (string) ($ord->estado_repuesto ?: 'No requerido'),
             'fecha_de_ingreso' => (string) ($esEmpresa ? ($ord->fecha_ingreso ?? '') : ($ord->fecha_de_ingreso ?? '')),
             'fecha_entrega' => (string) ($esEmpresa ? '' : ($ord->fecha_entrega ?? '')),
             'motivo_ingreso' => (string) ($esEmpresa ? ('Empresa - ' . ($ord->subtipo ?? '')) : ($ord->motivo_ingreso ?? '')),
@@ -232,20 +233,26 @@
             'ingresado_por_nombre' => (string) ($esEmpresa
                 ? ($ord->ingresadoPor->nombre_tecnico ?? $ord->ingresadoPor->usuario ?? '')
                 : ($ord->usuarioIngreso->nombre_tecnico ?? $ord->usuarioIngreso->usuario ?? '')),
-            'repuesto_inventario_id' => (int) ($esEmpresa ? 0 : ($ord->repuesto_inventario_id ?? 0)),
-            'repuesto_codigo' => (string) ($esEmpresa ? '' : ($ord->repuestoInventario->codigo ?? '')),
-            'repuesto_nombre' => (string) ($esEmpresa ? '' : ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? '')),
+            'repuesto_inventario_id' => (int) ($ord->repuesto_inventario_id ?? 0),
+            'repuesto_codigo' => (string) ($ord->repuestoInventario->codigo ?? ''),
+            'repuesto_nombre' => (string) ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? ''),
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'credenciales' => $credenciales,
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
             'informe_id' => $informe ? (int) $informe->id : null,
-            'repuestos_asignados' => $esEmpresa ? collect() : collect($ord->ordenRepuestos ?? [])->map(fn($or) => [
+            'repuestos_asignados' => collect($ord->ordenRepuestos ?? [])->map(fn($or) => [
                 'id' => (int) $or->id,
                 'repuesto_id' => (int) $or->repuesto_id,
                 'codigo' => (string) ($or->repuesto->codigo ?? ''),
                 'nombre' => (string) ($or->repuesto->nombre ?? $or->repuesto->descripcion ?? ''),
                 'cantidad' => (int) $or->cantidad,
+            ])->values(),
+            'llamadas' => collect($ord->llamadas ?? [])->map(fn($ll) => [
+                'id' => (int) $ll->id,
+                'fecha_hora' => $ll->fecha_hora ? $ll->fecha_hora->format('d/m/Y H:i') : '',
+                'usuario_nombre' => $ll->usuario?->nombre_tecnico ?? $ll->usuario?->usuario ?? 'Técnico',
+                'observacion' => (string) ($ll->observacion ?? 'Llamada registrada sin observaciones.'),
             ])->values(),
         ];
     })->values();
@@ -452,6 +459,7 @@
         <p style="margin:0 0 20px;font-size:11.5px;color:#64748b;line-height:1.4;"><i class="bi bi-info-circle me-1"></i>Ingresa los detalles del repuesto requerido. Se creará un ticket en bodega y el estado de la orden pasará a <b>Requerido</b>.</p>
         
         <input type="hidden" id="sr-orden-id" value="">
+        <input type="hidden" id="sr-orden-tipo" value="personal">
         
         <div style="margin-bottom:14px;">
             <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">Nombre del Repuesto <span style="color:#ef4444;">*</span></label>
@@ -534,6 +542,8 @@ const _moUrlBuscarRepuestos = @json(route('mis_ordenes.repuestos.buscar'));
 const _moUrlSolicitarRepuesto = @json(route('solicitudes_repuestos.solicitar'));
 const _moUrlReasignar = @json(route('mis_ordenes.reasignar'));
 const _moTecnicos = @json($tecnicos);
+const _moUrlRegistrarLlamada = @json(route('ordenes.llamadas.registrar'));
+const _moUrlEnviarEmail = @json(route('mis_ordenes.enviar_email'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -879,24 +889,29 @@ async function cambiarEstadoGarantia(ordenId, nuevoEstado) {
     }
 }
 
-async function cambiarEstadoRepuesto(ordenId, nuevoEstado) {
+async function cambiarEstadoRepuesto(ordenId, nuevoEstado, tipoOrden = 'personal') {
     if (!nuevoEstado) return;
     if (nuevoEstado === 'Requerido') {
-        abrirModalSR(ordenId);
+        abrirModalSR(ordenId, tipoOrden);
         return;
     }
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
     fd.append('estado_repuesto', nuevoEstado);
+    fd.append('tipo_orden', tipoOrden);
     try {
         const r = await fetch(_moUrlRepEstado, { method: 'POST', body: fd });
         const d = await r.json();
         if (!d.ok) {
             await mostrarAlertaEstetica(d.error || 'No se pudo actualizar el repuesto.', 'error', 'Error de Repuesto');
+            const row = _moFindRow(ordenId, tipoOrden);
+            if (row) {
+                _moAplicarCambioLocal(row);
+            }
             return;
         }
-        const row = _moFindRow(ordenId, 'personal');
+        const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.estado_repuesto = nuevoEstado;
             if (nuevoEstado !== 'Con stock') {
@@ -1014,7 +1029,7 @@ function onInputBuscarRepuestoMisOrdenes(ordenId, q) {
     buscarRepuestoMisOrdenes(ordenId, q);
 }
 
-async function asignarRepuesto(ordenId) {
+async function asignarRepuesto(ordenId, tipoOrden = 'personal') {
     const sel = document.getElementById('rep-inv-' + ordenId);
     if (!sel || !sel.value) {
         await mostrarAlertaEstetica('Por favor, <b>seleccione un repuesto</b> del listado de búsqueda antes de continuar.', 'warning', 'Selección Requerida');
@@ -1024,6 +1039,7 @@ async function asignarRepuesto(ordenId) {
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
     fd.append('repuesto_inventario_id', sel.value);
+    fd.append('tipo_orden', tipoOrden);
     try {
         const r = await fetch(_moUrlRepAsignar, { method: 'POST', body: fd });
         const d = await r.json();
@@ -1031,7 +1047,7 @@ async function asignarRepuesto(ordenId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo asignar el repuesto.', 'error', 'Error de Asignación');
             return;
         }
-        const row = _moFindRow(ordenId, 'personal');
+        const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             const repuestoId = Number(sel.value || 0);
             const codigo = sel.dataset.codigo || '';
@@ -1059,13 +1075,14 @@ async function asignarRepuesto(ordenId) {
     }
 }
 
-async function revertirRepuesto(ordenId) {
+async function revertirRepuesto(ordenId, tipoOrden = 'personal') {
     const verificado = await mostrarAlertaEstetica('¿Confirma revertir todos los repuestos asignados y devolver el stock correspondiente al inventario?', 'confirm', 'Revertir Todos los Repuestos');
     if (!verificado) return;
 
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
+    fd.append('tipo_orden', tipoOrden);
     try {
         const r = await fetch(_moUrlRepRevertir, { method: 'POST', body: fd });
         const d = await r.json();
@@ -1073,7 +1090,7 @@ async function revertirRepuesto(ordenId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación del repuesto.', 'error', 'Error al Revertir');
             return;
         }
-        const row = _moFindRow(ordenId, 'personal');
+        const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.repuestos_asignados = [];
             row.estado_repuesto = 'No requerido';
@@ -1088,7 +1105,7 @@ async function revertirRepuesto(ordenId) {
     }
 }
 
-async function revertirRepuestoIndividual(ordenId, repuestoId) {
+async function revertirRepuestoIndividual(ordenId, repuestoId, tipoOrden = 'personal') {
     const verificado = await mostrarAlertaEstetica('¿Confirma revertir este repuesto específico y devolver su stock correspondiente al inventario?', 'confirm', 'Revertir Asignación de Repuesto');
     if (!verificado) return;
 
@@ -1096,6 +1113,7 @@ async function revertirRepuestoIndividual(ordenId, repuestoId) {
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
     fd.append('repuesto_id', repuestoId);
+    fd.append('tipo_orden', tipoOrden);
     try {
         const r = await fetch(_moUrlRepRevertir, { method: 'POST', body: fd });
         const d = await r.json();
@@ -1103,7 +1121,7 @@ async function revertirRepuestoIndividual(ordenId, repuestoId) {
             await mostrarAlertaEstetica(d.error || 'No se pudo revertir la asignación de este repuesto.', 'error', 'Error al Revertir');
             return;
         }
-        const row = _moFindRow(ordenId, 'personal');
+        const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.repuestos_asignados = (row.repuestos_asignados || []).filter((ra) => Number(ra.repuesto_id) !== Number(repuestoId));
             if (row.repuestos_asignados.length > 0) {
@@ -1159,11 +1177,12 @@ function cerrarModalNC(restaurarSelect = true) {
 }
 
 /*  Solicitud de Repuesto Modal  */
-function abrirModalSR(ordenId) {
-    const row = _moRows.find((x) => Number(x.id) === Number(ordenId));
+function abrirModalSR(ordenId, tipoOrden = 'personal') {
+    const row = _moFindRow(ordenId, tipoOrden);
     if (!row) return;
 
     document.getElementById('sr-orden-id').value = ordenId;
+    document.getElementById('sr-orden-tipo').value = tipoOrden;
     document.getElementById('sr-nro-orden-lbl').textContent = row.nro_orden || '-';
     document.getElementById('sr-repuesto-nombre').value = '';
     document.getElementById('sr-cantidad').value = '1';
@@ -1179,19 +1198,23 @@ function cerrarModalSR(restaurarSelect = true) {
     document.getElementById('modal-solicitud-repuesto').style.display = 'none';
     if (!restaurarSelect) return;
     
-    // Restaurar el select del modal de gestión si el usuario canceló
     const ordenId = document.getElementById('sr-orden-id').value;
-    const row = _moRows.find((x) => Number(x.id) === Number(ordenId));
+    const tipoOrden = document.getElementById('sr-orden-tipo').value;
+    const row = _moFindRow(ordenId, tipoOrden);
     if (row) {
-        const sel = document.querySelector('.gestion-row.repuesto-row select');
-        if (sel) {
-            sel.value = row.estado_repuesto || 'No requerido';
+        const panel = document.querySelector('.mis-ordenes-container');
+        if (panel) {
+            const sel = panel.querySelector('.gestion-row.repuesto-row select');
+            if (sel) {
+                sel.value = row.estado_repuesto || 'No requerido';
+            }
         }
     }
 }
 
 async function confirmarSR() {
     const ordenId = document.getElementById('sr-orden-id').value;
+    const tipoOrden = document.getElementById('sr-orden-tipo').value;
     const repNombre = document.getElementById('sr-repuesto-nombre').value.trim();
     const cantidad = document.getElementById('sr-cantidad').value.trim();
     const nroParte = document.getElementById('sr-nro-parte').value.trim();
@@ -1211,6 +1234,7 @@ async function confirmarSR() {
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
+    fd.append('tipo_orden', tipoOrden);
     fd.append('cantidad', cantidad);
     fd.append('repuesto_nombre', repNombre);
     fd.append('nro_parte', nroParte);
@@ -1226,7 +1250,7 @@ async function confirmarSR() {
             return;
         }
         cerrarModalSR(false);
-        const row = _moFindRow(ordenId, 'personal');
+        const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.estado_repuesto = 'Requerido';
             row.repuesto_inventario_id = 0;
@@ -1381,9 +1405,106 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
                 ` : ''}
+
+                ${o.motivo_ingreso === 'Empresa - Stock' ? `
+                <div class="gestion-row repuesto-row">
+                    <span class="gestion-icon"><i class="bi bi-tools"></i></span>
+                    <span class="gestion-label">Repuesto</span>
+                    <select class="gestion-select" onchange="cambiarEstadoRepuesto(${Number(o.id)}, this.value, 'empresa')">
+                        <option value="No requerido" ${(o.estado_repuesto || '') === 'No requerido' ? 'selected' : ''}>No requerido</option>
+                        <option value="Requerido" ${(o.estado_repuesto || '') === 'Requerido' ? 'selected' : ''}>Requerido</option>
+                        <option value="Con stock" ${(o.estado_repuesto || '') === 'Con stock' ? 'selected' : ''}>Con stock</option>
+                    </select>
+                    <span class="gestion-feedback">&#8635;</span>
+                </div>
+
+                <div class="rep-picker">
+                    <div class="assigned-repuestos-list" style="margin-bottom:12px;">
+                        <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
+                            <i class="bi bi-box-seam me-1"></i>Repuestos Asignados en Stock:
+                        </span>
+                        ${o.repuestos_asignados && o.repuestos_asignados.length > 0 ? `
+                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden;">
+                                <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+                                    <thead>
+                                        <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">
+                                            <th style="padding:6px 8px;">Código</th>
+                                            <th style="padding:6px 8px;">Nombre</th>
+                                            <th style="padding:6px 8px; text-align:center; width:65px;">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${o.repuestos_asignados.map(ra => `
+                                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                                <td style="padding:6px 8px; font-family:monospace; font-weight:600; color:#b45309;">${_h(ra.codigo)}</td>
+                                                <td style="padding:6px 8px; color:var(--mo-slate);">${_h(ra.nombre)}</td>
+                                                <td style="padding:6px 8px; text-align:center;">
+                                                    <button type="button" class="btn-mini-rep danger" style="padding:2px 6px; font-size:10px; margin:0;"
+                                                            onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)}, 'empresa')" title="Revertir este repuesto">
+                                                        <i class="bi bi-trash"></i> Revertir
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `
+                            <p style="margin:0 0 8px; font-size:12px; color:var(--mo-muted); font-style:italic;">Ningún repuesto de stock asignado actualmente.</p>
+                        `}
+                    </div>
+
+                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                        <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
+                            <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
+                        </span>
+                        <input type="hidden" id="rep-inv-${Number(o.id)}" value="">
+                        <input type="text" class="rep-input" id="rep-inv-query-${Number(o.id)}" placeholder="Buscar repuesto por codigo o nombre..." autocomplete="off"
+                               value=""
+                               oninput="onInputBuscarRepuestoMisOrdenes(${Number(o.id)}, this.value)"
+                               onfocus="buscarRepuestoMisOrdenes(${Number(o.id)}, this.value)">
+                        <div class="rep-resultados" id="rep-inv-resultados-${Number(o.id)}"></div>
+                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none;">
+                            <span id="rep-inv-selected-text-${Number(o.id)}">Repuesto seleccionado</span>
+                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion">&times;</button>
+                        </div>
+                    </div>
+                    
+                    <div class="gestion-actions-rep">
+                        <button type="button" class="btn-mini-rep" onclick="asignarRepuesto(${Number(o.id)}, 'empresa')">Asignar repuesto</button>
+                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto(${Number(o.id)}, 'empresa')">Revertir todos</button>
+                    </div>
+                </div>
+                ` : ''}
+
                 <div class="gestion-actions-rep" style="margin-top:12px;">
                     <button type="button" class="btn-mini-rep" onclick="abrirInformeDeOrden(${-1 * Number(o.id)})"><i class="bi bi-pencil-square me-1"></i>Gestionar informe</button>
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
+                    <button type="button" class="btn-mini-rep violet" onclick="registrarLlamadaCliente(${Number(o.id)}, 'empresa')"><i class="bi bi-telephone-plus me-1"></i>Llamada cliente</button>
+                    <button type="button" class="btn-mini-rep" onclick="abrirModalEnviarEmail(${Number(o.id)}, 'empresa')"><i class="bi bi-envelope me-1"></i>Enviar email</button>
+                </div>
+
+                <div class="llamadas-section" style="margin-top: 14px; border-top: 1px dashed var(--mo-border); padding-top: 12px;">
+                    <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:8px;">
+                        <i class="bi bi-clock-history me-1"></i>Historial de Llamadas (${o.llamadas ? o.llamadas.length : 0}):
+                    </span>
+                    ${o.llamadas && o.llamadas.length > 0 ? `
+                        <div class="llamadas-timeline" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+                            ${o.llamadas.map(ll => `
+                                <div style="background: #f8fafc; border: 1px solid var(--mo-border); border-radius: 8px; padding: 8px 10px; font-size: 12px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: 600; color: var(--mo-muted); font-size: 10.5px;">
+                                        <span><i class="bi bi-person me-1"></i>${_h(ll.usuario_nombre)}</span>
+                                        <span><i class="bi bi-calendar3 me-1"></i>${_h(ll.fecha_hora)}</span>
+                                    </div>
+                                    <div style="color: var(--mo-slate); line-height: 1.3;">
+                                        ${_h(ll.observacion)}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p style="margin:0; font-size:12px; color:var(--mo-muted); font-style:italic;">No se han registrado llamadas para esta orden.</p>
+                    `}
                 </div>
             </div>
             ` : `
@@ -1426,7 +1547,7 @@ function verDetalleOrden(cardEl) {
                 <div class="gestion-row repuesto-row">
                     <span class="gestion-icon"><i class="bi bi-tools"></i></span>
                     <span class="gestion-label">Repuesto</span>
-                    <select class="gestion-select" onchange="cambiarEstadoRepuesto(${Number(o.id)}, this.value)">
+                    <select class="gestion-select" onchange="cambiarEstadoRepuesto(${Number(o.id)}, this.value, 'personal')">
                         <option value="No requerido" ${(o.estado_repuesto || '') === 'No requerido' ? 'selected' : ''}>No requerido</option>
                         <option value="Requerido" ${(o.estado_repuesto || '') === 'Requerido' ? 'selected' : ''}>Requerido</option>
                         <option value="Con stock" ${(o.estado_repuesto || '') === 'Con stock' ? 'selected' : ''}>Con stock</option>
@@ -1456,7 +1577,7 @@ function verDetalleOrden(cardEl) {
                                                 <td style="padding:6px 8px; color:var(--mo-slate);">${_h(ra.nombre)}</td>
                                                 <td style="padding:6px 8px; text-align:center;">
                                                     <button type="button" class="btn-mini-rep danger" style="padding:2px 6px; font-size:10px; margin:0;"
-                                                            onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)})" title="Revertir este repuesto">
+                                                            onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)}, 'personal')" title="Revertir este repuesto">
                                                         <i class="bi bi-trash"></i> Revertir
                                                     </button>
                                                 </td>
@@ -1487,14 +1608,39 @@ function verDetalleOrden(cardEl) {
                     </div>
                     
                     <div class="gestion-actions-rep">
-                        <button type="button" class="btn-mini-rep" onclick="asignarRepuesto(${Number(o.id)})">Asignar repuesto</button>
-                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto(${Number(o.id)})">Revertir todos</button>
+                        <button type="button" class="btn-mini-rep" onclick="asignarRepuesto(${Number(o.id)}, 'personal')">Asignar repuesto</button>
+                        <button type="button" class="btn-mini-rep danger" onclick="revertirRepuesto(${Number(o.id)}, 'personal')">Revertir todos</button>
                     </div>
                 </div>
 
                 <div class="gestion-actions-rep" style="margin-top:12px;">
                     <button type="button" class="btn-mini-rep" onclick="abrirInformeDeOrden(${Number(o.id)})"><i class="bi bi-pencil-square me-1"></i>Gestionar informe</button>
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
+                    <button type="button" class="btn-mini-rep violet" onclick="registrarLlamadaCliente(${Number(o.id)}, 'personal')"><i class="bi bi-telephone-plus me-1"></i>Llamada cliente</button>
+                    <button type="button" class="btn-mini-rep" onclick="abrirModalEnviarEmail(${Number(o.id)}, 'personal')"><i class="bi bi-envelope me-1"></i>Enviar email</button>
+                </div>
+
+                <div class="llamadas-section" style="margin-top: 14px; border-top: 1px dashed var(--mo-border); padding-top: 12px;">
+                    <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:8px;">
+                        <i class="bi bi-clock-history me-1"></i>Historial de Llamadas (${o.llamadas ? o.llamadas.length : 0}):
+                    </span>
+                    ${o.llamadas && o.llamadas.length > 0 ? `
+                        <div class="llamadas-timeline" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+                            ${o.llamadas.map(ll => `
+                                <div style="background: #f8fafc; border: 1px solid var(--mo-border); border-radius: 8px; padding: 8px 10px; font-size: 12px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: 600; color: var(--mo-muted); font-size: 10.5px;">
+                                        <span><i class="bi bi-person me-1"></i>${_h(ll.usuario_nombre)}</span>
+                                        <span><i class="bi bi-calendar3 me-1"></i>${_h(ll.fecha_hora)}</span>
+                                    </div>
+                                    <div style="color: var(--mo-slate); line-height: 1.3;">
+                                        ${_h(ll.observacion)}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p style="margin:0; font-size:12px; color:var(--mo-muted); font-style:italic;">No se han registrado llamadas para esta orden.</p>
+                    `}
                 </div>
             </div>
             `}
@@ -1587,5 +1733,168 @@ document.addEventListener('click', (e) => {
         el.style.display = 'none';
     });
 });
+
+async function registrarLlamadaCliente(ordenId, tipoOrden) {
+    const { value: observacion } = await Swal.fire({
+        title: 'Registrar Llamada a Cliente',
+        input: 'textarea',
+        inputLabel: 'Observación de la llamada (opcional)',
+        inputPlaceholder: 'Escribe detalles de la conversación, coordinación de entrega, etc...',
+        inputAttributes: {
+            'maxlength': 1000,
+            'autocapitalize': 'off',
+            'autocorrect': 'off'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Registrar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#7c3aed',
+        cancelButtonColor: '#64748b',
+    });
+
+    if (observacion === undefined) return;
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    if (tipoOrden === 'empresa') {
+        fd.append('orden_empresa_id', ordenId);
+    } else {
+        fd.append('orden_id', ordenId);
+    }
+    fd.append('observacion', observacion);
+
+    try {
+        Swal.fire({
+            title: 'Registrando...',
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: false
+        });
+
+        const r = await fetch(_moUrlRegistrarLlamada, { method: 'POST', body: fd });
+        const d = await r.json();
+        
+        if (!d.ok) {
+            Swal.fire('Error', d.error || 'No se pudo registrar la llamada.', 'error');
+            return;
+        }
+
+        const row = _moFindRow(ordenId, tipoOrden);
+        if (row) {
+            row.llamadas = row.llamadas || [];
+            row.llamadas.unshift(d.llamada);
+            _moAplicarCambioLocal(row);
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Llamada Registrada',
+            text: d.mensaje || 'Se ha registrado la llamada correctamente.',
+            confirmButtonColor: '#7c3aed',
+            timer: 2000
+        });
+
+    } catch (e) {
+        Swal.fire('Error', 'Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error');
+    }
+}
+
+async function abrirModalEnviarEmail(ordenId, tipoOrden) {
+    const o = _moFindRow(ordenId, tipoOrden);
+    if (!o) return;
+
+    if (!o.correo || o.correo.trim() === '') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Cliente sin Correo',
+            text: 'Esta orden no tiene un correo electrónico registrado para el cliente.',
+            confirmButtonColor: '#3b82f6',
+        });
+        return;
+    }
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Enviar Email al Cliente',
+        html: `
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Enviar a:</label>
+                <input id="swal-email-dest" type="text" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box; font-size: 14px;" value="${_h(o.correo)}" disabled>
+            </div>
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Asunto <span style="color: #ef4444;">*</span></label>
+                <input id="swal-email-asunto" type="text" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box; font-size: 14px;" value="Novedades sobre su orden ${_h(o.nro_orden)}">
+            </div>
+            <div style="text-align: left;">
+                <label style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Mensaje <span style="color: #ef4444;">*</span></label>
+                <textarea id="swal-email-mensaje" class="swal2-textarea" style="width: 100%; height: 160px; margin: 0; box-sizing: border-box; font-size: 14px; resize: vertical;" placeholder="Escribe el cuerpo del correo electrónico aquí..."></textarea>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Enviar Email',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        preConfirm: () => {
+            const asunto = document.getElementById('swal-email-asunto').value.trim();
+            const mensaje = document.getElementById('swal-email-mensaje').value.trim();
+            if (!asunto) {
+                Swal.showValidationMessage('El asunto es obligatorio.');
+                return false;
+            }
+            if (!mensaje) {
+                Swal.showValidationMessage('El mensaje es obligatorio.');
+                return false;
+            }
+            return { asunto, mensaje };
+        }
+    });
+
+    if (!formValues) return;
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    if (tipoOrden === 'empresa') {
+        fd.append('orden_empresa_id', ordenId);
+    } else {
+        fd.append('orden_id', ordenId);
+    }
+    fd.append('asunto', formValues.asunto);
+    fd.append('contenido', formValues.mensaje);
+
+    try {
+        Swal.fire({
+            title: 'Enviando Correo...',
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: false
+        });
+
+        const r = await fetch(_moUrlEnviarEmail, { method: 'POST', body: fd });
+        const d = await r.json();
+        
+        if (!d.ok) {
+            Swal.fire('Error', d.error || 'No se pudo enviar el correo.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Correo Enviado',
+            text: d.mensaje || 'Se ha enviado el correo correctamente.',
+            confirmButtonColor: '#2563eb',
+            timer: 2000
+        });
+
+    } catch (e) {
+        Swal.fire('Error', 'Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error');
+    }
+}
 </script>
 @endpush

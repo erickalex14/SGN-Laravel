@@ -1543,6 +1543,7 @@
         }
 
         const tecnicoNombre = @json(session('nombre') ?? session('usuario') ?? 'Técnico');
+        const esSistemas = @json(auth()->check() && auth()->user()->grupo && mb_strtolower(auth()->user()->grupo->nombre) === 'sistemas');
         
         fetch(`{{ route('actividades.listar') }}?fecha=${fecha}`)
             .then(res => res.json())
@@ -1664,6 +1665,40 @@
                     return 'sn';
                 }
 
+                function formatearBitacoraAutomatica(slotActs, esAlmuerzo) {
+                    let lines = [];
+                    if (esAlmuerzo) {
+                        lines.push('Almuerzo');
+                    }
+
+                    if (slotActs.length === 0) {
+                        return esAlmuerzo ? 'Almuerzo' : 'sn';
+                    }
+
+                    let groups = {};
+                    let others = [];
+                    slotActs.forEach(a => {
+                        let ot = a.metadata_json?.nro_orden;
+                        if (ot) {
+                            if (!groups[ot]) groups[ot] = [];
+                            groups[ot].push(a.descripcion.trim());
+                        } else {
+                            others.push(a.descripcion.trim());
+                        }
+                    });
+
+                    for (let ot in groups) {
+                        let uniqueDescs = [...new Set(groups[ot])];
+                        lines.push(`Orden #${ot}:\n  - ` + uniqueDescs.join('\n  - '));
+                    }
+
+                    others.forEach(desc => {
+                        lines.push(desc);
+                    });
+
+                    return lines.join('\n');
+                }
+
                 horasJornada.forEach((slot, idx) => {
                     let slotActs = acts.filter(act => {
                         const hour = parseHour(act.fecha_hora);
@@ -1675,6 +1710,7 @@
                     let valActividad = 'sn';
                     let valNovedad = 'sn';
                     let valEstado = 'sn';
+                    let valModalidad = 'presencial';
                     let ots = 'sn';
                     let clase = 'sn';
                     let serie = 'sn';
@@ -1689,11 +1725,21 @@
                         observaciones = 'Almuerzo';
                     }
 
-                    if (slotActs.length > 0) {
-                        observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                        if (slot.esAlmuerzo) {
-                            observaciones = 'Almuerzo | ' + observaciones;
-                        }
+                    const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
+                    if (manualAct) {
+                        const meta = manualAct.metadata_json || {};
+                        valActividad = meta.actividad || 'sn';
+                        valNovedad = meta.novedad || 'sn';
+                        valEstado = meta.estado || 'sn';
+                        valModalidad = meta.modalidad || 'presencial';
+                        ots = meta.ot || 'sn';
+                        clase = meta.clase || 'sn';
+                        serie = meta.serie || 'sn';
+                        observaciones = manualAct.descripcion || 'sn';
+                        repuestoCode = meta.codigo_repuesto || 'sn';
+                        equipoCode = meta.codigo_equipo || 'sn';
+                    } else if (slotActs.length > 0) {
+                        observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                         const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                         if (otsEnSlot.length > 0) {
@@ -1704,6 +1750,7 @@
                         if (mainAct) {
                             clase = mapClase(mainAct.metadata_json?.tipo);
                             serie = mainAct.metadata_json?.serie || 'sn';
+                            equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
                             
                             if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                                 valActividad = 'ticket';
@@ -1740,13 +1787,28 @@
                         }
                     }
 
+                    if (esSistemas) {
+                        valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                        valNovedad = 'sn';
+                        valEstado = 'sn';
+                        valModalidad = 'sn';
+                        ots = 'sn';
+                        clase = 'sn';
+                        serie = 'sn';
+                        equipoCode = 'sn';
+                        repuestoCode = 'sn';
+                        if (manualAct) {
+                            observaciones = manualAct.descripcion || 'sn';
+                        }
+                    }
+
                     const excelRowValues = [
                         dateObj,
                         slot.label,
                         valActividad,
                         valNovedad,
                         valEstado,
-                        'presencial',
+                        valModalidad,
                         tecnicoNombre,
                         ots,
                         ots !== 'sn' ? [...new Set(ots.split(', '))].length : 'sn',

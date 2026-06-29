@@ -183,13 +183,13 @@
         // Técnico con más consumo
         $tecnicoLider = 'Ninguno';
         $tecnicoLiderCant = 0;
-        $agrupadoTec = $auditorias->groupBy(fn($a) => $a->usuario_id ?: ($a->orden->tecnico_id ?? 0));
+        $agrupadoTec = $auditorias->groupBy(fn($a) => $a->usuario_id ?: ($a->orden->tecnico_id ?? $a->ordenEmpresa->tecnico_id ?? 0));
         if ($agrupadoTec->isNotEmpty()) {
             $maxTec = $agrupadoTec->map->sum('cantidad')->sortDesc();
             $tecId = $maxTec->keys()->first();
-            $tecMas = $auditorias->first(fn($a) => ($a->usuario_id ?: ($a->orden->tecnico_id ?? 0)) == $tecId);
+            $tecMas = $auditorias->first(fn($a) => ($a->usuario_id ?: ($a->orden->tecnico_id ?? $a->ordenEmpresa->tecnico_id ?? 0)) == $tecId);
             if ($tecMas) {
-                $tecnicoLider = $tecMas->usuario->nombre_tecnico ?? $tecMas->orden->tecnico->nombre_tecnico ?? 'N/A';
+                $tecnicoLider = $tecMas->usuario->nombre_tecnico ?? $tecMas->orden->tecnico->nombre_tecnico ?? $tecMas->ordenEmpresa->tecnico->nombre_tecnico ?? 'N/A';
                 $tecnicoLiderCant = $maxTec->first();
             }
         }
@@ -311,10 +311,12 @@
                         @foreach($auditorias as $a)
                             @php
                                 $fechaHora = \Carbon\Carbon::parse($a->fecha)->format('d/m/Y H:i');
-                                $tecnicoNombre = $a->usuario->nombre_tecnico ?? $a->orden->tecnico->nombre_tecnico ?? 'N/A';
+                                $tecnicoNombre = $a->usuario->nombre_tecnico ?? $a->orden->tecnico->nombre_tecnico ?? $a->ordenEmpresa->tecnico->nombre_tecnico ?? 'N/A';
                                 $costoUnit = $a->repuesto->costo ?? 0;
                                 $costoTotal = $costoUnit * $a->cantidad;
-                                $tipoOrden = $a->orden->motivo_ingreso ?? 'N/A';
+                                $tipoOrden = $a->orden 
+                                    ? ($a->orden->motivo_ingreso ?? 'N/A') 
+                                    : ($a->ordenEmpresa ? ('Empresa - ' . ($a->ordenEmpresa->subtipo ?? '')) : 'N/A');
                                 
                                 // Estilos dinámicos premium para el tipo de orden
                                 $badgeStyle = 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;';
@@ -324,6 +326,8 @@
                                     $badgeStyle = 'background: #fffbeb; color: #b45309; border: 1px solid #fde68a;';
                                 } elseif ($tipoOrden === 'Servicios a Empresas') {
                                     $badgeStyle = 'background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff;';
+                                } elseif (str_contains($tipoOrden, 'Empresa')) {
+                                    $badgeStyle = 'background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff;';
                                 }
                             @endphp
                             <tr data-row="auditoria" data-fila="{{ json_encode([
@@ -331,34 +335,38 @@
                                 'codigo' => $a->repuesto->codigo ?? '',
                                 'nombre' => $a->repuesto->nombre ?? '',
                                 'tecnico' => $tecnicoNombre,
-                                'orden' => $a->orden->nro_orden ?? '',
+                                'orden' => $a->orden ? ($a->orden->nro_orden ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->nro_orden ?? '') : ''),
                                 'tipo_orden' => $tipoOrden,
                                 'cantidad' => $a->cantidad,
                                 'costo_u' => $costoUnit,
                                 'costo_t' => $costoTotal,
-                                'fecha_ingreso_orden' => $a->orden->fecha_de_ingreso ?? '',
-                                'fecha_prometido_orden' => $a->orden->fecha_prometido ?? '',
-                                'fecha_entrega_orden' => $a->orden->fecha_entrega ?? '',
-                                'estado_orden' => $a->orden->estado_orden ?? '',
-                                'estado_repuesto_orden' => $a->orden->estado_repuesto ?? '',
-                                'estado_garantia_orden' => $a->orden->estado_garantia ?? '',
-                                'factura' => $a->orden->nro_factura ?? '',
-                                'factura_2' => $a->orden->nro_factura_2 ?? '',
-                                'cliente' => trim((($a->orden->cliente->nombres ?? '') . ' ' . ($a->orden->cliente->apellidos ?? ''))),
-                                'cliente_identificacion' => $a->orden->cliente->identificacion ?? '',
-                                'cliente_telefono' => $a->orden->cliente->numero_contacto ?? '',
-                                'cliente_correo' => $a->orden->cliente->correo ?? '',
-                                'cliente_direccion' => $a->orden->cliente->direccion_clientes ?? '',
-                                'tipo_equipo' => $a->orden->equipo->tipo ?? '',
-                                'equipo' => trim((($a->orden->equipo->tipo ?? '') . ' ' . ($a->orden->equipo->marca ?? '') . ' ' . ($a->orden->equipo->modelo ?? ''))),
-                                'marca' => $a->orden->equipo->marca ?? '',
-                                'modelo' => $a->orden->equipo->modelo ?? '',
-                                'serie_equipo' => $a->orden->equipo->serie ?? '',
-                                'sucursal' => $a->orden->sucursal->ciudad ?? '',
-                                'cas' => $a->orden->cas->nombre ?? '',
-                                'motivo_ingreso' => $a->orden->motivo_ingreso ?? '',
-                                'falla_reportada' => $a->orden->equipo->falla ?? '',
-                                'observacion_equipo' => $a->orden->equipo->observacion ?? ''
+                                'fecha_ingreso_orden' => $a->orden ? ($a->orden->fecha_de_ingreso ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->fecha_ingreso ?? '') : ''),
+                                'fecha_prometido_orden' => $a->orden ? ($a->orden->fecha_prometido ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->fecha_prometido ?? '') : ''),
+                                'fecha_entrega_orden' => $a->orden ? ($a->orden->fecha_entrega ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->fecha_entrega ?? '') : ''),
+                                'estado_orden' => $a->orden ? ($a->orden->estado_orden ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->estado ?? '') : ''),
+                                'estado_repuesto_orden' => $a->orden ? ($a->orden->estado_repuesto ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->estado_repuesto ?? '') : ''),
+                                'estado_garantia_orden' => $a->orden ? ($a->orden->estado_garantia ?? '') : '',
+                                'factura' => $a->orden ? ($a->orden->nro_factura ?? '') : '',
+                                'factura_2' => $a->orden ? ($a->orden->nro_factura_2 ?? '') : '',
+                                'cliente' => $a->orden 
+                                    ? trim((($a->orden->cliente->nombres ?? '') . ' ' . ($a->orden->cliente->apellidos ?? '')))
+                                    : ($a->ordenEmpresa ? trim($a->ordenEmpresa->empresa->nombre ?? '') : ''),
+                                'cliente_identificacion' => $a->orden ? ($a->orden->cliente->identificacion ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->empresa->ruc ?? '') : ''),
+                                'cliente_telefono' => $a->orden ? ($a->orden->cliente->numero_contacto ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->empresa->telefono ?? '') : ''),
+                                'cliente_correo' => $a->orden ? ($a->orden->cliente->correo ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->empresa->correo ?? '') : ''),
+                                'cliente_direccion' => $a->orden ? ($a->orden->cliente->direccion_clientes ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->empresa->direccion_empresa ?? '') : ''),
+                                'tipo_equipo' => $a->orden ? ($a->orden->equipo->tipo ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->equipo->tipo ?? '') : ''),
+                                'equipo' => $a->orden
+                                    ? trim((($a->orden->equipo->tipo ?? '') . ' ' . ($a->orden->equipo->marca ?? '') . ' ' . ($a->orden->equipo->modelo ?? '')))
+                                    : ($a->ordenEmpresa ? trim((($a->ordenEmpresa->equipo->tipo ?? '') . ' ' . ($a->ordenEmpresa->equipo->marca ?? '') . ' ' . ($a->ordenEmpresa->equipo->modelo ?? ''))) : ''),
+                                'marca' => $a->orden ? ($a->orden->equipo->marca ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->equipo->marca ?? '') : ''),
+                                'modelo' => $a->orden ? ($a->orden->equipo->modelo ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->equipo->modelo ?? '') : ''),
+                                'serie_equipo' => $a->orden ? ($a->orden->equipo->serie ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->equipo->serie ?? '') : ''),
+                                'sucursal' => $a->orden ? ($a->orden->sucursal->ciudad ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->sucursal->ciudad ?? '') : ''),
+                                'cas' => $a->orden ? ($a->orden->cas->nombre ?? '') : '',
+                                'motivo_ingreso' => $tipoOrden,
+                                'falla_reportada' => $a->orden ? ($a->orden->equipo->falla ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->descripcion ?? '') : ''),
+                                'observacion_equipo' => $a->orden ? ($a->orden->equipo->observacion ?? '') : ($a->ordenEmpresa ? ($a->ordenEmpresa->descripcion ?? '') : '')
                             ]) }}">
                                 <td style="font-size:12px; white-space:nowrap;">{{ $fechaHora }}</td>
                                 <td class="aud-code">{{ $a->repuesto->codigo ?? '-' }}</td>
@@ -368,6 +376,10 @@
                                     @if($a->orden)
                                         <a href="{{ route('ordenes.imprimir', ['id' => $a->orden->id]) }}" target="_blank" class="aud-nro-orden" title="Imprimir Comprobante OT">
                                             <i class="bi bi-printer me-1"></i>{{ $a->orden->nro_orden }}
+                                        </a>
+                                    @elseif($a->ordenEmpresa)
+                                        <a href="{{ route('ordenes_empresa.imprimir', ['id' => $a->ordenEmpresa->id]) }}" target="_blank" class="aud-nro-orden" title="Imprimir Comprobante OT Empresa">
+                                            <i class="bi bi-printer me-1"></i>{{ $a->ordenEmpresa->nro_orden }}
                                         </a>
                                     @else
                                         <span style="color:#94a3b8;">N/A</span>

@@ -91,6 +91,7 @@ class OrdenRepository
                 'usuarioIngreso',
                 'repuestoInventario',
                 'ordenRepuestos.repuesto',
+                'llamadas.usuario',
             ])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('id', 'desc')
@@ -103,6 +104,9 @@ class OrdenRepository
                 'tecnicos',
                 'sucursal',
                 'ingresadoPor',
+                'llamadas.usuario',
+                'repuestoInventario',
+                'ordenRepuestos.repuesto',
             ])
             ->where(function ($q) use ($tecnicoId) {
                 $q->where('tecnico_id', $tecnicoId)
@@ -278,7 +282,7 @@ class OrdenRepository
                 $queryPersonal->where('cas_id', $filtro->cas_id);
             }
 
-             $personales = $queryPersonal->get()->map(function (Orden $orden) {
+             $personales = $queryPersonal->get()->map(function (Orden $orden) use ($resolverSucursalCliente) {
                 $fechaIngreso = $orden->fecha_de_ingreso ?: null;
                 $fechaPrometida = $orden->fecha_prometido ?: null;
                 $fechaEntrega = $orden->fecha_entrega ?: null;
@@ -410,7 +414,7 @@ class OrdenRepository
                 $queryEmpresa->whereRaw('1 = 0');
             }
 
-            $empresas = $queryEmpresa->get()->map(function (OrdenEmpresa $orden) {
+            $empresas = $queryEmpresa->get()->map(function (OrdenEmpresa $orden) use ($resolverSucursalCliente) {
                 $nombreEmpresa = $orden->empresa?->nombre ?? 'EMPRESA';
                 $identificacionEmpresa = (string) ($orden->empresa?->ruc ?? $orden->empresa?->identificacion ?? '');
                 $fechaIngreso = $orden->fecha_ingreso ?: null;

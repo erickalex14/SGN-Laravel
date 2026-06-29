@@ -135,7 +135,7 @@ class GuardarOrdenRequest extends FormRequest
                 'emp_tipo_equipo' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:50'],
                 'emp_marca' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:50'],
                 'emp_modelo' => [$requiereEquipo ? 'required' : 'nullable', 'string', 'max:100'],
-                'emp_series' => [$requiereEquipo ? 'required' : 'nullable', 'array', 'min:1'],
+                'emp_series' => ['nullable', 'array'],
                 'emp_series.*' => ['nullable', 'string', 'max:100'],
                 'emp_falla' => [$requiereEquipo ? 'required' : 'nullable', 'string'],
                 'emp_observacion' => [$requiereEquipo ? 'required' : 'nullable', 'string'],

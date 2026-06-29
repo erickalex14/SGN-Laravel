@@ -198,18 +198,21 @@
         </div>
 
         <div class="act-table-container" style="overflow-x: auto;">
-            <table class="act-table" id="tabla-actividades" style="min-width: 1000px;">
+            <table class="act-table" id="tabla-actividades" style="min-width: {{ $esSistemas ? '600px' : '1150px' }};">
                 <thead>
                     <tr>
                         <th style="width: 140px;">Horario</th>
-                        <th style="width: 120px;">Actividad</th>
-                        <th style="width: 120px;">Novedad</th>
-                        <th style="width: 120px;">Estado</th>
-                        <th style="width: 110px;">Modalidad</th>
-                        <th style="width: 130px;">OT / Ticket</th>
-                        <th style="width: 140px;">Clase</th>
-                        <th style="width: 130px;">Serie</th>
-                        <th>Observaciones (Bitácora de Acciones)</th>
+                        @if(!$esSistemas)
+                            <th style="width: 120px;">Actividad</th>
+                            <th style="width: 120px;">Novedad</th>
+                            <th style="width: 120px;">Estado</th>
+                            <th style="width: 110px;">Modalidad</th>
+                            <th style="width: 130px;">OT / Ticket</th>
+                            <th style="width: 140px;">Clase</th>
+                            <th style="width: 130px;">Serie</th>
+                            <th style="width: 130px;">Código Equipo</th>
+                        @endif
+                        <th style="min-width: 350px;">Observaciones (Bitácora de Acciones)</th>
                     </tr>
                 </thead>
                 <tbody id="body-actividades">
@@ -226,6 +229,7 @@
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
     const tecnicoNombre = @json($nombreTecnico);
+    const esSistemas = @json($esSistemas);
     let actividadesRaw = [];
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -249,7 +253,7 @@
     function cargarActividades() {
         const fecha = document.getElementById('fecha-filtro').value;
         const container = document.getElementById('body-actividades');
-        container.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Cargando reporte histórico...</td></tr>';
+        container.innerHTML = `<tr><td colspan="${esSistemas ? 2 : 9}" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Cargando reporte histórico...</td></tr>`;
 
         fetch(`{{ route('actividades.listar') }}?fecha=${fecha}`)
             .then(res => res.json())
@@ -258,13 +262,47 @@
                     actividadesRaw = res.actividades;
                     renderizarTabla(fecha);
                 } else {
-                    container.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${res.error}</td></tr>`;
+                    container.innerHTML = `<tr><td colspan="${esSistemas ? 2 : 9}" class="text-center text-danger py-4">${res.error}</td></tr>`;
                 }
             })
             .catch(err => {
                 console.error(err);
-                container.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">Error al obtener actividades.</td></tr>';
+                container.innerHTML = `<tr><td colspan="${esSistemas ? 2 : 9}" class="text-center text-danger py-4">Error al obtener actividades.</td></tr>`;
             });
+    }
+
+    function formatearBitacoraAutomatica(slotActs, esAlmuerzo) {
+        let lines = [];
+        if (esAlmuerzo) {
+            lines.push('Almuerzo');
+        }
+
+        if (slotActs.length === 0) {
+            return esAlmuerzo ? 'Almuerzo' : 'sn';
+        }
+
+        let groups = {};
+        let others = [];
+        slotActs.forEach(a => {
+            let ot = a.metadata_json?.nro_orden;
+            if (ot) {
+                if (!groups[ot]) groups[ot] = [];
+                groups[ot].push(a.descripcion.trim());
+            } else {
+                others.push(a.descripcion.trim());
+            }
+        });
+
+        for (let ot in groups) {
+            let uniqueDescs = [...new Set(groups[ot])];
+            lines.push(`Orden #${ot}:\n  - ` + uniqueDescs.join('\n  - '));
+        }
+
+        others.forEach(desc => {
+            lines.push(desc);
+        });
+
+        return lines.join('\n');
     }
 
     function parseHour(fechaHoraStr) {
@@ -325,6 +363,7 @@
             let ots = 'sn';
             let clase = 'sn';
             let serie = 'sn';
+            let codigoEquipo = 'sn';
             let observaciones = 'sn';
 
             if (slot.esAlmuerzo) {
@@ -344,16 +383,14 @@
                 ots = meta.ot || 'sn';
                 clase = meta.clase || 'sn';
                 serie = meta.serie || 'sn';
+                codigoEquipo = meta.codigo_equipo || 'sn';
                 observaciones = manualAct.descripcion || 'sn';
             } else if (slotActs.length > 0) {
                 if (!slot.esAlmuerzo) {
                     horasTrabajadas++;
                 }
 
-                observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                if (slot.esAlmuerzo) {
-                    observaciones = 'Almuerzo | ' + observaciones;
-                }
+                observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                 const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                 if (otsEnSlot.length > 0) {
@@ -365,6 +402,7 @@
                 if (mainAct) {
                     clase = mapClase(mainAct.metadata_json?.tipo);
                     serie = mainAct.metadata_json?.serie || 'sn';
+                    codigoEquipo = mainAct.metadata_json?.codigo_equipo || 'sn';
                     
                     if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                         valActividad = 'ticket';
@@ -387,31 +425,48 @@
                         valEstado = 'pendiente';
                     } else if (est.includes('NOTA') || est.includes('CREDITO')) {
                         valEstado = 'nota credito';
-                    } else {
-                        valEstado = 'realizado ';
-                    }
-                } else {
-                    valActividad = 'ticket';
-                    valNovedad = 'Oficina';
-                    valEstado = 'realizado ';
+                }
+            }
+
+            if (esSistemas) {
+                valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                valNovedad = 'sn';
+                valEstado = 'sn';
+                valModalidad = 'sn';
+                ots = 'sn';
+                clase = 'sn';
+                serie = 'sn';
+                if (manualAct) {
+                    observaciones = manualAct.descripcion || 'sn';
                 }
             }
 
             const badgeEstado = valEstado === 'sn' ? 'sn' : (valEstado === 'realizado ' ? 'realizado' : (valEstado === 'pendiente' ? 'pendiente' : (valEstado === 'en proceso' ? 'proceso' : 'almuerzo')));
 
-            const rowHtml = `
-                <tr>
-                    <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
-                    <td style="vertical-align: middle;"><span class="act-badge act-badge-sn">${valActividad}</span></td>
-                    <td style="vertical-align: middle;">${valNovedad}</td>
-                    <td style="vertical-align: middle;"><span class="act-badge act-badge-${badgeEstado === 'almuerzo' && slot.esAlmuerzo ? 'almuerzo' : badgeEstado}">${valEstado}</span></td>
-                    <td style="vertical-align: middle;">${valModalidad}</td>
-                    <td style="vertical-align: middle; font-family: monospace; font-weight: 700; color: #2563eb;">${ots}</td>
-                    <td style="vertical-align: middle;">${clase}</td>
-                    <td style="vertical-align: middle; font-family: monospace;">${serie}</td>
-                    <td style="vertical-align: middle; font-weight: 500; font-size: 12.5px;">${observaciones}</td>
-                </tr>
-            `;
+            let rowHtml = '';
+            if (esSistemas) {
+                rowHtml = `
+                    <tr>
+                        <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
+                        <td style="vertical-align: middle; font-weight: 500; font-size: 12.5px; white-space: pre-line;">${observaciones === 'sn' ? '' : observaciones}</td>
+                    </tr>
+                `;
+            } else {
+                rowHtml = `
+                    <tr>
+                        <td style="font-weight: 700; color: #475569; vertical-align: middle;">${slot.label}</td>
+                        <td style="vertical-align: middle;"><span class="act-badge act-badge-sn">${valActividad}</span></td>
+                        <td style="vertical-align: middle;">${valNovedad}</td>
+                        <td style="vertical-align: middle;"><span class="act-badge act-badge-${badgeEstado === 'almuerzo' && slot.esAlmuerzo ? 'almuerzo' : badgeEstado}">${valEstado}</span></td>
+                        <td style="vertical-align: middle;">${valModalidad}</td>
+                        <td style="vertical-align: middle; font-family: monospace; font-weight: 700; color: #2563eb;">${ots}</td>
+                        <td style="vertical-align: middle;">${clase}</td>
+                        <td style="vertical-align: middle; font-family: monospace;">${serie}</td>
+                        <td style="vertical-align: middle; font-family: monospace;">${codigoEquipo}</td>
+                        <td style="vertical-align: middle; font-weight: 500; font-size: 12.5px; white-space: pre-line;">${observaciones}</td>
+                    </tr>
+                `;
+            }
             container.innerHTML += rowHtml;
         });
 
@@ -541,10 +596,7 @@
                     repuestoCode = meta.codigo_repuesto || 'sn';
                     equipoCode = meta.codigo_equipo || 'sn';
                 } else if (slotActs.length > 0) {
-                    observaciones = slotActs.map(a => a.descripcion).join(' | ');
-                    if (slot.esAlmuerzo) {
-                        observaciones = 'Almuerzo | ' + observaciones;
-                    }
+                    observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
 
                     const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                     if (otsEnSlot.length > 0) {
@@ -555,6 +607,7 @@
                     if (mainAct) {
                         clase = mapClase(mainAct.metadata_json?.tipo);
                         serie = mainAct.metadata_json?.serie || 'sn';
+                        equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
                         
                         if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                             valActividad = 'ticket';
@@ -588,6 +641,20 @@
                         valActividad = 'ticket';
                         valNovedad = 'Oficina';
                         valEstado = 'realizado ';
+                    }
+                }
+                if (esSistemas) {
+                    valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                    valNovedad = 'sn';
+                    valEstado = 'sn';
+                    valModalidad = 'sn';
+                    ots = 'sn';
+                    clase = 'sn';
+                    serie = 'sn';
+                    equipoCode = 'sn';
+                    repuestoCode = 'sn';
+                    if (manualAct) {
+                        observaciones = manualAct.descripcion || 'sn';
                     }
                 }
 

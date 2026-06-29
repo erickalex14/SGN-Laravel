@@ -15,9 +15,11 @@ class CambiarEstadoRepuestoRequest extends FormRequest
 
     public function rules(): array
     {
+        $table = $this->input('tipo_orden') === 'empresa' ? 'ordenesempresas' : 'ordenes';
         return [
-            'orden_id' => ['required', 'integer', 'exists:ordenes,id'],
+            'orden_id' => ['required', 'integer', "exists:{$table},id"],
             'estado_repuesto' => ['required', 'string', 'in:No requerido,Requerido,Con stock'],
+            'tipo_orden' => ['nullable', 'string', 'in:personal,empresa']
         ];
     }
 

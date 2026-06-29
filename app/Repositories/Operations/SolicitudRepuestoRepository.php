@@ -10,10 +10,14 @@ class SolicitudRepuestoRepository
 {
     public function obtenerTodas(?int $sucursalId = null): Collection
     {
-        $query = SolicitudRepuesto::with(['orden', 'repuestoAsignado', 'tecnico', 'repuestoCatalogo']);
+        $query = SolicitudRepuesto::with(['orden', 'ordenEmpresa', 'repuestoAsignado', 'tecnico', 'repuestoCatalogo']);
         if ($sucursalId !== null && $sucursalId > 0) {
-            $query->whereHas('orden', function ($o) use ($sucursalId) {
-                $o->where('sucursal_id', $sucursalId);
+            $query->where(function ($q) use ($sucursalId) {
+                $q->whereHas('orden', function ($o) use ($sucursalId) {
+                    $o->where('sucursal_id', $sucursalId);
+                })->orWhereHas('ordenEmpresa', function ($o) use ($sucursalId) {
+                    $o->where('sucursal_id', $sucursalId);
+                });
             });
         }
         return $query->orderBy('fecha_solicitud', 'desc')->get();
@@ -21,7 +25,7 @@ class SolicitudRepuestoRepository
 
     public function obtenerPorTecnico(int $tecnicoId): Collection
     {
-        return SolicitudRepuesto::with(['orden', 'listaCompra'])
+        return SolicitudRepuesto::with(['orden', 'ordenEmpresa', 'listaCompra'])
             ->where('tecnico_id', $tecnicoId)
             ->orderBy('fecha_solicitud', 'desc')
             ->get();
@@ -38,13 +42,19 @@ class SolicitudRepuestoRepository
             'orden',
             'orden.cliente',
             'orden.equipo',
+            'ordenEmpresa',
+            'ordenEmpresa.empresa',
+            'ordenEmpresa.equipo',
             'tecnico',
             'repuestoAsignado',
         ])->find($id);
     }
 
-    public function existeSolicitudParaOrden(int $ordenId): bool
+    public function existeSolicitudParaOrden(int $ordenId, string $tipoOrden = 'personal'): bool
     {
+        if ($tipoOrden === 'empresa') {
+            return SolicitudRepuesto::where('orden_empresa_id', $ordenId)->exists();
+        }
         return SolicitudRepuesto::where('orden_id', $ordenId)->exists();
     }
 

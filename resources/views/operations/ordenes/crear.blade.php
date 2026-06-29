@@ -672,7 +672,7 @@
 
                     <div class="campo" style="grid-column: span 2;">
 
-                        <label>Serie <span class="req">*</span></label>
+                        <label>Serie</label>
 
                         <div class="lista-lineas" id="series-empresa-container">
 
@@ -3093,7 +3093,7 @@ function onSubtipoEmpresaChange(valor) {
 
         document.getElementById('emp_marca').required = true;
 
-        document.getElementById('emp_serie').required = true;
+        document.getElementById('emp_serie').required = false;
 
         document.getElementById('emp_falla').required = true;
 

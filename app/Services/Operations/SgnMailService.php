@@ -136,7 +136,7 @@ class SgnMailService
     public static function enviarSolicitudRepuestoCreada(SolicitudRepuesto $solicitud): void
     {
         try {
-            $orden = $solicitud->orden;
+            $orden = $solicitud->orden ?: $solicitud->ordenEmpresa;
             if (!$orden) {
                 return;
             }
@@ -359,6 +359,39 @@ class SgnMailService
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al enviar correo de cambio de estado de orden', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Envía un correo electrónico directo al cliente
+     */
+    public static function enviarEmailCliente($orden, string $asunto, string $contenido): void
+    {
+        try {
+            $esEmpresa = $orden instanceof OrdenEmpresa;
+            $correoCliente = $esEmpresa ? ($orden->empresa->correo ?? '') : ($orden->cliente->correo ?? '');
+            
+            if (empty($correoCliente)) {
+                throw new \Exception('El cliente no tiene un correo electrónico registrado.');
+            }
+
+            $nroOrden = $orden->nro_orden;
+
+            $cuerpo = view('emails.cliente_notificacion', [
+                'nro_orden' => $nroOrden,
+                'contenido' => nl2br(e($contenido)),
+                'asunto' => $asunto,
+                'subject' => $asunto
+            ])->render();
+
+            Mail::html($cuerpo, function ($message) use ($correoCliente, $asunto) {
+                $message->to($correoCliente)->subject($asunto);
+            });
+
+            Log::info('Correo enviado al cliente correctamente.', ['nro_orden' => $nroOrden, 'correo' => $correoCliente]);
+        } catch (\Throwable $e) {
+            Log::error('Error al enviar correo al cliente', ['error' => $e->getMessage()]);
+            throw $e;
         }
     }
 }

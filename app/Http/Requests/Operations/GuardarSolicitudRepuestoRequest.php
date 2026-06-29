@@ -12,14 +12,16 @@ class GuardarSolicitudRepuestoRequest extends FormRequest
 
     public function rules(): array
     {
+        $table = $this->input('tipo_orden') === 'empresa' ? 'ordenesempresas' : 'ordenes';
         return [
-            'orden_id'        => ['required', 'integer', 'exists:ordenes,id'],
+            'orden_id'        => ['required', 'integer', "exists:{$table},id"],
             'cantidad'        => ['required', 'integer', 'min:1'],
             'repuesto_nombre' => ['required_without:repuesto_inv_id', 'nullable', 'string', 'max:255'],
             'repuesto_inv_id' => ['nullable', 'integer', 'exists:repuestos,id'],
             'nro_parte'       => ['required', 'string', 'max:100'],
             'link_compra'     => ['nullable', 'string', 'max:500'],
-            'descripcion'     => ['nullable', 'string']
+            'descripcion'     => ['nullable', 'string'],
+            'tipo_orden'      => ['nullable', 'string', 'in:personal,empresa']
         ];
     }
 

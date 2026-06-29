@@ -284,6 +284,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/mis-ordenes/repuesto/asignar', [MisOrdenesController::class, 'asignarRepuesto'])->name('mis_ordenes.repuesto_asignar');
         Route::post('/operaciones/mis-ordenes/repuesto/revertir', [MisOrdenesController::class, 'revertirRepuesto'])->name('mis_ordenes.repuesto_revertir');
         Route::post('/operaciones/mis-ordenes/reasignar', [MisOrdenesController::class, 'reasignarTecnico'])->name('mis_ordenes.reasignar');
+        Route::post('/operaciones/mis-ordenes/llamadas/registrar', [MisOrdenesController::class, 'registrarLlamada'])->name('ordenes.llamadas.registrar');
+        Route::post('/operaciones/mis-ordenes/enviar-email', [MisOrdenesController::class, 'enviarEmailCliente'])->name('mis_ordenes.enviar_email');
     });
 
     Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {
@@ -449,6 +451,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mis-actividades/listar', [ActividadDiariaController::class, 'listar'])->name('actividades.listar');
     Route::get('/mis-actividades/historial', [ActividadDiariaController::class, 'historial'])->name('actividades.historial');
     Route::post('/mis-actividades/guardar', [ActividadDiariaController::class, 'guardar'])->name('actividades.guardar');
+    Route::get('/mis-actividades/buscar-ot', [ActividadDiariaController::class, 'buscarOt'])->name('actividades.buscar_ot');
 
     Route::middleware(['permiso:reportes,ver'])->group(function () {
         Route::get('/gestion/actividades-tecnicos', [ActividadDiariaController::class, 'indexAdmin'])->name('actividades.admin');

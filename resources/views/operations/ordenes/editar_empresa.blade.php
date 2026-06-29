@@ -247,7 +247,7 @@
                     </div>
 
                     <div class="campo" style="margin-top:16px;">
-                        <label>Series del Equipo <span class="req">*</span></label>
+                        <label>Series del Equipo</label>
                         <div id="series-container" style="display:flex; flex-direction:column; gap:8px;">
                             @if($eqSeries->isEmpty())
                                 <div class="linea-item" style="display:flex; gap:10px;">

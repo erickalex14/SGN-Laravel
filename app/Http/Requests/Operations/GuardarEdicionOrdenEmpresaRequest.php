@@ -89,7 +89,7 @@ class GuardarEdicionOrdenEmpresaRequest extends FormRequest
             'eq_contrasena' => ['nullable', 'string', 'max:100'],
 
             // Series
-            'series' => [$esServicios ? 'nullable' : 'required', 'array', 'min:1'],
+            'series' => ['nullable', 'array'],
             'series.*' => ['nullable', 'string', 'max:100'],
         ];
     }
