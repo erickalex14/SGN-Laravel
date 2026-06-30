@@ -1937,7 +1937,8 @@ function verificarTransferenciasPendientes() {
         o.estado_orden === 'Nota de Credito' &&
         o.nc_estado === 'Aprobada' &&
         (o.motivo_ingreso || '') === 'Validacion de Garantia' &&
-        !o.transferencia_numero
+        !o.transferencia_numero &&
+        localStorage.getItem('dismissed_nc_transfer_' + o.id) !== 'true'
     );
 
     if (ordenPendiente) {
@@ -1984,13 +1985,16 @@ function abrirPopupTransferencia(o) {
     }).then((result) => {
         if (result.isConfirmed) {
             guardarTransferenciaAjax(o.id, result.value.plataforma, result.value.numero);
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-            Swal.fire({
-                title: 'Información',
-                html: 'Puedes ingresar este número más tarde desde el panel de <b>Gestionar Orden</b> de esta orden.',
-                icon: 'warning',
-                confirmButtonText: 'Entendido'
-            });
+        } else {
+            localStorage.setItem('dismissed_nc_transfer_' + o.id, 'true');
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                Swal.fire({
+                    title: 'Información',
+                    html: 'Puedes ingresar este número más tarde desde el panel de <b>Gestionar Orden</b> de esta orden.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido'
+                });
+            }
         }
     });
 }
