@@ -182,9 +182,9 @@
                     Descargar Excel
                 </button>
 
-                <button class="act-btn" id="btn-exportar-zip">
-                    <i class="bi bi-file-earmark-zip-fill"></i>
-                    Descargar ZIP Sucursal
+                <button class="act-btn" id="btn-exportar-sucursal" style="background-color: #10b981; color: #ffffff; border-color: #059669;">
+                    <i class="bi bi-file-earmark-excel-fill"></i>
+                    Descargar Excel Sucursal
                 </button>
             </div>
         </div>
@@ -256,7 +256,7 @@
         document.getElementById('tecnico-filtro').addEventListener('change', cargarActividades);
         document.getElementById('fecha-filtro').addEventListener('change', cargarActividades);
         document.getElementById('btn-exportar').addEventListener('click', exportarExcel);
-        document.getElementById('btn-exportar-zip').addEventListener('click', exportarTodoZip);
+        document.getElementById('btn-exportar-sucursal').addEventListener('click', exportarTodoSucursal);
     });
 
     // Definición de las 9 horas de la jornada
@@ -842,6 +842,304 @@
         return wb;
     }
 
+    async function generarExcelSucursalWorkbook(tecnicosData, fecha) {
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'SGN - Novitecnologia';
+        wb.created = new Date();
+
+        const borderStyle = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+        };
+
+        const wsBase = wb.addWorksheet('HOJA BASE ', { views: [{ showGridLines: true }] });
+        wsBase.columns = [
+            { width: 5 }, { width: 15 }, { width: 25 }, { width: 20 }, { width: 16 },
+            { width: 14 }, { width: 26 }, { width: 5 }, { width: 5 }, { width: 5 }, { width: 20 }
+        ];
+
+        const baseHeaders = ['', 'HORARIO ', 'ACTIVIDAD/DETALLE PRODUCTO ', 'NOVEDAD ', 'ESTADO ', 'MODALIDAD ', 'TECNICO RESPONSABLE ', '', '', '', 'CLASE'];
+        const baseHeaderRow = wsBase.addRow(baseHeaders);
+        baseHeaderRow.eachCell((cell, colNum) => {
+            if (colNum > 1 && cell.value) {
+                cell.font = { name: 'Calibri', size: 11, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.border = borderStyle;
+            }
+        });
+
+        const options = {
+            B: ["9:00 a  10:00", "10:00 a 11:00", "11:00 a 12:00", "12:00 a 13:00", "13:00 a 14:00", "14:00 a 15:00", "15:00 a 16:00", "16:00 a 17:00", "17:00 a 18:00", "9:00 a 18:00"],
+            C: ["revision ", "reparacion", "instalacion ", "soporte", "ticket", "atencion", "almuerzo", "deligencia externa", "capacitacion ", "sn"],
+            D: ["tienda", "outlet", "incinerox", "autoconsumo", "garantia", "Oficina", "Empresa", "bodega", "servicio tecnico", "sn"],
+            E: ["realizado ", "no realizado", "pendiente", "en proceso", "aprobado", "no aprobado", "nota credito", "sn"],
+            F: ["virtual", "presencial", "sn"],
+            G: ["ERICK MINA", "FRANKLIN BASANTES", "OMAR ALMEIDA", "JIMMY BALCAZAR", "JOSE PUCHA ", "LUIS MORALES ", "FRANKLIN RUIZ ", "JOSUE ROMERO ", "ALEJANDRO YEPEZ ", "ALEXANDER CHAVARREA "],
+            K: ["LAPTOPS", "ACCESORIO", "EQUIPO GYM", "LINEA BLANCA", "MONITORES", "JUGUETES", "SOPORTE", "SERVICIO", "PC", "AIO", "CELULARES", "IMPRESORAS", "TVS", "MOTOS", "CONSOLAS", "OFICINA", "HOGAR", "BICICLETAS", "TABLETS ", "sn"]
+        };
+
+        const maxOptionsLength = Math.max(
+            options.B.length, options.C.length, options.D.length,
+            options.E.length, options.F.length, options.G.length, options.K.length
+        );
+
+        for (let r = 0; r < maxOptionsLength; r++) {
+            const rowData = [
+                '',
+                options.B[r] || '',
+                options.C[r] || '',
+                options.D[r] || '',
+                options.E[r] || '',
+                options.F[r] || '',
+                options.G[r] || '',
+                '', '', '',
+                options.K[r] || ''
+            ];
+            const baseRow = wsBase.addRow(rowData);
+            baseRow.eachCell((cell, colNum) => {
+                if (colNum > 1 && cell.value) {
+                    cell.font = { name: 'Calibri', size: 11 };
+                    cell.border = borderStyle;
+                }
+            });
+        }
+
+        tecnicosData.forEach(data => {
+            const { acts, esSistemas, tecnicoNombre } = data;
+            const sheetName = tecnicoNombre.replace(/[\\\/\?\*\:\[\]]/g, '').substring(0, 30).trim() || 'Tecnico';
+
+            const ws = wb.addWorksheet(sheetName, {
+                views: [{ showGridLines: true }]
+            });
+
+            ws.columns = [
+                { width: 22 }, // A: Fecha
+                { width: 15 }, // B: Horario
+                { width: 30 }, // C: Actividad
+                { width: 20 }, // D: Novedad
+                { width: 16 }, // E: Estado
+                { width: 14 }, // F: Modalidad
+                { width: 26 }, // G: Tecnico
+                { width: 18 }, // H: OT o Ticket
+                { width: 10 }, // I: Cantidad
+                { width: 16 }, // J: Codigo equipo
+                { width: 18 }, // K: Clase
+                { width: 22 }, // L: Serie equipo
+                { width: 65 }, // M: Observacion
+                { width: 35 }  // N: Codigo repuesto
+            ];
+
+            const dateParts = fecha.split('-');
+            const dateObj = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            const formattedHeaderDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            const headers = [
+                `FECHA F: ${formattedHeaderDate}`,
+                'HORARIO ',
+                'ACTIVIDAD/DETALLE PRODUCTO ',
+                'NOVEDAD ',
+                'ESTADO ',
+                'MODALIDAD ',
+                'TECNICO RESPONSABLE ',
+                'OT O TICKET ',
+                'CANTIDAD',
+                'CODIGO EQUIPO ',
+                'CLASE ',
+                'SERIE EQUIPO',
+                'OBSERVACION',
+                'CODIGO REPUESTO UTILIZADO EN OT DE GARANTIA'
+            ];
+
+            const headerRow = ws.addRow(headers);
+            headerRow.height = 24;
+            headerRow.eachCell((cell, colNum) => {
+                cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                cell.alignment = { horizontal: colNum === 1 || colNum === 13 ? 'left' : 'center', vertical: 'middle' };
+                cell.border = borderStyle;
+            });
+
+            horasJornada.forEach((slot, idx) => {
+                let slotActs = acts.filter(act => {
+                    const hour = parseHour(act.fecha_hora);
+                    if (slot.key === 9) return hour <= 9;
+                    if (slot.key === 17) return hour >= 17;
+                    return hour === slot.key;
+                });
+
+                let valActividad = 'sn';
+                let valNovedad = 'sn';
+                let valEstado = 'sn';
+                let valModalidad = 'presencial';
+                let ots = 'sn';
+                let clase = 'sn';
+                let serie = 'sn';
+                let observaciones = 'sn';
+                let repuestoCode = 'sn';
+                let equipoCode = 'sn';
+
+                if (slot.esAlmuerzo) {
+                    valActividad = 'almuerzo';
+                    valNovedad = 'Oficina';
+                    valEstado = 'realizado ';
+                    observaciones = 'Almuerzo';
+                }
+
+                const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
+                if (manualAct) {
+                    const meta = manualAct.metadata_json || {};
+                    valActividad = meta.actividad || 'sn';
+                    valNovedad = meta.novedad || 'sn';
+                    valEstado = meta.estado || 'sn';
+                    valModalidad = meta.modalidad || 'presencial';
+                    ots = meta.ot || 'sn';
+                    clase = meta.clase || 'sn';
+                    serie = meta.serie || 'sn';
+                    observaciones = manualAct.descripcion || 'sn';
+                    repuestoCode = meta.codigo_repuesto || 'sn';
+                    equipoCode = meta.codigo_equipo || 'sn';
+                } else if (slotActs.length > 0) {
+                    observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
+
+                    const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
+                    if (otsEnSlot.length > 0) {
+                        ots = [...new Set(otsEnSlot)].join(', ');
+                    }
+
+                    const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
+                    if (mainAct) {
+                        clase = mapClase(mainAct.metadata_json?.tipo);
+                        serie = mainAct.metadata_json?.serie || 'sn';
+                        equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
+                        
+                        if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
+                            valActividad = 'ticket';
+                        } else if (mainAct.tipo_accion.includes('estado')) {
+                            valActividad = 'reparacion';
+                        } else {
+                            valActividad = 'ticket';
+                        }
+
+                        if (mainAct.metadata_json?.estado_garantia && mainAct.metadata_json?.estado_garantia.toUpperCase() !== 'NO APLICA') {
+                            valNovedad = 'garantia';
+                        } else {
+                            valNovedad = 'Oficina';
+                        }
+
+                        const est = mainAct.metadata_json?.estado_orden ? mainAct.metadata_json?.estado_orden.toUpperCase() : '';
+                        if (est.includes('PROCESO')) {
+                            valEstado = 'en proceso';
+                        } else if (est.includes('PENDIENTE')) {
+                            valEstado = 'pendiente';
+                        } else if (est.includes('NOTA') || est.includes('CREDITO')) {
+                            valEstado = 'nota credito';
+                        } else {
+                            valEstado = 'realizado ';
+                        }
+
+                        if (mainAct.metadata_json?.repuesto_inventario_id) {
+                            repuestoCode = mainAct.metadata_json?.repuesto_inventario_id;
+                        }
+                    } else {
+                        valActividad = 'ticket';
+                        valNovedad = 'Oficina';
+                        valEstado = 'realizado ';
+                    }
+                }
+
+                if (esSistemas) {
+                    valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                    valNovedad = 'sn';
+                    valEstado = 'sn';
+                    valModalidad = 'sn';
+                    ots = 'sn';
+                    clase = 'sn';
+                    serie = 'sn';
+                    equipoCode = 'sn';
+                    repuestoCode = 'sn';
+                    if (manualAct) {
+                        observaciones = manualAct.descripcion || 'sn';
+                    }
+                }
+
+                const excelRowValues = [
+                    dateObj,
+                    slot.label,
+                    valActividad,
+                    valNovedad,
+                    valEstado,
+                    valModalidad,
+                    tecnicoNombre,
+                    ots,
+                    ots !== 'sn' ? [...new Set(ots.split(', '))].length : 'sn',
+                    equipoCode,
+                    clase,
+                    serie,
+                    observaciones,
+                    repuestoCode
+                ];
+
+                const row = ws.addRow(excelRowValues);
+                row.height = 20;
+                row.eachCell((cell, colNum) => {
+                    cell.font = { name: 'Calibri', size: 11, bold: false };
+                    cell.border = borderStyle;
+                    
+                    if (colNum === 1) {
+                        cell.numFormat = 'yyyy-mm-dd';
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    } else if (colNum === 13) {
+                        cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                    } else {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
+                });
+            });
+
+            ws.addRow([]);
+            const commitRow = ws.addRow([]);
+            commitRow.getCell(13).value = 'Commits del día de hoy:';
+            commitRow.getCell(13).font = { name: 'Calibri', size: 11, bold: true };
+
+            for (let r = 2; r <= 10; r++) {
+                ws.getCell(`C${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$C$2:$C$11"]
+                };
+                ws.getCell(`D${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$D$2:$D$11"]
+                };
+                ws.getCell(`E${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$E$2:$E$9"]
+                };
+                ws.getCell(`F${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$F$2:$F$4"]
+                };
+                ws.getCell(`G${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$G$2:$G$11"]
+                };
+                ws.getCell(`K${r}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ["'HOJA BASE '!$K$2:$K$20"]
+                };
+            }
+        });
+
+        return wb;
+    }
+
     async function exportarExcel() {
         const selectTecnico = document.getElementById('tecnico-filtro');
         const tecnicoNombre = selectTecnico.options[selectTecnico.selectedIndex].text;
@@ -895,12 +1193,11 @@
         }
     }
 
-    async function exportarTodoZip() {
+    async function exportarTodoSucursal() {
         const fecha = document.getElementById('fecha-filtro').value;
         const adminSucursalId = @json(auth()->user()->sucursal_id);
         const adminSucursalNombre = @json(auth()->user()->sucursalPrincipal?->ciudad ?? 'Sucursal');
         
-        // Filtrar técnicos pertenecientes a la sucursal del admin
         const tecnicos = @json($tecnicos);
         const tecnicosSucursal = tecnicos.filter(t => t.sucursal_id === adminSucursalId);
 
@@ -914,13 +1211,13 @@
             return;
         }
 
-        const btn = document.getElementById('btn-exportar-zip');
+        const btn = document.getElementById('btn-exportar-sucursal');
         btn.disabled = true;
-        btn.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Generando ZIP...';
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Generando...';
 
         Swal.fire({
-            title: 'Generando ZIP de la sucursal...',
-            html: 'Procesando reportes de técnicos de la sucursal. Por favor, espere...<br><br><b id="zip-progress">0</b> de ' + tecnicosSucursal.length + ' completados.',
+            title: 'Generando Reporte Consolidador...',
+            html: 'Procesando actividades de la sucursal. Por favor, espere...<br><br><b id="suc-progress">0</b> de ' + tecnicosSucursal.length + ' t&eacute;cnicos procesados.',
             allowOutsideClick: false,
             didOpen: () => {
                 Swal.showLoading();
@@ -928,7 +1225,7 @@
         });
 
         try {
-            const zip = new JSZip();
+            const tecnicosData = [];
             let completados = 0;
 
             for (const t of tecnicosSucursal) {
@@ -936,26 +1233,25 @@
                 const res = await fetch(url).then(r => r.json());
 
                 if (res.ok) {
-                    const acts = res.actividades || [];
-                    const esSistemas = res.esSistemas || false;
-                    
-                    const wb = await generarExcelWorkbook(acts, esSistemas, t.nombre_tecnico, fecha);
-                    const buffer = await wb.xlsx.writeBuffer();
-                    
-                    const safeName = t.nombre_tecnico.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                    zip.file(`actividades_${fecha}_${safeName}.xlsx`, buffer);
+                    tecnicosData.push({
+                        acts: res.actividades || [],
+                        esSistemas: res.esSistemas || false,
+                        tecnicoNombre: t.nombre_tecnico
+                    });
                 }
                 
                 completados++;
-                const progEl = document.getElementById('zip-progress');
+                const progEl = document.getElementById('suc-progress');
                 if (progEl) progEl.textContent = completados;
             }
 
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const url = window.URL.createObjectURL(zipBlob);
+            const wb = await generarExcelSucursalWorkbook(tecnicosData, fecha);
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Reportes_Actividades_${fecha}_${adminSucursalNombre.replace(/[^a-z0-9]/gi, '_')}.zip`;
+            a.download = `Reporte_Consolidado_Actividades_${fecha}_${adminSucursalNombre.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -963,16 +1259,16 @@
 
             Swal.fire({
                 icon: 'success',
-                title: 'ZIP Descargado',
-                text: 'Se han empaquetado y descargado todos los reportes de la sucursal.',
+                title: 'Reporte Descargado',
+                text: 'Se ha consolidado el reporte de la sucursal en un único libro de Excel.',
                 confirmButtonColor: '#2563eb'
             });
         } catch (e) {
             console.error(e);
-            Swal.fire('Error', 'No se pudo generar el archivo ZIP de la sucursal: ' + e.message, 'error');
+            Swal.fire('Error', 'No se pudo generar el reporte consolidado: ' + e.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-file-earmark-zip-fill"></i> Descargar ZIP Sucursal';
+            btn.innerHTML = '<i class="bi bi-file-earmark-excel-fill"></i> Descargar Excel Sucursal';
         }
     }
 </script>
