@@ -1947,6 +1947,7 @@ function verificarTransferenciasPendientes() {
 }
 
 function abrirPopupTransferencia(o) {
+    localStorage.setItem('dismissed_nc_transfer_' + o.id, 'true');
     Swal.fire({
         title: 'Nota de Crédito Aprobada',
         html: `
