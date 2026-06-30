@@ -209,6 +209,22 @@
             </div>
         @endif
 
+        @if(session('tecnico_id') == 21 || (auth()->user() && auth()->user()->id == 21))
+            <div class="act-card no-print" style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px;">
+                <label style="font-weight: 700; color: #334155; display: block; margin-bottom: 10px; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.05em;">Modalidad de Trabajo de Hoy:</label>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer;">
+                        <input type="radio" name="modalidad_trabajo" value="oficina" checked onchange="cambiarModalidadTrabajo(this.value)" style="width: auto; cursor: pointer;">
+                        <i class="bi bi-building me-1" style="color: #2563eb;"></i> Oficina / Laboratorio
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer;">
+                        <input type="radio" name="modalidad_trabajo" value="ticket_empresa" onchange="cambiarModalidadTrabajo(this.value)" style="width: auto; cursor: pointer;">
+                        <i class="bi bi-ticket-detailed me-1" style="color: #10b981;"></i> Ticket a Empresa (9:00 a 18:00)
+                    </label>
+                </div>
+            </div>
+        @endif
+
         <div class="act-stats">
             <div class="act-stat-card">
                 <div class="act-stat-icon">
@@ -238,6 +254,26 @@
                 </div>
             </div>
         </div>
+
+        @if(session('tecnico_id') == 21 || (auth()->user() && auth()->user()->id == 21))
+            <div id="vista-ticket-empresa" class="act-card" style="display: none; border: 1.5px solid #a7f3d0; background: #ffffff;">
+                <h4 style="font-size: 15px; font-weight: 800; color: #065f46; margin-top: 0; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-ticket-perforated-fill" style="color: #10b981; font-size: 18px;"></i> Reporte Diario - Ticket a Empresa
+                </h4>
+                <div style="margin-bottom: 18px; display: flex; gap: 20px; align-items: center; background: #ecfdf5; padding: 12px 16px; border-radius: 8px; border: 1px solid #a7f3d0; flex-wrap: wrap;">
+                    <span style="font-size: 13px; font-weight: 700; color: #065f46;">
+                        <i class="bi bi-clock me-1"></i> <strong>Horario de Jornada:</strong> 9:00 a 18:00
+                    </span>
+                    <span style="font-size: 13px; font-weight: 700; color: #065f46;">
+                        <i class="bi bi-geo-alt me-1"></i> <strong>Modalidad:</strong> Presencial
+                    </span>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; font-weight: 700; font-size: 13px; color: #334155; margin-bottom: 8px;">Observaciones (Descripción de la actividad realizada en el día):</label>
+                    <textarea id="ticket-descripcion" placeholder="Escribe de forma detallada las actividades que realizaste en el ticket o visita a la empresa..." style="width: 100%; min-height: 140px; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; resize: vertical; line-height: 1.5;" {{ $puedeEditar ? '' : 'disabled' }}></textarea>
+                </div>
+            </div>
+        @endif
 
         <div class="act-table-container" style="overflow-x: auto;">
             <table class="act-table" id="tabla-actividades" style="min-width: {{ $esSistemas ? '600px' : '1250px' }};">
@@ -437,6 +473,7 @@
                 observaciones = 'Almuerzo';
             }
 
+            let hasWork = false;
             const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
             if (manualAct) {
                 const meta = manualAct.metadata_json || {};
@@ -449,9 +486,15 @@
                 serie = meta.serie || 'sn';
                 codigoEquipo = meta.codigo_equipo || 'sn';
                 observaciones = manualAct.descripcion || 'sn';
+                if (!slot.esAlmuerzo && valActividad !== 'sn' && valActividad !== 'almuerzo') {
+                    hasWork = true;
+                }
+                if (ots && ots !== 'sn') {
+                    ots.split(',').map(o => o.trim()).filter(Boolean).forEach(o => otsSet.add(o));
+                }
             } else if (slotActs.length > 0) {
                 if (!slot.esAlmuerzo) {
-                    horasTrabajadas++;
+                    hasWork = true;
                 }
 
                 observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
@@ -544,13 +587,55 @@
                     </tr>
                 `;
             }
+            if (hasWork) {
+                horasTrabajadas++;
+            }
             container.innerHTML += rowHtml;
         });
 
         document.getElementById('stat-horas').textContent = `${horasTrabajadas}/8`;
         document.getElementById('stat-acciones').textContent = totalAcciones;
         document.getElementById('stat-ots').textContent = otsSet.size;
+
+        const isPucha = @json(session('tecnico_id') == 21 || (auth()->user() && auth()->user()->id == 21));
+        if (isPucha) {
+            let esTicketDetectado = false;
+            const manualAct9 = actividadesRaw.find(a => a.tipo_accion === 'registro_manual' && parseHour(a.fecha_hora) === 9);
+            if (manualAct9 && manualAct9.metadata_json?.novedad === 'Empresa') {
+                esTicketDetectado = true;
+            }
+
+            if (esTicketDetectado) {
+                const radio = document.querySelector('input[name="modalidad_trabajo"][value="ticket_empresa"]');
+                if (radio) {
+                    radio.checked = true;
+                    cambiarModalidadTrabajo('ticket_empresa');
+                }
+                const descArea = document.getElementById('ticket-descripcion');
+                if (descArea && manualAct9) {
+                    descArea.value = manualAct9.descripcion || '';
+                }
+            } else {
+                const radio = document.querySelector('input[name="modalidad_trabajo"][value="oficina"]');
+                if (radio) {
+                    radio.checked = true;
+                    cambiarModalidadTrabajo('oficina');
+                }
+            }
+        }
     }
+
+    window.cambiarModalidadTrabajo = function(val) {
+        const tableContainer = document.querySelector('.act-table-container');
+        const vistaTicket = document.getElementById('vista-ticket-empresa');
+        if (val === 'ticket_empresa') {
+            if (tableContainer) tableContainer.style.display = 'none';
+            if (vistaTicket) vistaTicket.style.display = 'block';
+        } else {
+            if (tableContainer) tableContainer.style.display = 'block';
+            if (vistaTicket) vistaTicket.style.display = 'none';
+        }
+    };
 
     function guardarActividades() {
         const payload = {
@@ -558,23 +643,54 @@
             actividades: {}
         };
 
-        horasJornada.forEach(slot => {
-            const key = slot.key;
-            const row = document.querySelector(`[data-row-slot="${key}"]`);
-            if (row) {
-                payload.actividades[key] = {
-                    actividad: row.querySelector('[name="actividad"]').value,
-                    novedad: row.querySelector('[name="novedad"]').value,
-                    estado: row.querySelector('[name="estado"]').value,
-                    modalidad: row.querySelector('[name="modalidad"]').value,
-                    ot: row.querySelector('[name="ot"]').value,
-                    clase: row.querySelector('[name="clase"]').value,
-                    serie: row.querySelector('[name="serie"]').value,
-                    codigo_equipo: row.querySelector('[name="codigo_equipo"]').value,
-                    observacion: row.querySelector('[name="observacion"]').value
-                };
+        const isPucha = @json(session('tecnico_id') == 21 || (auth()->user() && auth()->user()->id == 21));
+        const esTicketEmpresa = isPucha && (document.querySelector('input[name="modalidad_trabajo"]:checked')?.value === 'ticket_empresa');
+
+        if (esTicketEmpresa) {
+            const desc = document.getElementById('ticket-descripcion').value.trim();
+            if (!desc) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Descripción Requerida',
+                    text: 'Por favor escribe la descripción de las actividades realizadas.',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
             }
-        });
+
+            horasJornada.forEach(slot => {
+                const key = slot.key;
+                payload.actividades[key] = {
+                    actividad: slot.esAlmuerzo ? 'almuerzo' : 'ticket',
+                    novedad: slot.esAlmuerzo ? 'Oficina' : 'Empresa',
+                    estado: 'realizado ',
+                    modalidad: 'presencial',
+                    ot: 'sn',
+                    clase: 'sn',
+                    serie: 'sn',
+                    codigo_equipo: 'sn',
+                    observacion: slot.esAlmuerzo ? 'Almuerzo' : desc
+                };
+            });
+        } else {
+            horasJornada.forEach(slot => {
+                const key = slot.key;
+                const row = document.querySelector(`[data-row-slot="${key}"]`);
+                if (row) {
+                    payload.actividades[key] = {
+                        actividad: row.querySelector('[name="actividad"]').value,
+                        novedad: row.querySelector('[name="novedad"]').value,
+                        estado: row.querySelector('[name="estado"]').value,
+                        modalidad: row.querySelector('[name="modalidad"]').value,
+                        ot: row.querySelector('[name="ot"]').value,
+                        clase: row.querySelector('[name="clase"]').value,
+                        serie: row.querySelector('[name="serie"]').value,
+                        codigo_equipo: row.querySelector('[name="codigo_equipo"]').value,
+                        observacion: row.querySelector('[name="observacion"]').value
+                    };
+                }
+            });
+        }
 
         const btn = document.getElementById('btn-guardar');
         btn.disabled = true;
