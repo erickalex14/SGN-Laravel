@@ -18,6 +18,8 @@ use App\DTOs\Operations\RevertirRepuestoOrdenDTO;
 use App\Services\Identity\ActividadDiariaService;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Exception;
 
 class MisOrdenesController extends Controller
@@ -567,6 +569,62 @@ class MisOrdenesController extends Controller
                 'ok' => false,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    public function registrarTransferencia(Request $request): JsonResponse
+    {
+        $request->validate([
+            'orden_id' => 'required|integer',
+            'plataforma' => 'required|string|in:MBA3,Milenium,Otros',
+            'numero' => 'required|string|max:100',
+        ]);
+
+        $ordenId = (int) $request->input('orden_id');
+        $plataforma = $request->input('plataforma');
+        $numero = $request->input('numero');
+        $usuarioId = (int) session('tecnico_id');
+
+        try {
+            $orden = \App\Models\Operations\Orden::findOrFail($ordenId);
+
+            // Aseguramos que sea una orden personal de garantía
+            if (mb_strtolower(trim((string) $orden->motivo_ingreso)) !== 'validacion de garantia') {
+                throw new Exception('Esta acción solo está permitida para órdenes personales de tipo Garantía.');
+            }
+
+            $orden->transferencia_plataforma = $plataforma;
+            $orden->transferencia_numero = $numero;
+            $orden->fecha_finalizacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            $orden->save();
+
+            // Registrar actividad diaria
+            $this->actividadService->registrar(
+                usuarioId: $usuarioId,
+                tipoAccion: 'registrar_transferencia',
+                descripcion: "Registró transferencia para la orden #{$orden->nro_orden}: {$plataforma} - {$numero}",
+                modulo: 'ordenes',
+                referenciaId: $orden->id,
+                referenciaTipo: 'orden',
+                metadata: [
+                    'nro_orden' => $orden->nro_orden,
+                    'plataforma' => $plataforma,
+                    'numero' => $numero,
+                ]
+            );
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Número de transferencia registrado y orden cerrada correctamente.',
+                'fecha_finalizacion' => $orden->fecha_finalizacion,
+                'transferencia_plataforma' => $plataforma,
+                'transferencia_numero' => $numero
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

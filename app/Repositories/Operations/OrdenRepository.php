@@ -228,7 +228,7 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryPersonal->whereRaw('1 = 0');
@@ -309,7 +309,17 @@ class OrdenRepository
                     'subtipo' => '',
                     'estado_repuesto' => $orden->estado_repuesto,
                     'estado_garantia' => $orden->estado_garantia,
-                    'estado_orden' => $orden->estado_orden,
+                    'estado_orden' => (function() use ($orden) {
+                        if ($orden->estado_orden === 'Nota de Credito') {
+                            $solicitudNc = $orden->solicitudesNc->first();
+                            if ($solicitudNc && $solicitudNc->estado === 'Aprobada') {
+                                return empty($orden->transferencia_numero) ? 'NC Aprobada-Abierta' : 'NC Aprobada-Cerrada';
+                            }
+                        }
+                        return $orden->estado_orden;
+                    })(),
+                    'transferencia_plataforma' => $orden->transferencia_plataforma,
+                    'transferencia_numero' => $orden->transferencia_numero,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $clienteNombre,
@@ -456,6 +466,8 @@ class OrdenRepository
                     'estado_repuesto' => 'No requerido',
                     'estado_garantia' => '',
                     'estado_orden' => $orden->estado,
+                    'transferencia_plataforma' => null,
+                    'transferencia_numero' => null,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $nombreEmpresa,

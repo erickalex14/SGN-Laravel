@@ -956,13 +956,35 @@
         if (_notifAbierto) cargarNotificaciones();
     }
 
+    var _lastMaxNotifId = null;
+
     function cargarNotificaciones() {
         fetch(_urlNotificaciones, { cache: 'no-store' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.ok) return;
+                var notifs = data.notificaciones || [];
+                
+                var ids = notifs.map(function(n) { return Number(n.id); });
+                var maxId = ids.length ? Math.max.apply(null, ids) : 0;
+                
+                if (_lastMaxNotifId === null) {
+                    _lastMaxNotifId = maxId;
+                } else if (maxId > _lastMaxNotifId) {
+                    notifs.forEach(function(n) {
+                        var nid = Number(n.id);
+                        if (nid > _lastMaxNotifId) {
+                            var noLeida = (n.leida == 0 || n.leida === '0' || n.leida === false);
+                            if (noLeida) {
+                                window.SGNNotify.show(n.mensaje);
+                            }
+                        }
+                    });
+                    _lastMaxNotifId = maxId;
+                }
+
                 actualizarBadge(data.no_leidas || 0);
-                renderNotificaciones(data.notificaciones || []);
+                renderNotificaciones(notifs);
             })
             .catch(function() {});
     }
@@ -989,7 +1011,10 @@
         var iconos = {
             nc_solicitud: '<i class="bi bi-bell-fill" style="color:#2563eb;"></i>',
             nc_aprobada: '<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>',
-            nc_rechazada: '<i class="bi bi-x-circle-fill" style="color:#dc2626;"></i>'
+            nc_rechazada: '<i class="bi bi-x-circle-fill" style="color:#dc2626;"></i>',
+            orden_asignada: '<i class="bi bi-person-plus-fill" style="color:#8b5cf6;"></i>',
+            orden_atrasada_3_dias: '<i class="bi bi-exclamation-triangle-fill" style="color:#f59e0b;"></i>',
+            orden_atrasada_5_dias: '<i class="bi bi-clock-history" style="color:#ef4444;"></i>'
         };
 
         var html = '';

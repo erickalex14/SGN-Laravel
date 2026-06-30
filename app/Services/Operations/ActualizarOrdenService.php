@@ -152,6 +152,8 @@ class ActualizarOrdenService
                     $orden->nro_factura_2 = $dto->nro_factura_2;
                     $orden->nro_sucursal_cliente = $dto->nro_sucursal_cliente;
                     $orden->fecha_facturacion = $dto->fecha_facturacion;
+                    $orden->transferencia_plataforma = $dto->transferencia_plataforma;
+                    $orden->transferencia_numero = $dto->transferencia_numero;
                     if ($orden->estado_garantia === null) {
                         $orden->estado_garantia = 'Pendiente';
                     }
@@ -167,8 +169,12 @@ class ActualizarOrdenService
                 $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
                 // Cierre automatico si el estado corresponde
+                $esGarantiaNcSinTransfer = (in_array(strtoupper(trim($orden->estado_orden)), ['NOTA DE CREDITO', 'NOTA DE CRÉDITO'], true))
+                    && mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia'
+                    && empty($orden->transferencia_numero);
+
                 if (in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
-                    if (! $orden->fecha_finalizacion) {
+                    if (! $orden->fecha_finalizacion && !$esGarantiaNcSinTransfer) {
                         $orden->fecha_finalizacion = $orden->fecha_modificacion;
                     }
                     if ($orden->estado_orden === 'Entregada' || $orden->estado_orden === 'ENTREGADO') {
@@ -178,7 +184,19 @@ class ActualizarOrdenService
                     }
                 }
 
+                $tecnicoAnterior = (int) ($orden->getOriginal('tecnico_id') ?? 0);
                 $orden->save();
+
+                $tecnicoNuevo = (int) $orden->tecnico_id;
+                if ($tecnicoNuevo !== $tecnicoAnterior && $tecnicoNuevo > 0) {
+                    \App\Models\Identity\Notificacion::create([
+                        'usuario_id' => $tecnicoNuevo,
+                        'tipo' => 'orden_asignada',
+                        'mensaje' => "Se te ha asignado una nueva orden: {$orden->nro_orden}",
+                        'orden_id' => $orden->id,
+                        'nro_orden' => $orden->nro_orden,
+                    ]);
+                }
 
                 Log::info('Orden de servicio actualizada mediante modulo de edicion.', [
                     'orden_id' => $orden->id,
@@ -269,7 +287,19 @@ class ActualizarOrdenService
                     }
                 }
 
+                $tecnicoAnterior = (int) ($orden->getOriginal('tecnico_id') ?? 0);
                 $orden->save();
+
+                $tecnicoNuevo = (int) $orden->tecnico_id;
+                if ($tecnicoNuevo !== $tecnicoAnterior && $tecnicoNuevo > 0) {
+                    \App\Models\Identity\Notificacion::create([
+                        'usuario_id' => $tecnicoNuevo,
+                        'tipo' => 'orden_asignada',
+                        'mensaje' => "Se te ha asignado una nueva orden de empresa: {$orden->nro_orden}",
+                        'orden_id' => $orden->id,
+                        'nro_orden' => $orden->nro_orden,
+                    ]);
+                }
 
                 // 2. Actualizar datos del Equipo
                 $equipo = Equipo::find((int) $data['equipo_id']);

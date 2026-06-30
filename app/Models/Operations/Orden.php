@@ -19,6 +19,8 @@ class Orden extends Model
     // Las columnas de timestamp no siguen convención
     public $timestamps = false;
 
+    protected $appends = ['nc_estado', 'nc_motivo_rechazo'];
+
     protected $fillable = [
         'nro_orden',
         'nro_factura',
@@ -50,7 +52,9 @@ class Orden extends Model
         'observacion',
         'tipo_servicio_id',
         'tipo_servicio_texto',
-        'fecha_facturacion'
+        'fecha_facturacion',
+        'transferencia_plataforma',
+        'transferencia_numero'
     ];
 
     public function cliente()
@@ -126,5 +130,15 @@ class Orden extends Model
     public function llamadas()
     {
         return $this->hasMany(LlamadaOrden::class, 'orden_id')->latest('fecha_hora');
+    }
+
+    public function getNcEstadoAttribute()
+    {
+        return $this->solicitudesNc->first()->estado ?? null;
+    }
+
+    public function getNcMotivoRechazoAttribute()
+    {
+        return $this->solicitudesNc->first()->motivo_rechazo ?? null;
     }
 }

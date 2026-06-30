@@ -286,6 +286,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/operaciones/mis-ordenes/reasignar', [MisOrdenesController::class, 'reasignarTecnico'])->name('mis_ordenes.reasignar');
         Route::post('/operaciones/mis-ordenes/llamadas/registrar', [MisOrdenesController::class, 'registrarLlamada'])->name('ordenes.llamadas.registrar');
         Route::post('/operaciones/mis-ordenes/enviar-email', [MisOrdenesController::class, 'enviarEmailCliente'])->name('mis_ordenes.enviar_email');
+        Route::post('/operaciones/mis-ordenes/registrar-transferencia', [MisOrdenesController::class, 'registrarTransferencia'])->name('mis_ordenes.registrar_transferencia');
     });
 
     Route::middleware(['permiso:ordenes_asignadas,ver'])->group(function () {

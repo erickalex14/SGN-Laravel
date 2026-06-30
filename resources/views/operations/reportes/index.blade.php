@@ -453,6 +453,7 @@
                         <th onclick="sortTabla(19,'estado_repuesto')">Repuesto</th>
                         <th onclick="sortTabla(20,'estado_garantia')">Garantía</th>
                         <th onclick="sortTabla(21,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(30,'transferencia_numero')">Transferencia</th>
                         <th onclick="sortTabla(22,'dias_transcurridos')">Días</th>
                         <th onclick="sortTabla(23,'fecha_prometido')">F. Prometido</th>
                         <th onclick="sortTabla(24,'fecha_entrega')">F. Entrega</th>
@@ -499,6 +500,8 @@ const ESTADO_C = {
     'Finalizada'      : { bg:'#dcfce7', fg:'#166534', ch:'#22c55e' },
     'Entregada'       : { bg:'#ecfdf5', fg:'#065f46', ch:'#10b981' },
     'Nota de Credito' : { bg:'#fce7f3', fg:'#9d174d', ch:'#ec4899' },
+    'NC Aprobada-Abierta' : { bg:'#ffedd5', fg:'#9a3412', ch:'#f97316' },
+    'NC Aprobada-Cerrada' : { bg:'#dcfce7', fg:'#166534', ch:'#22c55e' },
     'Abierta'         : { bg:'#e0e7ff', fg:'#3730a3', ch:'#6366f1' },
 };
 const PAL = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#14b8a6'];
@@ -549,6 +552,8 @@ function normalizeRow(raw) {
         vencida           : raw.vencida || false,
         valor_novicompu   : raw.valor_novicompu ?? 0.00,
         valor_otra_empresa: raw.valor_otra_empresa ?? 0.00,
+        transferencia_plataforma: raw.transferencia_plataforma || '',
+        transferencia_numero: raw.transferencia_numero || '',
     };
 }
 
@@ -809,6 +814,7 @@ function renderTabla() {
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_garantia)}</td>
             <td><span class="estado-badge" style="background:${ec.bg};color:${ec.fg};">${esc(r.estado_orden)}</span></td>
+            <td>${r.transferencia_numero ? `<span style="font-size:10.5px; font-weight:600; color:#374151;">${esc(r.transferencia_plataforma)}: ${esc(r.transferencia_numero)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
             <td style="text-align:center;font-weight:700;color:${dC};">${r.dias_transcurridos}d</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_prometido || '—')}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_entrega || '—')}</td>
@@ -923,6 +929,7 @@ function exportarCSV() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Plataforma Transferencia', 'Número Transferencia',
         'Técnico','Sucursal','Sucursal Cliente','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
@@ -940,7 +947,9 @@ function exportarCSV() {
             r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia,
-            r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
+            r.estado_orden,
+            r.transferencia_plataforma || '', r.transferencia_numero || '',
+            r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
             r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
@@ -1009,6 +1018,8 @@ async function exportarXLSX() {
         'Finalizada':     { bg:C.verdeL, fg:C.verde  },
         'Entregada':      { bg:C.verdeXL,fg:C.verdeO },
         'Nota de Credito':{ bg:C.rojoL,  fg:C.rojo   },
+        'NC Aprobada-Abierta':{ bg:C.ambarL, fg:C.ambar },
+        'NC Aprobada-Cerrada':{ bg:C.verdeL, fg:C.verde },
         'Abierta':        { bg:C.indigoL,fg:C.indigo },
     };
     const fl = a => ({ type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+a } });
@@ -1032,6 +1043,7 @@ async function exportarXLSX() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Plataforma Transferencia', 'Número Transferencia',
         'Técnico','Ingresado por',
         'Sucursal',
         'Sucursal Cliente',
@@ -1044,7 +1056,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,20,16,22,16,12,16,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,22,22,20,16,22,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1158,6 +1170,7 @@ async function exportarXLSX() {
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
+            r.transferencia_plataforma || '', r.transferencia_numero || '',
             r.tecnico_nombre, '',
             r.sucursal_nombre,
             r.sucursal_cliente || '',
@@ -1176,11 +1189,11 @@ async function exportarXLSX() {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 31 || ci === 32) { 
+            else if (ci === 33 || ci === 34) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 31 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 33 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }
