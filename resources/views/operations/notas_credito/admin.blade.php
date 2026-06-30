@@ -476,7 +476,7 @@ window.exportarAuditoriaNC = function(tipo) {
         alert('No hay datos filtrados para exportar.');
         return;
     }
-
+    if (tipo === 'csv') {
         let csvContent = "\uFEFF"; // BOM para caracteres UTF-8 en Excel
         const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Tecnico Solicitante", "Orden Relacionada", "Factura", "Estado", "Transf. Inventario"];
         csvContent += headers.join(",") + "\r\n";
