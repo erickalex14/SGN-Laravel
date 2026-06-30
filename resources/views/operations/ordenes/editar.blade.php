@@ -332,7 +332,7 @@
                         </select>
                     </div>
                     <div class="campo" id="bloque-transferencia" style="display: {{ $orden->motivo_ingreso === 'Validacion de Garantia' ? 'block' : 'none' }};">
-                        <label>Plataforma de Transferencia</label>
+                        <label>Plataforma de Transferencia de Inventario</label>
                         <select id="transferencia_plataforma">
                             <option value="">-- Seleccione --</option>
                             <option value="MBA3" {{ $orden->transferencia_plataforma === 'MBA3' ? 'selected' : '' }}>MBA3</option>
@@ -340,8 +340,8 @@
                             <option value="Otros" {{ $orden->transferencia_plataforma === 'Otros' ? 'selected' : '' }}>Otros</option>
                         </select>
                         <div style="margin-top:10px;">
-                            <label>Número de Transferencia</label>
-                            <input type="text" id="transferencia_numero" value="{{ $orden->transferencia_numero }}" placeholder="Ingrese número de transferencia...">
+                            <label>Número de Transferencia de Inventario</label>
+                            <input type="text" id="transferencia_numero" value="{{ $orden->transferencia_numero }}" placeholder="Ingrese número de transferencia de inventario...">
                         </div>
                     </div>
                     <div class="campo">

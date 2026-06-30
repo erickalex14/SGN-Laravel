@@ -453,7 +453,7 @@
                         <th onclick="sortTabla(19,'estado_repuesto')">Repuesto</th>
                         <th onclick="sortTabla(20,'estado_garantia')">Garantía</th>
                         <th onclick="sortTabla(21,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(30,'transferencia_numero')">Transferencia</th>
+                        <th onclick="sortTabla(30,'transferencia_numero')">Transf. Inventario</th>
                         <th onclick="sortTabla(22,'dias_transcurridos')">Días</th>
                         <th onclick="sortTabla(23,'fecha_prometido')">F. Prometido</th>
                         <th onclick="sortTabla(24,'fecha_entrega')">F. Entrega</th>
@@ -929,7 +929,7 @@ function exportarCSV() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Plataforma Transferencia', 'Número Transferencia',
+        'Plataforma Transferencia Inventario', 'Número Transferencia Inventario',
         'Técnico','Sucursal','Sucursal Cliente','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
@@ -1043,7 +1043,7 @@ async function exportarXLSX() {
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Plataforma Transferencia', 'Número Transferencia',
+        'Plataforma Transf. Inventario', 'Número Transf. Inventario',
         'Técnico','Ingresado por',
         'Sucursal',
         'Sucursal Cliente',

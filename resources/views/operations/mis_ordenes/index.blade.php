@@ -1625,8 +1625,8 @@ function verDetalleOrden(cardEl) {
                 ${(o.estado_orden === 'Nota de Credito' && (o.motivo_ingreso || '') === 'Validacion de Garantia' && o.nc_estado === 'Aprobada') ? `
                     ${!o.transferencia_numero ? `
                         <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:10px; padding:12px; margin-top:14px; margin-bottom:12px;">
-                            <h5 style="color:#856404; font-size:12px; font-weight:700; margin:0 0 6px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Transferencia Bancaria Requerida</h5>
-                            <p style="font-size:11.5px; color:#856404; margin:0 0 10px;">La Nota de Crédito está aprobada. Registra la transferencia para cerrar la orden:</p>
+                            <h5 style="color:#856404; font-size:12px; font-weight:700; margin:0 0 6px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Transferencia de Inventario Requerida</h5>
+                            <p style="font-size:11.5px; color:#856404; margin:0 0 10px;">La Nota de Crédito está aprobada. Registra la transferencia de inventario para cerrar la orden:</p>
                             <div style="margin-bottom:8px;">
                                 <select id="det-plataforma" style="width:100%; border:1.5px solid #ffeeba; border-radius:6px; padding:6px; font-size:12px; background:#fff;">
                                     <option value="MBA3">MBA3</option>
@@ -1635,7 +1635,7 @@ function verDetalleOrden(cardEl) {
                                 </select>
                             </div>
                             <div style="margin-bottom:10px;">
-                                <input type="text" id="det-numero" placeholder="Número de transferencia..." style="width:100%; border:1.5px solid #ffeeba; border-radius:6px; padding:6px; font-size:12px; box-sizing:border-box;">
+                                <input type="text" id="det-numero" placeholder="Nro. transferencia de inventario..." style="width:100%; border:1.5px solid #ffeeba; border-radius:6px; padding:6px; font-size:12px; box-sizing:border-box;">
                             </div>
                             <button type="button" class="btn-mini-rep" style="width:100%; font-weight:700; text-align:center; padding:6px 0; background:#d97706; color:#fff;" onclick="registrarTransferenciaDetalle(${Number(o.id)})">
                                 Registrar y Cerrar
@@ -1646,7 +1646,7 @@ function verDetalleOrden(cardEl) {
                             <h5 style="font-size:12px; font-weight:700; margin:0 0 4px;"><i class="bi bi-check-circle-fill me-1"></i>Orden Cerrada por NC</h5>
                             <p style="font-size:11.5px; margin:0;">
                                 <b>Plataforma:</b> ${_h(o.transferencia_plataforma)} <br>
-                                <b>Transferencia:</b> ${_h(o.transferencia_numero)}
+                                <b>Transf. Inventario:</b> ${_h(o.transferencia_numero)}
                             </p>
                         </div>
                     `}
@@ -1950,8 +1950,8 @@ function abrirPopupTransferencia(o) {
         title: 'Nota de Crédito Aprobada',
         html: `
             <p style="font-size:14px; text-align:left; color:#4b5563; margin-bottom:15px; line-height:1.4;">
-                Tu nota de crédito para la orden <b>\${_h(o.nro_orden)}</b> ha sido aprobada. 
-                <br>Para poder cerrar la orden, debes ingresar el número de transferencia bancaria:
+                Tu nota de crédito para la orden <b>${_h(o.nro_orden)}</b> ha sido aprobada. 
+                <br>Para poder cerrar la orden, debes ingresar el número de transferencia de inventario:
             </p>
             <div style="text-align:left; margin-bottom:12px;">
                 <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Plataforma</label>
@@ -1962,8 +1962,8 @@ function abrirPopupTransferencia(o) {
                 </select>
             </div>
             <div style="text-align:left; margin-bottom:15px;">
-                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia</label>
-                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia de Inventario</label>
+                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia de inventario..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
             </div>
         `,
         icon: 'info',
@@ -1976,7 +1976,7 @@ function abrirPopupTransferencia(o) {
             const plataforma = document.getElementById('swal-plataforma').value;
             const numero = document.getElementById('swal-numero').value.trim();
             if (!numero) {
-                Swal.showValidationMessage('Por favor ingrese el número de transferencia');
+                Swal.showValidationMessage('Por favor ingrese el número de transferencia de inventario');
                 return false;
             }
             return { plataforma, numero };
@@ -2044,7 +2044,7 @@ function registrarTransferenciaDetalle(ordenId) {
     const plataforma = document.getElementById('det-plataforma').value;
     const numero = document.getElementById('det-numero').value.trim();
     if (!numero) {
-        mostrarAlertaEstetica('Por favor, ingresa el número de transferencia.', 'warning', 'Número Requerido');
+        mostrarAlertaEstetica('Por favor, ingresa el número de transferencia de inventario.', 'warning', 'Número Requerido');
         return;
     }
     guardarTransferenciaAjax(ordenId, plataforma, numero);
