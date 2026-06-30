@@ -1748,7 +1748,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pagerContainerSelector: '#mo-pager',
         pageSize: 12
     });
-    setTimeout(verificarTransferenciasPendientes, 1000);
 });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
