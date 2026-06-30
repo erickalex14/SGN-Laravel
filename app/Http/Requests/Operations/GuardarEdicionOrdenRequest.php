@@ -18,6 +18,10 @@ class GuardarEdicionOrdenRequest extends FormRequest
 
     public function rules(): array
     {
+        $isEmpresaRuc = $this->input('cli_tipo') === 'empresa' || 
+            (strlen(trim((string)$this->input('cli_identificacion'))) === 13 && 
+            ($this->input('cli_apellidos') === '.' || !$this->input('cli_apellidos')));
+
         return [
             'orden_id' => ['required', 'integer', 'exists:ordenes,id'],
             'equipo_id' => ['required', 'integer', 'exists:equipos,id'],
@@ -33,8 +37,18 @@ class GuardarEdicionOrdenRequest extends FormRequest
 
             // Campos de cliente
             'cli_identificacion' => ['required', 'string', new EcuadorIdentificacion],
-            'cli_nombres' => ['required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
-            'cli_apellidos' => ['required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_nombres' => [
+                'required', 
+                'string', 
+                'max:100', 
+                $isEmpresaRuc ? 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-#&()\/]+$/' : 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'
+            ],
+            'cli_apellidos' => [
+                $isEmpresaRuc ? 'nullable' : 'required', 
+                'string', 
+                'max:100', 
+                'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.]+$/'
+            ],
             'cli_telefono' => ['required', 'string', new EcuadorTelefono],
             'cli_correo' => ['nullable', 'email', 'max:100'],
             'cli_direccion' => ['nullable', 'string', 'max:200'],

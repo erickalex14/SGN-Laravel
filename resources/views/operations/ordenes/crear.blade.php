@@ -985,6 +985,7 @@
             <div class="seccion-hdr"><i class="bi bi-person-badge"></i> Datos del Cliente</div>
 
             <div class="seccion-body">
+                <input type="hidden" id="cli_tipo" name="cli_tipo" value="natural">
 
                 <div class="grid-3" style="margin-bottom: 18px;">
 
@@ -1973,6 +1974,8 @@ function sincronizarTecnicoDesdeSelect() {
 
 
 
+let _rucModalShowedFor = '';
+
 async function buscarClienteAjax() {
 
     const iden = (document.getElementById('cli_identificacion')?.value || '').trim();
@@ -2015,6 +2018,13 @@ async function buscarClienteAjax() {
 
             document.getElementById('cli_direccion').value = d.cliente.direccion_clientes || '';
 
+            if (d.cliente.apellidos === '.') {
+                setClienteTipoVista('empresa', d.cliente.nombres);
+            } else {
+                setClienteTipoVista('natural');
+            }
+            _rucModalShowedFor = d.cliente.identificacion;
+
             if (statusEl) {
 
                 statusEl.innerHTML = '<i class="bi bi-check-circle-fill"></i> Cliente encontrado';
@@ -2024,6 +2034,7 @@ async function buscarClienteAjax() {
             }
 
         } else {
+            verificarRucTipo(iden);
 
             if (statusEl) {
 
@@ -2047,6 +2058,95 @@ async function buscarClienteAjax() {
 
     }
 
+}
+
+function verificarRucTipo(identificacion) {
+    const iden = (identificacion || '').trim();
+    if (iden.length !== 13) {
+        setClienteTipoVista('natural');
+        return;
+    }
+    if (_rucModalShowedFor === iden) {
+        return;
+    }
+    _rucModalShowedFor = iden;
+
+    Swal.fire({
+        title: 'Tipo de Contribuyente (RUC)',
+        text: 'El número ingresado es un RUC. ¿Corresponde a una persona natural o a una empresa?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Empresa / Persona Jurídica',
+        cancelButtonText: 'Persona Natural',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#4b5563',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            pedirNombreEmpresa();
+        } else {
+            setClienteTipoVista('natural');
+        }
+    });
+}
+
+function pedirNombreEmpresa() {
+    Swal.fire({
+        title: 'Nombre de la Empresa',
+        input: 'text',
+        inputLabel: 'Razón Social / Nombre Comercial',
+        placeholder: 'Ingrese el nombre de la empresa...',
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: '#2563eb',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        inputValidator: (value) => {
+            const val = (value || '').trim();
+            if (!val) {
+                return 'El nombre de la empresa es requerido.';
+            }
+            const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-#&()\/]+$/;
+            if (!regex.test(val)) {
+                return 'El nombre de la empresa contiene caracteres no válidos. Permitidos: letras, números, espacios, y signos (. , - # & ( ) /)';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const nombreEmpresa = result.value.trim().toUpperCase();
+            setClienteTipoVista('empresa', nombreEmpresa);
+        }
+    });
+}
+
+function setClienteTipoVista(tipo, nombreEmpresa = '') {
+    const hiddenTipo = document.getElementById('cli_tipo');
+    const inpNombres = document.getElementById('cli_nombres');
+    const inpApellidos = document.getElementById('cli_apellidos');
+    
+    if (!hiddenTipo || !inpNombres || !inpApellidos) return;
+    
+    const labelNombres = inpNombres.closest('.campo').querySelector('label');
+    const wrapperApellidos = inpApellidos.closest('.campo');
+
+    if (tipo === 'empresa') {
+        hiddenTipo.value = 'empresa';
+        inpNombres.value = nombreEmpresa;
+        inpApellidos.value = '.';
+        inpApellidos.required = false;
+        
+        labelNombres.innerHTML = 'Razón Social / Nombre de la Empresa <span class="req">*</span>';
+        wrapperApellidos.style.display = 'none';
+    } else {
+        hiddenTipo.value = 'natural';
+        if (inpApellidos.value === '.') {
+            inpApellidos.value = '';
+        }
+        inpApellidos.required = true;
+        
+        labelNombres.innerHTML = 'Nombre <span class="req">*</span>';
+        wrapperApellidos.style.display = 'block';
+    }
 }
 
 

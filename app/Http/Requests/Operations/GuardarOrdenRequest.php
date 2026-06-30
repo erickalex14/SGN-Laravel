@@ -25,6 +25,10 @@ class GuardarOrdenRequest extends FormRequest
         $garantiaExterna = in_array(strtolower((string) $this->input('garantia_tipo')), ['externa'], true);
         $todayEcuador = Carbon::now('America/Guayaquil')->format('Y-m-d');
 
+        $isEmpresaRuc = $this->input('cli_tipo') === 'empresa' || 
+            (strlen(trim((string)$this->input('cli_identificacion'))) === 13 && 
+            ($this->input('cli_apellidos') === '.' || !$this->input('cli_apellidos')));
+
         $reglas = [
             // Validacion de Cliente
             'cli_identificacion' => [
@@ -32,8 +36,18 @@ class GuardarOrdenRequest extends FormRequest
                 'string',
                 new EcuadorIdentificacion,
             ],
-            'cli_nombres' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
-            'cli_apellidos' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:100', 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'],
+            'cli_nombres' => [
+                $esEmpresa ? 'nullable' : 'required', 
+                'string', 
+                'max:100', 
+                $isEmpresaRuc ? 'regex:/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-#&()\/]+$/' : 'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/'
+            ],
+            'cli_apellidos' => [
+                $esEmpresa || $isEmpresaRuc ? 'nullable' : 'required', 
+                'string', 
+                'max:100', 
+                'regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.]+$/'
+            ],
             'cli_telefono' => [
                 $esEmpresa ? 'nullable' : 'required',
                 'string',

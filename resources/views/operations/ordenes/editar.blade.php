@@ -162,6 +162,7 @@
     <form id="form-edicion" onsubmit="event.preventDefault(); guardarActualizacion();">
         <input type="hidden" id="orden_id" value="{{ $orden->id }}">
         <input type="hidden" id="equipo_id" value="{{ $orden->equipo_id }}">
+        <input type="hidden" id="cli_tipo" value="{{ $orden->cliente->apellidos === '.' ? 'empresa' : 'natural' }}">
 
         <!-- Datos del Cliente -->
         <div class="seccion-form">
@@ -536,6 +537,7 @@ async function guardarActualizacion() {
     fd.append('nro_sucursal_cliente', document.getElementById('nro_sucursal_cliente').value);
 
     // Datos del cliente
+    fd.append('cli_tipo', document.getElementById('cli_tipo').value);
     fd.append('cli_identificacion', document.getElementById('cli_identificacion').value.trim());
     fd.append('cli_nombres', document.getElementById('cli_nombres').value.trim());
     fd.append('cli_apellidos', document.getElementById('cli_apellidos').value.trim());
@@ -614,6 +616,32 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDynamicValidation(document.getElementById('cli_correo'), EcuadorianValidator.validarEmail, (v) => {
         return 'El correo electrónico no tiene un formato válido.';
     });
+
+    // Inicializar vista del cliente según apellidos actuales al cargar
+    const currentApellidos = document.getElementById('cli_apellidos')?.value || '';
+    if (currentApellidos === '.') {
+        setClienteTipoVista('empresa', document.getElementById('cli_nombres').value);
+    } else {
+        setClienteTipoVista('natural');
+    }
+
+    const inpCi = document.getElementById('cli_identificacion');
+    if (inpCi) {
+        inpCi.addEventListener('input', () => {
+            const val = inpCi.value.trim();
+            if (val.length === 13) {
+                verificarRucTipo(val);
+            } else if (val.length < 13) {
+                setClienteTipoVista('natural');
+            }
+        });
+        inpCi.addEventListener('blur', () => {
+            const val = inpCi.value.trim();
+            if (val.length === 13) {
+                verificarRucTipo(val);
+            }
+        });
+    }
 });
 
 function actualizarCantidad() {
@@ -730,6 +758,97 @@ function formatearFactura(input) {
 function onInputFactura(input) {
     formatearFactura(input);
     autoseleccionarSucursalPorFactura(input.value);
+}
+
+let _rucModalShowedFor = '';
+
+function verificarRucTipo(identificacion) {
+    const iden = (identificacion || '').trim();
+    if (iden.length !== 13) {
+        setClienteTipoVista('natural');
+        return;
+    }
+    if (_rucModalShowedFor === iden) {
+        return;
+    }
+    _rucModalShowedFor = iden;
+
+    Swal.fire({
+        title: 'Tipo de Contribuyente (RUC)',
+        text: 'El número ingresado es un RUC. ¿Corresponde a una persona natural o a una empresa?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Empresa / Persona Jurídica',
+        cancelButtonText: 'Persona Natural',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#4b5563',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            pedirNombreEmpresa();
+        } else {
+            setClienteTipoVista('natural');
+        }
+    });
+}
+
+function pedirNombreEmpresa() {
+    Swal.fire({
+        title: 'Nombre de la Empresa',
+        input: 'text',
+        inputLabel: 'Razón Social / Nombre Comercial',
+        placeholder: 'Ingrese el nombre de la empresa...',
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: '#2563eb',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        inputValidator: (value) => {
+            const val = (value || '').trim();
+            if (!val) {
+                return 'El nombre de la empresa es requerido.';
+            }
+            const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-#&()\/]+$/;
+            if (!regex.test(val)) {
+                return 'El nombre de la empresa contiene caracteres no válidos. Permitidos: letras, números, espacios, y signos (. , - # & ( ) /)';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const nombreEmpresa = result.value.trim().toUpperCase();
+            setClienteTipoVista('empresa', nombreEmpresa);
+        }
+    });
+}
+
+function setClienteTipoVista(tipo, nombreEmpresa = '') {
+    const hiddenTipo = document.getElementById('cli_tipo');
+    const inpNombres = document.getElementById('cli_nombres');
+    const inpApellidos = document.getElementById('cli_apellidos');
+    
+    if (!hiddenTipo || !inpNombres || !inpApellidos) return;
+    
+    const labelNombres = inpNombres.closest('.campo').querySelector('label');
+    const wrapperApellidos = inpApellidos.closest('.campo');
+
+    if (tipo === 'empresa') {
+        hiddenTipo.value = 'empresa';
+        inpNombres.value = nombreEmpresa;
+        inpApellidos.value = '.';
+        inpApellidos.required = false;
+        
+        labelNombres.innerHTML = 'Razón Social / Nombre de la Empresa <span class="req">*</span>';
+        wrapperApellidos.style.display = 'none';
+    } else {
+        hiddenTipo.value = 'natural';
+        if (inpApellidos.value === '.') {
+            inpApellidos.value = '';
+        }
+        inpApellidos.required = true;
+        
+        labelNombres.innerHTML = 'Nombre <span class="req">*</span>';
+        wrapperApellidos.style.display = 'block';
+    }
 }
 </script>
 @endpush
