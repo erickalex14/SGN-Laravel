@@ -178,7 +178,8 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                     <th>Técnico Solicitante</th>
                     <th>Orden Afectada</th>
                     <th>Informe Técnico</th>
-                    <th>Estado</th>
+                    <th>Estado NC</th>
+                    <th>Transf. Inventario</th>
                     <th style="text-align:right;" class="no-print">Acción</th>
                 </tr>
             </thead>
@@ -231,6 +232,25 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                             @endif
                         </td>
                         <td><span class="status-badge {{ $clase }} audit-estado">{{ $nc->estado }}</span></td>
+                        <td>
+                            @if($estadoNC === 'APROBADA' && $nc->orden)
+                                @if(empty($nc->orden->transferencia_numero))
+                                    <span class="status-badge" style="background:#fef9c3; color:#854d0e; font-weight:700;">Pendiente</span>
+                                    <button class="btn-print" style="margin-top:6px; background:#eff6ff; color:#2563eb; border-color:#bfdbfe; font-size:11px; padding:3px 8px; display:block; font-weight:700; width:100%; text-align:center;" onclick="registrarTransferenciaDirecta({{ $nc->orden_id }}, '{{ $nc->orden->nro_orden }}')">
+                                        <i class="bi bi-plus-circle me-1"></i>Registrar
+                                    </button>
+                                @else
+                                    <span class="status-badge" style="background:#dcfce7; color:#166534; font-weight:700;">Registrada</span>
+                                    <div style="font-size:11px; color:#475569; margin-top:4px; font-family:monospace; font-weight:600;">{{ $nc->orden->transferencia_plataforma }}: {{ $nc->orden->transferencia_numero }}</div>
+                                    <button class="btn-print" style="margin-top:4px; background:#f8fafc; color:#64748b; border-color:#cbd5e1; font-size:10px; padding:2px 6px; display:block; width:100%; text-align:center;" onclick="registrarTransferenciaDirecta({{ $nc->orden_id }}, '{{ $nc->orden->nro_orden }}', '{{ $nc->orden->transferencia_plataforma }}', '{{ $nc->orden->transferencia_numero }}')">
+                                        <i class="bi bi-pencil me-1"></i>Editar
+                                    </button>
+                                @endif
+                            @else
+                                <span style="color:#94a3b8; font-style:italic;">No aplica</span>
+                            @endif
+                        </td>
+                        <td class="audit-transferencia" style="display:none;">{{ $nc->orden ? ($nc->orden->transferencia_numero ? $nc->orden->transferencia_plataforma . ': ' . $nc->orden->transferencia_numero : '-') : '-' }}</td>
                         <td style="text-align:right;" class="no-print">
                             <div style="display:inline-flex; gap:6px; justify-content:flex-end;">
                                 <button class="btn-print" style="background:#f8fafc; color:#475569; border-color:#cbd5e1; font-weight:700;" onclick="abrirGestion({{ json_encode($nc) }}, true)">Detalles</button>
@@ -242,9 +262,9 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                         </td>
                     </tr>
                 @empty
-                    <tr id="nc-empty-row"><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8;">No hay solicitudes registradas.</td></tr>
+                    <tr id="nc-empty-row"><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No hay solicitudes registradas.</td></tr>
                 @endforelse
-                <tr id="nc-empty-row-filtered" style="display:none;"><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8;">No se encontraron solicitudes con los filtros aplicados.</td></tr>
+                <tr id="nc-empty-row-filtered" style="display:none;"><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No se encontraron solicitudes con los filtros aplicados.</td></tr>
             </tbody>
         </table>
         <div id="nca-pager" style="margin: 0 16px 16px;" class="no-print"></div>
@@ -457,9 +477,8 @@ window.exportarAuditoriaNC = function(tipo) {
         return;
     }
 
-    if (tipo === 'csv') {
         let csvContent = "\uFEFF"; // BOM para caracteres UTF-8 en Excel
-        const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Tecnico Solicitante", "Orden Relacionada", "Factura", "Estado"];
+        const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Tecnico Solicitante", "Orden Relacionada", "Factura", "Estado", "Transf. Inventario"];
         csvContent += headers.join(",") + "\r\n";
 
         rows.forEach(row => {
@@ -470,8 +489,9 @@ window.exportarAuditoriaNC = function(tipo) {
             const orden = row.querySelector('.audit-orden') ? row.querySelector('.audit-orden').innerText.trim() : '-';
             const factura = row.querySelector('.audit-factura') ? row.querySelector('.audit-factura').innerText.trim() : '-';
             const estado = row.querySelector('.audit-estado').innerText.trim();
+            const transferencia = row.querySelector('.audit-transferencia') ? row.querySelector('.audit-transferencia').innerText.trim() : '-';
 
-            const rowData = [nroSol, asunto, fecha, tecnico, orden, factura, estado];
+            const rowData = [nroSol, asunto, fecha, tecnico, orden, factura, estado, transferencia];
             csvContent += rowData.map(val => `"${val}"`).join(",") + "\r\n";
         });
 
@@ -508,7 +528,8 @@ window.exportarAuditoriaNC = function(tipo) {
                 { width: 28 }, // Técnico Solicitante
                 { width: 18 }, // Orden Relacionada
                 { width: 18 }, // Factura
-                { width: 15 }  // Estado
+                { width: 15 }, // Estado
+                { width: 22 }  // Transf. Inventario
             ];
 
             const C = {
@@ -527,7 +548,7 @@ window.exportarAuditoriaNC = function(tipo) {
             const al = (h = 'left', v = 'middle') => ({ horizontal: h, vertical: v });
 
             // 1. Fila de Título
-            ws.mergeCells('A1:G1');
+            ws.mergeCells('A1:H1');
             const t1 = ws.getCell('A1');
             t1.value = 'REPORTE DE AUDITORÍA — NOTAS DE CRÉDITO';
             t1.fill = fl(C.azulO);
@@ -536,7 +557,7 @@ window.exportarAuditoriaNC = function(tipo) {
             ws.getRow(1).height = 30;
 
             // 2. Fila de Metadatos
-            ws.mergeCells('A2:G2');
+            ws.mergeCells('A2:H2');
             const t2 = ws.getCell('A2');
             t2.value = `Generado: ${new Date().toLocaleString('es-EC')}   |   Registros: ${rows.length}`;
             t2.fill = fl(C.azulL);
@@ -554,13 +575,14 @@ window.exportarAuditoriaNC = function(tipo) {
                 const orden = row.querySelector('.audit-orden') ? row.querySelector('.audit-orden').innerText.trim() : '-';
                 const factura = row.querySelector('.audit-factura') ? row.querySelector('.audit-factura').innerText.trim() : '-';
                 const estado = row.querySelector('.audit-estado').innerText.trim();
+                const transferencia = row.querySelector('.audit-transferencia') ? row.querySelector('.audit-transferencia').innerText.trim() : '-';
 
                 const stUpper = estado.toUpperCase();
                 if (stUpper === 'APROBADA') aprobadas++;
                 else if (stUpper === 'RECHAZADA') rechazadas++;
                 else pendientes++;
 
-                return [nroSol, asunto, fecha, tecnico, orden, factura, estado];
+                return [nroSol, asunto, fecha, tecnico, orden, factura, estado, transferencia];
             });
 
             const total = rows.length;
@@ -604,7 +626,7 @@ window.exportarAuditoriaNC = function(tipo) {
             ws.getRow(7).height = 10;
 
             // 3. Fila de Encabezados
-            const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Técnico Solicitante", "Orden Relacionada", "Factura", "Estado"];
+            const headers = ["Nro. Solicitud", "Asunto", "Fecha", "Técnico Solicitante", "Orden Relacionada", "Factura", "Estado", "Transf. Inventario"];
             ws.getRow(8).height = 22;
             headers.forEach((h, idx) => {
                 const cell = ws.getCell(8, idx + 1);
@@ -614,7 +636,7 @@ window.exportarAuditoriaNC = function(tipo) {
                 cell.alignment = al('center');
                 cell.border = bd('1D4ED8');
             });
-            ws.autoFilter = 'A8:G8';
+            ws.autoFilter = 'A8:H8';
 
             // 4. Datos
             const EC = {
@@ -675,6 +697,79 @@ window.exportarAuditoriaNC = function(tipo) {
     }
 };
 @endverbatim
+
+window.registrarTransferenciaDirecta = function(ordenId, nroOrden, plataformaActual = '', numeroActual = '') {
+    const escHtml = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    Swal.fire({
+        title: 'Registrar Transferencia de Inventario',
+        html: `
+            <p style="font-size:14px; text-align:left; color:#4b5563; margin-bottom:15px; line-height:1.4;">
+                Registre los datos de la transferencia de inventario para la orden <b>${escHtml(nroOrden)}</b> para proceder al cierre definitivo de la misma:
+            </p>
+            <div style="text-align:left; margin-bottom:12px;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Plataforma</label>
+                <select id="swal-plataforma" class="swal2-select" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db; background:#fff;">
+                    <option value="MBA3" ${plataformaActual === 'MBA3' ? 'selected' : ''}>MBA3</option>
+                    <option value="Milenium" ${plataformaActual === 'Milenium' ? 'selected' : ''}>Milenium</option>
+                    <option value="Otros" ${plataformaActual === 'Otros' ? 'selected' : ''}>Otros</option>
+                </select>
+            </div>
+            <div style="text-align:left; margin-bottom:15px;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia de Inventario</label>
+                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia..." value="${escHtml(numeroActual)}" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Registrar y Cerrar Orden',
+        cancelButtonText: 'Cancelar',
+        allowOutsideClick: false,
+        preConfirm: () => {
+            const plataforma = document.getElementById('swal-plataforma').value;
+            const numero = document.getElementById('swal-numero').value.trim();
+            if (!numero) {
+                Swal.showValidationMessage('Por favor ingrese el número de transferencia de inventario');
+                return false;
+            }
+            return { plataforma, numero };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            guardarTransferenciaAdminAjax(ordenId, result.value.plataforma, result.value.numero);
+        }
+    });
+};
+
+async function guardarTransferenciaAdminAjax(ordenId, plataforma, numero) {
+    try {
+        const fd = new FormData();
+        fd.append('orden_id', ordenId);
+        fd.append('plataforma', plataforma);
+        fd.append('numero', numero);
+        fd.append('_token', '{{ csrf_token() }}');
+
+        const r = await fetch('{{ route("mis_ordenes.registrar_transferencia") }}', { 
+            method: 'POST', 
+            body: fd 
+        });
+        const d = await r.json();
+
+        if (d.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Registrado',
+                text: 'Transferencia guardada y orden cerrada correctamente.',
+                confirmButtonColor: '#2563eb'
+            }).then(() => {
+                window.location.reload();
+            });
+        } else {
+            throw new Error(d.error || 'Ocurrió un error inesperado');
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message || 'No se pudo guardar la transferencia.', 'error');
+    }
+}
 
 window.abrirReporteImpresion = function() {
     const q = document.getElementById('filtro-q').value.trim();
