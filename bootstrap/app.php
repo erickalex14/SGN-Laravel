@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('ordenes:verificar-antiguedad')->dailyAt('08:00');
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
 

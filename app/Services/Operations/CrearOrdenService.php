@@ -197,6 +197,16 @@ class CrearOrdenService
                         'cliente_id' => $cliente->id,
                     ]);
 
+                    if ($orden->tecnico_id) {
+                        \App\Models\Identity\Notificacion::create([
+                            'usuario_id' => $orden->tecnico_id,
+                            'tipo' => 'orden_asignada',
+                            'mensaje' => "Se te ha asignado una nueva orden: {$orden->nro_orden}",
+                            'orden_id' => $orden->id,
+                            'nro_orden' => $orden->nro_orden,
+                        ]);
+                    }
+
                     return $orden;
                 });
             });
@@ -208,7 +218,7 @@ class CrearOrdenService
             }
 
             return $orden;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Fallo transaccional al crear orden de servicio.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrió un error al generar la orden. Los cambios han sido revertidos.');
         }
@@ -332,6 +342,16 @@ class CrearOrdenService
                         'empresa_id' => (int) $data['empresa_id'],
                     ]);
 
+                    if ($orden->tecnico_id) {
+                        \App\Models\Identity\Notificacion::create([
+                            'usuario_id' => $orden->tecnico_id,
+                            'tipo' => 'orden_asignada',
+                            'mensaje' => "Se te ha asignado una nueva orden de empresa: {$orden->nro_orden}",
+                            'orden_id' => $orden->id,
+                            'nro_orden' => $orden->nro_orden,
+                        ]);
+                    }
+
                     return $orden;
                 });
             });
@@ -343,7 +363,7 @@ class CrearOrdenService
             }
 
             return $orden;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Fallo transaccional al crear orden de empresa.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrio un error al generar la orden de empresa. Los cambios han sido revertidos.');
         }

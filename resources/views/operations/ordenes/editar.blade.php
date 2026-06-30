@@ -331,6 +331,19 @@
                             <option value="Devuelto sin reparar" {{ in_array($orden->estado_orden, ['Devuelto sin reparar', 'DEVUELTO SIN REPARAR'], true) ? 'selected' : '' }}>Devuelto sin reparar</option>
                         </select>
                     </div>
+                    <div class="campo" id="bloque-transferencia" style="display: {{ $orden->motivo_ingreso === 'Validacion de Garantia' ? 'block' : 'none' }};">
+                        <label>Plataforma de Transferencia</label>
+                        <select id="transferencia_plataforma">
+                            <option value="">-- Seleccione --</option>
+                            <option value="MBA3" {{ $orden->transferencia_plataforma === 'MBA3' ? 'selected' : '' }}>MBA3</option>
+                            <option value="Milenium" {{ $orden->transferencia_plataforma === 'Milenium' ? 'selected' : '' }}>Milenium</option>
+                            <option value="Otros" {{ $orden->transferencia_plataforma === 'Otros' ? 'selected' : '' }}>Otros</option>
+                        </select>
+                        <div style="margin-top:10px;">
+                            <label>Número de Transferencia</label>
+                            <input type="text" id="transferencia_numero" value="{{ $orden->transferencia_numero }}" placeholder="Ingrese número de transferencia...">
+                        </div>
+                    </div>
                     <div class="campo">
                         <label>Fecha Prometida de Entrega</label>
                         <input type="date" id="fecha_prometido" value="{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('Y-m-d') : '' }}">
@@ -438,10 +451,12 @@ function toggleBloquesMotivo() {
     const bloqueFacturacion = document.getElementById('bloque-facturacion');
     const bloqueGarantia = document.getElementById('bloque-garantia');
     const bloqueCas = document.getElementById('bloque-cas');
+    const bloqueTransferencia = document.getElementById('bloque-transferencia');
     
     if (motivo === 'Validacion de Garantia') {
         if (bloqueFacturacion) bloqueFacturacion.style.display = 'block';
         if (bloqueGarantia) bloqueGarantia.style.display = 'block';
+        if (bloqueTransferencia) bloqueTransferencia.style.display = 'block';
         
         const garantiaTipo = document.getElementById('garantia_tipo').value;
         if (garantiaTipo === 'externa') {
@@ -453,6 +468,7 @@ function toggleBloquesMotivo() {
         if (bloqueFacturacion) bloqueFacturacion.style.display = 'none';
         if (bloqueGarantia) bloqueGarantia.style.display = 'none';
         if (bloqueCas) bloqueCas.style.display = 'none';
+        if (bloqueTransferencia) bloqueTransferencia.style.display = 'none';
     }
 }
 
@@ -490,6 +506,8 @@ async function guardarActualizacion() {
 
     fd.append('estado_orden', document.getElementById('estado_orden').value);
     fd.append('fecha_prometido', document.getElementById('fecha_prometido').value);
+    fd.append('transferencia_plataforma', document.getElementById('transferencia_plataforma') ? document.getElementById('transferencia_plataforma').value : '');
+    fd.append('transferencia_numero', document.getElementById('transferencia_numero') ? document.getElementById('transferencia_numero').value.trim() : '');
     fd.append('tecnico_id', document.getElementById('tecnico_id').value);
 
     fd.append('eq_falla', document.getElementById('eq_falla').value.trim());

@@ -44,6 +44,8 @@ readonly class ActualizarOrdenDTO
         // Nuevos campos de orden
         public ?string $motivo_ingreso = null,
         public ?string $garantia_tipo = null,
-        public ?string $observacion_orden = null
+        public ?string $observacion_orden = null,
+        public ?string $transferencia_plataforma = null,
+        public ?string $transferencia_numero = null
     ) {}
 }

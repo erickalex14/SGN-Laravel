@@ -240,6 +240,8 @@
             'credenciales' => $credenciales,
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
+            'transferencia_plataforma' => $esEmpresa ? null : $ord->transferencia_plataforma,
+            'transferencia_numero' => $esEmpresa ? null : $ord->transferencia_numero,
             'informe_id' => $informe ? (int) $informe->id : null,
             'repuestos_asignados' => collect($ord->ordenRepuestos ?? [])->map(fn($or) => [
                 'id' => (int) $or->id,
@@ -1620,6 +1622,36 @@ function verDetalleOrden(cardEl) {
                     <button type="button" class="btn-mini-rep" onclick="abrirModalEnviarEmail(${Number(o.id)}, 'personal')"><i class="bi bi-envelope me-1"></i>Enviar email</button>
                 </div>
 
+                ${(o.estado_orden === 'Nota de Credito' && (o.motivo_ingreso || '') === 'Validacion de Garantia' && o.nc_estado === 'Aprobada') ? `
+                    ${!o.transferencia_numero ? `
+                        <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:10px; padding:12px; margin-top:14px; margin-bottom:12px;">
+                            <h5 style="color:#856404; font-size:12px; font-weight:700; margin:0 0 6px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Transferencia Bancaria Requerida</h5>
+                            <p style="font-size:11.5px; color:#856404; margin:0 0 10px;">La Nota de Crédito está aprobada. Registra la transferencia para cerrar la orden:</p>
+                            <div style="margin-bottom:8px;">
+                                <select id="det-plataforma" style="width:100%; border:1.5px solid #ffeeba; border-radius:6px; padding:6px; font-size:12px; background:#fff;">
+                                    <option value="MBA3">MBA3</option>
+                                    <option value="Milenium">Milenium</option>
+                                    <option value="Otros">Otros</option>
+                                </select>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <input type="text" id="det-numero" placeholder="Número de transferencia..." style="width:100%; border:1.5px solid #ffeeba; border-radius:6px; padding:6px; font-size:12px; box-sizing:border-box;">
+                            </div>
+                            <button type="button" class="btn-mini-rep" style="width:100%; font-weight:700; text-align:center; padding:6px 0; background:#d97706; color:#fff;" onclick="registrarTransferenciaDetalle(${Number(o.id)})">
+                                Registrar y Cerrar
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="background:#d4edda; border:1px solid #c3e6cb; border-radius:10px; padding:12px; margin-top:14px; margin-bottom:12px; color:#155724;">
+                            <h5 style="font-size:12px; font-weight:700; margin:0 0 4px;"><i class="bi bi-check-circle-fill me-1"></i>Orden Cerrada por NC</h5>
+                            <p style="font-size:11.5px; margin:0;">
+                                <b>Plataforma:</b> ${_h(o.transferencia_plataforma)} <br>
+                                <b>Transferencia:</b> ${_h(o.transferencia_numero)}
+                            </p>
+                        </div>
+                    `}
+                ` : ''}
+
                 <div class="llamadas-section" style="margin-top: 14px; border-top: 1px dashed var(--mo-border); padding-top: 12px;">
                     <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:8px;">
                         <i class="bi bi-clock-history me-1"></i>Historial de Llamadas (${o.llamadas ? o.llamadas.length : 0}):
@@ -1716,6 +1748,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pagerContainerSelector: '#mo-pager',
         pageSize: 12
     });
+    setTimeout(verificarTransferenciasPendientes, 1000);
 });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -1895,6 +1928,126 @@ async function abrirModalEnviarEmail(ordenId, tipoOrden) {
     } catch (e) {
         Swal.fire('Error', 'Error de conexión con el servidor. Inténtalo de nuevo más tarde.', 'error');
     }
+}
+
+// Transferencia y cierre condicional para Notas de Crédito
+function verificarTransferenciasPendientes() {
+    if (typeof _moRows === 'undefined') return;
+    const ordenPendiente = _moRows.find(o => 
+        o.estado_orden === 'Nota de Credito' &&
+        o.nc_estado === 'Aprobada' &&
+        (o.motivo_ingreso || '') === 'Validacion de Garantia' &&
+        !o.transferencia_numero
+    );
+
+    if (ordenPendiente) {
+        abrirPopupTransferencia(ordenPendiente);
+    }
+}
+
+function abrirPopupTransferencia(o) {
+    Swal.fire({
+        title: 'Nota de Crédito Aprobada',
+        html: `
+            <p style="font-size:14px; text-align:left; color:#4b5563; margin-bottom:15px; line-height:1.4;">
+                Tu nota de crédito para la orden <b>\${_h(o.nro_orden)}</b> ha sido aprobada. 
+                <br>Para poder cerrar la orden, debes ingresar el número de transferencia bancaria:
+            </p>
+            <div style="text-align:left; margin-bottom:12px;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Plataforma</label>
+                <select id="swal-plataforma" class="swal2-select" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db; background:#fff;">
+                    <option value="MBA3">MBA3</option>
+                    <option value="Milenium">Milenium</option>
+                    <option value="Otros">Otros</option>
+                </select>
+            </div>
+            <div style="text-align:left; margin-bottom:15px;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia</label>
+                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Registrar y Cerrar Orden',
+        cancelButtonText: 'Aún no está lista la transferencia',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        preConfirm: () => {
+            const plataforma = document.getElementById('swal-plataforma').value;
+            const numero = document.getElementById('swal-numero').value.trim();
+            if (!numero) {
+                Swal.showValidationMessage('Por favor ingrese el número de transferencia');
+                return false;
+            }
+            return { plataforma, numero };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            guardarTransferenciaAjax(o.id, result.value.plataforma, result.value.numero);
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            Swal.fire({
+                title: 'Información',
+                html: 'Puedes ingresar este número más tarde desde el panel de <b>Gestionar Orden</b> de esta orden.',
+                icon: 'warning',
+                confirmButtonText: 'Entendido'
+            });
+        }
+    });
+}
+
+async function guardarTransferenciaAjax(ordenId, plataforma, numero) {
+    try {
+        Swal.fire({
+            title: 'Procesando...',
+            text: 'Registrando transferencia y cerrando orden',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const res = await fetch('{{ route("mis_ordenes.registrar_transferencia") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': _moCsrf
+            },
+            body: JSON.stringify({
+                orden_id: ordenId,
+                plataforma: plataforma,
+                numero: numero
+            })
+        });
+
+        const d = await res.json();
+        if (d.ok) {
+            const row = _moRows.find(x => Number(x.id) === Number(ordenId));
+            if (row) {
+                row.transferencia_plataforma = plataforma;
+                row.transferencia_numero = numero;
+                row.fecha_finalizacion = d.fecha_finalizacion;
+                _moAplicarCambioLocal(row);
+            }
+            await Swal.fire({
+                title: '¡Completado!',
+                text: d.mensaje || 'Transferencia registrada correctamente.',
+                icon: 'success'
+            });
+            window.location.reload();
+        } else {
+            throw new Error(d.error || 'Ocurrió un error inesperado');
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message || 'No se pudo guardar la transferencia.', 'error');
+    }
+}
+
+function registrarTransferenciaDetalle(ordenId) {
+    const plataforma = document.getElementById('det-plataforma').value;
+    const numero = document.getElementById('det-numero').value.trim();
+    if (!numero) {
+        mostrarAlertaEstetica('Por favor, ingresa el número de transferencia.', 'warning', 'Número Requerido');
+        return;
+    }
+    guardarTransferenciaAjax(ordenId, plataforma, numero);
 }
 </script>
 @endpush

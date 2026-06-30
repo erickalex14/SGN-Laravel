@@ -268,7 +268,7 @@ class OrdenController extends Controller
                 'orden_id' => $orden->id,
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }

@@ -125,7 +125,12 @@ class GestionOrdenService
             $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
             if ($estadoNormalizado === 'Nota de Credito') {
-                $orden->fecha_finalizacion = $orden->fecha_modificacion;
+                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
+                if ($esGarantia) {
+                    $orden->fecha_finalizacion = $orden->transferencia_numero ? $orden->fecha_modificacion : null;
+                } else {
+                    $orden->fecha_finalizacion = $orden->fecha_modificacion;
+                }
                 $orden->fecha_entrega = null;
             } elseif ($estadoNormalizado === 'Finalizada') {
                 $orden->fecha_finalizacion = $orden->fecha_modificacion;
@@ -451,6 +456,7 @@ class GestionOrdenService
             if (!$orden) {
                 throw new Exception('La orden de empresa especificada no existe.');
             }
+            $tecnicoAnterior = (int) $orden->tecnico_id;
             $orden->tecnico_id = $nuevoTecnicoId;
             $orden->save();
         } else {
@@ -458,8 +464,23 @@ class GestionOrdenService
             if (!$orden) {
                 throw new Exception('La orden especificada no existe.');
             }
+            $tecnicoAnterior = (int) $orden->tecnico_id;
             $orden->tecnico_id = $nuevoTecnicoId;
             $orden->save();
+        }
+
+        if ($nuevoTecnicoId !== $tecnicoAnterior && $nuevoTecnicoId > 0) {
+            $msg = $tipoOrden === 'empresa'
+                ? "Se te ha asignado una nueva orden de empresa: {$orden->nro_orden}"
+                : "Se te ha asignado una nueva orden: {$orden->nro_orden}";
+
+            \App\Models\Identity\Notificacion::create([
+                'usuario_id' => $nuevoTecnicoId,
+                'tipo' => 'orden_asignada',
+                'mensaje' => $msg,
+                'orden_id' => $orden->id,
+                'nro_orden' => $orden->nro_orden,
+            ]);
         }
 
         Log::info('Orden reasignada a nuevo técnico.', [
