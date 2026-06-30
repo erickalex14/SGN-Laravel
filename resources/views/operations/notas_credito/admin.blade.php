@@ -700,6 +700,8 @@ window.exportarAuditoriaNC = function(tipo) {
 
 window.registrarTransferenciaDirecta = function(ordenId, nroOrden, plataformaActual = '', numeroActual = '') {
     const escHtml = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const esOtroActual = plataformaActual && plataformaActual !== 'MBA3' && plataformaActual !== 'Milenium';
+
     Swal.fire({
         title: 'Registrar Transferencia de Inventario',
         html: `
@@ -711,12 +713,16 @@ window.registrarTransferenciaDirecta = function(ordenId, nroOrden, plataformaAct
                 <select id="swal-plataforma" class="swal2-select" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db; background:#fff;">
                     <option value="MBA3" ${plataformaActual === 'MBA3' ? 'selected' : ''}>MBA3</option>
                     <option value="Milenium" ${plataformaActual === 'Milenium' ? 'selected' : ''}>Milenium</option>
-                    <option value="Otros" ${plataformaActual === 'Otros' ? 'selected' : ''}>Otros</option>
+                    <option value="Otros" ${esOtroActual ? 'selected' : ''}>Otros</option>
                 </select>
+            </div>
+            <div id="swal-otro-plataforma-wrapper" style="text-align:left; margin-bottom:12px; display: ${esOtroActual ? 'block' : 'none'};">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Especifique la Plataforma</label>
+                <input id="swal-plataforma-otro" class="swal2-input" placeholder="Ej: Banco Pichincha, etc..." value="${esOtroActual ? escHtml(plataformaActual) : ''}" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
             </div>
             <div style="text-align:left; margin-bottom:15px;">
                 <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia de Inventario</label>
-                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia..." value="${escHtml(numeroActual)}" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia (solo números)..." value="${escHtml(numeroActual)}" style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
             </div>
         `,
         icon: 'info',
@@ -724,11 +730,34 @@ window.registrarTransferenciaDirecta = function(ordenId, nroOrden, plataformaAct
         confirmButtonText: 'Registrar y Cerrar Orden',
         cancelButtonText: 'Cancelar',
         allowOutsideClick: false,
+        didOpen: () => {
+            const select = document.getElementById('swal-plataforma');
+            const wrapper = document.getElementById('swal-otro-plataforma-wrapper');
+            select.addEventListener('change', (e) => {
+                if (e.target.value === 'Otros') {
+                    wrapper.style.display = 'block';
+                } else {
+                    wrapper.style.display = 'none';
+                }
+            });
+        },
         preConfirm: () => {
-            const plataforma = document.getElementById('swal-plataforma').value;
+            const selectPlat = document.getElementById('swal-plataforma').value;
+            let plataforma = selectPlat;
+            if (selectPlat === 'Otros') {
+                plataforma = document.getElementById('swal-plataforma-otro').value.trim();
+                if (!plataforma) {
+                    Swal.showValidationMessage('Por favor especifique la plataforma');
+                    return false;
+                }
+            }
             const numero = document.getElementById('swal-numero').value.trim();
             if (!numero) {
                 Swal.showValidationMessage('Por favor ingrese el número de transferencia de inventario');
+                return false;
+            }
+            if (!/^\d+$/.test(numero)) {
+                Swal.showValidationMessage('El número de transferencia solo debe contener números');
                 return false;
             }
             return { plataforma, numero };

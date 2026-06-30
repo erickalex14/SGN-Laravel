@@ -574,11 +574,20 @@ class MisOrdenesController extends Controller
 
     public function registrarTransferencia(Request $request): JsonResponse
     {
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'orden_id' => 'required|integer',
-            'plataforma' => 'required|string|in:MBA3,Milenium,Otros',
-            'numero' => 'required|string|max:100',
+            'plataforma' => 'required|string|max:50',
+            'numero' => ['required', 'regex:/^\d+$/', 'max:100'],
+        ], [
+            'numero.regex' => 'El número de transferencia de inventario solo debe contener dígitos numéricos.',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'ok' => false,
+                'error' => $validator->errors()->first()
+            ], 422);
+        }
 
         $ordenId = (int) $request->input('orden_id');
         $plataforma = $request->input('plataforma');

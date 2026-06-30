@@ -1962,9 +1962,13 @@ function abrirPopupTransferencia(o) {
                     <option value="Otros">Otros</option>
                 </select>
             </div>
+            <div id="swal-otro-plataforma-wrapper" style="text-align:left; margin-bottom:12px; display: none;">
+                <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Especifique la Plataforma</label>
+                <input id="swal-plataforma-otro" class="swal2-input" placeholder="Ej: Banco Pichincha, etc..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+            </div>
             <div style="text-align:left; margin-bottom:15px;">
                 <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">Número de Transferencia de Inventario</label>
-                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia de inventario..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
+                <input id="swal-numero" class="swal2-input" placeholder="Ingrese el número de transferencia (solo números)..." style="width:100%; margin:0; display:block; box-sizing:border-box; font-size:14px; padding:8px; border-radius:6px; border:1px solid #d1d5db;">
             </div>
         `,
         icon: 'info',
@@ -1973,11 +1977,34 @@ function abrirPopupTransferencia(o) {
         cancelButtonText: 'Aún no está lista la transferencia',
         allowOutsideClick: false,
         allowEscapeKey: false,
+        didOpen: () => {
+            const select = document.getElementById('swal-plataforma');
+            const wrapper = document.getElementById('swal-otro-plataforma-wrapper');
+            select.addEventListener('change', (e) => {
+                if (e.target.value === 'Otros') {
+                    wrapper.style.display = 'block';
+                } else {
+                    wrapper.style.display = 'none';
+                }
+            });
+        },
         preConfirm: () => {
-            const plataforma = document.getElementById('swal-plataforma').value;
+            const selectPlat = document.getElementById('swal-plataforma').value;
+            let plataforma = selectPlat;
+            if (selectPlat === 'Otros') {
+                plataforma = document.getElementById('swal-plataforma-otro').value.trim();
+                if (!plataforma) {
+                    Swal.showValidationMessage('Por favor especifique la plataforma');
+                    return false;
+                }
+            }
             const numero = document.getElementById('swal-numero').value.trim();
             if (!numero) {
                 Swal.showValidationMessage('Por favor ingrese el número de transferencia de inventario');
+                return false;
+            }
+            if (!/^\d+$/.test(numero)) {
+                Swal.showValidationMessage('El número de transferencia solo debe contener números');
                 return false;
             }
             return { plataforma, numero };
