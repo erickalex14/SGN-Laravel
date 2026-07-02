@@ -170,7 +170,8 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
     </div>
 
     <div class="nc-card">
-        <table class="nc-table" id="tabla-nc-admin">
+        <div style="overflow-x: auto;">
+            <table class="nc-table" id="tabla-nc-admin">
             <thead>
                 <tr>
                     <th>Solicitud / Nro</th>
@@ -266,7 +267,8 @@ textarea.rechazo-input { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1
                 @endforelse
                 <tr id="nc-empty-row-filtered" style="display:none;"><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8;">No se encontraron solicitudes con los filtros aplicados.</td></tr>
             </tbody>
-        </table>
+            </table>
+        </div>
         <div id="nca-pager" style="margin: 0 16px 16px;" class="no-print"></div>
     </div>
 </div>

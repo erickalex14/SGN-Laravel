@@ -64,7 +64,8 @@
 
     <div class="nc-card">
         <h3 class="nc-title" style="font-size:16px;">Mis solicitudes</h3>
-        <table class="nc-table">
+        <div style="overflow-x: auto;">
+            <table class="nc-table">
             <thead>
                 <tr>
                     <th>Nro</th>
@@ -100,7 +101,8 @@
                     <tr><td colspan="5" style="color:#94a3b8;">Sin solicitudes registradas.</td></tr>
                 @endforelse
             </tbody>
-        </table>
+            </table>
+        </div>
         <div id="nct-pager" style="margin-top:15px;"></div>
     </div>
 </div>

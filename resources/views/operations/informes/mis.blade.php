@@ -41,7 +41,7 @@
 .mi-count { margin-left:auto; font-size:12.5px; color:#94a3b8; white-space:nowrap; }
 
 /* Tabla */
-.mi-table-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.04); }
+.mi-table-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow-x:auto; box-shadow:0 2px 10px rgba(0,0,0,.04); }
 .mi-table { width:100%; border-collapse:collapse; font-size:13px; }
 .mi-table thead tr { background:#f8fafc; }
 .mi-table th { padding:12px 14px; font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #e2e8f0; text-align:left; white-space:nowrap; }

@@ -1426,7 +1426,7 @@ function verDetalleOrden(cardEl) {
                             <i class="bi bi-box-seam me-1"></i>Repuestos Asignados en Stock:
                         </span>
                         ${o.repuestos_asignados && o.repuestos_asignados.length > 0 ? `
-                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden;">
+                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden; overflow-x:auto;">
                                 <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
                                     <thead>
                                         <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">
@@ -1563,7 +1563,7 @@ function verDetalleOrden(cardEl) {
                             <i class="bi bi-box-seam me-1"></i>Repuestos Asignados en Stock:
                         </span>
                         ${o.repuestos_asignados && o.repuestos_asignados.length > 0 ? `
-                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden;">
+                            <div style="background:#fff; border:1px solid var(--mo-border); border-radius:8px; overflow:hidden; overflow-x:auto;">
                                 <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
                                     <thead>
                                         <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">

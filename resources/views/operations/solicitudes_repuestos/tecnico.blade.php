@@ -75,7 +75,8 @@
 
     <div class="sr-card">
         <h3 class="sr-title" style="font-size:16px;">Mis tickets de repuesto</h3>
-        <table class="sr-table">
+        <div style="overflow-x: auto;">
+            <table class="sr-table">
             <thead>
                 <tr>
                     <th>Nro</th>
@@ -115,7 +116,8 @@
                     <tr><td colspan="6" style="color:#94a3b8;">Sin solicitudes registradas.</td></tr>
                 @endforelse
             </tbody>
-        </table>
+            </table>
+        </div>
         <div id="sr-pager" style="margin-top:15px;"></div>
     </div>
 </div>
