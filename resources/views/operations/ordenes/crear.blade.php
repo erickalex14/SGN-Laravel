@@ -573,8 +573,7 @@
                         <label>Nro. Ticket <span class="req">*</span></label>
 
                         <input type="text" name="emp_nro_ticket" id="emp_nro_ticket" autocomplete="off"
-
-                               placeholder="Ingrese el numero de ticket" oninput="this.value=this.value.toUpperCase()">
+                               placeholder="Ingrese el numero de ticket" oninput="this.value=this.value.toUpperCase()" onblur="validarInputDuplicado(this, 'factura')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
 
                     </div>
 
@@ -678,7 +677,7 @@
 
                             <div class="linea-item">
 
-                                <input type="text" name="emp_series[]" id="emp_serie" oninput="this.value=this.value.toUpperCase()" placeholder="Serie principal">
+                                <input type="text" name="emp_series[]" id="emp_serie" oninput="this.value=this.value.toUpperCase()" onblur="validarInputDuplicado(this, 'serie')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="Serie principal">
 
                                 <button type="button" class="btn-mini" onclick="agregarSerieEmpresa()">+</button>
 
@@ -1067,7 +1066,7 @@
 
                         <div style="display: flex; gap: 8px; align-items: center;">
 
-                            <input type="text" id="nro_factura" name="nro_factura" oninput="onInputFactura(this)" placeholder="000-000-000000000" style="flex: 1;">
+                            <input type="text" id="nro_factura" name="nro_factura" oninput="onInputFactura(this)" onblur="validarInputDuplicado(this, 'factura')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="000-000-000000000" style="flex: 1;">
 
                             <button type="button" id="btn-agregar-factura-2" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="mostrarFactura2()">+</button>
 
@@ -1081,7 +1080,7 @@
 
                         <div style="display: flex; gap: 8px; align-items: center;">
 
-                            <input type="text" id="nro_factura_2" name="nro_factura_2" oninput="formatearFactura(this)" placeholder="000-000-000000000" style="flex: 1;">
+                            <input type="text" id="nro_factura_2" name="nro_factura_2" oninput="formatearFactura(this)" onblur="validarInputDuplicado(this, 'factura')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="000-000-000000000" style="flex: 1;">
 
                             <button type="button" class="btn-mini" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #dc2626; border-color: #fca5a5; background: #fee2e2;" onclick="ocultarFactura2()">-</button>
 
@@ -1427,7 +1426,7 @@
 
                         <div class="linea-item" style="display: flex; gap: 10px; align-items: center; width: 100%;">
 
-                            <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" placeholder="Número de serie" style="flex: 1;">
+                            <input type="text" name="series[]" required oninput="this.value=this.value.toUpperCase()" onblur="validarInputDuplicado(this, 'serie')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="Número de serie" style="flex: 1;">
 
                             <button type="button" class="btn-mini" onclick="agregarSerie()" style="height: 38px; padding: 0 14px;">+</button>
 
@@ -3225,7 +3224,7 @@ function agregarSerieEmpresa() {
 
     row.innerHTML = `
 
-        <input type="text" name="emp_series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional">
+        <input type="text" name="emp_series[]" oninput="this.value=this.value.toUpperCase()" onblur="validarInputDuplicado(this, 'serie')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="Serie adicional">
 
         <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
 
@@ -3551,7 +3550,7 @@ function agregarSerie() {
 
     row.innerHTML = `
 
-        <input type="text" name="series[]" oninput="this.value=this.value.toUpperCase()" placeholder="Serie adicional">
+        <input type="text" name="series[]" oninput="this.value=this.value.toUpperCase()" onblur="validarInputDuplicado(this, 'serie')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" placeholder="Serie adicional">
 
         <button type="button" class="btn-mini" onclick="this.closest('.linea-item').remove()">-</button>
 
@@ -4211,9 +4210,6 @@ async function guardarOrden() {
             const ticketVal = document.getElementById('emp_nro_ticket')?.value.trim();
             if (ticketVal) facturas.push(ticketVal);
         } else {
-            const eqSerieVal = document.getElementById('eq_serie')?.value.trim();
-            if (eqSerieVal) series.push(eqSerieVal);
-            
             const personalSeriesEls = document.querySelectorAll('input[name="series[]"]');
             personalSeriesEls.forEach(el => {
                 const val = el.value.trim();
@@ -4226,12 +4222,15 @@ async function guardarOrden() {
             if (fac2) facturas.push(fac2);
         }
         
-        // Ignorar sn, s/n
+        // Ignorar sn, s/n y ya aprobados
         series = series.filter(s => {
             const lower = s.toLowerCase();
-            return lower !== '' && lower !== 'sn' && lower !== 's/n';
+            return lower !== '' && lower !== 'sn' && lower !== 's/n' && !_duplicadosAprobados.has(lower);
         });
-        facturas = facturas.filter(f => f !== '');
+        facturas = facturas.filter(f => {
+            const lower = f.toLowerCase();
+            return f !== '' && !_duplicadosAprobados.has(lower);
+        });
         
         if (series.length > 0 || facturas.length > 0) {
             const responseCheck = await fetch('{{ route("ordenes.verificar_duplicado") }}', {
@@ -4807,6 +4806,106 @@ function calcularPrecioNovisolutions() {
 
     }
 
+}
+
+let _duplicadosAprobados = new Set();
+
+async function validarInputDuplicado(inputElement, tipo) {
+    const val = (inputElement.value || '').trim();
+    if (!val) return;
+
+    const lowerVal = val.toLowerCase();
+    if (tipo === 'serie' && (lowerVal === 'sn' || lowerVal === 's/n')) {
+        return;
+    }
+
+    if (_duplicadosAprobados.has(lowerVal)) {
+        return;
+    }
+
+    try {
+        const payload = {};
+        if (tipo === 'serie') {
+            payload.series = [val];
+            payload.facturas = [];
+        } else {
+            payload.series = [];
+            payload.facturas = [val];
+        }
+
+        const responseCheck = await fetch('{{ route("ordenes.verificar_duplicado") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (responseCheck.ok) {
+            const dupCheck = await responseCheck.json();
+            if (dupCheck.duplicated) {
+                const count = dupCheck.coincidencias.length;
+                const ordinalIngreso = count + 1;
+                
+                let tableRows = '';
+                dupCheck.coincidencias.forEach(c => {
+                    tableRows += `
+                        <tr>
+                            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700;">${c.nro_orden}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px;">${c.fecha_ingreso || '-'}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_ingreso || '-'}</td>
+                            <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_asignado || '-'}</td>
+                        </tr>
+                    `;
+                });
+                
+                const tableHtml = `
+                    <div style="margin-top:14px; text-align:left; font-size:12px; font-family:inherit;">
+                        <p style="margin-bottom:8px; font-weight:700; color:#dc2626;">Se encontraron ${count} orden(es) previa(s) con la misma ${tipo === 'serie' ? 'Serie' : 'Factura/Ticket'}:</p>
+                        <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:12px;">
+                            <thead>
+                                <tr style="background:#f1f5f9;">
+                                    <th style="border:1px solid #cbd5e1; padding:6px;">Orden</th>
+                                    <th style="border:1px solid #cbd5e1; padding:6px;">Fecha</th>
+                                    <th style="border:1px solid #cbd5e1; padding:6px;">Ingresó</th>
+                                    <th style="border:1px solid #cbd5e1; padding:6px;">Asignado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                        <p>¿Desea ingresar esta orden como el <strong>Ingreso #${ordinalIngreso}</strong> para este equipo/serie?</p>
+                    </div>
+                `;
+                
+                const result = await Swal.fire({
+                    title: `¡${tipo === 'serie' ? 'Serie' : 'Factura/Ticket'} Duplicada!`,
+                    html: tableHtml,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: `Sí, registrar como Ingreso #${ordinalIngreso}`,
+                    cancelButtonText: 'No, cancelar',
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#dc2626',
+                    width: '600px',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                
+                if (result.isConfirmed) {
+                    _duplicadosAprobados.add(lowerVal);
+                } else {
+                    inputElement.value = '';
+                    inputElement.focus();
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error al verificar duplicado:', e);
+    }
 }
 
 </script>
