@@ -1408,7 +1408,7 @@ function verDetalleOrden(cardEl) {
                 </div>
                 ` : ''}
 
-                ${o.motivo_ingreso === 'Empresa - Stock' ? `
+                ${o.motivo_ingreso === 'Empresa - Stock' || o.motivo_ingreso === 'Empresa - Autoconsumo' ? `
                 <div class="gestion-row repuesto-row">
                     <span class="gestion-icon"><i class="bi bi-tools"></i></span>
                     <span class="gestion-label">Repuesto</span>
