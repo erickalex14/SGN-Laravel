@@ -4197,6 +4197,117 @@ async function guardarOrden() {
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
 
+    // ── VALIDACIÓN DE ÓRDENES DUPLICADAS ──
+    try {
+        let series = [];
+        let facturas = [];
+        
+        if (isEmpresa) {
+            const empSeriesEls = document.querySelectorAll('input[name="emp_series[]"]');
+            empSeriesEls.forEach(el => {
+                const val = el.value.trim();
+                if (val) series.push(val);
+            });
+            const ticketVal = document.getElementById('emp_nro_ticket')?.value.trim();
+            if (ticketVal) facturas.push(ticketVal);
+        } else {
+            const eqSerieVal = document.getElementById('eq_serie')?.value.trim();
+            if (eqSerieVal) series.push(eqSerieVal);
+            
+            const personalSeriesEls = document.querySelectorAll('input[name="series[]"]');
+            personalSeriesEls.forEach(el => {
+                const val = el.value.trim();
+                if (val) series.push(val);
+            });
+            
+            const fac1 = document.getElementById('nro_factura')?.value.trim();
+            if (fac1) facturas.push(fac1);
+            const fac2 = document.getElementById('nro_factura_2')?.value.trim();
+            if (fac2) facturas.push(fac2);
+        }
+        
+        // Ignorar sn, s/n
+        series = series.filter(s => {
+            const lower = s.toLowerCase();
+            return lower !== '' && lower !== 'sn' && lower !== 's/n';
+        });
+        facturas = facturas.filter(f => f !== '');
+        
+        if (series.length > 0 || facturas.length > 0) {
+            const responseCheck = await fetch('{{ route("ordenes.verificar_duplicado") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ series, facturas })
+            });
+            
+            if (responseCheck.ok) {
+                const dupCheck = await responseCheck.json();
+                if (dupCheck.duplicated) {
+                    const count = dupCheck.coincidencias.length;
+                    const ordinalIngreso = count + 1;
+                    
+                    let tableRows = '';
+                    dupCheck.coincidencias.forEach(c => {
+                        tableRows += `
+                            <tr>
+                                <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700;">${c.nro_orden}</td>
+                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.fecha_ingreso || '-'}</td>
+                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_ingreso || '-'}</td>
+                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_asignado || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    const tableHtml = `
+                        <div style="margin-top:14px; text-align:left; font-size:12px; font-family:inherit;">
+                            <p style="margin-bottom:8px; font-weight:700; color:#dc2626;">Se encontraron ${count} orden(es) previa(s) con la misma Serie o Factura/Ticket:</p>
+                            <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:12px;">
+                                <thead>
+                                    <tr style="background:#f1f5f9;">
+                                        <th style="border:1px solid #cbd5e1; padding:6px;">Orden</th>
+                                        <th style="border:1px solid #cbd5e1; padding:6px;">Fecha</th>
+                                        <th style="border:1px solid #cbd5e1; padding:6px;">Ingresó</th>
+                                        <th style="border:1px solid #cbd5e1; padding:6px;">Asignado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRows}
+                                </tbody>
+                            </table>
+                            <p>¿Desea ingresar esta orden como el <strong>Ingreso #${ordinalIngreso}</strong> para este equipo/serie?</p>
+                        </div>
+                    `;
+                    
+                    const result = await Swal.fire({
+                        title: '¡Serie o Factura Duplicada!',
+                        html: tableHtml,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: `Sí, registrar como Ingreso #${ordinalIngreso}`,
+                        cancelButtonText: 'No, cancelar',
+                        confirmButtonColor: '#2563eb',
+                        cancelButtonColor: '#dc2626',
+                        width: '600px',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    
+                    if (!result.isConfirmed) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-file-earmark-check"></i> Crear Orden';
+                        return;
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error al verificar duplicados:', e);
+    }
+
     try {
         const r = await fetch('{{ route("ordenes.store") }}', {
             method: 'POST',

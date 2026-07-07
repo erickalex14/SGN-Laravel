@@ -351,6 +351,31 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
             </div>
         </div>
     @endif
+    @if (!empty($historialIngresos) && count($historialIngresos) > 0)
+        <div class="sec-titulo">Historial de Ingresos Anteriores (Reingresos)</div>
+        <table class="datos" style="margin-bottom: 8px;">
+            <thead>
+                <tr style="background:#f1f5f9; font-weight:bold; font-size:7pt;">
+                    <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left;">Ingreso #</th>
+                    <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left;">Nro. Orden</th>
+                    <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left;">Fecha de Ingreso</th>
+                    <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left;">Técnico que Ingresó</th>
+                    <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left;">Técnico Asignado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($historialIngresos as $index => $hist)
+                    <tr style="font-size:7.5pt;">
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1;">Ingreso #{{ $index + 1 }}</td>
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1; font-weight:bold; color:#1a56db;">{{ $hist['nro_orden'] }}</td>
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1;">{{ $hist['fecha_ingreso'] ? \Carbon\Carbon::parse($hist['fecha_ingreso'])->format('d/m/Y H:i') : '-' }}</td>
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1;">{{ $hist['tecnico_ingreso'] }}</td>
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1;">{{ $hist['tecnico_asignado'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
     <div style="border-top:1.5px solid #000;padding-top:4px;">
         <div class="condiciones-titulo">Condiciones</div>

@@ -410,7 +410,66 @@ class OrdenController extends Controller
             }
         }
 
-        return view('operations.ordenes.imprimir', compact('orden', 'nombreSucursalCliente'));
+        // Obtener todas las series del equipo
+        $seriesList = [];
+        if ($orden->equipo) {
+            if ($orden->equipo->serie) {
+                $seriesList[] = strtolower(trim($orden->equipo->serie));
+            }
+            if ($orden->equipo->series && $orden->equipo->series->isNotEmpty()) {
+                foreach ($orden->equipo->series as $es) {
+                    $seriesList[] = strtolower(trim($es->serie));
+                }
+            }
+        }
+        $seriesList = array_unique(array_filter($seriesList, fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'));
+
+        $historialIngresos = [];
+        if (!empty($seriesList)) {
+            // Buscar en ordenes personales anteriores (excluyendo la actual)
+            $prevPersonales = \App\Models\Operations\Orden::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                })->orWhereHas('equipo.series', function ($seqQ) use ($seriesList) {
+                    $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->where('id', '<>', $orden->id)
+              ->with(['tecnico', 'usuarioIngreso'])
+              ->get();
+
+            foreach ($prevPersonales as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->usuarioIngreso?->nombre_tecnico ?? $prev->usuarioIngreso?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_de_ingreso,
+                    'timestamp' => $prev->fecha_de_ingreso ? Carbon::parse($prev->fecha_de_ingreso)->timestamp : 0,
+                ];
+            }
+
+            // Buscar en ordenes empresas anteriores
+            $prevEmpresas = \App\Models\Operations\OrdenEmpresa::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->with(['tecnico', 'ingresadoPor'])
+              ->get();
+
+            foreach ($prevEmpresas as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->ingresadoPor?->nombre_tecnico ?? $prev->ingresadoPor?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_ingreso,
+                    'timestamp' => $prev->fecha_ingreso ? Carbon::parse($prev->fecha_ingreso)->timestamp : 0,
+                ];
+            }
+
+            // Ordenar por fecha cronológica (del más antiguo al más reciente)
+            usort($historialIngresos, fn($a, $b) => $a['timestamp'] <=> $b['timestamp']);
+        }
+
+        return view('operations.ordenes.imprimir', compact('orden', 'nombreSucursalCliente', 'historialIngresos'));
     }
 
     public function imprimirEmpresa(int $id): View
@@ -445,6 +504,166 @@ class OrdenController extends Controller
             }
         }
 
-        return view('operations.ordenes.imprimir_empresa', compact('orden', 'nombreSucursalCliente'));
+        $orden->loadMissing([
+            'equipo.series',
+            'tecnico',
+            'sucursal',
+            'cas',
+            'ingresadoPor',
+        ]);
+
+        // Obtener todas las series del equipo
+        $seriesList = [];
+        if ($orden->equipo) {
+            if ($orden->equipo->serie) {
+                $parts = explode(',', $orden->equipo->serie);
+                foreach ($parts as $p) {
+                    $seriesList[] = strtolower(trim($p));
+                }
+            }
+            if ($orden->equipo->series && $orden->equipo->series->isNotEmpty()) {
+                foreach ($orden->equipo->series as $es) {
+                    $seriesList[] = strtolower(trim($es->serie));
+                }
+            }
+        }
+        $seriesList = array_unique(array_filter($seriesList, fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'));
+
+        $historialIngresos = [];
+        if (!empty($seriesList)) {
+            // Buscar en ordenes personales anteriores
+            $prevPersonales = \App\Models\Operations\Orden::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                })->orWhereHas('equipo.series', function ($seqQ) use ($seriesList) {
+                    $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->with(['tecnico', 'usuarioIngreso'])
+              ->get();
+
+            foreach ($prevPersonales as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->usuarioIngreso?->nombre_tecnico ?? $prev->usuarioIngreso?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_de_ingreso,
+                    'timestamp' => $prev->fecha_de_ingreso ? Carbon::parse($prev->fecha_de_ingreso)->timestamp : 0,
+                ];
+            }
+
+            // Buscar en ordenes empresas anteriores (excluyendo la actual)
+            $prevEmpresas = \App\Models\Operations\OrdenEmpresa::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->where('id', '<>', $orden->id)
+              ->with(['tecnico', 'ingresadoPor'])
+              ->get();
+
+            foreach ($prevEmpresas as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->ingresadoPor?->nombre_tecnico ?? $prev->ingresadoPor?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_ingreso,
+                    'timestamp' => $prev->fecha_ingreso ? Carbon::parse($prev->fecha_ingreso)->timestamp : 0,
+                ];
+            }
+
+            // Ordenar por fecha cronológica (del más antiguo al más reciente)
+            usort($historialIngresos, fn($a, $b) => $a['timestamp'] <=> $b['timestamp']);
+        }
+
+        return view('operations.ordenes.imprimir_empresa', compact('orden', 'nombreSucursalCliente', 'historialIngresos'));
+    }
+
+    public function verificarDuplicado(Request $request): JsonResponse
+    {
+        $seriesInput = $request->input('series', []);
+        if (!is_array($seriesInput)) {
+            $seriesInput = [$seriesInput];
+        }
+        $series = array_filter(
+            array_map(fn($s) => strtolower(trim((string)$s)), $seriesInput),
+            fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'
+        );
+
+        $facturasInput = $request->input('facturas', []);
+        if (!is_array($facturasInput)) {
+            $facturasInput = [$facturasInput];
+        }
+        $facturas = array_filter(
+            array_map(fn($f) => strtolower(trim((string)$f)), $facturasInput),
+            fn($f) => $f !== ''
+        );
+
+        if (empty($series) && empty($facturas)) {
+            return response()->json(['duplicated' => false, 'coincidencias' => []]);
+        }
+
+        $coincidencias = [];
+
+        // Buscar en ordenes personales
+        $queryPersonales = \App\Models\Operations\Orden::query();
+        $queryPersonales->where(function($q) use ($series, $facturas) {
+            if (!empty($series)) {
+                $q->whereHas('equipo', function ($eqQ) use ($series) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+                })->orWhereHas('equipo.series', function ($seqQ) use ($series) {
+                    $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+                });
+            }
+            if (!empty($facturas)) {
+                $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_factura))'), $facturas)
+                  ->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_factura_2))'), $facturas);
+            }
+        });
+
+        $resPersonales = $queryPersonales->with(['equipo', 'tecnico', 'usuarioIngreso'])->get();
+
+        foreach ($resPersonales as $ord) {
+            $coincidencias[] = [
+                'tipo_orden' => 'personal',
+                'nro_orden' => $ord->nro_orden,
+                'fecha_ingreso' => $ord->fecha_de_ingreso ? Carbon::parse($ord->fecha_de_ingreso)->format('Y-m-d H:i') : '-',
+                'tecnico_ingreso' => $ord->usuarioIngreso?->nombre_tecnico ?? $ord->usuarioIngreso?->name ?? 'Desconocido',
+                'tecnico_asignado' => $ord->tecnico?->nombre_tecnico ?? $ord->tecnico?->name ?? 'Desconocido',
+                'serie' => $ord->equipo?->serie ?? '',
+                'factura' => $ord->nro_factura ?? '',
+            ];
+        }
+
+        // Buscar en ordenes empresas
+        $queryEmpresas = \App\Models\Operations\OrdenEmpresa::query();
+        $queryEmpresas->where(function($q) use ($series, $facturas) {
+            if (!empty($series)) {
+                $q->whereHas('equipo', function ($eqQ) use ($series) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+                });
+            }
+            if (!empty($facturas)) {
+                $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_ticket))'), $facturas);
+            }
+        });
+
+        $resEmpresas = $queryEmpresas->with(['equipo', 'tecnico', 'ingresadoPor'])->get();
+
+        foreach ($resEmpresas as $ord) {
+            $coincidencias[] = [
+                'tipo_orden' => 'empresa',
+                'nro_orden' => $ord->nro_orden,
+                'fecha_ingreso' => $ord->fecha_ingreso ? Carbon::parse($ord->fecha_ingreso)->format('Y-m-d H:i') : '-',
+                'tecnico_ingreso' => $ord->ingresadoPor?->nombre_tecnico ?? $ord->ingresadoPor?->name ?? 'Desconocido',
+                'tecnico_asignado' => $ord->tecnico?->nombre_tecnico ?? $ord->tecnico?->name ?? 'Desconocido',
+                'serie' => $ord->equipo?->serie ?? '',
+                'factura' => $ord->nro_ticket ?? '',
+            ];
+        }
+
+        return response()->json([
+            'duplicated' => !empty($coincidencias),
+            'coincidencias' => $coincidencias,
+            'count' => count($coincidencias),
+        ]);
     }
 }
