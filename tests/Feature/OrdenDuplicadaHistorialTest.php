@@ -98,7 +98,7 @@ test('endpoint verificar-duplicado detecta serie y factura duplicada', function 
     expect($response->json('coincidencias'))->toHaveCount(1);
     expect($response->json('coincidencias.0.nro_orden'))->toBe($nro);
 
-    // 2. Verificar duplicado de factura
+    // 2. Verificar duplicado de factura (deshabilitado, no debe duplicar)
     $responseFactura = $this->actingAs($usuario)
         ->withSession([
             'tecnico_id' => $usuario->id,
@@ -114,9 +114,9 @@ test('endpoint verificar-duplicado detecta serie y factura duplicada', function 
 
     $responseFactura->assertStatus(200);
     $responseFactura->assertJson([
-        'duplicated' => true,
+        'duplicated' => false,
     ]);
-    expect($responseFactura->json('coincidencias'))->toHaveCount(1);
+    expect($responseFactura->json('coincidencias'))->toHaveCount(0);
 
     // 3. Ignorar serie comodin "sn"
     $responseSn = $this->actingAs($usuario)

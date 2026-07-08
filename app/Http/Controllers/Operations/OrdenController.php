@@ -588,16 +588,7 @@ class OrdenController extends Controller
             fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'
         );
 
-        $facturasInput = $request->input('facturas', []);
-        if (!is_array($facturasInput)) {
-            $facturasInput = [$facturasInput];
-        }
-        $facturas = array_filter(
-            array_map(fn($f) => strtolower(trim((string)$f)), $facturasInput),
-            fn($f) => $f !== ''
-        );
-
-        if (empty($series) && empty($facturas)) {
+        if (empty($series)) {
             return response()->json(['duplicated' => false, 'coincidencias' => []]);
         }
 
@@ -605,18 +596,12 @@ class OrdenController extends Controller
 
         // Buscar en ordenes personales
         $queryPersonales = \App\Models\Operations\Orden::query();
-        $queryPersonales->where(function($q) use ($series, $facturas) {
-            if (!empty($series)) {
-                $q->whereHas('equipo', function ($eqQ) use ($series) {
-                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
-                })->orWhereHas('equipo.series', function ($seqQ) use ($series) {
-                    $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
-                });
-            }
-            if (!empty($facturas)) {
-                $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_factura))'), $facturas)
-                  ->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_factura_2))'), $facturas);
-            }
+        $queryPersonales->where(function($q) use ($series) {
+            $q->whereHas('equipo', function ($eqQ) use ($series) {
+                $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+            })->orWhereHas('equipo.series', function ($seqQ) use ($series) {
+                $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+            });
         });
 
         $resPersonales = $queryPersonales->with(['equipo', 'tecnico', 'usuarioIngreso'])->get();
@@ -635,15 +620,10 @@ class OrdenController extends Controller
 
         // Buscar en ordenes empresas
         $queryEmpresas = \App\Models\Operations\OrdenEmpresa::query();
-        $queryEmpresas->where(function($q) use ($series, $facturas) {
-            if (!empty($series)) {
-                $q->whereHas('equipo', function ($eqQ) use ($series) {
-                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
-                });
-            }
-            if (!empty($facturas)) {
-                $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(nro_ticket))'), $facturas);
-            }
+        $queryEmpresas->where(function($q) use ($series) {
+            $q->whereHas('equipo', function ($eqQ) use ($series) {
+                $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $series);
+            });
         });
 
         $resEmpresas = $queryEmpresas->with(['equipo', 'tecnico', 'ingresadoPor'])->get();
