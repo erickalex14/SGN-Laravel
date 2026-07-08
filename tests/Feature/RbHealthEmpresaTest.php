@@ -158,3 +158,58 @@ test('cerrar orden de RB-HEALTH ECUADOR CIA LTDA requiere horas_trabajadas', fun
     expect((float)$orden->horas_trabajadas)->toBe(4.5);
     expect((float)$orden->valor_hora)->toBe(52.0); // Se fuerza a 52.0
 });
+
+test('tecnico puede actualizar horas_trabajadas de RB-HEALTH sin cambiar estado', function () {
+    $usuario = crearUsuarioHelperRb(2);
+
+    $empresa = Empresa::create([
+        'nombre' => 'RB-HEALTH ECUADOR CIA LTDA',
+        'ruc' => '1791234567001',
+    ]);
+
+    $equipo = Equipo::create([
+        'tipo' => 'Servicio',
+        'marca' => '',
+        'modelo' => '',
+        'serie' => '',
+    ]);
+
+    $orden = OrdenEmpresa::create([
+        'nro_orden' => 'UIO-654321',
+        'empresa_id' => $empresa->id,
+        'subtipo' => 'Servicios',
+        'equipo_id' => $equipo->id,
+        'tecnico_id' => $usuario->id,
+        'sucursal_id' => $usuario->sucursal_id,
+        'ingresado_por' => $usuario->id,
+        'fecha_prometido' => Carbon::now()->addDays(2)->format('Y-m-d'),
+        'estado' => 'En proceso',
+        'fecha_ingreso' => Carbon::now()->format('Y-m-d H:i:s'),
+    ]);
+
+    // Mandar el mismo estado 'En proceso' pero con horas
+    $response = $this->actingAs($usuario)
+        ->withSession([
+            'tecnico_id' => $usuario->id,
+            'sucursal_id' => $usuario->sucursal_id,
+            'permisos' => [
+                'ordenes_mis' => ['ver' => true],
+            ],
+        ])
+        ->postJson(route('mis_ordenes.estado'), [
+            'id' => $orden->id,
+            'tipo_orden' => 'empresa',
+            'estado' => 'En proceso',
+            'horas_trabajadas' => 8.2,
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJson([
+        'ok' => true,
+    ]);
+
+    $orden->refresh();
+    expect($orden->estado)->toBe('En proceso');
+    expect((float)$orden->horas_trabajadas)->toBe(8.2);
+    expect((float)$orden->valor_hora)->toBe(52.0);
+});

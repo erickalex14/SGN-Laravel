@@ -882,6 +882,51 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     }
 }
 
+async function guardarHorasTrabajadas(ordenId, nroOrden, estadoActual) {
+    const valInput = document.getElementById('gestion-horas-' + ordenId);
+    if (!valInput) return;
+    const val = valInput.value.trim();
+    if (!val || isNaN(parseFloat(val)) || parseFloat(val) <= 0) {
+        await mostrarAlertaEstetica('Debe ingresar un número de horas válido mayor a 0.', 'error', 'Horas Inválidas');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('id', ordenId);
+    fd.append('estado', estadoActual);
+    fd.append('tipo_orden', 'empresa');
+    fd.append('horas_trabajadas', val);
+
+    const feedback = document.getElementById('feedback-horas-' + ordenId);
+    if (feedback) feedback.classList.add('loading');
+
+    try {
+        const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+            await mostrarAlertaEstetica(d.error || 'No se pudo actualizar las horas.', 'error', 'Error');
+            return;
+        }
+        const row = _moFindRow(ordenId, 'empresa');
+        if (row) {
+            row.horas_trabajadas = parseFloat(val);
+            row.valor_hora = 52.0;
+            _moAplicarCambioLocal(row);
+            const cardEl = document.getElementById('card-empresa-' + ordenId);
+            if (cardEl) {
+                cardEl.setAttribute('data-orden', JSON.stringify(row));
+                verDetalleOrden(cardEl);
+            }
+        }
+        await mostrarAlertaEstetica('Horas trabajadas guardadas correctamente.', 'success', 'Éxito');
+    } catch {
+        await mostrarAlertaEstetica('Error al guardar las horas trabajadas.', 'error', 'Error');
+    } finally {
+        if (feedback) feedback.classList.remove('loading');
+    }
+}
+
 async function reasignarOrden(ordenId, nuevoTecnicoId, tipoOrden = 'personal') {
     if (!nuevoTecnicoId) return;
 
@@ -1445,6 +1490,20 @@ function verDetalleOrden(cardEl) {
                     </select>
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
+                ${o.cliente && o.cliente.trim().toUpperCase() === 'RB-HEALTH ECUADOR CIA LTDA' ? `
+                <div class="gestion-row">
+                    <span class="gestion-icon"><i class="bi bi-clock"></i></span>
+                    <span class="gestion-label">Horas Trabajadas</span>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="number" step="0.1" min="0.1" id="gestion-horas-${Number(o.id)}" class="gestion-select" style="padding: 4px 8px; border: 1.5px solid var(--mo-border); border-radius: 6px; width: 80px;" 
+                            value="${o.horas_trabajadas || ''}" placeholder="Ej: 2.5">
+                        <button type="button" class="btn-mini-rep" style="background:var(--mo-primary); color:#fff; border:none; padding:4px 8px; margin:0;" onclick="guardarHorasTrabajadas(${Number(o.id)}, '${_h(String(o.nro_orden || '')).replace(/'/g, "\\'")}', '${o.estado_orden}')">
+                            Guardar
+                        </button>
+                    </div>
+                    <span class="gestion-feedback" id="feedback-horas-${Number(o.id)}">&#8635;</span>
+                </div>
+                ` : ''}
                 ${PUEDE_REASIGNAR ? `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-person-gear"></i></span>

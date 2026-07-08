@@ -286,6 +286,10 @@ class GestionOrdenService
     {
         $estadoActual = trim((string) $orden->estado);
 
+        if ($estadoActual === $nuevoEstado) {
+            return;
+        }
+
         if (!in_array($nuevoEstado, ['Pendiente', 'En proceso', 'Finalizada', 'Entregada'], true)) {
             throw new Exception('Estado no permitido para orden de empresa.');
         }
