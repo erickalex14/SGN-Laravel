@@ -646,4 +646,91 @@ class OrdenController extends Controller
             'count' => count($coincidencias),
         ]);
     }
+
+    public function obtenerHistorialReingresos(Request $request): JsonResponse
+    {
+        $ordenId = (int) $request->query('orden_id');
+        $tipoOrden = $request->query('tipo_orden');
+
+        if (!$ordenId || !$tipoOrden) {
+            return response()->json(['ok' => false, 'error' => 'Parámetros inválidos.']);
+        }
+
+        $seriesList = [];
+        if ($tipoOrden === 'empresa') {
+            $orden = \App\Models\Operations\OrdenEmpresa::with(['equipo.series'])->find($ordenId);
+        } else {
+            $orden = \App\Models\Operations\Orden::with(['equipo.series'])->find($ordenId);
+        }
+
+        if (!$orden) {
+            return response()->json(['ok' => false, 'error' => 'Orden no encontrada.']);
+        }
+
+        if ($orden->equipo) {
+            if ($orden->equipo->serie) {
+                $seriesList[] = strtolower(trim($orden->equipo->serie));
+            }
+            if ($orden->equipo->series && $orden->equipo->series->isNotEmpty()) {
+                foreach ($orden->equipo->series as $es) {
+                    $seriesList[] = strtolower(trim($es->serie));
+                }
+            }
+        }
+        $seriesList = array_unique(array_filter($seriesList, fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'));
+
+        $historialIngresos = [];
+        if (!empty($seriesList)) {
+            $prevPersonalesQuery = \App\Models\Operations\Orden::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                })->orWhereHas('equipo.series', function ($seqQ) use ($seriesList) {
+                    $seqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->with(['tecnico', 'usuarioIngreso']);
+
+            if ($tipoOrden !== 'empresa') {
+                $prevPersonalesQuery->where('id', '<>', $ordenId);
+            }
+            $prevPersonales = $prevPersonalesQuery->get();
+
+            foreach ($prevPersonales as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->usuarioIngreso?->nombre_tecnico ?? $prev->usuarioIngreso?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_de_ingreso ? Carbon::parse($prev->fecha_de_ingreso)->format('d/m/Y H:i') : '-',
+                    'timestamp' => $prev->fecha_de_ingreso ? Carbon::parse($prev->fecha_de_ingreso)->timestamp : 0,
+                ];
+            }
+
+            $prevEmpresasQuery = \App\Models\Operations\OrdenEmpresa::where(function ($q) use ($seriesList) {
+                $q->whereHas('equipo', function ($eqQ) use ($seriesList) {
+                    $eqQ->whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(LOWER(serie))'), $seriesList);
+                });
+            })->with(['tecnico', 'ingresadoPor']);
+
+            if ($tipoOrden === 'empresa') {
+                $prevEmpresasQuery->where('id', '<>', $ordenId);
+            }
+            $prevEmpresas = $prevEmpresasQuery->get();
+
+            foreach ($prevEmpresas as $prev) {
+                $historialIngresos[] = [
+                    'nro_orden' => $prev->nro_orden,
+                    'tecnico_ingreso' => $prev->ingresadoPor?->nombre_tecnico ?? $prev->ingresadoPor?->name ?? 'Desconocido',
+                    'tecnico_asignado' => $prev->tecnico?->nombre_tecnico ?? $prev->tecnico?->name ?? 'Desconocido',
+                    'fecha_ingreso' => $prev->fecha_ingreso ? Carbon::parse($prev->fecha_ingreso)->format('d/m/Y H:i') : '-',
+                    'timestamp' => $prev->fecha_ingreso ? Carbon::parse($prev->fecha_ingreso)->timestamp : 0,
+                ];
+            }
+
+            usort($historialIngresos, fn($a, $b) => $a['timestamp'] <=> $b['timestamp']);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'historial' => $historialIngresos
+        ]);
+    }
 }

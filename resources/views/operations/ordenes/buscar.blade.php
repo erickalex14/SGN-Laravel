@@ -789,9 +789,52 @@
             '</div>' +
 
             '</div>' + /* cierra bo-det-grid */
-
+            '<div id="reingresos-history-container"></div>' +
             /* ── Acciones ── */
             '<div class="bo-det-acciones" id="bo-det-acciones"></div>';
+
+        // Fetch reingresos history
+        fetch('/operaciones/ordenes/historial-reingresos?orden_id=' + o.orden_id + '&tipo_orden=' + o.tipo_orden)
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('reingresos-history-container');
+                if (container && data.ok && data.historial && data.historial.length > 0) {
+                    let rows = '';
+                    data.historial.forEach((h, idx) => {
+                        rows += `
+                            <tr style="font-size: 13px;">
+                                <td style="border: 1px solid #e2e8f0; padding: 10px; font-weight: bold;">Ingreso #${idx + 1}</td>
+                                <td style="border: 1px solid #e2e8f0; padding: 10px; font-weight: bold; color: #2563eb;">${h.nro_orden}</td>
+                                <td style="border: 1px solid #e2e8f0; padding: 10px;">${h.fecha_ingreso}</td>
+                                <td style="border: 1px solid #e2e8f0; padding: 10px;">${h.tecnico_ingreso}</td>
+                                <td style="border: 1px solid #e2e8f0; padding: 10px;">${h.tecnico_asignado}</td>
+                            </tr>
+                        `;
+                    });
+                    container.innerHTML = `
+                        <div class="bo-det-sec" style="margin-top:20px;">
+                            <div class="bo-det-sec-h"><i class="bi bi-clock-history"></i> Historial de Ingresos Anteriores (Reingresos)</div>
+                            <div class="bo-det-sec-b" style="padding:15px; overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; text-align:left;">
+                                    <thead>
+                                        <tr style="background:#f8fafc; font-weight:bold; font-size:12px; color:#475569;">
+                                            <th style="border: 1px solid #e2e8f0; padding: 10px;">Ingreso #</th>
+                                            <th style="border: 1px solid #e2e8f0; padding: 10px;">Nro. Orden</th>
+                                            <th style="border: 1px solid #e2e8f0; padding: 10px;">Fecha</th>
+                                            <th style="border: 1px solid #e2e8f0; padding: 10px;">Ingresó</th>
+                                            <th style="border: 1px solid #e2e8f0; padding: 10px;">Asignado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${rows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => console.error(err));
 
         // ── Botones de acción ──────────────────────────
         var acciones = document.getElementById('bo-det-acciones');

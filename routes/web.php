@@ -310,6 +310,7 @@ Route::middleware('auth')->group(function () {
 
     // Buscador Global: accesible a usuarios autenticados, filtrando por alcance interno
     Route::get('/operaciones/ordenes/buscar-global', [EdicionOrdenController::class, 'buscarGlobal'])->name('ordenes.buscar_global');
+    Route::get('/operaciones/ordenes/historial-reingresos', [OrdenController::class, 'obtenerHistorialReingresos'])->name('ordenes.historial_reingresos');
 
     // Recuperación de órdenes/informes perdidos desde PDF (Solo Admins)
     Route::get('/operaciones/ordenes/recuperar-pdf', [RecuperarOrdenController::class, 'index'])->name('ordenes.recuperar');
