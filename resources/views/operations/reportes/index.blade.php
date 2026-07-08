@@ -447,20 +447,20 @@
                         <th onclick="sortTabla(14,'horas_trabajadas')">Horas Trab.</th>
                         <th onclick="sortTabla(15,'tecnico_nombre')">Técnico</th>
                         <th onclick="sortTabla(16,'sucursal_nombre')">Sucursal</th>
-                        <th onclick="sortTabla(29,'sucursal_cliente')">Sucursal Cliente</th>
-                        <th onclick="sortTabla(17,'cas_nombre')">CAS</th>
-                        <th onclick="sortTabla(18,'tipo_orden')">Tipo orden</th>
-                        <th onclick="sortTabla(19,'estado_repuesto')">Repuesto</th>
-                        <th onclick="sortTabla(20,'estado_garantia')">Garantía</th>
-                        <th onclick="sortTabla(21,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(30,'transferencia_numero')">Transf. Inventario</th>
-                        <th onclick="sortTabla(22,'dias_transcurridos')">Días</th>
-                        <th onclick="sortTabla(23,'fecha_prometido')">F. Prometido</th>
-                        <th onclick="sortTabla(24,'fecha_entrega')">F. Entrega</th>
+                        <th onclick="sortTabla(17,'sucursal_cliente')">Sucursal Cliente</th>
+                        <th onclick="sortTabla(18,'cas_nombre')">CAS</th>
+                        <th onclick="sortTabla(19,'tipo_orden')">Tipo orden</th>
+                        <th onclick="sortTabla(20,'estado_repuesto')">Repuesto</th>
+                        <th onclick="sortTabla(21,'estado_garantia')">Garantía</th>
+                        <th onclick="sortTabla(22,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(23,'transferencia_numero')">Transf. Inventario</th>
+                        <th onclick="sortTabla(24,'dias_transcurridos')">Días</th>
+                        <th onclick="sortTabla(25,'fecha_prometido')">F. Prometido</th>
+                        <th onclick="sortTabla(26,'fecha_entrega')">F. Entrega</th>
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
-                        <th onclick="sortTabla(27,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
-                        <th onclick="sortTabla(28,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
+                        <th onclick="sortTabla(29,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(30,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>

@@ -159,8 +159,11 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
             <td colspan="2"><span class="lbl">Direccion</span>{{ $empresa?->direccion_empresa ?? '-' }}</td>
             <td><span class="lbl">Subtipo</span><span class="badge">{{ $orden->subtipo }}</span></td>
             <td>
-                @if ($orden->subtipo === 'Stock')
-                    <span class="lbl">Sucursal Cliente</span>{{ $nombreSucursalCliente ?? $orden->nro_sucursal_cliente ?? '-' }}
+                @if ($orden->nro_sucursal_cliente)
+                    <span class="lbl">Sucursal Cliente</span>{{ $nombreSucursalCliente ?? $orden->nro_sucursal_cliente }}
+                    @if ($orden->nro_ticket)
+                        <br><span class="lbl">Nro. Ticket</span>{{ $orden->nro_ticket }}
+                    @endif
                 @else
                     <span class="lbl">Nro. Ticket</span>{{ $orden->nro_ticket ?: '-' }}
                 @endif

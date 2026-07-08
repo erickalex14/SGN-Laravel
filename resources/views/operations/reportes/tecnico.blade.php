@@ -422,17 +422,18 @@
                         <th onclick="sortTabla(9,'motivo_ingreso')">Motivo</th>
                         <th onclick="sortTabla(10,'tecnico_nombre')">Técnico</th>
                         <th onclick="sortTabla(11,'sucursal_nombre')">Sucursal</th>
-                        <th onclick="sortTabla(19,'cas_nombre')">CAS</th>
-                        <th onclick="sortTabla(12,'tipo_orden')">Tipo orden</th>
-                        <th onclick="sortTabla(13,'estado_repuesto')">Repuesto</th>
-                        <th onclick="sortTabla(14,'estado_garantia')">Garantía</th>
-                        <th onclick="sortTabla(15,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(16,'dias_transcurridos')">Días</th>
-                        <th onclick="sortTabla(17,'fecha_prometido')">F. Prometido</th>
-                        <th onclick="sortTabla(18,'fecha_entrega')">F. Entrega</th>
+                        <th onclick="sortTabla(12,'sucursal_cliente')">Sucursal Cliente</th>
+                        <th onclick="sortTabla(13,'cas_nombre')">CAS</th>
+                        <th onclick="sortTabla(14,'tipo_orden')">Tipo orden</th>
+                        <th onclick="sortTabla(15,'estado_repuesto')">Repuesto</th>
+                        <th onclick="sortTabla(16,'estado_garantia')">Garantía</th>
+                        <th onclick="sortTabla(17,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(18,'dias_transcurridos')">Días</th>
+                        <th onclick="sortTabla(19,'fecha_prometido')">F. Prometido</th>
+                        <th onclick="sortTabla(20,'fecha_entrega')">F. Entrega</th>
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
-                        <th onclick="sortTabla(20,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(23,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>
@@ -508,6 +509,7 @@ function normalizeRow(raw) {
         estado_orden      : raw.estado_orden || '-',
         tecnico_nombre    : raw.tecnico_nombre || raw.tecnico?.nombre_tecnico || '-',
         sucursal_nombre   : raw.sucursal_nombre || raw.sucursal?.ciudad || '-',
+        sucursal_cliente  : raw.sucursal_cliente || '-',
         cas_nombre        : raw.cas_nombre || '-',
         dias_transcurridos: raw.dias_transcurridos ?? '-',
         vencida           : raw.vencida || false,
@@ -727,6 +729,7 @@ function renderTabla() {
             : `<td style="text-align:center;color:#cbd5e1;">—</td>`;
 
         const suc = `<td style="font-size:11px;">${esc(r.sucursal_nombre)}</td>`;
+        const sucCliente = `<td style="font-size:11px;">${esc(r.sucursal_cliente)}</td>`;
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
         return `<tr data-row="reporte" ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
@@ -741,6 +744,7 @@ function renderTabla() {
             <td style="font-size:11px;color:#475569;">${esc(r.motivo_ingreso)}</td>
             <td style="font-size:11px;">${esc(r.tecnico_nombre)}</td>
             ${suc}
+            ${sucCliente}
             ${casCol}
             <td>${tB}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
@@ -865,7 +869,7 @@ function exportarCSV() {
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Estado Repuesto','Estado Garantía','Estado Orden',
-        'Técnico','Sucursal','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida',
+        'Técnico','Sucursal','Sucursal Cliente','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'URL PDF Orden', 'URL PDF Informe'
     ];
     const rows = _filtered.map(r => {
@@ -880,7 +884,7 @@ function exportarCSV() {
             r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.cliente_nombre, r.identificacion,
             r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
             r.tipo_equipo, r.motivo_ingreso, r.estado_repuesto, r.estado_garantia,
-            r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.cas_nombre,
+            r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
             r.dias_transcurridos, r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
@@ -971,6 +975,7 @@ async function exportarXLSX() {
         'Estado Repuesto','Estado Garantía','Estado Orden',
         'Técnico','Ingresado por',
         'Sucursal',
+        'Sucursal Cliente',
         'CAS',
         'Tipo Orden',
         'Valor Cobro Novicompu',
@@ -978,7 +983,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,16,12,22,18,18];
+    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,22,16,12,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ state:'frozen', ySplit:20 }],
@@ -1088,6 +1093,7 @@ async function exportarXLSX() {
             r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
             r.tecnico_nombre, '',
             r.sucursal_nombre,
+            r.sucursal_cliente || '',
             r.cas_nombre,
             r.tipo_orden,
             Number(r.valor_novicompu ?? 0),
@@ -1101,7 +1107,7 @@ async function exportarXLSX() {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 24) { 
+            else if (ci === 25) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
