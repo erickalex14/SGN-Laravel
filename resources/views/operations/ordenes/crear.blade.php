@@ -4164,208 +4164,218 @@ function initPatternLock(cardId) {
 
 
 
+let _guardandoOrden = false;
+
 async function guardarOrden() {
-    const modelInp = document.getElementById('eq_modelo');
-    const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim().toUpperCase();
-    const motivo = document.getElementById('motivo_ingreso')?.value || '';
-    const isEmpresa = motivo === 'Servicios a Empresas';
-
-    if (!isEmpresa && cod !== '') {
-        const resultadoProducto = await buscarProductoPorCodigo(cod);
-        if (resultadoProducto.status === 'nuevo') {
-            const descripcionNueva = obtenerDescripcionProductoNuevo();
-            if (descripcionNueva.length < 3) {
-                mostrarMensaje(true, 'Este codigo no esta registrado. Ingresa una descripcion valida del equipo antes de crear la orden.');
-                document.getElementById('producto_nuevo_descripcion')?.focus();
-                return;
-            }
-            if (modelInp) {
-                modelInp.value = descripcionNueva;
-            }
-        }
-    }
-
-    if (modelInp && !modelInp.value) {
-        modelInp.value = cod || '';
-    }
-
-    const form = document.getElementById('form-orden');
-    const fd = new FormData(form);
+    if (_guardandoOrden) return;
+    _guardandoOrden = true;
 
     const btn = document.getElementById('btn-guardar');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+    }
 
-    // ── VALIDACIÓN DE ÓRDENES DUPLICADAS ──
     try {
-        let series = [];
-        
-        if (isEmpresa) {
-            const empSeriesEls = document.querySelectorAll('input[name="emp_series[]"]');
-            empSeriesEls.forEach(el => {
-                const val = el.value.trim();
-                if (val) series.push(val);
-            });
-        } else {
-            const personalSeriesEls = document.querySelectorAll('input[name="series[]"]');
-            personalSeriesEls.forEach(el => {
-                const val = el.value.trim();
-                if (val) series.push(val);
-            });
-        }
-        
-        // Ignorar sn, s/n y ya aprobados
-        series = series.filter(s => {
-            const lower = s.toLowerCase();
-            return lower !== '' && lower !== 'sn' && lower !== 's/n' && !_duplicadosAprobados.has(lower);
-        });
-        
-        if (series.length > 0) {
-            const responseCheck = await fetch('{{ route("ordenes.verificar_duplicado") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ series, facturas: [] })
-            });
-            
-            if (responseCheck.ok) {
-                const dupCheck = await responseCheck.json();
-                if (dupCheck.duplicated) {
-                    const count = dupCheck.coincidencias.length;
-                    const ordinalIngreso = count + 1;
-                    
-                    let tableRows = '';
-                    dupCheck.coincidencias.forEach(c => {
-                        tableRows += `
-                            <tr>
-                                <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700;">${c.nro_orden}</td>
-                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.fecha_ingreso || '-'}</td>
-                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_ingreso || '-'}</td>
-                                <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_asignado || '-'}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    const tableHtml = `
-                        <div style="margin-top:14px; text-align:left; font-size:12px; font-family:inherit;">
-                            <p style="margin-bottom:8px; font-weight:700; color:#dc2626;">Se encontraron ${count} orden(es) previa(s) con la misma Serie:</p>
-                            <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:12px;">
-                                <thead>
-                                    <tr style="background:#f1f5f9;">
-                                        <th style="border:1px solid #cbd5e1; padding:6px;">Orden</th>
-                                        <th style="border:1px solid #cbd5e1; padding:6px;">Fecha</th>
-                                        <th style="border:1px solid #cbd5e1; padding:6px;">Ingresó</th>
-                                        <th style="border:1px solid #cbd5e1; padding:6px;">Asignado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${tableRows}
-                                </tbody>
-                            </table>
-                            <p>¿Desea ingresar esta orden como el <strong>Ingreso #${ordinalIngreso}</strong> para este equipo/serie?</p>
-                        </div>
-                    `;
-                    
-                    const result = await Swal.fire({
-                        title: '¡Serie Duplicada!',
-                        html: tableHtml,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: `Sí, registrar como Ingreso #${ordinalIngreso}`,
-                        cancelButtonText: 'No, cancelar',
-                        confirmButtonColor: '#2563eb',
-                        cancelButtonColor: '#dc2626',
-                        width: '600px',
-                        allowOutsideClick: false,
-                        allowEscapeKey: false
-                    });
-                    
-                    if (!result.isConfirmed) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="bi bi-file-earmark-check"></i> Crear Orden';
-                        return;
-                    }
+        const modelInp = document.getElementById('eq_modelo');
+        const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim().toUpperCase();
+        const motivo = document.getElementById('motivo_ingreso')?.value || '';
+        const isEmpresa = motivo === 'Servicios a Empresas';
+
+        if (!isEmpresa && cod !== '') {
+            const resultadoProducto = await buscarProductoPorCodigo(cod);
+            if (resultadoProducto.status === 'nuevo') {
+                const descripcionNueva = obtenerDescripcionProductoNuevo();
+                if (descripcionNueva.length < 3) {
+                    mostrarMensaje(true, 'Este codigo no esta registrado. Ingresa una descripcion valida del equipo antes de crear la orden.');
+                    document.getElementById('producto_nuevo_descripcion')?.focus();
+                    return;
+                }
+                if (modelInp) {
+                    modelInp.value = descripcionNueva;
                 }
             }
         }
-    } catch (e) {
-        console.error('Error al verificar duplicados:', e);
-    }
 
-    try {
-        const r = await fetch('{{ route("ordenes.store") }}', {
-            method: 'POST',
-            body: fd,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        if (modelInp && !modelInp.value) {
+            modelInp.value = cod || '';
+        }
+
+        const form = document.getElementById('form-orden');
+        const fd = new FormData(form);
+
+        // ── VALIDACIÓN DE ÓRDENES DUPLICADAS ──
+        try {
+            let series = [];
+            
+            if (isEmpresa) {
+                const empSeriesEls = document.querySelectorAll('input[name="emp_series[]"]');
+                empSeriesEls.forEach(el => {
+                    const val = el.value.trim();
+                    if (val) series.push(val);
+                });
+            } else {
+                const personalSeriesEls = document.querySelectorAll('input[name="series[]"]');
+                personalSeriesEls.forEach(el => {
+                    const val = el.value.trim();
+                    if (val) series.push(val);
+                });
             }
-        });
+            
+            // Ignorar sn, s/n y ya aprobados
+            series = series.filter(s => {
+                const lower = s.toLowerCase();
+                return lower !== '' && lower !== 'sn' && lower !== 's/n' && !_duplicadosAprobados.has(lower);
+            });
+            
+            if (series.length > 0) {
+                const responseCheck = await fetch('{{ route("ordenes.verificar_duplicado") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ series, facturas: [] })
+                });
+                
+                if (responseCheck.ok) {
+                    const dupCheck = await responseCheck.json();
+                    if (dupCheck.duplicated) {
+                        const count = dupCheck.coincidencias.length;
+                        const ordinalIngreso = count + 1;
+                        
+                        let tableRows = '';
+                        dupCheck.coincidencias.forEach(c => {
+                            tableRows += `
+                                <tr>
+                                    <td style="border:1px solid #cbd5e1; padding:6px; font-weight:700;">${c.nro_orden}</td>
+                                    <td style="border:1px solid #cbd5e1; padding:6px;">${c.fecha_ingreso || '-'}</td>
+                                    <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_ingreso || '-'}</td>
+                                    <td style="border:1px solid #cbd5e1; padding:6px;">${c.tecnico_asignado || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        const tableHtml = `
+                            <div style="margin-top:14px; text-align:left; font-size:12px; font-family:inherit;">
+                                <p style="margin-bottom:8px; font-weight:700; color:#dc2626;">Se encontraron ${count} orden(es) previa(s) con la misma Serie:</p>
+                                <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:12px;">
+                                    <thead>
+                                        <tr style="background:#f1f5f9;">
+                                            <th style="border:1px solid #cbd5e1; padding:6px;">Orden</th>
+                                            <th style="border:1px solid #cbd5e1; padding:6px;">Fecha</th>
+                                            <th style="border:1px solid #cbd5e1; padding:6px;">Ingresó</th>
+                                            <th style="border:1px solid #cbd5e1; padding:6px;">Asignado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${tableRows}
+                                    </tbody>
+                                </table>
+                                <p>¿Desea ingresar esta orden como el <strong>Ingreso #${ordinalIngreso}</strong> para este equipo/serie?</p>
+                            </div>
+                        `;
+                        
+                        const result = await Swal.fire({
+                            title: '¡Serie Duplicada!',
+                            html: tableHtml,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: `Sí, registrar como Ingreso #${ordinalIngreso}`,
+                            cancelButtonText: 'No, cancelar',
+                            confirmButtonColor: '#2563eb',
+                            cancelButtonColor: '#dc2626',
+                            width: '600px',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        });
+                        
+                        if (!result.isConfirmed) {
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error al verificar duplicados:', e);
+        }
 
-        const contentType = r.headers.get('content-type') || '';
-        if (!r.ok) {
-            let errorText = '';
-            try {
-                errorText = await r.text();
-            } catch (_) {}
+        try {
+            const r = await fetch('{{ route("ordenes.store") }}', {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
-            console.error('Response error details:', r.status, errorText);
+            const contentType = r.headers.get('content-type') || '';
+            if (!r.ok) {
+                let errorText = '';
+                try {
+                    errorText = await r.text();
+                } catch (_) {}
 
-            if (r.status === 419) {
-                mostrarMensaje(true, 'La sesión ha expirado (Error 419). Por favor, recarga la página e intenta de nuevo.');
+                console.error('Response error details:', r.status, errorText);
+
+                if (r.status === 419) {
+                    mostrarMensaje(true, 'La sesión ha expirado (Error 419). Por favor, recarga la página e intenta de nuevo.');
+                    return;
+                }
+
+                if (contentType.includes('application/json')) {
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        mostrarMensaje(true, errorJson.error || `Error del servidor (${r.status}): ${r.statusText}`);
+                        return;
+                    } catch (_) {}
+                }
+
+                const titleMatch = errorText.match(/<title>(.*?)<\/title>/i);
+                const title = titleMatch ? titleMatch[1] : '';
+                mostrarMensaje(true, `Error del servidor (${r.status})${title ? ': ' + title : ''}. Por favor, contacte a soporte.`);
                 return;
             }
 
-            if (contentType.includes('application/json')) {
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    mostrarMensaje(true, errorJson.error || `Error del servidor (${r.status}): ${r.statusText}`);
-                    return;
-                } catch (_) {}
+            if (!contentType.includes('application/json')) {
+                const responseText = await r.text();
+                console.error('Expected JSON but received:', responseText.substring(0, 500));
+                mostrarMensaje(true, 'El servidor retornó una respuesta inesperada (no JSON).');
+                return;
             }
 
-            const titleMatch = errorText.match(/<title>(.*?)<\/title>/i);
-            const title = titleMatch ? titleMatch[1] : '';
-            mostrarMensaje(true, `Error del servidor (${r.status})${title ? ': ' + title : ''}. Por favor, contacte a soporte.`);
-            return;
-        }
+            const d = await r.json();
 
-        if (!contentType.includes('application/json')) {
-            const responseText = await r.text();
-            console.error('Expected JSON but received:', responseText.substring(0, 500));
-            mostrarMensaje(true, 'El servidor retornó una respuesta inesperada (no JSON).');
-            return;
+            if(d.ok) {
+                const urlImprimirOrden = @json(route('ordenes.imprimir', ['id' => '__ID__']));
+                const urlImprimirEmpresa = @json(route('ordenes_empresa.imprimir', ['id' => '__ID__']));
+                const linkImprimir = d.tipo_orden === 'empresa'
+                    ? `<br><br> <a href="${urlImprimirEmpresa.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`
+                    : `<br><br> <a href="${urlImprimirOrden.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`;
+                mostrarMensaje(false, `<strong>Exito!</strong> ${d.mensaje}${linkImprimir}`);
+                document.getElementById('form-orden').reset();
+                actualizarMotivo();
+                _preordenIgnorada = false;
+                ocultarAvisoPreorden();
+                onEstadoRepuestoChange(document.getElementById('estado_repuesto').value || 'No requerido');
+                limpiarRepuestoSeleccionado();
+                limpiarEstadoProducto();
+                limpiarBadgeProducto();
+                sincronizarTecnicoDesdeSelect();
+            } else {
+                mostrarMensaje(true, d.error);
+            }
+        } catch(e) {
+            console.error('Connection/JavaScript critical error:', e);
+            mostrarMensaje(true, 'Ocurrió un error crítico de conexión o de red: ' + e.message);
         }
-
-        const d = await r.json();
-
-        if(d.ok) {
-            const urlImprimirOrden = @json(route('ordenes.imprimir', ['id' => '__ID__']));
-            const urlImprimirEmpresa = @json(route('ordenes_empresa.imprimir', ['id' => '__ID__']));
-            const linkImprimir = d.tipo_orden === 'empresa'
-                ? `<br><br> <a href="${urlImprimirEmpresa.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`
-                : `<br><br> <a href="${urlImprimirOrden.replace('__ID__', encodeURIComponent(d.orden_id))}" target="_blank" style="color:#166534; text-decoration:underline;">Imprimir Comprobante</a>`;
-            mostrarMensaje(false, `<strong>Exito!</strong> ${d.mensaje}${linkImprimir}`);
-            document.getElementById('form-orden').reset();
-            actualizarMotivo();
-            _preordenIgnorada = false;
-            ocultarAvisoPreorden();
-            onEstadoRepuestoChange(document.getElementById('estado_repuesto').value || 'No requerido');
-            limpiarRepuestoSeleccionado();
-            limpiarEstadoProducto();
-            limpiarBadgeProducto();
-            sincronizarTecnicoDesdeSelect();
-        } else {
-            mostrarMensaje(true, d.error);
-        }
-    } catch(e) {
-        console.error('Connection/JavaScript critical error:', e);
-        mostrarMensaje(true, 'Ocurrió un error crítico de conexión o de red: ' + e.message);
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-file-earmark-check"></i> Crear Orden';
+        _guardandoOrden = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-file-earmark-check"></i> Crear Orden';
+        }
     }
 }
 
