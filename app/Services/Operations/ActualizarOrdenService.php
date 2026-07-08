@@ -267,6 +267,10 @@ class ActualizarOrdenService
                     $orden->valor_hora = (float) ($data['valor_hora'] ?? 0);
                     $orden->horas_trabajadas = (float) ($data['horas_trabajadas'] ?? 0);
 
+                    if ($orden->empresa && trim(strtoupper($orden->empresa->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA') {
+                        $orden->valor_hora = 52.0;
+                    }
+
                     $tecnicosAsignados = $data['tecnicos_asignados'] ?? [];
                     if (! is_array($tecnicosAsignados)) {
                         $tecnicosAsignados = [$tecnicosAsignados];

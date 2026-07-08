@@ -311,6 +311,14 @@ class CrearOrdenService
 
                     $casId = ! empty($data['cas_id_empresa']) ? (int) $data['cas_id_empresa'] : null;
 
+                    $empresaObj = \App\Models\Directory\Empresa::find((int) $data['empresa_id']);
+                    $isRbHealth = ($empresaObj && trim(strtoupper($empresaObj->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA');
+
+                    $valHora = $esNovisolutionsServicio ? (float) ($data['valor_hora'] ?? 0) : null;
+                    if ($isRbHealth) {
+                        $valHora = 52.0;
+                    }
+
                     $orden = OrdenEmpresa::create([
                         'nro_orden' => $nroOrden,
                         'empresa_id' => (int) $data['empresa_id'],
@@ -327,7 +335,7 @@ class CrearOrdenService
                         'estado' => 'Pendiente',
                         'fecha_ingreso' => $data['fecha_ingreso'],
                         'nro_sucursal_cliente' => in_array($subtipo, ['Stock', 'Servicios', 'Autoconsumo'], true) ? (string) ($data['nro_sucursal_cliente'] ?? null) : null,
-                        'valor_hora' => $esNovisolutionsServicio ? (float) ($data['valor_hora'] ?? 0) : null,
+                        'valor_hora' => $valHora,
                         'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($data['horas_trabajadas'] ?? 0) : null,
                     ]);
 

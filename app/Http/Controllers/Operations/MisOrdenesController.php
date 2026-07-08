@@ -88,11 +88,28 @@ class MisOrdenesController extends Controller
             $esAdmin = $this->resolverEsAdmin();
 
             if ($tipoOrden === 'empresa') {
+                if ($request->input('estado') === 'Finalizada' && $orden && $orden->empresa && trim(strtoupper($orden->empresa->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA') {
+                    if (!$request->has('horas_trabajadas') || is_null($request->input('horas_trabajadas')) || (float)$request->input('horas_trabajadas') <= 0) {
+                        return response()->json([
+                            'ok' => false,
+                            'error' => 'Debe ingresar el número de horas trabajadas para la empresa RB-HEALTH ECUADOR CIA LTDA.'
+                        ]);
+                    }
+                }
+
+                $horasTrabajadas = $request->input('horas_trabajadas') ? (float)$request->input('horas_trabajadas') : null;
+                $valorHora = null;
+                if ($orden && $orden->empresa && trim(strtoupper($orden->empresa->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA') {
+                    $valorHora = 52.0;
+                }
+
                 $this->service->actualizarEstadoEmpresa(
                     $ordenId,
                     (string) $request->input('estado'),
                     $usuarioModificacionId,
-                    $esAdmin
+                    $esAdmin,
+                    $horasTrabajadas,
+                    $valorHora
                 );
 
                 if ($orden) {

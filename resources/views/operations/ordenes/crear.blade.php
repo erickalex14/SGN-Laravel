@@ -4574,6 +4574,21 @@ function verificarNovisolutions() {
 
     if (!selectEmpresa) return;
 
+    const selectedOption = selectEmpresa.options[selectEmpresa.selectedIndex];
+    const nombreEmpresa = selectedOption ? selectedOption.getAttribute('data-nombre') : '';
+    const valHoraInput = document.getElementById('valor_hora');
+    if (valHoraInput) {
+        if (nombreEmpresa && nombreEmpresa.trim().toUpperCase() === 'RB-HEALTH ECUADOR CIA LTDA') {
+            valHoraInput.value = '52.00';
+            valHoraInput.readOnly = true;
+        } else {
+            valHoraInput.readOnly = false;
+            if (valHoraInput.value === '52.00') {
+                valHoraInput.value = '50.00';
+            }
+        }
+    }
+
 
 
     const subtipoRadio = document.querySelector('input[name="subtipo_empresa"]:checked');

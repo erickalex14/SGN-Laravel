@@ -25,6 +25,7 @@ class CambiarEstadoOrdenRequest extends FormRequest
                 : 'in:Pendiente,En proceso,Finalizada,Entregada,Nota de Credito'],
             'nc_asunto' => ['nullable', 'string', 'max:255', 'required_if:estado,Nota de Credito'],
             'nc_detalles' => ['nullable', 'string', 'max:5000', 'required_if:estado,Nota de Credito'],
+            'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

@@ -38,8 +38,14 @@ class GestionOrdenService
     /**
      * @throws Exception
      */
-    public function actualizarEstadoEmpresa(int $ordenId, string $estado, int $usuarioId, bool $esAdmin = false): void
-    {
+    public function actualizarEstadoEmpresa(
+        int $ordenId,
+        string $estado,
+        int $usuarioId,
+        bool $esAdmin = false,
+        ?float $horasTrabajadas = null,
+        ?float $valorHora = null
+    ): void {
         $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
         if (!$orden) {
             throw new Exception('La orden de empresa especificada no existe.');
@@ -57,6 +63,16 @@ class GestionOrdenService
         $this->validarTransicionEmpresa($orden, $estadoNormalizado);
 
         $orden->estado = $estadoNormalizado;
+
+        if ($horasTrabajadas !== null) {
+            $orden->horas_trabajadas = $horasTrabajadas;
+        }
+        if ($valorHora !== null) {
+            $orden->valor_hora = $valorHora;
+        }
+        if ($orden->empresa && trim(strtoupper($orden->empresa->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA') {
+            $orden->valor_hora = 52.0;
+        }
 
         // Cierre y entrega automática para empresas
         if (in_array($estadoNormalizado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {

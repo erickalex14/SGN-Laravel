@@ -256,6 +256,8 @@
                 'usuario_nombre' => $ll->usuario?->nombre_tecnico ?? $ll->usuario?->usuario ?? 'Técnico',
                 'observacion' => (string) ($ll->observacion ?? 'Llamada registrada sin observaciones.'),
             ])->values(),
+            'horas_trabajadas' => $esEmpresa ? $ord->horas_trabajadas : null,
+            'valor_hora' => $esEmpresa ? $ord->valor_hora : null,
         ];
     })->values();
 
@@ -803,6 +805,42 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         abrirModalNC(ordenId);
         return;
     }
+
+    let horasTrabajadas = null;
+    if (tipoOrden === 'empresa' && nuevoEstado === 'Finalizada') {
+        const row = _moFindRow(ordenId, tipoOrden);
+        if (row && row.cliente && row.cliente.trim().toUpperCase() === 'RB-HEALTH ECUADOR CIA LTDA') {
+            const { value: horas } = await Swal.fire({
+                title: 'Horas Trabajadas',
+                text: 'Por favor, ingrese el número de horas trabajadas para RB-HEALTH ECUADOR CIA LTDA:',
+                input: 'number',
+                inputAttributes: {
+                    min: '0.1',
+                    step: '0.1'
+                },
+                inputPlaceholder: 'Ej: 2.5',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar y Finalizar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#dc2626',
+                allowOutsideClick: false,
+                inputValidator: (value) => {
+                    if (!value || isNaN(parseFloat(value)) || parseFloat(value) <= 0) {
+                        return '¡Debe ingresar un número de horas válido mayor a 0!';
+                    }
+                }
+            });
+
+            if (!horas) {
+                const rowCancel = _moFindRow(ordenId, tipoOrden);
+                if (rowCancel) _moRefrescarModal(rowCancel);
+                return;
+            }
+            horasTrabajadas = horas;
+        }
+    }
+
     const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
     if (!verificado) {
         const rowCancel = _moFindRow(ordenId, tipoOrden);
@@ -815,6 +853,9 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     fd.append('id', ordenId);
     fd.append('estado', nuevoEstado);
     fd.append('tipo_orden', tipoOrden);
+    if (horasTrabajadas !== null) {
+        fd.append('horas_trabajadas', horasTrabajadas);
+    }
 
     try {
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
@@ -828,6 +869,10 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
             row.estado_orden = nuevoEstado;
             if (nuevoEstado === 'Nota de Credito') {
                 row.nc_estado = row.nc_estado || 'Pendiente';
+            }
+            if (horasTrabajadas !== null) {
+                row.horas_trabajadas = parseFloat(horasTrabajadas);
+                row.valor_hora = 52.0;
             }
             _moAplicarCambioLocal(row);
         }
@@ -1378,6 +1423,10 @@ function verDetalleOrden(cardEl) {
                         ? `<div class="det-campo"><label>Nro. Ticket</label><span>${_h(o.nro_factura || '-')}</span></div>` 
                         : `<div class="det-campo"><label>Nro. Factura</label><span>${_h(o.nro_factura || '-')}</span></div>`
                     }
+                    ${esEmpresa ? `
+                    <div class="det-campo"><label>Valor Hora</label><span>${o.valor_hora ? '$' + parseFloat(o.valor_hora).toFixed(2) : '-'}</span></div>
+                    <div class="det-campo"><label>Horas Trabajadas</label><span>${o.horas_trabajadas !== null && o.horas_trabajadas !== undefined ? o.horas_trabajadas : '-'}</span></div>
+                    ` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
                 </div>
