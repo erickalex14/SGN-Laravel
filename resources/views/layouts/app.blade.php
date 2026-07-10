@@ -425,6 +425,30 @@
             </div>
         @endif
 
+        @if ($sa || ($esAdminOAdminMaster && (int) session('sucursal_id') === 1))
+            <div class="nav-group">
+                <a class="nav-toggle" data-tip="Caja" onclick="navToggle(this)">
+                    <i class="bi bi-safe" style="flex-shrink:0;"></i>
+                    <span class="nav-label" style="margin-left:10px;">Caja</span>
+                    <i class="bi bi-chevron-down nav-arrow ms-auto"></i>
+                </a>
+                <div class="nav-submenu">
+                    <a data-tip="Movimientos" href="{{ route('caja.movimientos') }}">
+                        <i class="bi bi-arrow-left-right" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">Movimientos</span>
+                    </a>
+                    <a data-tip="Apertura Mensual" href="{{ route('caja.apertura') }}">
+                        <i class="bi bi-calendar-plus" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">Apertura Mensual</span>
+                    </a>
+                    <a data-tip="Reportes y Balances" href="{{ route('caja.reportes') }}">
+                        <i class="bi bi-file-earmark-bar-graph" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">Reportes y Balances</span>
+                    </a>
+                </div>
+            </div>
+        @endif
+
         @if ($hasControl)
             <div class="nav-group">
                 <a class="nav-toggle" data-tip="Control" onclick="navToggle(this)">

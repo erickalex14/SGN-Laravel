@@ -394,4 +394,29 @@ class SgnMailService
             throw $e;
         }
     }
+
+    /**
+     * Envía una notificación para recordar a los administradores el cierre de caja.
+     */
+    public static function enviarAlertaCierreCaja(array $destinatarios, string $nombreSucursal, string $mesNombre, int $anio): void
+    {
+        try {
+            $asunto = "[SGN] Recordatorio: Cierre Mensual de Caja - {$nombreSucursal} [{$mesNombre} {$anio}]";
+            
+            $cuerpo = view('emails.alerta_cierre_caja', [
+                'sucursal' => $nombreSucursal,
+                'mes' => $mesNombre,
+                'anio' => $anio,
+                'subject' => $asunto
+            ])->render();
+
+            Mail::html($cuerpo, function ($message) use ($destinatarios, $asunto) {
+                $message->to($destinatarios)->subject($asunto);
+            });
+
+            Log::info("Correo de recordatorio de cierre de caja enviado para sucursal {$nombreSucursal}.", ['destinatarios' => count($destinatarios)]);
+        } catch (\Throwable $e) {
+            Log::error('Error al enviar correo de alerta de cierre de caja', ['error' => $e->getMessage()]);
+        }
+    }
 }
