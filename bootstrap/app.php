@@ -16,7 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('ordenes:verificar-antiguedad')->dailyAt('08:00');
-        $schedule->command('caja:enviar-alerta-cierre')->dailyAt('18:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);

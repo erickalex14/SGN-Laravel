@@ -30,7 +30,6 @@ use App\Http\Controllers\Operations\RecuperarOrdenController;
 use App\Http\Controllers\Operations\ReporteController; // Controlador de autenticación heredado
 use App\Http\Controllers\Operations\SolicitudRepuestoController;
 use App\Http\Controllers\Identity\ActividadDiariaController;
-use App\Http\Controllers\Operations\CajaController;
 use Illuminate\Support\Facades\Route;
 
 // ═════════════════════════════════════════════════════════════════
@@ -418,18 +417,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/reportes/filtrar', [ReporteController::class, 'filtrar'])->name('reportes.filtrar');
         Route::get('/operaciones/reportes/imprimir', [ReporteController::class, 'imprimir'])->name('reportes.imprimir');
     });
-
-    // ------------- MODULO CAJA CHICA Y CAJA GRANDE ---------------------
-    Route::get('/operaciones/caja/movimientos', [CajaController::class, 'movimientos'])->name('caja.movimientos');
-    Route::post('/operaciones/caja/movimientos', [CajaController::class, 'registrarMovimiento'])->name('caja.movimiento.store');
-    Route::post('/operaciones/caja/movimientos/{id}/editar', [CajaController::class, 'editarMovimiento'])->name('caja.movimiento.update');
-    Route::delete('/operaciones/caja/movimientos/{id}/eliminar', [CajaController::class, 'eliminarMovimiento'])->name('caja.movimiento.destroy');
-    
-    Route::get('/operaciones/caja/apertura', [CajaController::class, 'apertura'])->name('caja.apertura');
-    Route::post('/operaciones/caja/apertura', [CajaController::class, 'abrirMes'])->name('caja.apertura.store');
-    Route::post('/operaciones/caja/cerrar', [CajaController::class, 'cerrarMes'])->name('caja.cerrar');
-    
-    Route::get('/operaciones/caja/reportes', [CajaController::class, 'reportes'])->name('caja.reportes');
 
     // Reportes para técnicos (autenticados, sin requerir permiso general de reportes admin)
     Route::get('/operaciones/informes/reportes', [ReporteController::class, 'indexTecnico'])->name('reportes.tecnico');
