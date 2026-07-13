@@ -1,4 +1,5 @@
 @php
+    // Force sync print layouts
     $equipo = $orden->equipo;
     $cliente = $orden->cliente;
     $tecnico = $orden->tecnico;
