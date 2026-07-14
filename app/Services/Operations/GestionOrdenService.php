@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Exception;
+use App\Services\Operations\AuditLogger;
 
 class GestionOrdenService
 {
@@ -92,6 +93,16 @@ class GestionOrdenService
         }
 
         $orden->save();
+
+        $accion = in_array($estadoNormalizado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito'], true) ? 'CERRAR_ORDEN' : 'EDITAR_ORDEN';
+        AuditLogger::registrar($accion, 'ordenes', (string)$orden->id, [
+            'nro_orden' => $orden->nro_orden,
+            'tipo_orden' => 'empresa',
+            'estado_anterior' => $estadoAnterior,
+            'estado_nuevo' => $orden->estado,
+            'horas_trabajadas' => $horasTrabajadas,
+            'valor_hora' => $orden->valor_hora,
+        ]);
 
         Log::info('Estado de orden de empresa actualizado.', [
             'orden_empresa_id' => $orden->id,
@@ -177,6 +188,22 @@ class GestionOrdenService
                 $solicitud->save();
             }
         });
+
+        $accion = in_array($estadoNormalizado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito'], true) ? 'CERRAR_ORDEN' : 'EDITAR_ORDEN';
+        AuditLogger::registrar($accion, 'ordenes', (string)$orden->id, [
+            'nro_orden' => $orden->nro_orden,
+            'tipo_orden' => 'personal',
+            'estado_anterior' => $estadoAnterior,
+            'estado_nuevo' => $orden->estado_orden,
+        ]);
+
+        if ($estadoNormalizado === 'Nota de Credito') {
+            AuditLogger::registrar('CREAR_SOLICITUD_NC', 'notas_credito', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'asunto' => trim((string) $dto->nc_asunto),
+                'detalles' => trim((string) $dto->nc_detalles),
+            ]);
+        }
 
         Log::info('Estado de orden de servicio actualizado.', [
             'orden_id'        => $orden->id,
@@ -415,6 +442,12 @@ class GestionOrdenService
             }
             $orden->save();
         });
+
+        AuditLogger::registrar('ASIGNAR_REPUESTO', 'inventario', (string)$orden->id, [
+            'nro_orden' => $orden->nro_orden,
+            'tipo_orden' => $tipoOrden,
+            'repuesto_inventario_id' => $dto->repuesto_inventario_id,
+        ]);
     }
 
     /**
@@ -464,6 +497,12 @@ class GestionOrdenService
             }
             $orden->save();
         });
+
+        AuditLogger::registrar('REVERTIR_REPUESTO', 'inventario', (string)$orden->id, [
+            'nro_orden' => $orden->nro_orden,
+            'tipo_orden' => $tipoOrden,
+            'repuesto_id' => $dto->repuesto_id,
+        ]);
     }
 
     /**
@@ -507,6 +546,14 @@ class GestionOrdenService
             'orden_id' => $ordenId,
             'nuevo_tecnico_id' => $nuevoTecnicoId,
             'tipo_orden' => $tipoOrden,
+        ]);
+
+        AuditLogger::registrar('EDITAR_ORDEN', 'ordenes', (string)$orden->id, [
+            'nro_orden' => $orden->nro_orden,
+            'tipo_orden' => $tipoOrden,
+            'accion' => 'reasignar_tecnico',
+            'tecnico_anterior' => $tecnicoAnterior,
+            'tecnico_nuevo' => $nuevoTecnicoId,
         ]);
     }
 }

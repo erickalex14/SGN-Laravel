@@ -7,6 +7,7 @@ use App\Repositories\Identity\UsuarioRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Services\Operations\AuditLogger;
 
 class AuthService
 {
@@ -26,12 +27,14 @@ class AuthService
 
         if (! $usuario || ! $usuario->validarClave($claveInput)) {
             Log::warning('Intento de login fallido: credenciales incorrectas', ['usuario' => $usuarioInput]);
+            AuditLogger::registrar('LOGIN_FALLIDO', 'auth', null, 'Credenciales incorrectas para el usuario: ' . $usuarioInput);
             throw new Exception('credenciales_invalidas');
         }
 
         // En legacy, NULL equivale a activo
         if ((int) ($usuario->activo ?? 1) === 0) {
             Log::warning('Intento de login fallido: usuario inactivo', ['usuario' => $usuarioInput]);
+            AuditLogger::registrar('LOGIN_FALLIDO', 'auth', (string)$usuario->id, 'Intento de login para usuario inactivo: ' . $usuarioInput);
             throw new Exception('usuario_inactivo');
         }
 
@@ -42,6 +45,7 @@ class AuthService
 
         Auth::login($usuario);
         session()->regenerate();
+        AuditLogger::registrar('LOGIN', 'auth', (string)$usuario->id, 'Sesión iniciada correctamente');
 
         $grupo = $usuario->grupo;
         $esSuperadmin = $grupo ? (bool) $grupo->es_superadmin : false;
@@ -80,6 +84,10 @@ class AuthService
 
     public function cerrarSesion(): void
     {
+        $usuario = auth()->user();
+        if ($usuario) {
+            AuditLogger::registrar('LOGOUT', 'auth', (string)$usuario->id, 'Sesión cerrada correctamente');
+        }
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();

@@ -18,6 +18,7 @@ use App\Repositories\Operations\OrdenRepuestoRepository;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Operations\AuditLogger;
 
 class CrearOrdenService
 {
@@ -43,7 +44,7 @@ class CrearOrdenService
     public function crearOrden(CrearOrdenDTO $dto): Orden
     {
         try {
-            return $this->ordenRepo->ejecutarConLockSecuencial($dto->sucursal_id, function () use ($dto) {
+            $orden = $this->ordenRepo->ejecutarConLockSecuencial($dto->sucursal_id, function () use ($dto) {
                 return DB::transaction(function () use ($dto) {
                     $motivoIngreso = trim($dto->motivo_ingreso);
                     $esValidacionGarantia = $motivoIngreso === 'Validacion de Garantia';
@@ -211,6 +212,12 @@ class CrearOrdenService
                 });
             });
 
+            AuditLogger::registrar('CREAR_ORDEN', 'ordenes', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'cliente' => $orden->cliente ? trim($orden->cliente->nombres . ' ' . $orden->cliente->apellidos) : 'Desconocido',
+                'tipo_orden' => 'personal'
+            ]);
+
             try {
                 SgnMailService::enviarOrdenCreada($orden);
             } catch (\Throwable $e) {
@@ -232,7 +239,7 @@ class CrearOrdenService
         try {
             $sucursalId = (int) $data['sucursal_id'];
 
-            return $this->ordenRepo->ejecutarConLockSecuencial($sucursalId, function () use ($data, $sucursalId) {
+            $orden = $this->ordenRepo->ejecutarConLockSecuencial($sucursalId, function () use ($data, $sucursalId) {
                 return DB::transaction(function () use ($data, $sucursalId) {
                     $subtipo = trim((string) $data['subtipo_empresa']);
                     $descripcion = trim((string) ($data['emp_descripcion'] ?? ''));
@@ -363,6 +370,12 @@ class CrearOrdenService
                     return $orden;
                 });
             });
+
+            AuditLogger::registrar('CREAR_ORDEN', 'ordenes', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'empresa' => $orden->empresa ? $orden->empresa->nombre : 'Desconocida',
+                'tipo_orden' => 'empresa'
+            ]);
 
             try {
                 SgnMailService::enviarOrdenCreada($orden);

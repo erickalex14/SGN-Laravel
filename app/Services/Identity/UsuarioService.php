@@ -7,6 +7,7 @@ use App\Models\Identity\Usuario;
 use App\Repositories\Identity\UsuarioRepository;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use App\Services\Operations\AuditLogger;
 
 class UsuarioService
 {
@@ -61,6 +62,13 @@ class UsuarioService
         // Sincronizar sucursales secundarias, permisos y CAS asignados
         $this->repository->sincronizarRelaciones($usuario, $dto->sucursales_secundarias, $dto->permisos, $dto->cas);
 
+        $accion = $dto->id ? 'EDITAR_USUARIO' : 'CREAR_USUARIO';
+        AuditLogger::registrar($accion, 'usuarios', (string)$usuario->id, [
+            'usuario' => $usuario->usuario,
+            'nombre_tecnico' => $usuario->nombre_tecnico,
+            'rol_id' => $usuario->rol_id,
+        ]);
+
         Log::info('Usuario gestionado', ['usuario_id' => $usuario->id, 'accion' => $dto->id ? 'editar' : 'crear']);
 
         return $mensaje;
@@ -75,6 +83,12 @@ class UsuarioService
 
         $usuario->activo = ! $usuario->activo;
         $usuario->save();
+
+        $accion = $usuario->activo ? 'ACTIVAR_USUARIO' : 'DESACTIVAR_USUARIO';
+        AuditLogger::registrar($accion, 'usuarios', (string)$usuario->id, [
+            'usuario' => $usuario->usuario,
+            'nombre_tecnico' => $usuario->nombre_tecnico,
+        ]);
 
         Log::info('Usuario '.($usuario->activo ? 'activado' : 'desactivado'), ['usuario_id' => $usuario->id]);
 

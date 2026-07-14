@@ -45,6 +45,12 @@ class EmpresaService
         $empresa->direccion_empresa = $dto->direccion;
         $empresa->save();
 
+        $accionBitacora = $dto->id ? 'EDITAR_EMPRESA' : 'CREAR_EMPRESA';
+        \App\Services\Operations\AuditLogger::registrar($accionBitacora, 'directorio', (string)$empresa->id, [
+            'nombre' => $empresa->nombre,
+            'ruc' => $empresa->ruc,
+        ]);
+
         Log::info('Empresa gestionada exitosamente.', ['empresa_id' => $empresa->id]);
         return $mensaje;
     }
@@ -60,6 +66,12 @@ class EmpresaService
         }
 
         $empresa->delete();
+        
+        \App\Services\Operations\AuditLogger::registrar('ELIMINAR_EMPRESA', 'directorio', (string)$id, [
+            'nombre' => $empresa->nombre,
+            'ruc' => $empresa->ruc,
+        ]);
+
         Log::info('Empresa eliminada del sistema.', ['empresa_id' => $id]);
     }
 }

@@ -11,6 +11,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Services\Operations\AuditLogger;
 
 class PreordenService
 {
@@ -175,6 +176,12 @@ class PreordenService
             $ordenCompleta = Orden::find((int) $resultado['orden_id']);
             if ($ordenCompleta) {
                 SgnMailService::enviarOrdenCreada($ordenCompleta);
+
+                AuditLogger::registrar('CREAR_ORDEN', 'ordenes', (string)$ordenCompleta->id, [
+                    'nro_orden' => $ordenCompleta->nro_orden,
+                    'cliente' => $ordenCompleta->cliente ? trim($ordenCompleta->cliente->nombres . ' ' . $ordenCompleta->cliente->apellidos) : 'Desconocido',
+                    'desde_preorden' => true,
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Error al enviar notificacion de nueva orden desde preorden', ['error' => $e->getMessage()]);

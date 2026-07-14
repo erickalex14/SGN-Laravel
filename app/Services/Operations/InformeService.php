@@ -11,6 +11,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Operations\AuditLogger;
 
 class InformeService
 {
@@ -90,6 +91,12 @@ class InformeService
                     'accion' => $informeExistente ? 'actualizar' : 'crear',
                 ]);
             });
+
+            $accion = $informeExistente ? 'EDITAR_INFORME' : 'CREAR_INFORME';
+            AuditLogger::registrar($accion, 'informes', (string)$dto->orden_id, [
+                'conclusion' => $dto->conclusion,
+                'estado_equipo' => $dto->estado_equipo,
+            ]);
         } catch (Exception $e) {
             Log::error('Error transaccional al generar informe tecnico.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrio un error al procesar el informe. Verifique los datos adjuntos.');
@@ -145,6 +152,12 @@ class InformeService
                     'orden_id' => $dto->orden_id,
                 ]);
             });
+
+            AuditLogger::registrar('EDITAR_INFORME', 'informes', (string)$dto->orden_id, [
+                'conclusion' => $dto->conclusion,
+                'estado_equipo' => $dto->estado_equipo,
+                'por_admin' => true,
+            ]);
         } catch (Exception $e) {
             Log::error('Error transaccional al actualizar informe tecnico por admin.', ['error' => $e->getMessage()]);
             throw new Exception('Ocurrio un error al actualizar el informe. Verifique los datos adjuntos.');

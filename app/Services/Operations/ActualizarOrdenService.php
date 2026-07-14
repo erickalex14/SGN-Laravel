@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Operations\AuditLogger;
 
 class ActualizarOrdenService
 {
@@ -205,6 +206,13 @@ class ActualizarOrdenService
                 ]);
             });
 
+            AuditLogger::registrar('EDITAR_ORDEN', 'ordenes', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'tipo_orden' => 'personal',
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $orden->estado_orden,
+            ]);
+
             if ($estadoCambiado) {
                 try {
                     SgnMailService::enviarOrdenEstadoCambiado($orden, $estadoAnterior, $nuevoEstado);
@@ -354,6 +362,13 @@ class ActualizarOrdenService
                     'tecnico_id' => $usuarioModificacionId,
                 ]);
             });
+
+            AuditLogger::registrar('EDITAR_ORDEN', 'ordenes', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'tipo_orden' => 'empresa',
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $orden->estado,
+            ]);
 
             if ($estadoCambiado) {
                 try {

@@ -52,6 +52,12 @@ class CasService
 
         $cas->save();
 
+        $accionBitacora = $accion === 'editar' ? 'EDITAR_CAS' : 'CREAR_CAS';
+        \App\Services\Operations\AuditLogger::registrar($accionBitacora, 'directorio', (string)$cas->id, [
+            'nombre' => $cas->nombre,
+            'prefijo' => $cas->prefijo,
+        ]);
+
         Log::info('CAS gestionado exitosamente.', ['cas_id' => $cas->id, 'accion' => $accion]);
 
         return $mensaje;

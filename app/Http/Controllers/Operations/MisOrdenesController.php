@@ -10,6 +10,7 @@ use App\Http\Requests\Operations\AsignarRepuestoOrdenRequest;
 use App\Http\Requests\Operations\RevertirRepuestoOrdenRequest;
 use App\Services\Operations\GestionOrdenService;
 use App\Repositories\Operations\OrdenRepository;
+use App\Services\Operations\AuditLogger;
 use App\DTOs\Operations\CambiarEstadoOrdenDTO;
 use App\DTOs\Operations\CambiarEstadoRepuestoDTO;
 use App\DTOs\Operations\CambiarEstadoGarantiaDTO;
@@ -623,6 +624,13 @@ class MisOrdenesController extends Controller
             $orden->transferencia_numero = $numero;
             $orden->fecha_finalizacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
             $orden->save();
+
+            // Registrar en Bitácora del Sistema
+            AuditLogger::registrar('REGISTRAR_TRANSFERENCIA_NC', 'notas_credito', (string)$orden->id, [
+                'nro_orden' => $orden->nro_orden,
+                'plataforma' => $plataforma,
+                'numero' => $numero,
+            ]);
 
             // Registrar actividad diaria
             $this->actividadService->registrar(

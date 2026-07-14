@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Operations\AuditLogger;
 
 class NotaCreditoService
 {
@@ -71,6 +72,12 @@ class NotaCreditoService
                 Log::info('Solicitud de Nota de Credito registrada.', [
                     'nc_id' => $solicitud->id,
                     'orden_id' => $dto->orden_id,
+                ]);
+
+                AuditLogger::registrar('CREAR_SOLICITUD_NC', 'notas_credito', (string)$solicitud->orden_id, [
+                    'nro_solicitud' => $solicitud->nro_solicitud,
+                    'asunto' => $solicitud->asunto,
+                    'detalles' => $solicitud->detalles,
                 ]);
 
                 return $nroSolicitud;
@@ -133,6 +140,13 @@ class NotaCreditoService
                 Log::info('Solicitud de Nota de Credito gestionada.', [
                     'nc_id' => $solicitud->id,
                     'estado' => $estadoFinal,
+                    'admin' => $dto->nombre_admin,
+                ]);
+
+                $accion = $estadoFinal === 'Rechazada' ? 'RECHAZAR_NC' : 'APROBAR_NC';
+                AuditLogger::registrar($accion, 'notas_credito', (string)$solicitud->orden_id, [
+                    'nro_solicitud' => $solicitud->nro_solicitud,
+                    'motivo_rechazo' => $solicitud->motivo_rechazo,
                     'admin' => $dto->nombre_admin,
                 ]);
             });

@@ -569,6 +569,12 @@
                                     <span class="nav-label" style="margin-left:10px;">Grupos de Acceso</span>
                                 </a>
                             @endif
+                            @if ($sa || $esAdminOAdminMaster)
+                                <a data-tip="Bitácora de Auditoría" href="{{ route('bitacora.index') }}">
+                                    <i class="bi bi-shield-check" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Bitácora de Auditoría</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>

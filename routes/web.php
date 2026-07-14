@@ -80,6 +80,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/notificaciones/marcar', [NotificationController::class, 'markAsRead'])->name('notificaciones.marcar');
     Route::post('/sugerencias/enviar', [SuggestionController::class, 'send'])->name('sugerencias.enviar');
 
+    // Bitácora de Auditoría (Logs de Administradores)
+    Route::get('/operaciones/bitacora', [\App\Http\Controllers\Operations\BitacoraController::class, 'index'])->name('bitacora.index');
+
     // -------------------------------------------------------
     // ------------------EMPRESAS-----------------------------
     // -------------------------------------------------------
