@@ -83,6 +83,11 @@ Route::middleware('auth')->group(function () {
     // Bitácora de Auditoría (Logs de Administradores)
     Route::get('/operaciones/bitacora', [\App\Http\Controllers\Operations\BitacoraController::class, 'index'])->name('bitacora.index');
 
+    // Inventario Físico en Servicio Técnico (ST)
+    Route::get('/operaciones/inventario-fisico', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'index'])->name('inventario_fisico.index');
+    Route::get('/operaciones/ordenes-empresa/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
+    Route::post('/operaciones/ordenes-empresa/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados'])->name('inventario_fisico.guardar');
+
     // -------------------------------------------------------
     // ------------------EMPRESAS-----------------------------
     // -------------------------------------------------------

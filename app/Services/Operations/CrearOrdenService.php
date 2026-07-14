@@ -352,6 +352,22 @@ class CrearOrdenService
                         $orden->tecnicos()->sync([$primaryTecnicoId]);
                     }
 
+                    // Registrar en Inventario Físico ST si es Novisolutions y Stock
+                    if ((int)$orden->empresa_id === 1 && $subtipo === 'Stock') {
+                        $prod = \App\Models\Inventory\ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [strtoupper(trim($codigoProducto))])->first();
+                        $nombreProducto = $prod ? $prod->descripcion : $codigoProducto;
+
+                        foreach ($series as $serie) {
+                            \App\Models\Inventory\ProductoInventarioFisicoSt::create([
+                                'orden_empresa_id' => $orden->id,
+                                'codigo' => $codigoProducto,
+                                'serie' => strtoupper(trim($serie)),
+                                'nombre' => $nombreProducto,
+                                'estado' => 'Tienda',
+                            ]);
+                        }
+                    }
+
                     Log::info('Orden de empresa creada exitosamente.', [
                         'nro_orden' => $nroOrden,
                         'empresa_id' => (int) $data['empresa_id'],

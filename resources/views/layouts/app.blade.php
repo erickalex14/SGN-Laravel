@@ -575,6 +575,12 @@
                                     <span class="nav-label" style="margin-left:10px;">Bitácora de Auditoría</span>
                                 </a>
                             @endif
+                            @if ($sa || $esAdminOAdminMaster)
+                                <a data-tip="Inventario Físico ST" href="{{ route('inventario_fisico.index') }}">
+                                    <i class="bi bi-box" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Inventario Físico ST</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>

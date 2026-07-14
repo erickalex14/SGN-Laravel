@@ -356,6 +356,55 @@ class ActualizarOrdenService
                     $equipo->save();
                 }
 
+                // Sincronizar Inventario Físico ST si es Novisolutions y Stock
+                if ((int)$orden->empresa_id === 1 && $orden->subtipo === 'Stock') {
+                    $codigoProducto = isset($data['eq_modelo']) ? strtoupper(trim($data['eq_modelo'])) : ($equipo ? $equipo->modelo : '');
+                    $prod = \App\Models\Inventory\ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [strtoupper(trim($codigoProducto))])->first();
+                    $nombreProducto = $prod ? $prod->descripcion : $codigoProducto;
+
+                    $seriesActuales = isset($seriesNormalizadas) ? $seriesNormalizadas : [];
+                    if (empty($seriesActuales) && isset($data['eq_serie'])) {
+                        $seriesActuales = [$data['eq_serie']];
+                    }
+
+                    $seriesActualesMayus = array_map(function($s) {
+                        return strtoupper(trim($s));
+                    }, $seriesActuales);
+
+                    // 1. Eliminar registros de inventario físico cuyas series ya no están en la orden
+                    \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
+                        ->whereNotIn(DB::raw('UPPER(serie)'), $seriesActualesMayus)
+                        ->delete();
+
+                    // 2. Insertar/Actualizar registros para series de la orden
+                    foreach ($seriesActualesMayus as $serieMayus) {
+                        if ($serieMayus === '') {
+                            continue;
+                        }
+                        
+                        $existe = \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
+                            ->whereRaw('UPPER(serie) = ?', [$serieMayus])
+                            ->exists();
+
+                        if (!$existe) {
+                            \App\Models\Inventory\ProductoInventarioFisicoSt::create([
+                                'orden_empresa_id' => $orden->id,
+                                'codigo' => $codigoProducto,
+                                'serie' => $serieMayus,
+                                'nombre' => $nombreProducto,
+                                'estado' => 'Tienda',
+                            ]);
+                        } else {
+                            \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
+                                ->whereRaw('UPPER(serie) = ?', [$serieMayus])
+                                ->update([
+                                    'codigo' => $codigoProducto,
+                                    'nombre' => $nombreProducto,
+                                ]);
+                        }
+                    }
+                }
+
                 Log::info('Orden de empresa actualizada mediante modulo de edicion.', [
                     'orden_id' => $orden->id,
                     'nro_orden' => $orden->nro_orden,

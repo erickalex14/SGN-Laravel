@@ -237,6 +237,8 @@
             'repuesto_codigo' => (string) ($ord->repuestoInventario->codigo ?? ''),
             'repuesto_nombre' => (string) ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? ''),
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
+            'empresa_id' => $esEmpresa ? (int) $ord->empresa_id : null,
+            'subtipo' => $esEmpresa ? (string) $ord->subtipo : null,
             'credenciales' => $credenciales,
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
@@ -1592,6 +1594,11 @@ function verDetalleOrden(cardEl) {
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
                     <button type="button" class="btn-mini-rep violet" onclick="registrarLlamadaCliente(${Number(o.id)}, 'empresa')"><i class="bi bi-telephone-plus me-1"></i>Llamada cliente</button>
                     <button type="button" class="btn-mini-rep" onclick="abrirModalEnviarEmail(${Number(o.id)}, 'empresa')"><i class="bi bi-envelope me-1"></i>Enviar email</button>
+                    ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' ? `
+                        <button type="button" class="btn-mini-rep" style="background:#0f766e; color:#fff; border-color:#0f766e;" onclick="abrirModalInventarioFisico(${Number(o.id)})">
+                            <i class="bi bi-box me-1"></i>Estado Físico ST
+                        </button>
+                    ` : ''}
                 </div>
 
                 <div class="llamadas-section" style="margin-top: 14px; border-top: 1px dashed var(--mo-border); padding-top: 12px;">
@@ -2187,6 +2194,132 @@ function registrarTransferenciaDetalle(ordenId) {
         return;
     }
     guardarTransferenciaAjax(ordenId, plataforma, numero);
+}
+
+async function abrirModalInventarioFisico(ordenId) {
+    Swal.fire({
+        title: 'Cargando información...',
+        text: 'Obteniendo los productos del inventario físico.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const response = await fetch(`/operaciones/ordenes-empresa/inventario-fisico/${ordenId}`);
+        const data = await response.json();
+        Swal.close();
+
+        if (!data.ok || !data.productos || data.productos.length === 0) {
+            Swal.fire('Información', 'No se encontraron productos registrados en el inventario físico para esta orden.', 'info');
+            return;
+        }
+
+        let html = `
+        <div style="text-align:left; font-size:13px; max-height: 400px; overflow-y: auto;">
+            <p class="text-muted mb-3">Establece el estado físico de cada equipo en la oficina.</p>
+            <table class="table table-sm align-middle table-borderless" style="width:100%;">
+                <thead>
+                    <tr style="border-bottom:1px solid #e2e8f0; color:#475569; font-weight:700;">
+                        <th style="padding:6px 0;">Serie</th>
+                        <th style="padding:6px 0;">Producto</th>
+                        <th style="padding:6px 0; width: 180px;">Estado Físico</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.productos.forEach(p => {
+            html += `
+            <tr style="border-bottom:1px solid #f1f5f9;" class="prod-inv-row" data-id="${p.id}">
+                <td style="padding:8px 0; font-family:monospace; font-weight:600; color:#1e293b;">${_h(p.serie)}</td>
+                <td style="padding:8px 0; color:#334155; font-size:12px;">${_h(p.nombre)}</td>
+                <td style="padding:8px 0; width: 180px;">
+                    <select class="form-select form-select-sm select-estado-fisico" style="border-radius:6px; font-size:12px;" onchange="toggleDetalleOutletRow(${p.id}, this.value)">
+                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo)</option>
+                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Incinerar)</option>
+                        <option value="Outlet" ${p.estado === 'Outlet' ? 'selected' : ''}>Outlet (Con Detalle)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr id="row-detalle-${p.id}" style="display:${p.estado === 'Outlet' ? 'table-row' : 'none'}; border-bottom:1px solid #f1f5f9;">
+                <td colspan="3" style="padding: 4px 0 8px 0;">
+                    <input type="text" class="form-control form-control-sm input-detalle-outlet" id="detalle-${p.id}" placeholder="Describa el detalle de outlet..." value="${_h(p.detalle_outlet || '')}" style="border-radius:6px; font-size:12px;">
+                </td>
+            </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+
+        Swal.fire({
+            title: '<span style="font-size:16px; font-weight:700;"><i class="bi bi-box-seam text-teal me-2"></i>Inventario Físico Servicio Técnico</span>',
+            html: html,
+            width: '650px',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-save me-1"></i>Guardar Cambios',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0f766e',
+            cancelButtonColor: '#64748b',
+            preConfirm: () => {
+                const productos = [];
+                const rows = document.querySelectorAll('.prod-inv-row');
+                rows.forEach(row => {
+                    const id = row.getAttribute('data-id');
+                    const estado = row.querySelector('.select-estado-fisico').value;
+                    const detalle_outlet = row.nextElementSibling.querySelector('.input-detalle-outlet').value;
+                    productos.push({ id: parseInt(id), estado, detalle_outlet });
+                });
+                return productos;
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed && result.value) {
+                Swal.fire({
+                    title: 'Guardando...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                const saveRes = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': _moCsrf
+                    },
+                    body: JSON.stringify({
+                        orden_empresa_id: ordenId,
+                        productos: result.value
+                    })
+                });
+
+                const saveResult = await saveRes.json();
+                Swal.close();
+
+                if (saveResult.ok) {
+                    Swal.fire('¡Guardado!', saveResult.mensaje || 'Estados físicos actualizados.', 'success');
+                } else {
+                    Swal.fire('Error', saveResult.error || 'No se pudo guardar la información.', 'error');
+                }
+            }
+        });
+
+    } catch (e) {
+        Swal.close();
+        Swal.fire('Error', 'No se pudo conectar con el servidor para obtener los datos.', 'error');
+    }
+}
+
+function toggleDetalleOutletRow(id, valor) {
+    const row = document.getElementById(`row-detalle-${id}`);
+    if (valor === 'Outlet') {
+        row.style.display = 'table-row';
+    } else {
+        row.style.display = 'none';
+        document.getElementById(`detalle-${id}`).value = '';
+    }
 }
 </script>
 @endpush
