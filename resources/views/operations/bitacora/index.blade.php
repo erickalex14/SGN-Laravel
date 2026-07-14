@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('content')
+@section('contenido')
 <div class="container-fluid" style="padding: 20px 30px;">
     <!-- Encabezado Principal -->
     <div class="row align-items-center mb-4">
