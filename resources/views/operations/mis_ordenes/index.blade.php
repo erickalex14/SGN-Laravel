@@ -239,6 +239,17 @@
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'empresa_id' => $esEmpresa ? (int) $ord->empresa_id : null,
             'subtipo' => $esEmpresa ? (string) $ord->subtipo : null,
+            'productos_inventario_st' => ($esEmpresa && (int)$ord->empresa_id === 1 && $ord->subtipo === 'Stock')
+                ? \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $ord->id)->get()->map(function($p) {
+                    return [
+                        'id' => (int) $p->id,
+                        'serie' => (string) $p->serie,
+                        'nombre' => (string) $p->nombre,
+                        'estado' => (string) $p->estado,
+                        'detalle_outlet' => (string) ($p->detalle_outlet ?? ''),
+                    ];
+                })->values()
+                : [],
             'credenciales' => $credenciales,
             'nc_id' => $ultimoNc ? (int) $ultimoNc->id : null,
             'nc_estado' => $ultimoNc ? (string) $ultimoNc->estado : null,
@@ -1530,16 +1541,25 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
 
-                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' ? `
+                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' && o.productos_inventario_st ? o.productos_inventario_st.map(p => `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-box-seam" style="color: #0f766e;"></i></span>
-                    <span class="gestion-label" style="color: #0f766e; font-weight: 600;">Estado Físico ST</span>
-                    <button type="button" class="btn btn-sm btn-teal" style="background:#0f766e; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:6px; margin-left:auto; display:flex; align-items:center; gap:4px;" onclick="abrirModalInventarioFisico(${Number(o.id)})">
-                        <i class="bi bi-pencil-square"></i> Gestionar
-                    </button>
-                    <span class="gestion-feedback" style="display:none;">&#8635;</span>
+                    <span class="gestion-label" style="color: #0f766e; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;" title="${_h(p.nombre)}">ST: ${_h(p.serie)}</span>
+                    <select class="gestion-select" onchange="cambiarEstadoFisicoDirecto(${Number(o.id)}, ${p.id}, this.value)" style="border-color:#0f766e;">
+                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo)</option>
+                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Incinerar)</option>
+                        <option value="Outlet" ${p.estado === 'Outlet' ? 'selected' : ''}>Outlet (Con Detalle)</option>
+                    </select>
+                    <span class="gestion-feedback" id="feedback-fisico-${p.id}">&#8635;</span>
                 </div>
-                ` : ''}
+                
+                <div class="detalle-outlet-container" id="container-detalle-${p.id}" style="display: ${p.estado === 'Outlet' ? 'block' : 'none'}; padding: 4px 12px 10px 40px; margin-top: -6px; border-bottom: 1px solid var(--mo-border);">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="form-control form-control-sm" id="input-detalle-${p.id}" value="${_h(p.detalle_outlet)}" placeholder="Describa el detalle de outlet..." style="font-size:12px; border-radius:6px; background:#fff; color:#000;">
+                        <button type="button" class="btn btn-sm btn-teal" style="background:#0f766e; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:6px; margin:0;" onclick="guardarDetalleOutletDirecto(${Number(o.id)}, ${p.id})">Guardar</button>
+                    </div>
+                </div>
+                `).join('') : ''}
 
                 <div class="rep-picker">
                     <div class="assigned-repuestos-list" style="margin-bottom:12px;">
@@ -2325,6 +2345,118 @@ function toggleDetalleOutletRow(id, valor) {
     } else {
         row.style.display = 'none';
         document.getElementById(`detalle-${id}`).value = '';
+    }
+}
+
+async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
+    const feedback = document.getElementById('feedback-fisico-' + productoId);
+    if (feedback) feedback.classList.add('loading');
+
+    const containerDetalle = document.getElementById('container-detalle-' + productoId);
+    if (containerDetalle) {
+        if (nuevoEstado === 'Outlet') {
+            containerDetalle.style.display = 'block';
+        } else {
+            containerDetalle.style.display = 'none';
+        }
+    }
+
+    try {
+        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': _moCsrf
+            },
+            body: JSON.stringify({
+                orden_empresa_id: ordenId,
+                productos: [
+                    {
+                        id: productoId,
+                        estado: nuevoEstado,
+                        detalle_outlet: nuevoEstado === 'Outlet' ? document.getElementById('input-detalle-' + productoId).value.trim() : null
+                    }
+                ]
+            })
+        });
+
+        const res = await response.json();
+        if (!res.ok) {
+            await mostrarAlertaEstetica(res.error || 'No se pudo actualizar el estado.', 'error', 'Error');
+            return;
+        }
+
+        const row = _moRows.find(x => Number(x.id) === Number(ordenId));
+        if (row && row.productos_inventario_st) {
+            const p = row.productos_inventario_st.find(x => Number(x.id) === Number(productoId));
+            if (p) {
+                p.estado = nuevoEstado;
+                if (nuevoEstado !== 'Outlet') {
+                    p.detalle_outlet = '';
+                    const inputDet = document.getElementById('input-detalle-' + productoId);
+                    if (inputDet) inputDet.value = '';
+                }
+            }
+            const cardEl = document.getElementById('card-empresa-' + ordenId);
+            if (cardEl) {
+                cardEl.setAttribute('data-orden', JSON.stringify(row));
+            }
+        }
+        await mostrarAlertaEstetica('Estado físico actualizado correctamente.', 'success', 'Completado');
+    } catch (e) {
+        await mostrarAlertaEstetica('Error al comunicarse con el servidor.', 'error', 'Error');
+    } finally {
+        if (feedback) feedback.classList.remove('loading');
+    }
+}
+
+async function guardarDetalleOutletDirecto(ordenId, productoId) {
+    const feedback = document.getElementById('feedback-fisico-' + productoId);
+    if (feedback) feedback.classList.add('loading');
+
+    const detalle = document.getElementById('input-detalle-' + productoId).value.trim();
+
+    try {
+        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': _moCsrf
+            },
+            body: JSON.stringify({
+                orden_empresa_id: ordenId,
+                productos: [
+                    {
+                        id: productoId,
+                        estado: 'Outlet',
+                        detalle_outlet: detalle
+                    }
+                ]
+            })
+        });
+
+        const res = await response.json();
+        if (!res.ok) {
+            await mostrarAlertaEstetica(res.error || 'No se pudo guardar el detalle.', 'error', 'Error');
+            return;
+        }
+
+        const row = _moRows.find(x => Number(x.id) === Number(ordenId));
+        if (row && row.productos_inventario_st) {
+            const p = row.productos_inventario_st.find(x => Number(x.id) === Number(productoId));
+            if (p) {
+                p.detalle_outlet = detalle;
+            }
+            const cardEl = document.getElementById('card-empresa-' + ordenId);
+            if (cardEl) {
+                cardEl.setAttribute('data-orden', JSON.stringify(row));
+            }
+        }
+        await mostrarAlertaEstetica('Detalle de Outlet guardado correctamente.', 'success', 'Guardado');
+    } catch (e) {
+        await mostrarAlertaEstetica('Error de conexión.', 'error', 'Error');
+    } finally {
+        if (feedback) feedback.classList.remove('loading');
     }
 }
 </script>
