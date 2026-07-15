@@ -583,9 +583,10 @@ class OrdenController extends Controller
         if (!is_array($seriesInput)) {
             $seriesInput = [$seriesInput];
         }
+        $ignoredSeries = ['', 'sn', 's/n', 'na', 'n/a', 'n_a', 'n-a', 'ninguno', 'ninguna', 'null', 'none', 'sin serie'];
         $series = array_filter(
             array_map(fn($s) => strtolower(trim((string)$s)), $seriesInput),
-            fn($s) => $s !== '' && $s !== 'sn' && $s !== 's/n'
+            fn($s) => !in_array($s, $ignoredSeries, true)
         );
 
         if (empty($series)) {

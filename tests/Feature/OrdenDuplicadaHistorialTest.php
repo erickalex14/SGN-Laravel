@@ -128,7 +128,7 @@ test('endpoint verificar-duplicado detecta serie y factura duplicada', function 
             ],
         ])
         ->postJson(route('ordenes.verificar_duplicado'), [
-            'series' => ['sn', 's/n', ''],
+            'series' => ['sn', 's/n', 'na', 'n/a', 'none', 'null', 'sin serie', ''],
             'facturas' => [],
         ]);
 
