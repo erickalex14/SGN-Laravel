@@ -1530,6 +1530,17 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
 
+                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' ? `
+                <div class="gestion-row">
+                    <span class="gestion-icon"><i class="bi bi-box-seam" style="color: #0f766e;"></i></span>
+                    <span class="gestion-label" style="color: #0f766e; font-weight: 600;">Estado Físico ST</span>
+                    <button type="button" class="btn btn-sm btn-teal" style="background:#0f766e; color:#fff; border:none; padding:4px 12px; font-size:12px; border-radius:6px; margin-left:auto; display:flex; align-items:center; gap:4px;" onclick="abrirModalInventarioFisico(${Number(o.id)})">
+                        <i class="bi bi-pencil-square"></i> Gestionar
+                    </button>
+                    <span class="gestion-feedback" style="display:none;">&#8635;</span>
+                </div>
+                ` : ''}
+
                 <div class="rep-picker">
                     <div class="assigned-repuestos-list" style="margin-bottom:12px;">
                         <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
@@ -1594,11 +1605,6 @@ function verDetalleOrden(cardEl) {
                     <button type="button" class="btn-mini-rep" onclick="verPdfInforme(${-1 * Number(o.id)})"><i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF informe</button>
                     <button type="button" class="btn-mini-rep violet" onclick="registrarLlamadaCliente(${Number(o.id)}, 'empresa')"><i class="bi bi-telephone-plus me-1"></i>Llamada cliente</button>
                     <button type="button" class="btn-mini-rep" onclick="abrirModalEnviarEmail(${Number(o.id)}, 'empresa')"><i class="bi bi-envelope me-1"></i>Enviar email</button>
-                    ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' ? `
-                        <button type="button" class="btn-mini-rep" style="background:#0f766e; color:#fff; border-color:#0f766e;" onclick="abrirModalInventarioFisico(${Number(o.id)})">
-                            <i class="bi bi-box me-1"></i>Estado Físico ST
-                        </button>
-                    ` : ''}
                 </div>
 
                 <div class="llamadas-section" style="margin-top: 14px; border-top: 1px dashed var(--mo-border); padding-top: 12px;">

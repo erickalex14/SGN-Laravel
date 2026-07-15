@@ -14,41 +14,31 @@ use Illuminate\Support\Facades\DB;
 class InventarioFisicoController extends Controller
 {
     /**
-     * Valida si el usuario actual es administrador o superadmin.
-     */
-    private function verificarAccesoAdmin(): void
-    {
-        $sa = session('es_superadmin') === true;
-
-        $rolNombre = mb_strtolower(trim((string) (auth()->user()?->rol?->rol ?? '')));
-        $grupoNombre = mb_strtolower(trim((string) (auth()->user()?->grupo?->nombre ?? '')));
-        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
-
-        $esAdmin = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-            || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-            || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
-
-        if (!$sa && !$esAdmin) {
-            abort(403, 'No tienes permisos para acceder a esta sección.');
-        }
-    }
-
-    /**
      * Dashboard de auditoría de inventario físico ST.
      */
     public function index(Request $request): View
     {
-        $this->verificarAccesoAdmin();
+        $sa = session('es_superadmin') === true;
+        $sucursalId = (int) session('sucursal_id');
 
-        // 1. Obtener métricas rápidas (contadores de todos los estados)
-        $totalProductos = ProductoInventarioFisicoSt::count();
-        $totalTienda = ProductoInventarioFisicoSt::where('estado', 'Tienda')->count();
-        $totalIncinerox = ProductoInventarioFisicoSt::where('estado', 'Incinerox')->count();
-        $totalOutlet = ProductoInventarioFisicoSt::where('estado', 'Outlet')->count();
+        // 1. Obtener métricas rápidas (contadores de todos los estados aplicando filtro de sucursal)
+        $countQuery = ProductoInventarioFisicoSt::query();
+        if (!$sa && $sucursalId > 0) {
+            $countQuery->where('sucursal_id', $sucursalId);
+        }
+
+        $totalProductos = (clone $countQuery)->count();
+        $totalTienda = (clone $countQuery)->where('estado', 'Tienda')->count();
+        $totalIncinerox = (clone $countQuery)->where('estado', 'Incinerox')->count();
+        $totalOutlet = (clone $countQuery)->where('estado', 'Outlet')->count();
 
         // 2. Construir la consulta
-        $query = ProductoInventarioFisicoSt::with(['ordenEmpresa'])
+        $query = ProductoInventarioFisicoSt::with(['ordenEmpresa', 'sucursal'])
             ->orderBy('id', 'desc');
+
+        if (!$sa && $sucursalId > 0) {
+            $query->where('sucursal_id', $sucursalId);
+        }
 
         // Filtro por estado
         if ($request->filled('estado')) {
@@ -85,10 +75,16 @@ class InventarioFisicoController extends Controller
      */
     public function obtenerPorOrden(int $ordenId): JsonResponse
     {
-        // Cualquier usuario autenticado (incluidos técnicos) puede leer esto para gestionar sus órdenes.
-        $productos = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId)
-            ->orderBy('id', 'asc')
-            ->get();
+        $sa = session('es_superadmin') === true;
+        $sucursalId = (int) session('sucursal_id');
+
+        $query = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId);
+
+        if (!$sa && $sucursalId > 0) {
+            $query->where('sucursal_id', $sucursalId);
+        }
+
+        $productos = $query->orderBy('id', 'asc')->get();
 
         return response()->json([
             'ok' => true,
@@ -116,8 +112,16 @@ class InventarioFisicoController extends Controller
             return response()->json(['ok' => false, 'error' => 'Orden corporativa no encontrada.'], 404);
         }
 
+        $sa = session('es_superadmin') === true;
+        $sucursalId = (int) session('sucursal_id');
+
+        // Validar que el usuario pertenezca a la misma sucursal de la orden
+        if (!$sa && $sucursalId > 0 && (int)$orden->sucursal_id !== $sucursalId) {
+            return response()->json(['ok' => false, 'error' => 'No tienes permisos para modificar el inventario físico de esta sucursal.'], 403);
+        }
+
         try {
-            DB::transaction(function () use ($request, $ordenId) {
+            DB::transaction(function () use ($request, $ordenId, $orden) {
                 foreach ($request->input('productos') as $pData) {
                     $prod = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId)
                         ->where('id', (int) $pData['id'])

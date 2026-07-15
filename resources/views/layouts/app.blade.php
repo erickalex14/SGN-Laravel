@@ -237,11 +237,8 @@
         || $can('notas_credito', 'ver')
         || $can('repuestos_admin', 'ver');
 
-    $hasInventario = $can('productos', 'ver')
-        || $can('marcas', 'ver')
-        || $can('repuestos', 'ver');
-
-    $hasControl = $hasInventario || $can('precios', 'ver');
+    $hasInventario = true;
+    $hasControl = true;
     $hasServicios = $can('empresas', 'ver') || $can('cas', 'ver');
     $hasAccesoAdmin = $can('usuarios', 'ver') || $can('grupos', 'ver');
     $hasAcceso = $can('mi_cuenta', 'ver') || $hasAccesoAdmin;
@@ -459,6 +456,10 @@
                                         <span class="nav-label" style="margin-left:10px;">Repuestos</span>
                                     </a>
                                 @endif
+                                <a data-tip="Inventario Físico ST" href="{{ route('inventario_fisico.index') }}">
+                                    <i class="bi bi-box" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Inventario Físico ST</span>
+                                </a>
                             </div>
                         </div>
                     @endif
@@ -573,12 +574,6 @@
                                 <a data-tip="Bitácora de Auditoría" href="{{ route('bitacora.index') }}">
                                     <i class="bi bi-shield-check" style="flex-shrink:0;"></i>
                                     <span class="nav-label" style="margin-left:10px;">Bitácora de Auditoría</span>
-                                </a>
-                            @endif
-                            @if ($sa || $esAdminOAdminMaster)
-                                <a data-tip="Inventario Físico ST" href="{{ route('inventario_fisico.index') }}">
-                                    <i class="bi bi-box" style="flex-shrink:0;"></i>
-                                    <span class="nav-label" style="margin-left:10px;">Inventario Físico ST</span>
                                 </a>
                             @endif
                         </div>

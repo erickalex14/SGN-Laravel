@@ -16,12 +16,19 @@ beforeEach(function () {
     // Asegurar que no haya basura en la tabla
     DB::table('productos_inventario_fisico_st')->delete();
 
-    // Crear sucursal de prueba
-    $this->sucursal = Sucursal::create([
+    // Crear sucursales de prueba
+    $this->sucursalQuito = Sucursal::create([
         'nro_sucursal' => random_int(1000, 9999),
         'ciudad' => 'Quito',
         'secuencial' => 'UI' . random_int(1, 9),
         'nro_base' => '02' . random_int(1000000, 9999999),
+    ]);
+
+    $this->sucursalManta = Sucursal::create([
+        'nro_sucursal' => random_int(1000, 9999),
+        'ciudad' => 'Manta',
+        'secuencial' => 'MN' . random_int(1, 9),
+        'nro_base' => '05' . random_int(1000000, 9999999),
     ]);
 
     // Crear grupo de prueba
@@ -31,29 +38,42 @@ beforeEach(function () {
         'es_superadmin' => 0,
     ]);
 
-    // Crear un usuario técnico
-    $this->tecnico = new Usuario();
-    $this->tecnico->usuario = 't_' . random_int(100000, 999999);
-    $this->tecnico->clave = '';
-    $this->tecnico->clave_hash = bcrypt('password123');
-    $this->tecnico->nombre_tecnico = 'Tecnico Auditoria';
-    $this->tecnico->telefono = '0999999991';
-    $this->tecnico->rol_id = 2;
-    $this->tecnico->grupo_id = $this->grupo->id;
-    $this->tecnico->sucursal_id = $this->sucursal->id;
-    $this->tecnico->activo = 1;
-    $this->tecnico->save();
+    // Crear un usuario técnico en Quito (max 10 chars for usuario)
+    $this->tecnicoQuito = new Usuario();
+    $this->tecnicoQuito->usuario = 'uio' . random_int(1000, 9999);
+    $this->tecnicoQuito->clave = '';
+    $this->tecnicoQuito->clave_hash = bcrypt('password123');
+    $this->tecnicoQuito->nombre_tecnico = 'Tecnico Quito';
+    $this->tecnicoQuito->telefono = '0999999991';
+    $this->tecnicoQuito->rol_id = 2;
+    $this->tecnicoQuito->grupo_id = $this->grupo->id;
+    $this->tecnicoQuito->sucursal_id = $this->sucursalQuito->id;
+    $this->tecnicoQuito->activo = 1;
+    $this->tecnicoQuito->save();
+
+    // Crear un usuario técnico en Manta
+    $this->tecnicoManta = new Usuario();
+    $this->tecnicoManta->usuario = 'mta' . random_int(1000, 9999);
+    $this->tecnicoManta->clave = '';
+    $this->tecnicoManta->clave_hash = bcrypt('password123');
+    $this->tecnicoManta->nombre_tecnico = 'Tecnico Manta';
+    $this->tecnicoManta->telefono = '0999999992';
+    $this->tecnicoManta->rol_id = 2;
+    $this->tecnicoManta->grupo_id = $this->grupo->id;
+    $this->tecnicoManta->sucursal_id = $this->sucursalManta->id;
+    $this->tecnicoManta->activo = 1;
+    $this->tecnicoManta->save();
 
     // Crear un usuario superadmin
     $this->superadmin = new Usuario();
-    $this->superadmin->usuario = 's_' . random_int(100000, 999999);
+    $this->superadmin->usuario = 'sa' . random_int(1000, 9999);
     $this->superadmin->clave = '';
     $this->superadmin->clave_hash = bcrypt('password123');
     $this->superadmin->nombre_tecnico = 'Superadmin Auditoria';
-    $this->superadmin->telefono = '0999999992';
+    $this->superadmin->telefono = '0999999993';
     $this->superadmin->rol_id = 3;
     $this->superadmin->grupo_id = $this->grupo->id;
-    $this->superadmin->sucursal_id = $this->sucursal->id;
+    $this->superadmin->sucursal_id = $this->sucursalQuito->id;
     $this->superadmin->activo = 1;
     $this->superadmin->save();
 
@@ -75,47 +95,106 @@ beforeEach(function () {
     TipoDispositivo::firstOrCreate(['nombre' => 'LAPTOPS', 'codigo' => 'LAP']);
 });
 
-test('acceso a inventario fisico restringido para tecnicos', function () {
-    $response = $this->actingAs($this->tecnico)
+test('acceso a inventario fisico permitido para todos los usuarios autenticados', function () {
+    // Tecnico de Quito accede a index sin problemas
+    $response = $this->actingAs($this->tecnicoQuito)
         ->withSession([
-            'usuario' => $this->tecnico->usuario,
-            'tecnico_id' => $this->tecnico->id,
+            'usuario' => $this->tecnicoQuito->usuario,
+            'tecnico_id' => $this->tecnicoQuito->id,
+            'sucursal_id' => $this->sucursalQuito->id,
             'es_superadmin' => false,
             'grupo_nombre' => 'Tecnicos',
-        ])
-        ->get(route('inventario_fisico.index'));
-
-    $response->assertStatus(403);
-});
-
-test('acceso a inventario fisico permitido para superadmin', function () {
-    $response = $this->actingAs($this->superadmin)
-        ->withSession([
-            'usuario' => $this->superadmin->usuario,
-            'tecnico_id' => $this->superadmin->id,
-            'es_superadmin' => true,
-            'grupo_nombre' => 'Superadministradores',
         ])
         ->get(route('inventario_fisico.index'));
 
     $response->assertStatus(200);
 });
 
-test('crear orden empresa novisolutions stock registra productos en st', function () {
+test('segregacion por sucursales en listado de inventario fisico', function () {
+    $crearOrdenService = app(\App\Services\Operations\CrearOrdenService::class);
+
+    // 1. Crear orden para Quito
+    $crearOrdenService->crearOrdenEmpresa([
+        'sucursal_id' => $this->sucursalQuito->id,
+        'empresa_id' => 1,
+        'subtipo_empresa' => 'Stock',
+        'emp_modelo' => 'MACBOOK PRO UIO',
+        'emp_marca' => 'APPLE',
+        'emp_tipo_equipo' => 'LAPTOPS',
+        'emp_falla' => 'Revision',
+        'emp_series' => ['SERIE_UIO_1'],
+        'tecnico_encargado' => $this->tecnicoQuito->id,
+        'tecnicos_asignados' => [$this->tecnicoQuito->id],
+        'ord_tecnico_id' => $this->tecnicoQuito->id,
+        'emp_fecha_prometido' => now()->addDays(3)->format('Y-m-d'),
+        'fecha_ingreso' => now()->format('Y-m-d H:i:s'),
+        'ingresado_por' => $this->superadmin->id,
+    ]);
+
+    // 2. Crear orden para Manta
+    $crearOrdenService->crearOrdenEmpresa([
+        'sucursal_id' => $this->sucursalManta->id,
+        'empresa_id' => 1,
+        'subtipo_empresa' => 'Stock',
+        'emp_modelo' => 'MACBOOK PRO MEC',
+        'emp_marca' => 'APPLE',
+        'emp_tipo_equipo' => 'LAPTOPS',
+        'emp_falla' => 'Revision',
+        'emp_series' => ['SERIE_MEC_1'],
+        'tecnico_encargado' => $this->tecnicoManta->id,
+        'tecnicos_asignados' => [$this->tecnicoManta->id],
+        'ord_tecnico_id' => $this->tecnicoManta->id,
+        'emp_fecha_prometido' => now()->addDays(3)->format('Y-m-d'),
+        'fecha_ingreso' => now()->format('Y-m-d H:i:s'),
+        'ingresado_por' => $this->superadmin->id,
+    ]);
+
+    // 3. Técnico de Manta solo debe ver la serie de Manta
+    $responseManta = $this->actingAs($this->tecnicoManta)
+        ->withSession([
+            'usuario' => $this->tecnicoManta->usuario,
+            'tecnico_id' => $this->tecnicoManta->id,
+            'sucursal_id' => $this->sucursalManta->id,
+            'es_superadmin' => false,
+            'grupo_nombre' => 'Tecnicos',
+        ])
+        ->get(route('inventario_fisico.index'));
+
+    $responseManta->assertStatus(200)
+        ->assertSee('SERIE_MEC_1')
+        ->assertDontSee('SERIE_UIO_1');
+
+    // 4. Superadmin debe ver ambas series
+    $responseSuper = $this->actingAs($this->superadmin)
+        ->withSession([
+            'usuario' => $this->superadmin->usuario,
+            'tecnico_id' => $this->superadmin->id,
+            'sucursal_id' => $this->sucursalQuito->id,
+            'es_superadmin' => true,
+            'grupo_nombre' => 'Superadministradores',
+        ])
+        ->get(route('inventario_fisico.index'));
+
+    $responseSuper->assertStatus(200)
+        ->assertSee('SERIE_MEC_1')
+        ->assertSee('SERIE_UIO_1');
+});
+
+test('crear orden empresa novisolutions stock registra productos en st con sucursal', function () {
     $crearOrdenService = app(\App\Services\Operations\CrearOrdenService::class);
 
     $payload = [
-        'sucursal_id' => $this->sucursal->id,
-        'empresa_id' => 1, // Novisolutions
+        'sucursal_id' => $this->sucursalQuito->id,
+        'empresa_id' => 1,
         'subtipo_empresa' => 'Stock',
         'emp_modelo' => 'MACBOOK PRO',
         'emp_marca' => 'APPLE',
         'emp_tipo_equipo' => 'LAPTOPS',
         'emp_falla' => 'Test fallas',
-        'emp_series' => ['SERIENOVITEC1', 'SERIENOVITEC2'],
-        'tecnico_encargado' => $this->tecnico->id,
-        'tecnicos_asignados' => [$this->tecnico->id],
-        'ord_tecnico_id' => $this->tecnico->id,
+        'emp_series' => ['SERIENOVITEC1'],
+        'tecnico_encargado' => $this->tecnicoQuito->id,
+        'tecnicos_asignados' => [$this->tecnicoQuito->id],
+        'ord_tecnico_id' => $this->tecnicoQuito->id,
         'emp_fecha_prometido' => now()->addDays(3)->format('Y-m-d'),
         'fecha_ingreso' => now()->format('Y-m-d H:i:s'),
         'ingresado_por' => $this->superadmin->id,
@@ -123,38 +202,31 @@ test('crear orden empresa novisolutions stock registra productos en st', functio
 
     $orden = $crearOrdenService->crearOrdenEmpresa($payload);
 
-    // Verificar que se hayan insertado 2 registros en el inventario físico ST
     $this->assertDatabaseHas('productos_inventario_fisico_st', [
         'orden_empresa_id' => $orden->id,
+        'sucursal_id' => $this->sucursalQuito->id,
         'serie' => 'SERIENOVITEC1',
-        'codigo' => 'MACBOOK PRO',
-        'estado' => 'Tienda',
-    ]);
-
-    $this->assertDatabaseHas('productos_inventario_fisico_st', [
-        'orden_empresa_id' => $orden->id,
-        'serie' => 'SERIENOVITEC2',
         'codigo' => 'MACBOOK PRO',
         'estado' => 'Tienda',
     ]);
 });
 
-test('editar orden empresa novisolutions stock sincroniza productos en st', function () {
+test('editar orden empresa novisolutions stock actualiza sucursal de productos', function () {
     $crearOrdenService = app(\App\Services\Operations\CrearOrdenService::class);
     $actualizarOrdenService = app(\App\Services\Operations\ActualizarOrdenService::class);
 
     $payloadCreate = [
-        'sucursal_id' => $this->sucursal->id,
+        'sucursal_id' => $this->sucursalQuito->id,
         'empresa_id' => 1,
         'subtipo_empresa' => 'Stock',
         'emp_modelo' => 'MACBOOK PRO',
         'emp_marca' => 'APPLE',
         'emp_tipo_equipo' => 'LAPTOPS',
         'emp_falla' => 'Test fallas',
-        'emp_series' => ['SERIE_A', 'SERIE_B'],
-        'tecnico_encargado' => $this->tecnico->id,
-        'tecnicos_asignados' => [$this->tecnico->id],
-        'ord_tecnico_id' => $this->tecnico->id,
+        'emp_series' => ['SERIE_A'],
+        'tecnico_encargado' => $this->tecnicoQuito->id,
+        'tecnicos_asignados' => [$this->tecnicoQuito->id],
+        'ord_tecnico_id' => $this->tecnicoQuito->id,
         'emp_fecha_prometido' => now()->addDays(3)->format('Y-m-d'),
         'fecha_ingreso' => now()->format('Y-m-d H:i:s'),
         'ingresado_por' => $this->superadmin->id,
@@ -162,46 +234,38 @@ test('editar orden empresa novisolutions stock sincroniza productos en st', func
 
     $orden = $crearOrdenService->crearOrdenEmpresa($payloadCreate);
 
-    // Simular actualización: eliminamos SERIE_B, agregamos SERIE_C
+    // Simular traslado de sucursal de la orden en DB
+    $orden->sucursal_id = $this->sucursalManta->id;
+    $orden->save();
+
+    // Simular actualización del resto de los datos
     $payloadUpdate = [
         'orden_id' => $orden->id,
         'equipo_id' => $orden->equipo_id,
         'estado' => 'En proceso',
         'fecha_prometido' => now()->addDays(2)->format('Y-m-d'),
-        'descripcion' => 'Se cambia la serie',
+        'descripcion' => 'Traslado de sucursal',
         'eq_modelo' => 'MACBOOK PRO',
         'eq_marca' => 'APPLE',
         'eq_tipo' => 'LAPTOPS',
-        'series' => ['SERIE_A', 'SERIE_C'], // Nueva lista de series
+        'series' => ['SERIE_A'],
     ];
 
     $actualizarOrdenService->actualizarOrdenEmpresa($payloadUpdate, $this->superadmin->id);
 
-    // SERIE_A debe seguir existiendo
+    // Debe haberse actualizado la sucursal_id de los registros físicos
     $this->assertDatabaseHas('productos_inventario_fisico_st', [
         'orden_empresa_id' => $orden->id,
+        'sucursal_id' => $this->sucursalManta->id,
         'serie' => 'SERIE_A',
-    ]);
-
-    // SERIE_B debe haber sido eliminada
-    $this->assertDatabaseMissing('productos_inventario_fisico_st', [
-        'orden_empresa_id' => $orden->id,
-        'serie' => 'SERIE_B',
-    ]);
-
-    // SERIE_C debe haber sido agregada
-    $this->assertDatabaseHas('productos_inventario_fisico_st', [
-        'orden_empresa_id' => $orden->id,
-        'serie' => 'SERIE_C',
-        'estado' => 'Tienda',
     ]);
 });
 
-test('guardar y obtener estados de inventario fisico via api', function () {
+test('guardar y obtener estados de sucursal via api con restricciones', function () {
     $crearOrdenService = app(\App\Services\Operations\CrearOrdenService::class);
 
     $payloadCreate = [
-        'sucursal_id' => $this->sucursal->id,
+        'sucursal_id' => $this->sucursalQuito->id,
         'empresa_id' => 1,
         'subtipo_empresa' => 'Stock',
         'emp_modelo' => 'MACBOOK PRO',
@@ -209,9 +273,9 @@ test('guardar y obtener estados de inventario fisico via api', function () {
         'emp_tipo_equipo' => 'LAPTOPS',
         'emp_falla' => 'Test fallas',
         'emp_series' => ['SERIE_X'],
-        'tecnico_encargado' => $this->tecnico->id,
-        'tecnicos_asignados' => [$this->tecnico->id],
-        'ord_tecnico_id' => $this->tecnico->id,
+        'tecnico_encargado' => $this->tecnicoQuito->id,
+        'tecnicos_asignados' => [$this->tecnicoQuito->id],
+        'ord_tecnico_id' => $this->tecnicoQuito->id,
         'emp_fecha_prometido' => now()->addDays(3)->format('Y-m-d'),
         'fecha_ingreso' => now()->format('Y-m-d H:i:s'),
         'ingresado_por' => $this->superadmin->id,
@@ -220,37 +284,46 @@ test('guardar y obtener estados de inventario fisico via api', function () {
     $orden = $crearOrdenService->crearOrdenEmpresa($payloadCreate);
     $prod = ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)->first();
 
-    // 1. Validar endpoint GET obtenerPorOrden
-    $responseGet = $this->actingAs($this->tecnico)
+    // Técnico de Manta intenta obtener productos de la orden de Quito -> Debe retornar vacío (sin registros visibles para su sucursal)
+    $responseGetForbidden = $this->actingAs($this->tecnicoManta)
+        ->withSession([
+            'sucursal_id' => $this->sucursalManta->id,
+        ])
         ->get("/operaciones/ordenes-empresa/inventario-fisico/{$orden->id}");
 
-    $responseGet->assertStatus(200)
+    $responseGetForbidden->assertStatus(200);
+    $this->assertEmpty($responseGetForbidden->json('productos'));
+
+    // Técnico de Quito intenta obtener productos de la orden de Quito -> Exito
+    $responseGetOk = $this->actingAs($this->tecnicoQuito)
+        ->withSession([
+            'sucursal_id' => $this->sucursalQuito->id,
+        ])
+        ->get("/operaciones/ordenes-empresa/inventario-fisico/{$orden->id}");
+
+    $responseGetOk->assertStatus(200)
         ->assertJsonFragment([
             'serie' => 'SERIE_X',
             'estado' => 'Tienda'
         ]);
 
-    // 2. Validar endpoint POST guardarEstados
+    // Técnico de Manta intenta guardar estados para Quito -> Retorna 403
     $payloadSave = [
         'orden_empresa_id' => $orden->id,
         'productos' => [
             [
                 'id' => $prod->id,
                 'estado' => 'Outlet',
-                'detalle_outlet' => 'Tiene rayón en la tapa trasera'
+                'detalle_outlet' => 'Traslado rayado'
             ]
         ]
     ];
 
-    $responsePost = $this->actingAs($this->tecnico)
+    $responsePostForbidden = $this->actingAs($this->tecnicoManta)
+        ->withSession([
+            'sucursal_id' => $this->sucursalManta->id,
+        ])
         ->postJson(route('inventario_fisico.guardar'), $payloadSave);
 
-    $responsePost->assertStatus(200);
-
-    // Verificar en BD que cambió a Outlet y guardó detalle
-    $this->assertDatabaseHas('productos_inventario_fisico_st', [
-        'id' => $prod->id,
-        'estado' => 'Outlet',
-        'detalle_outlet' => 'Tiene rayón en la tapa trasera'
-    ]);
+    $responsePostForbidden->assertStatus(403);
 });

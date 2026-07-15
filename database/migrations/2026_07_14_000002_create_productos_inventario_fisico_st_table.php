@@ -17,6 +17,9 @@ return new class extends Migration
             // Relación con ordenes de empresas (coincide con INT UNSIGNED)
             $table->unsignedInteger('orden_empresa_id')->nullable();
             
+            // Relación con sucursales (coincide con INT de sucursales.id)
+            $table->integer('sucursal_id')->nullable();
+            
             $table->string('codigo', 100);
             $table->string('serie', 100);
             $table->string('nombre', 255);
@@ -27,6 +30,7 @@ return new class extends Migration
 
             // Índices para optimización de reportes y búsquedas
             $table->index('orden_empresa_id');
+            $table->index('sucursal_id');
             $table->index('estado');
             $table->index('serie');
             
@@ -35,6 +39,11 @@ return new class extends Migration
                 ->references('id')
                 ->on('ordenesempresas')
                 ->onDelete('cascade');
+
+            $table->foreign('sucursal_id')
+                ->references('id')
+                ->on('sucursales')
+                ->onDelete('set null');
         });
     }
 

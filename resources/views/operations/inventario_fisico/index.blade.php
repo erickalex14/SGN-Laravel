@@ -121,7 +121,8 @@
                 <table class="table table-hover align-middle mb-0" id="tabla-inventario" style="min-width: 1000px;">
                     <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                         <tr>
-                            <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569; width: 150px;">Orden Asoc.</th>
+                            <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569; width: 130px;">Sucursal</th>
+                            <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569; width: 140px;">Orden Asoc.</th>
                             <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569; width: 140px;">Código</th>
                             <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569; width: 160px;">Serie</th>
                             <th style="padding: 15px 20px; font-weight: 600; font-size: 12px; color: #475569;">Nombre Producto</th>
@@ -143,6 +144,9 @@
                                 }
                             @endphp
                             <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 14px 20px; font-size: 13px; color: #475569; font-weight: 600;">
+                                    {{ $p->sucursal?->ciudad ?: ($p->sucursal?->nombre ?: '-') }}
+                                </td>
                                 <td style="padding: 14px 20px; font-size: 13px; font-weight: 600; color: #1e293b;">
                                     @if($p->ordenEmpresa)
                                         <span class="badge bg-light text-dark border">#{{ $p->ordenEmpresa->nro_orden }}</span>
@@ -173,9 +177,9 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-5 text-muted" style="font-size: 14px;">
+                                <td colspan="8" class="text-center py-5 text-muted" style="font-size: 14px;">
                                     <i class="bi bi-search d-block mb-2 style-3" style="font-size: 24px; color: #94a3b8;"></i>
-                                    No se encontraron productos en el inventario físico que coincidan con los filtros.
+                                    No se encontraron productos en el inventario físico que coincidan con los filtros de tu sucursal.
                                 </td>
                             </tr>
                         @endforelse
@@ -233,15 +237,16 @@
 
         tbodyFilas.forEach(row => {
             const c = row.cells;
-            if (c.length < 7) return;
+            if (c.length < 8) return;
             filas.push({
-                orden: c[0].innerText.trim(),
-                codigo: c[1].innerText.trim(),
-                serie: c[2].innerText.trim(),
-                nombre: c[3].innerText.trim(),
-                estado: c[4].innerText.trim(),
-                detalles: c[5].innerText.trim(),
-                fecha: c[6].innerText.trim(),
+                sucursal: c[0].innerText.trim(),
+                orden: c[1].innerText.trim(),
+                codigo: c[2].innerText.trim(),
+                serie: c[3].innerText.trim(),
+                nombre: c[4].innerText.trim(),
+                estado: c[5].innerText.trim(),
+                detalles: c[6].innerText.trim(),
+                fecha: c[7].innerText.trim(),
             });
         });
 
@@ -261,6 +266,7 @@
 
         // Encabezados
         ws.columns = [
+            { header: 'Sucursal', key: 'sucursal', width: 20 },
             { header: 'Orden Asoc.', key: 'orden', width: 15 },
             { header: 'Código', key: 'codigo', width: 20 },
             { header: 'Serie', key: 'serie', width: 25 },
@@ -289,7 +295,7 @@
                 cell.alignment = { vertical: 'middle' };
                 
                 // Centrar ciertas columnas
-                if (colNum === 1 || colNum === 2 || colNum === 3 || colNum === 5 || colNum === 7) {
+                if (colNum === 1 || colNum === 2 || colNum === 3 || colNum === 4 || colNum === 6 || colNum === 8) {
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 }
             });

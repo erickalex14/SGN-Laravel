@@ -389,6 +389,7 @@ class ActualizarOrdenService
                         if (!$existe) {
                             \App\Models\Inventory\ProductoInventarioFisicoSt::create([
                                 'orden_empresa_id' => $orden->id,
+                                'sucursal_id' => $orden->sucursal_id,
                                 'codigo' => $codigoProducto,
                                 'serie' => $serieMayus,
                                 'nombre' => $nombreProducto,
@@ -398,6 +399,7 @@ class ActualizarOrdenService
                             \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
                                 ->whereRaw('UPPER(serie) = ?', [$serieMayus])
                                 ->update([
+                                    'sucursal_id' => $orden->sucursal_id,
                                     'codigo' => $codigoProducto,
                                     'nombre' => $nombreProducto,
                                 ]);

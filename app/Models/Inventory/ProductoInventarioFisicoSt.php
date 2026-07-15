@@ -11,6 +11,7 @@ class ProductoInventarioFisicoSt extends Model
 
     protected $fillable = [
         'orden_empresa_id',
+        'sucursal_id',
         'codigo',
         'serie',
         'nombre',
@@ -24,5 +25,13 @@ class ProductoInventarioFisicoSt extends Model
     public function ordenEmpresa()
     {
         return $this->belongsTo(OrdenEmpresa::class, 'orden_empresa_id', 'id');
+    }
+
+    /**
+     * Relación con la sucursal del inventario físico.
+     */
+    public function sucursal()
+    {
+        return $this->belongsTo(\App\Models\Directory\Sucursal::class, 'sucursal_id', 'id');
     }
 }
