@@ -555,10 +555,16 @@
                 await Swal.fire('¡Éxito!', data.message || 'Comprobante guardado.', 'success');
                 cargarModuloGestion();
             } else {
-                Swal.fire('Error', data.error || 'No se pudo registrar el comprobante.', 'error');
+                let errorMsg = data.error || 'No se pudo registrar el comprobante.';
+                if (data.errors) {
+                    errorMsg = Object.values(data.errors).flat().join('\n');
+                } else if (data.title) {
+                    errorMsg = data.title;
+                }
+                Swal.fire('Error', errorMsg, 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Error de conexión.', 'error');
+            Swal.fire('Error', 'Error de conexión: ' + e.message, 'error');
         }
     }
 
