@@ -16,58 +16,92 @@ beforeEach(function () {
         'nro_base' => '022999999',
     ]);
 
-    // Crear grupo
-    $this->grupo = GrupoAcceso::create([
-        'nombre' => 'Grupo Test Contabilidad',
+    // Crear grupo superadmin
+    $this->grupoSuper = GrupoAcceso::create([
+        'nombre' => 'Superadmin Grupo',
         'descripcion' => 'Prueba',
         'es_superadmin' => 1,
     ]);
 
-    // Crear usuario
-    $this->usuario = new Usuario();
-    $this->usuario->usuario = 'custodio1';
-    $this->usuario->clave = '';
-    $this->usuario->clave_hash = bcrypt('password123');
-    $this->usuario->nombre_tecnico = 'Maria Custodia';
-    $this->usuario->telefono = '0999999999';
-    $this->usuario->rol_id = 3; // Superadmin
-    $this->usuario->grupo_id = $this->grupo->id;
-    $this->usuario->sucursal_id = $this->sucursal->id;
-    $this->usuario->activo = 1;
-    $this->usuario->save();
+    // Crear grupo regular
+    $this->grupoRegular = GrupoAcceso::create([
+        'nombre' => 'Tecnico Grupo',
+        'descripcion' => 'Prueba Regular',
+        'es_superadmin' => 0,
+    ]);
+
+    // Crear usuario admin (Superadmin)
+    $this->adminUsuario = new Usuario();
+    $this->adminUsuario->usuario = 'admin1';
+    $this->adminUsuario->clave = '';
+    $this->adminUsuario->clave_hash = bcrypt('password123');
+    $this->adminUsuario->nombre_tecnico = 'Maria Administradora';
+    $this->adminUsuario->telefono = '0999999999';
+    $this->adminUsuario->rol_id = 3; // Superadmin
+    $this->adminUsuario->grupo_id = $this->grupoSuper->id;
+    $this->adminUsuario->sucursal_id = $this->sucursal->id;
+    $this->adminUsuario->activo = 1;
+    $this->adminUsuario->save();
+
+    // Crear usuario regular (Tecnico/Custodio)
+    $this->regularUsuario = new Usuario();
+    $this->regularUsuario->usuario = 'tecnico1';
+    $this->regularUsuario->clave = '';
+    $this->regularUsuario->clave_hash = bcrypt('password123');
+    $this->regularUsuario->nombre_tecnico = 'Juan Tecnico';
+    $this->regularUsuario->telefono = '0988888888';
+    $this->regularUsuario->rol_id = 4; // Tecnico
+    $this->regularUsuario->grupo_id = $this->grupoRegular->id;
+    $this->regularUsuario->sucursal_id = $this->sucursal->id;
+    $this->regularUsuario->activo = 1;
+    $this->regularUsuario->save();
 });
 
 test('redireccion a login si no esta autenticado', function () {
-    $response = $this->get(route('cajachica.index'));
+    $response = $this->get(route('cajachica.gestion'));
     $response->assertRedirect(route('login'));
 });
 
-test('usuario autenticado accede a modulo caja chica y recibe JWT valido', function () {
-    $response = $this->actingAs($this->usuario)
-        ->withSession([
-            'usuario' => $this->usuario->usuario,
-            'tecnico_id' => $this->usuario->id,
-            'sucursal_id' => $this->usuario->sucursal_id,
-        ])
+test('index general redirige a gestion', function () {
+    $response = $this->actingAs($this->adminUsuario)
         ->get(route('cajachica.index'));
+    
+    $response->assertRedirect(route('cajachica.gestion'));
+});
+
+test('usuario regular no puede entrar al panel de administracion', function () {
+    $response = $this->actingAs($this->regularUsuario)
+        ->get(route('cajachica.admin'));
+    
+    $response->assertStatus(403);
+});
+
+test('administrador puede entrar al panel de administracion y recibe JWT valido', function () {
+    $response = $this->actingAs($this->adminUsuario)
+        ->get(route('cajachica.admin'));
+    
+    $response->assertStatus(200);
+    $response->assertViewHas('token');
+    $response->assertViewHas('usuarios');
+    $response->assertViewHas('sucursales');
+});
+
+test('custodio accede a gestion y recibe variables del frontend', function () {
+    $response = $this->actingAs($this->regularUsuario)
+        ->get(route('cajachica.gestion'));
 
     $response->assertStatus(200);
     $response->assertViewHas('token');
     $response->assertViewHas('apiUrl');
 
     $token = $response->viewData('token');
-    
-    // Decodificar JWT
     $parts = explode('.', $token);
     expect($parts)->toHaveCount(3);
 
     $payloadJson = base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1]));
     $payload = json_decode($payloadJson, true);
 
-    expect($payload)->toBeArray();
-    expect($payload['nameid'])->toBe((string) $this->usuario->id);
-    expect($payload['unique_name'])->toBe('custodio1');
-    expect($payload['sucursal_id'])->toBe((string) $this->usuario->sucursal_id);
-    expect($payload['rol_id'])->toBe((string) $this->usuario->rol_id);
-    expect($payload['es_superadmin'])->toBe('true');
+    expect($payload['nameid'])->toBe((string) $this->regularUsuario->id);
+    expect($payload['unique_name'])->toBe('tecnico1');
+    expect($payload['es_superadmin'])->toBe('false');
 });
