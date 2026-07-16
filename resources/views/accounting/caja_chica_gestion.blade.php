@@ -371,6 +371,11 @@
         caja.detalles.forEach((d, idx) => {
             const tr = document.createElement('tr');
             
+            let btnPDF = '';
+            if (d.comprobanteUrl) {
+                btnPDF = `<a href="${d.comprobanteUrl}" target="_blank" class="btn btn-sm btn-outline-danger p-1 py-0 me-1" title="Ver Comprobante (PDF/Imagen)"><i class="bi bi-file-earmark-pdf"></i></a>`;
+            }
+
             let btnEditDel = '';
             if (caja.estado === 'Abierta') {
                 if (d.estadoVuelto === 'Devuelto') {
@@ -394,15 +399,10 @@
                 vueltoBadge = `<span class="text-muted small">No Aplica</span>`;
             }
 
-            let comprobanteLink = _h(d.nroComprobante);
-            if (d.comprobanteUrl) {
-                comprobanteLink += ` <a href="${d.comprobanteUrl}" target="_blank" class="text-teal ms-1" title="Ver Comprobante Adjunto"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 15px;"></i></a>`;
-            }
-
             tr.innerHTML = `
                 <td class="ps-3 fw-bold">${idx + 1}</td>
                 <td>${formatFecha(d.fechaComprobante)}</td>
-                <td class="fw-semibold">${comprobanteLink}</td>
+                <td class="fw-semibold">${_h(d.nroComprobante)}</td>
                 <td class="text-wrap" style="max-width: 300px;">${_h(d.descripcion)}</td>
                 <td><span class="badge bg-secondary py-1 px-2">${_h(d.tipoGasto)}</span></td>
                 <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>
@@ -413,7 +413,7 @@
                 <td class="text-wrap" style="background-color: #f8fafc; max-width:150px;">${_h(d.usuarioBeneficiado ?? '')}</td>
                 <td class="text-end font-monospace fw-semibold" style="background-color: #f8fafc; color:#b45309;">$${Number(d.vueltoEsperado).toFixed(2)}</td>
                 <td class="text-center" style="background-color: #f8fafc;">${vueltoBadge}</td>
-                <td class="text-center">${btnEditDel}</td>
+                <td class="text-center">${btnPDF}${btnEditDel}</td>
             `;
 
             tbody.appendChild(tr);
