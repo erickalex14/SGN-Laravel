@@ -495,10 +495,15 @@
                     else if (d.estadoVuelto === 'Devuelto') vBadge = '<span class="badge bg-success">Devuelto</span>';
                     else vBadge = '<span class="text-muted">No Aplica</span>';
 
+                    let comprobanteLink = _h(d.nroComprobante);
+                    if (d.comprobanteUrl) {
+                        comprobanteLink += ` <a href="${d.comprobanteUrl}" target="_blank" class="text-teal ms-1" title="Ver Comprobante Adjunto"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 15px;"></i></a>`;
+                    }
+
                     tr.innerHTML = `
                         <td>${idx + 1}</td>
                         <td>${formatFecha(d.fechaComprobante)}</td>
-                        <td class="fw-semibold">${_h(d.nroComprobante)}</td>
+                        <td class="fw-semibold">${comprobanteLink}</td>
                         <td>${_h(d.descripcion)}</td>
                         <td><span class="badge bg-secondary">${_h(d.tipoGasto)}</span></td>
                         <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>

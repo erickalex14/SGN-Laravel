@@ -47,6 +47,7 @@ return new class extends Migration
             $table->string('usuario_beneficiado', 150)->nullable();
             $table->decimal('vuelto_esperado', 10, 2)->default(0.00);
             $table->string('estado_vuelto', 20)->default('No Aplica'); // Pendiente, Devuelto, No Aplica
+            $table->string('comprobante_url', 255)->nullable(); // New column for PDF/image receipts
             $table->timestamps();
 
             $table->foreign('caja_chica_id')->references('id')->on('caja_chica_cabecera')->onDelete('cascade');

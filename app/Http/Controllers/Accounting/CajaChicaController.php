@@ -137,4 +137,19 @@ class CajaChicaController extends Controller
 
         return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
     }
+
+    public function subirComprobante(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:10240', // Max 10MB
+        ]);
+
+        if ($request->hasFile('file')) {
+            $path = $request->file('file')->store('comprobantes_caja_chica', 'public');
+            $url = asset('storage/' . $path);
+            return response()->json(['ok' => true, 'url' => $url]);
+        }
+
+        return response()->json(['ok' => false, 'error' => 'No se pudo procesar el archivo.']);
+    }
 }

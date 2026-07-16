@@ -235,6 +235,14 @@
                                 <option value="Devuelto">Devuelto</option>
                             </select>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-teal">Adjuntar Comprobante (PDF o Imagen)</label>
+                            <input type="file" class="form-control border-teal" id="form-file" accept=".pdf,image/*">
+                            <input type="hidden" id="form-comprobante-url">
+                            <div class="form-text small mt-1" id="form-file-link-container" style="display:none;">
+                                <a href="#" id="form-file-link" target="_blank" class="text-teal fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i>Ver Comprobante Adjunto Actual</a>
+                            </div>
+                        </div>
                         <div class="col-12 text-end">
                             <span class="small text-muted">Vuelto esperado: <strong id="form-vuelto-esperado-label">$0.00</strong></span>
                         </div>
@@ -382,10 +390,15 @@
                 vueltoBadge = `<span class="text-muted small">No Aplica</span>`;
             }
 
+            let comprobanteLink = _h(d.nroComprobante);
+            if (d.comprobanteUrl) {
+                comprobanteLink += ` <a href="${d.comprobanteUrl}" target="_blank" class="text-teal ms-1" title="Ver Comprobante Adjunto"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 15px;"></i></a>`;
+            }
+
             tr.innerHTML = `
                 <td class="ps-3 fw-bold">${idx + 1}</td>
                 <td>${formatFecha(d.fechaComprobante)}</td>
-                <td class="fw-semibold">${_h(d.nroComprobante)}</td>
+                <td class="fw-semibold">${comprobanteLink}</td>
                 <td class="text-wrap" style="max-width: 300px;">${_h(d.descripcion)}</td>
                 <td><span class="badge bg-secondary py-1 px-2">${_h(d.tipoGasto)}</span></td>
                 <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>
@@ -440,6 +453,9 @@
         document.getElementById('form-item-id').value = '';
         document.getElementById('form-fecha').value = new Date().toISOString().split('T')[0];
         document.getElementById('form-vuelto-esperado-label').innerText = '$0.00';
+        document.getElementById('form-file').value = '';
+        document.getElementById('form-comprobante-url').value = '';
+        document.getElementById('form-file-link-container').style.display = 'none';
         
         itemsModal.show();
     }
@@ -473,6 +489,37 @@
         e.preventDefault();
         
         const itemId = document.getElementById('form-item-id').value;
+        const fileInput = document.getElementById('form-file');
+        let comprobanteUrl = document.getElementById('form-comprobante-url').value;
+
+        Swal.showLoading();
+
+        // 1. Subir archivo a Laravel si existe
+        if (fileInput.files.length > 0) {
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('_token', '{{ csrf_token() }}');
+                
+                const uploadRes = await fetch("{{ route('cajachica.subir_comprobante') }}", {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadData = await uploadRes.json();
+                if (uploadData.ok) {
+                    comprobanteUrl = uploadData.url;
+                } else {
+                    Swal.fire('Error', uploadData.error || 'No se pudo subir el comprobante.', 'error');
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'No se pudo contactar con el servidor para subir el archivo.', 'error');
+                return;
+            }
+        }
+
         const payload = {
             fechaComprobante: document.getElementById('form-fecha').value,
             nroComprobante: document.getElementById('form-nro').value.trim(),
@@ -483,10 +530,9 @@
             subtotalConIva: parseFloat(document.getElementById('form-subtotal-con').value || 0),
             valorEntregado: parseFloat(document.getElementById('form-entregado').value || 0),
             usuarioBeneficiado: document.getElementById('form-beneficiario').value,
-            estadoVuelto: document.getElementById('form-estado-vuelto').value
+            estadoVuelto: document.getElementById('form-estado-vuelto').value,
+            comprobanteUrl: comprobanteUrl
         };
-
-        Swal.showLoading();
 
         try {
             let url = `${_apiUrl}/api/cajachica/${activeCaja.id}/items`;
@@ -531,6 +577,19 @@
         document.getElementById('form-entregado').value = item.valorEntregado;
         document.getElementById('form-beneficiario').value = item.usuarioBeneficiado || '';
         document.getElementById('form-estado-vuelto').value = item.estadoVuelto;
+
+        // Cargar comprobante adjunto
+        document.getElementById('form-file').value = '';
+        const urlComprobante = item.comprobanteUrl || '';
+        document.getElementById('form-comprobante-url').value = urlComprobante;
+        
+        const linkContainer = document.getElementById('form-file-link-container');
+        if (urlComprobante) {
+            document.getElementById('form-file-link').href = urlComprobante;
+            linkContainer.style.display = 'block';
+        } else {
+            linkContainer.style.display = 'none';
+        }
 
         actualizarCalculosForm();
         itemsModal.show();
