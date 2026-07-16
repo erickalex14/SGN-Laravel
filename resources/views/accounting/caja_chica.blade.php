@@ -27,7 +27,7 @@
         <p class="text-muted mx-auto" style="max-width: 500px;">
             Para comenzar a registrar comprobantes y facturas de compras de la sucursal, es necesario iniciar un nuevo periodo de Caja Chica. El fondo fijo asignado es de $1,000.00.
         </p>
-        @if($esSuperAdmin || $sucursalId == 1737 || $sucursalNombre == 'QUITO') {{-- Permitir si es Quito o Superadmin --}}
+        @if($esSuperAdmin || $sucursalId == 1 || stripos($sucursalNombre, 'quito') !== false)
         <div class="mt-4">
             <button type="button" class="btn btn-lg btn-teal" style="background:#0f766e; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:600;" onclick="abrirNuevaCaja()">
                 <i class="bi bi-plus-circle me-2"></i>Abrir Caja Chica ($1,000.00)
