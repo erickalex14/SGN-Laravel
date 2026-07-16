@@ -473,5 +473,7 @@ Route::middleware('auth')->group(function () {
     // -------------MODULO CONTABILIDAD / CAJA CHICA-----------
     // -------------------------------------------------------
     Route::get('/contabilidad/caja-chica', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'index'])->name('cajachica.index');
+    Route::get('/contabilidad/caja-chica/admin', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'adminIndex'])->name('cajachica.admin');
+    Route::get('/contabilidad/caja-chica/gestion', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'gestionIndex'])->name('cajachica.gestion');
 
 });

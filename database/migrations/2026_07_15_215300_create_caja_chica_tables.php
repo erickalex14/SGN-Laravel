@@ -36,7 +36,7 @@ return new class extends Migration
             $table->unsignedBigInteger('caja_chica_id'); // Matches id() of caja_chica_cabecera
             $table->date('fecha_comprobante');
             $table->string('nro_comprobante', 50);
-            $table->string('proveedor', 150);
+            $table->string('proveedor', 150)->nullable(); // Nullable since we use beneficiary dropdown
             $table->text('descripcion');
             $table->string('tipo_gasto', 50);
             $table->decimal('subtotal_sin_iva', 10, 2)->default(0.00);

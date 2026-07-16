@@ -487,9 +487,15 @@
                             <i class="bi bi-chevron-down nav-sub-arrow"></i>
                         </div>
                         <div class="nav-submenu-2">
-                            <a data-tip="Caja Chica" href="{{ route('cajachica.index') }}">
+                            @if ($sa || $esAdminOAdminMaster)
+                                <a data-tip="Caja Chica (Admin)" href="{{ route('cajachica.admin') }}">
+                                    <i class="bi bi-shield-check" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Caja Chica (Admin)</span>
+                                </a>
+                            @endif
+                            <a data-tip="Caja Chica (Gestión)" href="{{ route('cajachica.gestion') }}">
                                 <i class="bi bi-wallet2" style="flex-shrink:0;"></i>
-                                <span class="nav-label" style="margin-left:10px;">Caja Chica</span>
+                                <span class="nav-label" style="margin-left:10px;">Caja Chica (Gestión)</span>
                             </a>
                         </div>
                     </div>

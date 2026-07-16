@@ -1,15 +1,15 @@
 @extends('layouts.app')
-@section('titulo', 'Control de Caja Chica')
+@section('titulo', 'Gestión de Caja Chica')
 
-@section('contenido')
+@section('content')
 <div class="container-fluid px-4 py-3" style="max-width: 1400px;">
     <!-- Encabezado de Página -->
     <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
         <div>
             <h1 class="h3 mb-0 text-gray-800" style="font-weight:700; color:#0f766e;">
-                <i class="bi bi-wallet2 me-2"></i>Control de Caja Chica
+                <i class="bi bi-wallet2 me-2"></i>Gestión de Caja Chica (Custodio)
             </h1>
-            <p class="text-muted mb-0 small">Módulo de tesorería y contabilidad general para la sucursal de {{$sucursalNombre}}</p>
+            <p class="text-muted mb-0 small">Registrar comprobantes de gastos menores para la sucursal de {{$sucursalNombre}}</p>
         </div>
         <div class="d-flex gap-2">
             <span class="badge bg-teal p-2 fs-6" style="background-color: #0f766e;">
@@ -18,26 +18,15 @@
         </div>
     </div>
 
-    <!-- Sección: No hay caja chica abierta -->
+    <!-- Sección: No hay caja chica abierta asignada -->
     <div id="no-caja-container" class="card shadow-sm border-0 mb-4 p-5 text-center" style="display:none; border-radius: 12px;">
         <div class="my-3">
-            <i class="bi bi-wallet2" style="font-size: 4rem; color: #64748b;"></i>
+            <i class="bi bi-wallet-fill" style="font-size: 4rem; color: #94a3b8;"></i>
         </div>
-        <h3 class="h4" style="font-weight:600; color:#334155;">No hay ninguna Caja Chica activa</h3>
-        <p class="text-muted mx-auto" style="max-width: 500px;">
-            Para comenzar a registrar comprobantes y facturas de compras de la sucursal, es necesario iniciar un nuevo periodo de Caja Chica. El fondo fijo asignado es de $1,000.00.
+        <h3 class="h4" style="font-weight:600; color:#334155;">No tienes ninguna Caja Chica activa asignada</h3>
+        <p class="text-muted mx-auto" style="max-width: 550px;">
+            Para poder registrar tus gastos, el administrador de contabilidad debe abrir y asignarte un periodo de Caja Chica correspondiente al mes en curso. Por favor, solicita la apertura a tu administrador.
         </p>
-        @if($esSuperAdmin || $sucursalId == 1 || stripos($sucursalNombre, 'quito') !== false)
-        <div class="mt-4">
-            <button type="button" class="btn btn-lg btn-teal" style="background:#0f766e; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:600;" onclick="abrirNuevaCaja()">
-                <i class="bi bi-plus-circle me-2"></i>Abrir Caja Chica ($1,000.00)
-            </button>
-        </div>
-        @else
-        <div class="alert alert-warning d-inline-block mx-auto mt-3">
-            Solo el custodio asignado o los administradores pueden abrir el periodo de caja chica para esta sucursal.
-        </div>
-        @endif
     </div>
 
     <!-- Sección Principal (Caja Activa) -->
@@ -77,6 +66,7 @@
                     <span class="px-3 py-1 bg-light text-dark fw-bold rounded" id="info-nro-caja" style="font-size: 14px;">-</span>
                     <span class="badge" id="info-estado" style="font-size: 12px; padding:6px 10px;">-</span>
                     <span class="text-muted small"><i class="bi bi-person me-1"></i>Custodio: <strong id="info-custodio">-</strong></span>
+                    <span class="text-muted small"><i class="bi bi-calendar4-week me-1"></i>Período: <strong id="info-periodo">-</strong></span>
                 </div>
                 <div class="d-flex gap-2 mt-2 mt-md-0">
                     <button type="button" class="btn btn-sm btn-teal" style="background:#0f766e; color:#fff; border:none;" onclick="exportarExcel()">
@@ -84,9 +74,6 @@
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-danger" id="btn-cerrar-caja" onclick="cerrarCajaChica()">
                         <i class="bi bi-lock me-1"></i>Cerrar Caja
-                    </button>
-                    <button type="button" class="btn btn-sm btn-success" id="btn-reembolsar-caja" style="display:none;" onclick="abrirModalReembolso()">
-                        <i class="bi bi-cash-coin me-1"></i>Reembolsar y Recargar
                     </button>
                 </div>
             </div>
@@ -107,16 +94,15 @@
                             <tr>
                                 <th class="ps-3" style="width: 50px;">Item</th>
                                 <th style="width: 100px;">Fecha</th>
-                                <th style="width: 140px;">Nro. Comprobante</th>
-                                <th style="width: 180px;">Proveedor</th>
+                                <th style="width: 150px;">Nro. Comprobante</th>
                                 <th>Descripción</th>
-                                <th style="width: 150px;">Tipo de Gasto</th>
+                                <th style="width: 160px;">Tipo de Gasto</th>
                                 <th class="text-end" style="width: 100px;">Subt. 0%</th>
                                 <th class="text-end" style="width: 100px;">Subt. IVA</th>
                                 <th class="text-end" style="width: 80px;">IVA</th>
                                 <th class="text-end" style="width: 100px;">Total</th>
                                 <th class="text-end" style="width: 100px; background-color: #f8fafc;">V. Entregado</th>
-                                <th style="width: 140px; background-color: #f8fafc;">Beneficiario</th>
+                                <th style="width: 180px; background-color: #f8fafc;">Beneficiario</th>
                                 <th class="text-end" style="width: 100px; background-color: #f8fafc;">Vuelto</th>
                                 <th class="text-center" style="width: 120px; background-color: #f8fafc;">Est. Vuelto</th>
                                 <th class="text-center" style="width: 90px;">Acciones</th>
@@ -131,20 +117,20 @@
         </div>
     </div>
 
-    <!-- Historial de Cajas Chicas Cerradas/Reembolsadas -->
+    <!-- Historial de Cajas Chicas Cerradas/Reembolsadas de la Sucursal -->
     <div class="card shadow-sm border-0 mb-4" style="border-radius:12px;">
         <div class="card-header bg-white border-0 py-3">
-            <h5 class="mb-0 fw-bold text-dark" style="font-size: 15px;"><i class="bi bi-clock-history me-2"></i>Historial de Cajas Chicas</h5>
+            <h5 class="mb-0 fw-bold text-dark" style="font-size: 15px;"><i class="bi bi-clock-history me-2"></i>Historial de Cajas Chicas de la Sucursal</h5>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">Código Caja Chica</th>
-                        <th>Fecha Creación</th>
+                        <th class="ps-3">Nro Caja Chica</th>
+                        <th>Período Contable</th>
                         <th>Fecha Cierre</th>
                         <th>Custodio</th>
-                        <th class="text-end">Fondo Inicial</th>
+                        <th class="text-end">Fondo Fijo</th>
                         <th class="text-center">Estado</th>
                         <th class="text-center" style="width: 120px;">Acciones</th>
                     </tr>
@@ -178,8 +164,13 @@
                             <input type="text" class="form-control" id="form-nro" placeholder="Ej: 001-001-000000001 o Vale 01" required>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-semibold small">Proveedor *</label>
-                            <input type="text" class="form-control" id="form-proveedor" placeholder="Nombre completo del proveedor" required>
+                            <label class="form-label fw-semibold small text-teal">Usuario Beneficiado / Empleado *</label>
+                            <select class="form-select border-teal" id="form-beneficiario" required>
+                                <option value="">Seleccione el empleado...</option>
+                                @foreach($usuarios as $u)
+                                    <option value="{{$u->nombre_tecnico}}">{{$u->nombre_tecnico}} ({{$u->usuario}})</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold small">Tipo de Gasto *</label>
@@ -199,8 +190,8 @@
                             </select>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold small">Descripción detallada *</label>
-                            <textarea class="form-control" id="form-descripcion" rows="2" placeholder="Motivo de la compra o actividad gestionada..." required></textarea>
+                            <label class="form-label fw-semibold small">Descripción detallada del Gasto *</label>
+                            <textarea class="form-control" id="form-descripcion" rows="2" placeholder="Motivo del gasto, compra realizada o actividad autorizada..." required></textarea>
                         </div>
                         
                         <div class="col-12"><hr class="my-2"></div>
@@ -229,19 +220,14 @@
 
                         <div class="col-12"><hr class="my-2"></div>
                         
-                        <!-- Nuevos campos solicitados -->
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold small text-primary">Valor Entregado (Efectivo)</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" step="0.01" class="form-control border-primary" id="form-entregado" value="0.00" oninput="actualizarCalculosForm()">
                             </div>
                         </div>
-                        <div class="col-12 col-md-4">
-                            <label class="form-label fw-semibold small text-primary">Usuario Beneficiado / Empleado</label>
-                            <input type="text" class="form-control border-primary" id="form-beneficiario" placeholder="Nombre de quien recibe">
-                        </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label class="form-label fw-semibold small text-primary">Estado Vuelto</label>
                             <select class="form-select border-primary" id="form-estado-vuelto">
                                 <option value="No Aplica">No Aplica</option>
@@ -265,63 +251,24 @@
     </div>
 </div>
 
-<!-- Modal: Reembolsar y Recargar -->
-<div class="modal fade" id="reimburseModal" tabindex="-1" aria-labelledby="reimburseModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; border: none;">
-            <div class="modal-header border-0 bg-light py-3" style="border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title fw-bold text-success" style="color:#16a34a;"><i class="bi bi-cash-coin me-2"></i>Aprobar Reembolso Contable</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="reimburseForm" onsubmit="reembolsarCajaChica(event)">
-                <div class="modal-body p-4">
-                    <p class="text-muted small">
-                        Al reembolsar esta caja chica, se cambiará su estado a <strong>Reembolsada</strong> y se generará una nueva caja chica abierta para el siguiente periodo.
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Monto de Recarga Manual ($) *</label>
-                        <input type="number" step="0.01" class="form-control form-control-lg fw-bold text-success" id="reimburse-monto" required>
-                        <div class="form-text small" id="reimburse-suggested-text">
-                            Sugerido para completar los $1,000.00: <strong>$0.00</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 bg-light py-3" style="border-radius: 0 0 12px 12px;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success" style="background:#16a34a; color:#fff; border:none; padding:8px 20px; font-weight:600;">
-                        <i class="bi bi-check-circle me-1"></i>Autorizar Recarga
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('js_adicional')
 <script>
-    // Variables de configuración inyectadas
     const _jwtToken = @json($token);
     const _apiUrl = @json($apiUrl);
     const _sucursalId = @json($sucursalId);
-    const _codigoSucursal = @json($codigoSucursal);
-    const _sucursalNombre = @json($sucursalNombre);
     const _esSuperAdmin = @json($esSuperAdmin);
+    const _usuarioId = @json($usuario->id);
 
-    // Estado local de la aplicación
     let activeCaja = null;
     let itemsModal = null;
-    let reimburseModal = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         itemsModal = new bootstrap.Modal(document.getElementById('itemModal'));
-        reimburseModal = new bootstrap.Modal(document.getElementById('reimburseModal'));
-        
-        cargarModulo();
+        cargarModuloGestion();
     });
 
-    // Encabezado para peticiones al microservicio en .NET
     function getHeaders() {
         return {
             'Content-Type': 'application/json',
@@ -329,9 +276,8 @@
         };
     }
 
-    async function cargarModulo() {
+    async function cargarModuloGestion() {
         try {
-            // Cargar cajas chicas
             const res = await fetch(`${_apiUrl}/api/cajachica`, {
                 method: 'GET',
                 headers: getHeaders()
@@ -339,17 +285,19 @@
 
             const data = await res.json();
             if (!data.ok) {
-                Swal.fire('Error', data.error || 'No se pudo conectar con el microservicio contable.', 'error');
+                Swal.fire('Error', data.error || 'Error al conectar con contabilidad.', 'error');
                 return;
             }
 
             const cajas = data.data;
             
-            // Buscar si hay alguna caja chica Abierta o Cerrada (activa)
-            activeCaja = cajas.find(c => c.estado === 'Abierta' || c.estado === 'Cerrada');
+            // Buscar si hay alguna caja chica Abierta o Cerrada asignada a esta sucursal
+            // Filtrar para que custodios solo vean sus cajas asignadas
+            const sucursalCajas = cajas.filter(c => c.sucursalId === _sucursalId);
+            activeCaja = sucursalCajas.find(c => c.estado === 'Abierta' || c.estado === 'Cerrada');
 
-            if (activeCaja) {
-                // Si hay caja activa, cargar sus detalles completos
+            if (activeCaja && (activeCaja.custodioUsuarioId === _usuarioId || _esSuperAdmin)) {
+                // Cargar detalles completos
                 const detailRes = await fetch(`${_apiUrl}/api/cajachica/${activeCaja.id}`, {
                     method: 'GET',
                     headers: getHeaders()
@@ -367,19 +315,18 @@
                 document.getElementById('no-caja-container').style.display = 'block';
             }
 
-            // Historial de cajas
-            renderHistorial(cajas);
+            renderHistorial(sucursalCajas);
 
         } catch (e) {
             console.error(e);
-            Swal.fire('Error de conexión', 'No se pudo contactar con el microservicio contable en ' + _apiUrl, 'error');
+            Swal.fire('Error', 'Error de conexión con el microservicio.', 'error');
         }
     }
 
     function renderCajaActiva(caja) {
-        // Cabecera info
         document.getElementById('info-nro-caja').innerText = caja.nroCajaChica;
         document.getElementById('info-custodio').innerText = caja.custodioNombre;
+        document.getElementById('info-periodo').innerText = formatPeriodo(caja.fechaCreacion);
         
         const estEl = document.getElementById('info-estado');
         estEl.innerText = caja.estado;
@@ -387,21 +334,13 @@
         if (caja.estado === 'Abierta') {
             estEl.classList.add('bg-success');
             document.getElementById('btn-cerrar-caja').style.display = 'inline-block';
-            document.getElementById('btn-reembolsar-caja').style.display = 'none';
             document.getElementById('btn-agregar-item').style.display = 'inline-block';
         } else {
             estEl.classList.add('bg-danger');
             document.getElementById('btn-cerrar-caja').style.display = 'none';
             document.getElementById('btn-agregar-item').style.display = 'none';
-            // Solo superadmin puede reembolsar
-            if (_esSuperAdmin) {
-                document.getElementById('btn-reembolsar-caja').style.display = 'inline-block';
-            } else {
-                document.getElementById('btn-reembolsar-caja').style.display = 'none';
-            }
         }
 
-        // Estadísticas
         const totalGastado = caja.detalles.reduce((acc, d) => acc + Number(d.total), 0);
         const saldoDisponible = Number(caja.fondoInicial) - totalGastado;
         const vueltosPendientes = caja.detalles
@@ -413,19 +352,17 @@
         document.getElementById('stat-saldo-disponible').innerText = '$' + saldoDisponible.toFixed(2);
         document.getElementById('stat-vueltos-pendientes').innerText = '$' + vueltosPendientes.toFixed(2);
 
-        // Render filas de la tabla
         const tbody = document.getElementById('detalles-body');
         tbody.innerHTML = '';
 
         if (caja.detalles.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="15" class="text-center text-muted p-4"><i class="bi bi-info-circle me-1"></i>No hay comprobantes registrados en este periodo de caja chica.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted p-4"><i class="bi bi-info-circle me-1"></i>No hay comprobantes registrados en esta caja chica.</td></tr>`;
             return;
         }
 
         caja.detalles.forEach((d, idx) => {
             const tr = document.createElement('tr');
             
-            // Botones de acción según el estado
             let btnEditDel = '';
             if (caja.estado === 'Abierta') {
                 btnEditDel = `
@@ -436,12 +373,11 @@
                 btnEditDel = `<span class="text-muted small"><i class="bi bi-lock-fill"></i> Bloqueado</span>`;
             }
 
-            // Badge de vuelto
             let vueltoBadge = '';
             if (d.estadoVuelto === 'Pendiente') {
-                vueltoBadge = `<span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="toggleEstadoVueltoDirecto(${d.id}, 'Devuelto')" title="Haga clic para marcar como Devuelto"><i class="bi bi-exclamation-triangle-fill me-1"></i>Pendiente</span>`;
+                vueltoBadge = `<span class="badge bg-warning text-dark" style="cursor:pointer;" onclick="toggleEstadoVueltoDirecto(${d.id}, 'Devuelto')" title="Marcar como Devuelto"><i class="bi bi-exclamation-triangle-fill me-1"></i>Pendiente</span>`;
             } else if (d.estadoVuelto === 'Devuelto') {
-                vueltoBadge = `<span class="badge bg-success" style="cursor:pointer;" onclick="toggleEstadoVueltoDirecto(${d.id}, 'Pendiente')" title="Haga clic para marcar como Pendiente"><i class="bi bi-check-circle-fill me-1"></i>Devuelto</span>`;
+                vueltoBadge = `<span class="badge bg-success" style="cursor:pointer;" onclick="toggleEstadoVueltoDirecto(${d.id}, 'Pendiente')" title="Marcar como Pendiente"><i class="bi bi-check-circle-fill me-1"></i>Devuelto</span>`;
             } else {
                 vueltoBadge = `<span class="text-muted small">No Aplica</span>`;
             }
@@ -450,15 +386,14 @@
                 <td class="ps-3 fw-bold">${idx + 1}</td>
                 <td>${formatFecha(d.fechaComprobante)}</td>
                 <td class="fw-semibold">${_h(d.nroComprobante)}</td>
-                <td>${_h(d.proveedor)}</td>
-                <td class="text-wrap" style="max-width: 250px;">${_h(d.descripcion)}</td>
+                <td class="text-wrap" style="max-width: 300px;">${_h(d.descripcion)}</td>
                 <td><span class="badge bg-secondary py-1 px-2">${_h(d.tipoGasto)}</span></td>
                 <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>
                 <td class="text-end">$${Number(d.subtotalConIva).toFixed(2)}</td>
                 <td class="text-end text-muted">$${Number(d.iva).toFixed(2)}</td>
                 <td class="text-end fw-semibold">$${Number(d.total).toFixed(2)}</td>
                 <td class="text-end font-monospace" style="background-color: #f8fafc;">$${Number(d.valorEntregado).toFixed(2)}</td>
-                <td class="text-wrap" style="background-color: #f8fafc; max-width:120px;">${_h(d.usuarioBeneficiado ?? '')}</td>
+                <td class="text-wrap" style="background-color: #f8fafc; max-width:150px;">${_h(d.usuarioBeneficiado ?? '')}</td>
                 <td class="text-end font-monospace fw-semibold" style="background-color: #f8fafc; color:#b45309;">$${Number(d.vueltoEsperado).toFixed(2)}</td>
                 <td class="text-center" style="background-color: #f8fafc;">${vueltoBadge}</td>
                 <td class="text-center">${btnEditDel}</td>
@@ -475,7 +410,7 @@
         const historicas = cajas.filter(c => c.estado !== 'Abierta' && c.estado !== 'Cerrada');
 
         if (historicas.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted p-3">No hay periodos de caja chica anteriores en el historial.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted p-3">No hay periodos de caja chica cerrados en el historial de esta sucursal.</td></tr>`;
             return;
         }
 
@@ -484,7 +419,7 @@
             let badgeClass = c.estado === 'Reembolsada' ? 'bg-primary' : 'bg-secondary';
             tr.innerHTML = `
                 <td class="ps-3 fw-bold">${c.nroCajaChica}</td>
-                <td>${formatFecha(c.fechaCreacion)}</td>
+                <td>${formatPeriodo(c.fechaCreacion)}</td>
                 <td>${c.fechaCierre ? formatFecha(c.fechaCierre) : '-'}</td>
                 <td>${c.custodioNombre}</td>
                 <td class="text-end fw-semibold">$${Number(c.fondoInicial).toFixed(2)}</td>
@@ -497,45 +432,6 @@
             `;
             tbody.appendChild(tr);
         });
-    }
-
-    // Abrir nueva caja chica (inicializa la cabecera)
-    async function abrirNuevaCaja() {
-        const confirm = await Swal.fire({
-            title: '¿Abrir Caja Chica?',
-            text: 'Se iniciará un periodo de caja chica de $1,000.00 para la sucursal de ' + _sucursalNombre,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, abrir',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#0f766e'
-        });
-
-        if (!confirm.isConfirmed) return;
-
-        Swal.showLoading();
-
-        try {
-            const res = await fetch(`${_apiUrl}/api/cajachica`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    sucursalId: _sucursalId,
-                    codigoSucursal: _codigoSucursal,
-                    fondoInicial: 1000.00
-                })
-            });
-
-            const data = await res.json();
-            if (data.ok) {
-                await Swal.fire('¡Abierta!', 'Caja Chica iniciada con éxito.', 'success');
-                cargarModulo();
-            } else {
-                Swal.fire('Error', data.error || 'No se pudo abrir la caja chica.', 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'No se pudo contactar con el servidor contable.', 'error');
-        }
     }
 
     function mostrarModalAgregarItem() {
@@ -557,7 +453,6 @@
         
         document.getElementById('form-total').value = total.toFixed(2);
 
-        // Vuelto
         const entregado = parseFloat(document.getElementById('form-entregado').value || 0);
         const vueltoLabel = document.getElementById('form-vuelto-esperado-label');
         const estadoVueltoSelect = document.getElementById('form-estado-vuelto');
@@ -565,7 +460,6 @@
         if (entregado > total) {
             const vuelto = entregado - total;
             vueltoLabel.innerText = '$' + vuelto.toFixed(2);
-            // Si el vuelto es mayor a 0, activar "Pendiente" por defecto
             if (estadoVueltoSelect.value === 'No Aplica') {
                 estadoVueltoSelect.value = 'Pendiente';
             }
@@ -582,13 +476,13 @@
         const payload = {
             fechaComprobante: document.getElementById('form-fecha').value,
             nroComprobante: document.getElementById('form-nro').value.trim(),
-            proveedor: document.getElementById('form-proveedor').value.trim(),
+            proveedor: null, // Removed input field
             tipoGasto: document.getElementById('form-tipo-gasto').value,
             descripcion: document.getElementById('form-descripcion').value.trim(),
             subtotalSinIva: parseFloat(document.getElementById('form-subtotal-sin').value || 0),
             subtotalConIva: parseFloat(document.getElementById('form-subtotal-con').value || 0),
             valorEntregado: parseFloat(document.getElementById('form-entregado').value || 0),
-            usuarioBeneficiado: document.getElementById('form-beneficiario').value.trim() || null,
+            usuarioBeneficiado: document.getElementById('form-beneficiario').value,
             estadoVuelto: document.getElementById('form-estado-vuelto').value
         };
 
@@ -613,12 +507,12 @@
             if (data.ok) {
                 itemsModal.hide();
                 await Swal.fire('¡Éxito!', data.message || 'Comprobante guardado.', 'success');
-                cargarModulo();
+                cargarModuloGestion();
             } else {
                 Swal.fire('Error', data.error || 'No se pudo registrar el comprobante.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Error de conexión con el microservicio contable.', 'error');
+            Swal.fire('Error', 'Error de conexión.', 'error');
         }
     }
 
@@ -630,7 +524,6 @@
         document.getElementById('form-item-id').value = item.id;
         document.getElementById('form-fecha').value = item.fechaComprobante.split('T')[0];
         document.getElementById('form-nro').value = item.nroComprobante;
-        document.getElementById('form-proveedor').value = item.proveedor;
         document.getElementById('form-tipo-gasto').value = item.tipoGasto;
         document.getElementById('form-descripcion').value = item.descripcion;
         document.getElementById('form-subtotal-sin').value = item.subtotalSinIva;
@@ -666,8 +559,8 @@
 
             const data = await res.json();
             if (data.ok) {
-                await Swal.fire('Eliminado', 'Comprobante eliminado con éxito.', 'success');
-                cargarModulo();
+                await Swal.fire('Eliminado', 'Comprobante eliminado.', 'success');
+                cargarModuloGestion();
             } else {
                 Swal.fire('Error', data.error || 'No se pudo eliminar el comprobante.', 'error');
             }
@@ -676,7 +569,6 @@
         }
     }
 
-    // Toggle rápido de vuelto desde la fila
     async function toggleEstadoVueltoDirecto(itemId, nuevoEstado) {
         const item = activeCaja.detalles.find(d => d.id === itemId);
         if (!item) return;
@@ -706,7 +598,7 @@
             const data = await res.json();
             if (data.ok) {
                 Swal.close();
-                cargarModulo();
+                cargarModuloGestion();
             } else {
                 Swal.fire('Error', data.error || 'No se pudo cambiar el estado.', 'error');
             }
@@ -718,10 +610,10 @@
     async function cerrarCajaChica() {
         const confirm = await Swal.fire({
             title: '¿Cerrar Caja Chica?',
-            text: 'Una vez cerrada, no se podrán añadir ni modificar más facturas. Quedará pendiente de aprobación de reembolso por contabilidad.',
+            text: 'Al cerrarla, no podrás añadir más facturas. Quedará en espera de aprobación de reembolso por el administrador de contabilidad.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sí, cerrar caja',
+            confirmButtonText: 'Sí, cerrar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0f766e'
         });
@@ -738,8 +630,8 @@
 
             const data = await res.json();
             if (data.ok) {
-                await Swal.fire('Cerrada', 'La Caja Chica se cerró con éxito.', 'success');
-                cargarModulo();
+                await Swal.fire('Cerrada', 'Periodo cerrado con éxito. Enviado a reembolso.', 'success');
+                cargarModuloGestion();
             } else {
                 Swal.fire('Error', data.error || 'No se pudo cerrar la caja.', 'error');
             }
@@ -748,44 +640,7 @@
         }
     }
 
-    function abrirModalReembolso() {
-        const totalGastado = activeCaja.detalles.reduce((acc, d) => acc + Number(d.total), 0);
-        document.getElementById('reimburse-monto').value = totalGastado.toFixed(2);
-        document.getElementById('reimburse-suggested-text').innerHTML = `Sugerido para completar los $1,000.00: <strong>$${totalGastado.toFixed(2)}</strong>`;
-        
-        reimburseModal.show();
-    }
-
-    async function reembolsarCajaChica(e) {
-        e.preventDefault();
-
-        const monto = parseFloat(document.getElementById('reimburse-monto').value || 0);
-
-        Swal.showLoading();
-
-        try {
-            const res = await fetch(`${_apiUrl}/api/cajachica/${activeCaja.id}/reimburse`, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    montoRecarga: monto
-                })
-            });
-
-            const data = await res.json();
-            if (data.ok) {
-                reimburseModal.hide();
-                await Swal.fire('Reembolsada', 'Caja Chica reembolsada y nuevo fondo iniciado correctamente.', 'success');
-                cargarModulo();
-            } else {
-                Swal.fire('Error', data.error || 'No se pudo completar el reembolso.', 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Error de conexión.', 'error');
-        }
-    }
-
-    async function exportarExcel() {
+    function exportarExcel() {
         if (!activeCaja) return;
         exportarExcelHistorial(activeCaja.id);
     }
@@ -799,8 +654,7 @@
             });
 
             if (!res.ok) {
-                const errData = await res.json();
-                Swal.fire('Error', errData.error || 'No se pudo generar el reporte.', 'error');
+                Swal.fire('Error', 'No se pudo generar el reporte.', 'error');
                 return;
             }
 
@@ -812,18 +666,28 @@
             document.body.appendChild(a);
             a.click();
             a.remove();
-            
             Swal.close();
         } catch (e) {
             Swal.fire('Error', 'Error al descargar el archivo.', 'error');
         }
     }
 
-    // Auxiliares
+    function formatPeriodo(fechaCreacionStr) {
+        if (!fechaCreacionStr) return '';
+        const d = new Date(fechaCreacionStr);
+        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+        
+        const start = new Date(d);
+        const end = new Date(d);
+        end.setMonth(end.getMonth() + 1);
+        end.setDate(end.getDate() - 1);
+        
+        return formatFecha(start) + ' al ' + formatFecha(end);
+    }
+
     function formatFecha(isoStr) {
         if (!isoStr) return '';
         const d = new Date(isoStr);
-        // Ajustar huso horario local
         d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
         return d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
