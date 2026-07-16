@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('titulo', 'Administración de Caja Chica')
 
-@section('content')
+@section('contenido')
 <div class="container-fluid px-4 py-3" style="max-width: 1400px;">
     <!-- Encabezado de Página -->
     <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
