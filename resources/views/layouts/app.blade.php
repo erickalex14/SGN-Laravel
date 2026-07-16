@@ -479,6 +479,20 @@
                             </div>
                         </div>
                     @endif
+
+                    <div class="nav-subgroup">
+                        <div class="nav-subtoggle" onclick="navSubToggle(this)">
+                            <i class="bi bi-calculator" style="font-size:11px;"></i>
+                            <span>Contabilidad</span>
+                            <i class="bi bi-chevron-down nav-sub-arrow"></i>
+                        </div>
+                        <div class="nav-submenu-2">
+                            <a data-tip="Caja Chica" href="{{ route('cajachica.index') }}">
+                                <i class="bi bi-wallet2" style="flex-shrink:0;"></i>
+                                <span class="nav-label" style="margin-left:10px;">Caja Chica</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         @endif

@@ -469,4 +469,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/gestion/actividades-tecnicos/listar', [ActividadDiariaController::class, 'listarAdmin'])->name('actividades.admin.listar');
     });
 
+    // -------------------------------------------------------
+    // -------------MODULO CONTABILIDAD / CAJA CHICA-----------
+    // -------------------------------------------------------
+    Route::get('/contabilidad/caja-chica', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'index'])->name('cajachica.index');
+
 });
