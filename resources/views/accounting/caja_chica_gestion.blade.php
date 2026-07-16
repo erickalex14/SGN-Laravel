@@ -350,10 +350,10 @@
         }
 
         const totalGastado = caja.detalles.reduce((acc, d) => acc + Number(d.total), 0);
-        const saldoDisponible = Number(caja.fondoInicial) - totalGastado;
         const vueltosPendientes = caja.detalles
             .filter(d => d.estadoVuelto === 'Pendiente')
             .reduce((acc, d) => acc + Number(d.vueltoEsperado), 0);
+        const saldoDisponible = Number(caja.fondoInicial) - totalGastado - vueltosPendientes;
 
         document.getElementById('stat-fondo-inicial').innerText = '$' + Number(caja.fondoInicial).toFixed(2);
         document.getElementById('stat-total-gastado').innerText = '$' + totalGastado.toFixed(2);
@@ -373,10 +373,14 @@
             
             let btnEditDel = '';
             if (caja.estado === 'Abierta') {
-                btnEditDel = `
-                    <button type="button" class="btn btn-sm btn-outline-primary p-1 py-0 me-1" onclick="editarItem(${d.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="btn btn-sm btn-outline-danger p-1 py-0" onclick="eliminarItem(${d.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
-                `;
+                if (d.estadoVuelto === 'Devuelto') {
+                    btnEditDel = `<span class="text-muted small"><i class="bi bi-lock-fill text-secondary"></i> Conciliado</span>`;
+                } else {
+                    btnEditDel = `
+                        <button type="button" class="btn btn-sm btn-outline-primary p-1 py-0 me-1" onclick="editarItem(${d.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-danger p-1 py-0" onclick="eliminarItem(${d.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    `;
+                }
             } else {
                 btnEditDel = `<span class="text-muted small"><i class="bi bi-lock-fill"></i> Bloqueado</span>`;
             }
@@ -572,6 +576,11 @@
         const item = activeCaja.detalles.find(d => d.id === itemId);
         if (!item) return;
 
+        if (item.estadoVuelto === 'Devuelto') {
+            Swal.fire('Bloqueado', 'No se puede editar un comprobante con vuelto ya devuelto y conciliado.', 'warning');
+            return;
+        }
+
         document.getElementById('itemModalLabel').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Comprobante';
         document.getElementById('form-item-id').value = item.id;
         document.getElementById('form-fecha').value = item.fechaComprobante.split('T')[0];
@@ -602,6 +611,12 @@
     }
 
     async function eliminarItem(itemId) {
+        const item = activeCaja.detalles.find(d => d.id === itemId);
+        if (item && item.estadoVuelto === 'Devuelto') {
+            Swal.fire('Bloqueado', 'No se puede eliminar un comprobante con vuelto ya devuelto y conciliado.', 'warning');
+            return;
+        }
+
         const confirm = await Swal.fire({
             title: '¿Eliminar comprobante?',
             text: 'Esta acción no se puede deshacer.',

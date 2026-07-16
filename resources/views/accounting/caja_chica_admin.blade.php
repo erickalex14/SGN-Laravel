@@ -471,10 +471,10 @@
             document.getElementById('audit-nro-caja').innerText = c.nroCajaChica;
 
             const totalGastado = c.detalles.reduce((acc, d) => acc + Number(d.total), 0);
-            const saldoDisponible = Number(c.fondoInicial) - totalGastado;
             const vueltosPendientes = c.detalles
                 .filter(d => d.estadoVuelto === 'Pendiente')
                 .reduce((acc, d) => acc + Number(d.vueltoEsperado), 0);
+            const saldoDisponible = Number(c.fondoInicial) - totalGastado - vueltosPendientes;
 
             document.getElementById('audit-fondo').innerText = '$' + Number(c.fondoInicial).toFixed(2);
             document.getElementById('audit-gastado').innerText = '$' + totalGastado.toFixed(2);
