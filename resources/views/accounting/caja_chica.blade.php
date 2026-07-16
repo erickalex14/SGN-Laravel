@@ -299,7 +299,7 @@
 
 @endsection
 
-@push('js')
+@push('js_adicional')
 <script>
     // Variables de configuración inyectadas
     const _jwtToken = @json($token);
