@@ -259,6 +259,8 @@
     </div>
 </div>
 
+<input type="file" id="hidden-file-upload" accept="image/*,.pdf" style="display:none;" onchange="procesarSubidaDirecta()">
+
 @endsection
 
 @push('js_adicional')
@@ -374,6 +376,8 @@
             let btnPDF = '';
             if (d.comprobanteUrl) {
                 btnPDF = `<a href="${d.comprobanteUrl}" target="_blank" class="btn btn-sm btn-outline-danger p-1 py-0 me-1" title="Ver Comprobante (PDF/Imagen)"><i class="bi bi-file-earmark-pdf"></i></a>`;
+            } else {
+                btnPDF = `<button type="button" class="btn btn-sm btn-outline-secondary p-1 py-0 me-1" onclick="subirComprobanteDirecto(${d.id})" title="Subir Comprobante"><i class="bi bi-upload"></i></button>`;
             }
 
             let btnEditDel = '';
@@ -780,6 +784,79 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    let currentUploadItemId = null;
+
+    function subirComprobanteDirecto(itemId) {
+        currentUploadItemId = itemId;
+        document.getElementById('hidden-file-upload').value = '';
+        document.getElementById('hidden-file-upload').click();
+    }
+
+    async function procesarSubidaDirecta() {
+        const fileInput = document.getElementById('hidden-file-upload');
+        if (!fileInput || fileInput.files.length === 0 || !currentUploadItemId) return;
+        
+        Swal.fire({
+            title: 'Subiendo comprobante...',
+            text: 'Espere por favor.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        try {
+            let formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('_token', '{{ csrf_token() }}');
+            
+            const uploadRes = await fetch('{{ route("cajachica.subir_comprobante") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadData = await uploadRes.json();
+            if (!uploadData.ok) {
+                Swal.fire('Error', uploadData.error || 'Error al subir el archivo.', 'error');
+                return;
+            }
+            
+            const fileUrl = uploadData.url;
+            
+            const updateRes = await fetch(`${_apiUrl}/api/cajachica/items/${currentUploadItemId}/comprobante`, {
+                method: 'PATCH',
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ comprobanteUrl: fileUrl })
+            });
+            
+            const updateData = await updateRes.json();
+            if (!updateRes.ok) {
+                Swal.fire('Error', updateData.error || 'Error al actualizar el comprobante.', 'error');
+                return;
+            }
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Comprobante Subido',
+                text: 'El comprobante se ha adjuntado correctamente.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            
+            cargarDetallesCaja(activeCaja.id);
+            
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Ocurrió un error inesperado al subir el archivo.', 'error');
+        } finally {
+            fileInput.value = '';
+            currentUploadItemId = null;
+        }
     }
 </script>
 @endpush
