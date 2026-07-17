@@ -19,7 +19,8 @@ class AsignarRepuestoOrdenRequest extends FormRequest
         return [
             'orden_id' => ['required', 'integer', "exists:{$table},id"],
             'repuesto_inventario_id' => ['required', 'integer', 'exists:repuestos,id'],
-            'tipo_orden' => ['nullable', 'string', 'in:personal,empresa']
+            'tipo_orden' => ['nullable', 'string', 'in:personal,empresa'],
+            'cantidad' => ['nullable', 'integer', 'min:1']
         ];
     }
 

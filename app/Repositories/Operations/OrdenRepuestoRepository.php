@@ -19,7 +19,7 @@ class OrdenRepuestoRepository
                 throw new Exception('El repuesto seleccionado no existe.');
             }
 
-            $this->descontarStock($repuesto);
+            $this->descontarStock($repuesto, 1);
             Log::warning('No se pudo registrar orden_repuestos durante la creacion; se desconto stock usando compatibilidad legacy.', [
                 'orden_id' => $ordenId,
                 'repuesto_id' => $repuestoId,
@@ -28,13 +28,13 @@ class OrdenRepuestoRepository
             return;
         }
 
-        $this->asignarRepuestoEnOrden($ordenId, $repuestoId, $usuarioId, true);
+        $this->asignarRepuestoEnOrden($ordenId, $repuestoId, $usuarioId, 1, true);
     }
 
     /**
      * @throws Exception
      */
-    public function asignarRepuestoEnOrden(int $ordenId, int $repuestoId, int $usuarioId, bool $descontarStock = true, string $tipoOrden = 'personal'): void
+    public function asignarRepuestoEnOrden(int $ordenId, int $repuestoId, int $usuarioId, int $cantidad = 1, bool $descontarStock = true, string $tipoOrden = 'personal'): void
     {
         $this->asegurarTablaOrdenRepuestos();
 
@@ -59,7 +59,7 @@ class OrdenRepuestoRepository
         }
 
         if ($descontarStock) {
-            $this->descontarStock($repuesto);
+            $this->descontarStock($repuesto, $cantidad);
         }
 
         $item = new OrdenRepuesto();
@@ -69,7 +69,7 @@ class OrdenRepuestoRepository
             $item->orden_id = $ordenId;
         }
         $item->repuesto_id = $repuestoId;
-        $item->cantidad = 1;
+        $item->cantidad = $cantidad;
         $item->usuario_id = $usuarioId > 0 ? $usuarioId : null;
         $item->save();
     }
@@ -123,15 +123,15 @@ class OrdenRepuestoRepository
         }
     }
 
-    private function descontarStock(Repuesto $repuesto): void
+    private function descontarStock(Repuesto $repuesto, int $cantidad = 1): void
     {
         $actualizado = DB::table('repuestos')
             ->where('id', $repuesto->id)
-            ->where('stock', '>=', 1)
-            ->decrement('stock', 1);
+            ->where('stock', '>=', $cantidad)
+            ->decrement('stock', $cantidad);
 
         if ($actualizado === 0) {
-            throw new Exception("Stock insuficiente para el repuesto '{$repuesto->nombre}'.");
+            throw new Exception("Stock insuficiente para el repuesto '{$repuesto->nombre}'. Se requieren {$cantidad} unidades.");
         }
     }
 }

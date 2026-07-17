@@ -303,7 +303,8 @@ class MisOrdenesController extends Controller
 
             $dto = new AsignarRepuestoOrdenDTO(
                 $ordenId,
-                (int) $request->input('repuesto_inventario_id')
+                (int) $request->input('repuesto_inventario_id'),
+                (int) $request->input('cantidad', 1)
             );
 
             $this->service->asignarRepuesto(

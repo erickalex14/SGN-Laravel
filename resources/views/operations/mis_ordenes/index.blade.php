@@ -1037,6 +1037,7 @@ function limpiarRepuestoSeleccionadoMisOrdenes(ordenId) {
     const inp = document.getElementById('rep-inv-query-' + ordenId);
     const tag = document.getElementById('rep-inv-selected-' + ordenId);
     const text = document.getElementById('rep-inv-selected-text-' + ordenId);
+    const qty = document.getElementById('rep-inv-qty-' + ordenId);
     if (hid) {
         hid.value = '';
         delete hid.dataset.codigo;
@@ -1045,6 +1046,7 @@ function limpiarRepuestoSeleccionadoMisOrdenes(ordenId) {
     if (inp) inp.value = '';
     if (tag) tag.style.display = 'none';
     if (text) text.textContent = '';
+    if (qty) qty.value = '1';
 }
 
 function seleccionarRepuestoMisOrdenes(ordenId, repuestoId, codigo, nombre) {
@@ -1053,6 +1055,7 @@ function seleccionarRepuestoMisOrdenes(ordenId, repuestoId, codigo, nombre) {
     const box = document.getElementById('rep-inv-resultados-' + ordenId);
     const tag = document.getElementById('rep-inv-selected-' + ordenId);
     const text = document.getElementById('rep-inv-selected-text-' + ordenId);
+    const qty = document.getElementById('rep-inv-qty-' + ordenId);
 
     const cod = String(codigo || '').trim();
     const nom = String(nombre || '').trim();
@@ -1063,6 +1066,7 @@ function seleccionarRepuestoMisOrdenes(ordenId, repuestoId, codigo, nombre) {
     }
     if (inp) inp.value = cod || nom;
     if (text) text.textContent = (cod || '-') + ' - ' + (nom || '-');
+    if (qty) qty.value = '1';
     if (tag) tag.style.display = 'flex';
     if (box) box.style.display = 'none';
 }
@@ -1140,11 +1144,15 @@ async function asignarRepuesto(ordenId, tipoOrden = 'personal') {
         await mostrarAlertaEstetica('Por favor, <b>seleccione un repuesto</b> del listado de búsqueda antes de continuar.', 'warning', 'Selección Requerida');
         return;
     }
+    const qtyInput = document.getElementById('rep-inv-qty-' + ordenId);
+    const cantidad = qtyInput ? parseInt(qtyInput.value || 1) : 1;
+
     const fd = new FormData();
     fd.append('_token', _moCsrf);
     fd.append('orden_id', ordenId);
     fd.append('repuesto_inventario_id', sel.value);
     fd.append('tipo_orden', tipoOrden);
+    fd.append('cantidad', cantidad);
     try {
         const r = await fetch(_moUrlRepAsignar, { method: 'POST', body: fd });
         const d = await r.json();
@@ -1162,13 +1170,17 @@ async function asignarRepuesto(ordenId, tipoOrden = 'personal') {
             row.repuesto_codigo = codigo;
             row.repuesto_nombre = nombre;
             row.repuestos_asignados = Array.isArray(row.repuestos_asignados) ? row.repuestos_asignados : [];
-            if (!row.repuestos_asignados.some((ra) => Number(ra.repuesto_id) === repuestoId)) {
+            
+            const existing = row.repuestos_asignados.find((ra) => Number(ra.repuesto_id) === repuestoId);
+            if (existing) {
+                existing.cantidad = Number(existing.cantidad) + cantidad;
+            } else {
                 row.repuestos_asignados.push({
                     id: repuestoId,
                     repuesto_id: repuestoId,
                     codigo,
                     nombre,
-                    cantidad: 1,
+                    cantidad: cantidad,
                 });
             }
             limpiarRepuestoSeleccionadoMisOrdenes(ordenId);
@@ -1573,6 +1585,7 @@ function verDetalleOrden(cardEl) {
                                         <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">
                                             <th style="padding:6px 8px;">Código</th>
                                             <th style="padding:6px 8px;">Nombre</th>
+                                            <th style="padding:6px 8px; text-align:center; width:60px;">Cant.</th>
                                             <th style="padding:6px 8px; text-align:center; width:65px;">Acción</th>
                                         </tr>
                                     </thead>
@@ -1581,6 +1594,7 @@ function verDetalleOrden(cardEl) {
                                             <tr style="border-bottom:1px solid #f1f5f9;">
                                                 <td style="padding:6px 8px; font-family:monospace; font-weight:600; color:#b45309;">${_h(ra.codigo)}</td>
                                                 <td style="padding:6px 8px; color:var(--mo-slate);">${_h(ra.nombre)}</td>
+                                                <td style="padding:6px 8px; text-align:center; font-weight:700; color:var(--mo-teal);">${ra.cantidad || 1}</td>
                                                 <td style="padding:6px 8px; text-align:center;">
                                                     <button type="button" class="btn-mini-rep danger" style="padding:2px 6px; font-size:10px; margin:0;"
                                                             onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)}, 'empresa')" title="Revertir este repuesto">
@@ -1607,9 +1621,13 @@ function verDetalleOrden(cardEl) {
                                oninput="onInputBuscarRepuestoMisOrdenes(${Number(o.id)}, this.value)"
                                onfocus="buscarRepuestoMisOrdenes(${Number(o.id)}, this.value)">
                         <div class="rep-resultados" id="rep-inv-resultados-${Number(o.id)}"></div>
-                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none;">
-                            <span id="rep-inv-selected-text-${Number(o.id)}">Repuesto seleccionado</span>
-                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion">&times;</button>
+                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none; align-items:center; gap:8px; margin-bottom:8px;">
+                            <span id="rep-inv-selected-text-${Number(o.id)}" style="flex-grow:1;">Repuesto seleccionado</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; color:var(--mo-muted); margin:0;">Cant:</label>
+                                <input type="number" id="rep-inv-qty-${Number(o.id)}" min="1" value="1" style="width:60px; height:26px; font-size:12px; padding:2px 5px; border:1px solid var(--mo-border); border-radius:4px;">
+                            </div>
+                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion" style="margin-left:4px;">&times;</button>
                         </div>
                     </div>
                     
@@ -1710,6 +1728,7 @@ function verDetalleOrden(cardEl) {
                                         <tr style="background:#f8fafc; border-bottom:1px solid var(--mo-border); color:var(--mo-muted); font-weight:700;">
                                             <th style="padding:6px 8px;">Código</th>
                                             <th style="padding:6px 8px;">Nombre</th>
+                                            <th style="padding:6px 8px; text-align:center; width:60px;">Cant.</th>
                                             <th style="padding:6px 8px; text-align:center; width:65px;">Acción</th>
                                         </tr>
                                     </thead>
@@ -1718,6 +1737,7 @@ function verDetalleOrden(cardEl) {
                                             <tr style="border-bottom:1px solid #f1f5f9;">
                                                 <td style="padding:6px 8px; font-family:monospace; font-weight:600; color:#b45309;">${_h(ra.codigo)}</td>
                                                 <td style="padding:6px 8px; color:var(--mo-slate);">${_h(ra.nombre)}</td>
+                                                <td style="padding:6px 8px; text-align:center; font-weight:700; color:var(--mo-teal);">${ra.cantidad || 1}</td>
                                                 <td style="padding:6px 8px; text-align:center;">
                                                     <button type="button" class="btn-mini-rep danger" style="padding:2px 6px; font-size:10px; margin:0;"
                                                             onclick="revertirRepuestoIndividual(${Number(o.id)}, ${Number(ra.repuesto_id)}, 'personal')" title="Revertir este repuesto">
@@ -1744,9 +1764,13 @@ function verDetalleOrden(cardEl) {
                                oninput="onInputBuscarRepuestoMisOrdenes(${Number(o.id)}, this.value)"
                                onfocus="buscarRepuestoMisOrdenes(${Number(o.id)}, this.value)">
                         <div class="rep-resultados" id="rep-inv-resultados-${Number(o.id)}"></div>
-                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none;">
-                            <span id="rep-inv-selected-text-${Number(o.id)}">Repuesto seleccionado</span>
-                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion">&times;</button>
+                        <div class="rep-seleccionado" id="rep-inv-selected-${Number(o.id)}" style="display:none; align-items:center; gap:8px; margin-bottom:8px;">
+                            <span id="rep-inv-selected-text-${Number(o.id)}" style="flex-grow:1;">Repuesto seleccionado</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; color:var(--mo-muted); margin:0;">Cant:</label>
+                                <input type="number" id="rep-inv-qty-${Number(o.id)}" min="1" value="1" style="width:60px; height:26px; font-size:12px; padding:2px 5px; border:1px solid var(--mo-border); border-radius:4px;">
+                            </div>
+                            <button type="button" class="rep-clear" onclick="limpiarRepuestoSeleccionadoMisOrdenes(${Number(o.id)})" title="Quitar seleccion" style="margin-left:4px;">&times;</button>
                         </div>
                     </div>
                     

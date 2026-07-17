@@ -430,6 +430,7 @@ class GestionOrdenService
                 (int) $orden->id,
                 (int) $dto->repuesto_inventario_id,
                 $usuarioId,
+                (int) $dto->cantidad,
                 true,
                 $tipoOrden
             );
