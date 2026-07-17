@@ -197,7 +197,7 @@ test('listarAdmin retorna actividades de un técnico', function () {
 
 test('servicio de actividad diaria no registra para usuarios excluidos pero si para el resto', function () {
     $excluido = crearUsuarioAdminPrueba(); // rol_id = 1
-    $excluido->nombre_tecnico = 'Jahaira Cisneros';
+    $excluido->nombre_tecnico = 'Carlos Ramos';
     $excluido->save();
 
     $tecnico = crearUsuarioTecnicoPrueba(); // rol_id = 2

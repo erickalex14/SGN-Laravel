@@ -100,13 +100,11 @@ class Usuario extends Authenticatable
     public function debeLlenarActividades(): bool
     {
         $nombresExcluidos = [
-            'jahaira cisneros',
             'carlos ramos',
             'antonio pulido',
             'evelin vaca'
         ];
         $usuariosExcluidos = [
-            '1725324782', // Jahaira Cisneros
             '1721443610', // Carlos Ramos
             '0921998878', // Antonio Pulido
             '0957967847'  // Evelin Vaca
