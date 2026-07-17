@@ -191,6 +191,7 @@
                                 <th>Beneficiario</th>
                                 <th class="text-end">Vuelto</th>
                                 <th class="text-center">Estado Vuelto</th>
+                                <th class="text-center">Comprobante</th>
                             </tr>
                         </thead>
                         <tbody id="audit-detalles-body">
@@ -482,10 +483,8 @@
             document.getElementById('audit-vueltos').innerText = '$' + vueltosPendientes.toFixed(2);
 
             const tbody = document.getElementById('audit-detalles-body');
-            tbody.innerHTML = '';
-
-            if (c.detalles.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted p-3">No hay comprobantes registrados en esta caja.</td></tr>`;
+                     if (c.detalles.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted p-3">No hay comprobantes registrados en esta caja.</td></tr>`;
             } else {
                 c.detalles.forEach((d, idx) => {
                     const tr = document.createElement('tr');
@@ -495,15 +494,22 @@
                     else if (d.estadoVuelto === 'Devuelto') vBadge = '<span class="badge bg-success">Devuelto</span>';
                     else vBadge = '<span class="text-muted">No Aplica</span>';
 
-                    let comprobanteLink = _h(d.nroComprobante);
+                    let comprobanteHtml = '';
                     if (d.comprobanteUrl) {
-                        comprobanteLink += ` <a href="${d.comprobanteUrl}" target="_blank" class="text-teal ms-1" title="Ver Comprobante Adjunto"><i class="bi bi-file-earmark-pdf text-danger" style="font-size: 15px;"></i></a>`;
+                        const isPdf = d.comprobanteUrl.toLowerCase().endsWith('.pdf');
+                        if (isPdf) {
+                            comprobanteHtml = `<a href="${d.comprobanteUrl}" target="_blank" class="btn btn-sm btn-outline-danger px-2 py-0" style="font-size:11px;" title="Ver Comprobante PDF"><i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF</a>`;
+                        } else {
+                            comprobanteHtml = `<a href="${d.comprobanteUrl}" target="_blank" class="btn btn-sm btn-outline-info px-2 py-0" style="font-size:11px;" title="Ver Comprobante Imagen"><i class="bi bi-image-fill me-1"></i>Imagen</a>`;
+                        }
+                    } else {
+                        comprobanteHtml = `<span class="text-muted small">Sin archivo</span>`;
                     }
 
                     tr.innerHTML = `
                         <td>${idx + 1}</td>
                         <td>${formatFecha(d.fechaComprobante)}</td>
-                        <td class="fw-semibold">${comprobanteLink}</td>
+                        <td class="fw-semibold">${_h(d.nroComprobante)}</td>
                         <td>${_h(d.descripcion)}</td>
                         <td><span class="badge bg-secondary">${_h(d.tipoGasto)}</span></td>
                         <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>
@@ -513,6 +519,7 @@
                         <td>${_h(d.usuarioBeneficiado ?? '')}</td>
                         <td class="text-end text-warning fw-semibold">$${Number(d.vueltoEsperado).toFixed(2)}</td>
                         <td class="text-center">${vBadge}</td>
+                        <td class="text-center">${comprobanteHtml}</td>
                     `;
                     tbody.appendChild(tr);
                 });
