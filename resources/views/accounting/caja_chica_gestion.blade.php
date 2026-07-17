@@ -9,11 +9,11 @@
             <h1 class="h3 mb-0 text-gray-800" style="font-weight:700; color:#0f766e;">
                 <i class="bi bi-wallet2 me-2"></i>Gestión de Caja Chica (Custodio)
             </h1>
-            <p class="text-muted mb-0 small">Registrar comprobantes de gastos menores para la sucursal de {{$sucursalNombre}}</p>
+            <p class="text-muted mb-0 small">Registrar comprobantes de gastos menores para la sucursal de <span id="sucursal-subtitle-name">{{$sucursalNombre}}</span></p>
         </div>
         <div class="d-flex gap-2">
             <span class="badge bg-teal p-2 fs-6" style="background-color: #0f766e;">
-                Centro de Costo: <strong>{{$codigoSucursal}}</strong>
+                Centro de Costo: <strong id="centro-costo-badge">{{$codigoSucursal}}</strong>
             </span>
         </div>
     </div>
@@ -299,14 +299,14 @@
                 return;
             }
 
-            const cajas = data.data;
+            const miUsuarioCajas = cajas.filter(c => c.custodioUsuarioId === _usuarioId || c.sucursalId === _sucursalId || _esSuperAdmin);
             
-            // Buscar si hay alguna caja chica Abierta o Cerrada asignada a esta sucursal
-            // Filtrar para que custodios solo vean sus cajas asignadas
-            const sucursalCajas = cajas.filter(c => c.sucursalId === _sucursalId);
-            activeCaja = sucursalCajas.find(c => c.estado === 'Abierta' || c.estado === 'Cerrada');
+            activeCaja = miUsuarioCajas.find(c => (c.custodioUsuarioId === _usuarioId || _esSuperAdmin) && c.estado === 'Abierta');
+            if (!activeCaja) {
+                activeCaja = miUsuarioCajas.find(c => (c.custodioUsuarioId === _usuarioId || _esSuperAdmin) && c.estado === 'Cerrada');
+            }
 
-            if (activeCaja && (activeCaja.custodioUsuarioId === _usuarioId || _esSuperAdmin)) {
+            if (activeCaja) {
                 // Cargar detalles completos
                 const detailRes = await fetch(`${_apiUrl}/api/cajachica/${activeCaja.id}`, {
                     method: 'GET',
@@ -325,7 +325,8 @@
                 document.getElementById('no-caja-container').style.display = 'block';
             }
 
-            renderHistorial(sucursalCajas);
+            const historicas = miUsuarioCajas.filter(c => !activeCaja || c.id !== activeCaja.id);
+            renderHistorial(historicas);
 
         } catch (e) {
             console.error(e);
@@ -337,6 +338,16 @@
         document.getElementById('info-nro-caja').innerText = caja.nroCajaChica;
         document.getElementById('info-custodio').innerText = caja.custodioNombre;
         document.getElementById('info-periodo').innerText = formatPeriodo(caja.fechaCreacion);
+
+        let sucursalName = 'Quito';
+        if (caja.codigoSucursal === 'ACC08') sucursalName = 'Guayaquil';
+        else if (caja.codigoSucursal === 'ACC16') sucursalName = 'Manta';
+
+        const subtitleEl = document.getElementById('sucursal-subtitle-name');
+        if (subtitleEl) subtitleEl.innerText = sucursalName;
+
+        const ccEl = document.getElementById('centro-costo-badge');
+        if (ccEl) ccEl.innerText = caja.codigoSucursal;
         
         const estEl = document.getElementById('info-estado');
         estEl.innerText = caja.estado;
@@ -428,16 +439,16 @@
         const tbody = document.getElementById('historial-body');
         tbody.innerHTML = '';
 
-        const historicas = cajas.filter(c => c.estado !== 'Abierta' && c.estado !== 'Cerrada');
-
-        if (historicas.length === 0) {
+        if (!cajas || cajas.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted p-3">No hay periodos de caja chica cerrados en el historial de esta sucursal.</td></tr>`;
             return;
         }
 
-        historicas.forEach(c => {
+        cajas.forEach(c => {
             const tr = document.createElement('tr');
-            let badgeClass = c.estado === 'Reembolsada' ? 'bg-primary' : 'bg-secondary';
+            let badgeClass = 'bg-secondary';
+            if (c.estado === 'Reembolsada') badgeClass = 'bg-primary';
+            else if (c.estado === 'Cerrada') badgeClass = 'bg-danger';
             tr.innerHTML = `
                 <td class="ps-3 fw-bold">${c.nroCajaChica}</td>
                 <td>${formatPeriodo(c.fechaCreacion)}</td>
