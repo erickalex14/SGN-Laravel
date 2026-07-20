@@ -300,7 +300,7 @@
             }
 
             const cajas = data.data || [];
-            const miUsuarioCajas = cajas.filter(c => c.custodioUsuarioId === _usuarioId || c.sucursalId === _sucursalId || _esSuperAdmin);
+            const miUsuarioCajas = cajas.filter(c => c.custodioUsuarioId === _usuarioId || _esSuperAdmin);
             
             activeCaja = miUsuarioCajas.find(c => (c.custodioUsuarioId === _usuarioId || _esSuperAdmin) && c.estado === 'Abierta');
             if (!activeCaja) {
