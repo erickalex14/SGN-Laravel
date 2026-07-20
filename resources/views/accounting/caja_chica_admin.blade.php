@@ -483,7 +483,9 @@
             document.getElementById('audit-vueltos').innerText = '$' + vueltosPendientes.toFixed(2);
 
             const tbody = document.getElementById('audit-detalles-body');
-                     if (c.detalles.length === 0) {
+            tbody.innerHTML = '';
+
+            if (c.detalles.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted p-3">No hay comprobantes registrados en esta caja.</td></tr>`;
             } else {
                 c.detalles.forEach((d, idx) => {
