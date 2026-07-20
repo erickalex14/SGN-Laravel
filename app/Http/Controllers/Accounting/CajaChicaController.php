@@ -49,7 +49,7 @@ class CajaChicaController extends Controller
         $sucursales = Sucursal::all(['id', 'ciudad', 'secuencial']);
 
         $token = $this->generateJwt($usuario);
-        $apiUrl = env('CONTABILIDAD_API_URL', 'http://YOUR_SERVER_IP:8085');
+        $apiUrl = config('services.contabilidad.url', env('CONTABILIDAD_API_URL'));
 
         return view('accounting.caja_chica_admin', [
             'token' => $token,
@@ -89,7 +89,7 @@ class CajaChicaController extends Controller
             ->get(['id', 'nombre_tecnico', 'usuario']);
 
         $token = $this->generateJwt($usuario);
-        $apiUrl = env('CONTABILIDAD_API_URL', 'http://YOUR_SERVER_IP:8085');
+        $apiUrl = config('services.contabilidad.url', env('CONTABILIDAD_API_URL'));
 
         return view('accounting.caja_chica_gestion', [
             'token' => $token,
@@ -131,7 +131,7 @@ class CajaChicaController extends Controller
         $base64UrlHeader = $this->base64UrlEncode($header);
         $base64UrlPayload = $this->base64UrlEncode($payload);
 
-        $secret = env('CONTABILIDAD_JWT_SECRET', 'YOUR_JWT_SECRET');
+        $secret = env('CONTABILIDAD_JWT_SECRET');
         $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $secret, true);
         $base64UrlSignature = $this->base64UrlEncode($signature);
 
