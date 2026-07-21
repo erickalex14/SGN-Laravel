@@ -221,7 +221,7 @@ class PreordenService
             $valor === '' ||
             preg_match('/^(s[\/\-]?n|sin[\s_\-]?(serie|numero|num)?|n[\/\-]?a|na|ninguna|none|no[\s_]?aplica|-)$/i', $valor)
         ) {
-            return 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
+            return 'N/A';
         }
 
         return strtoupper($valor);

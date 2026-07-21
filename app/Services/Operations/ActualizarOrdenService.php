@@ -458,13 +458,15 @@ class ActualizarOrdenService
         foreach ($series as $serie) {
             $serie = trim((string) $serie);
             if ($serie === '' || preg_match('/^(s[\/\-]?n|sin[\s_\-]?(serie|n[uú]mero|num)?|n[\/\-]?a|na|ninguna|none|no[\s_]?aplica|-)$/i', $serie)) {
-                $serie = 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
+                $serie = 'N/A';
+            } else {
+                $serie = strtoupper($serie);
             }
-            $resultado[] = strtoupper($serie);
+            $resultado[] = $serie;
         }
 
         if (empty($resultado)) {
-            $resultado[] = 'SN-'.strtoupper(substr(md5(uniqid('', true)), 0, 8));
+            $resultado[] = 'N/A';
         }
 
         return $resultado;

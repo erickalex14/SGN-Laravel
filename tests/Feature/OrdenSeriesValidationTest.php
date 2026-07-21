@@ -126,7 +126,7 @@ test('crear orden de empresa no requiere la serie del equipo y autogenera una se
 
     $orden = OrdenEmpresa::where('empresa_id', $empresa->id)->first();
     expect($orden)->not->toBeNull();
-    expect($orden->equipo->serie)->toStartWith('SN-');
+    expect($orden->equipo->serie)->toBe('N/A');
 });
 
 test('editar orden de empresa permite guardar sin series y mantiene o genera una serie valida', function () {
@@ -203,5 +203,5 @@ test('editar orden de empresa permite guardar sin series y mantiene o genera una
     $orden->refresh();
     expect($orden->estado)->toBe('En proceso');
     expect($orden->equipo->modelo)->toBe('MACBOOK PRO 16');
-    expect($orden->equipo->serie)->toStartWith('SN-');
+    expect($orden->equipo->serie)->toBe('N/A');
 });
