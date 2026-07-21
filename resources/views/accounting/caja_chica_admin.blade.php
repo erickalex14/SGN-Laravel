@@ -83,6 +83,14 @@
                             <input type="number" step="0.01" class="form-control fw-bold" id="open-fondo" value="1000.00" required readonly>
                         </div>
                         <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">Seleccionar Periodo Contable *</label>
+                            <select class="form-select" id="select-periodo-preset" onchange="seleccionarPresetPeriodo(this.value)">
+                                <option value="mes_anterior">Periodo Junio - Julio (23/06/2026 - 22/07/2026)</option>
+                                <option value="mes_actual" selected>Periodo Julio - Agosto (23/07/2026 - 22/08/2026)</option>
+                                <option value="personalizado">Personalizado (Elegir fecha)...</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
                             <label class="form-label fw-semibold small">Fecha de Apertura (Inicio Periodo) *</label>
                             <input type="date" class="form-control" id="open-fecha" required>
                         </div>
@@ -224,14 +232,28 @@
         reimburseModal = new bootstrap.Modal(document.getElementById('reimburseModal'));
         detalleCajaModal = new bootstrap.Modal(document.getElementById('detalleCajaModal'));
 
-        // Default opening date to the 23rd of current month
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        document.getElementById('open-fecha').value = `${yyyy}-${mm}-23`;
-
+        seleccionarPresetPeriodo('mes_actual');
         cargarCajasAdmin();
     });
+
+    function seleccionarPresetPeriodo(val) {
+        if (val === 'personalizado') return;
+
+        const today = new Date();
+        let yyyy = today.getFullYear();
+        let monthIdx = today.getMonth(); // 0-indexed (June=5, July=6)
+
+        if (val === 'mes_anterior') {
+            monthIdx = monthIdx - 1;
+            if (monthIdx < 0) {
+                monthIdx = 11;
+                yyyy = yyyy - 1;
+            }
+        }
+
+        const mm = String(monthIdx + 1).padStart(2, '0');
+        document.getElementById('open-fecha').value = `${yyyy}-${mm}-23`;
+    }
 
     function getHeaders() {
         return {
