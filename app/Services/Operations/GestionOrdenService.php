@@ -456,10 +456,6 @@ class GestionOrdenService
      */
     public function revertirRepuesto(RevertirRepuestoOrdenDTO $dto, int $usuarioId, bool $esAdmin = false, string $tipoOrden = 'personal'): void
     {
-        if (!$esAdmin) {
-            throw new Exception('No autorizado para revertir repuestos.');
-        }
-
         if ($tipoOrden === 'empresa') {
             $orden = \App\Models\Operations\OrdenEmpresa::find($dto->orden_id);
         } else {
@@ -467,6 +463,25 @@ class GestionOrdenService
         }
         if (!$orden) {
             throw new Exception('La orden especificada no existe.');
+        }
+
+        if (!$esAdmin) {
+            $tecnicoIdSesion = (int) session('tecnico_id', 0);
+            $sucursalIdSesion = (int) session('sucursal_id', 0);
+
+            $esAsignado = false;
+            if ($tipoOrden === 'empresa') {
+                $esAsignado = ($tecnicoIdSesion > 0 && (int) $orden->tecnico_id === $tecnicoIdSesion)
+                    || ($sucursalIdSesion > 0 && (int) $orden->sucursal_id === $sucursalIdSesion)
+                    || ($tecnicoIdSesion > 0 && $orden->tecnicos()->where('tecnico_id', $tecnicoIdSesion)->exists());
+            } else {
+                $esAsignado = ($tecnicoIdSesion > 0 && (int) $orden->tecnico_id === $tecnicoIdSesion)
+                    || ($sucursalIdSesion > 0 && (int) $orden->sucursal_id === $sucursalIdSesion);
+            }
+
+            if (!$esAsignado) {
+                throw new Exception('No está autorizado para revertir repuestos de esta orden.');
+            }
         }
 
         DB::transaction(function () use ($dto, $orden, $usuarioId, $tipoOrden): void {
