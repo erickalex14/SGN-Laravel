@@ -3,7 +3,7 @@
 @section('contenido')
 <style>
     .b2b-container {
-        padding: 24px;
+        padding: 28px 24px;
         max-width: 1500px;
         margin: 0 auto;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -13,20 +13,20 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 24px;
-        background: #1e293b;
-        padding: 20px 28px;
-        border-radius: 16px;
-        border: 1px solid #334155;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        background: #ffffff;
+        padding: 20px 24px;
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
     .b2b-title {
-        color: #f8fafc;
-        font-size: 1.5rem;
-        font-weight: 700;
+        color: #0f172a;
+        font-size: 1.4rem;
+        font-weight: 800;
         margin: 0;
     }
     .b2b-subtitle {
-        color: #94a3b8;
+        color: #64748b;
         font-size: 0.875rem;
         margin-top: 4px;
     }
@@ -34,37 +34,40 @@
         display: flex;
         gap: 16px;
         align-items: center;
-        background: #1e293b;
+        background: #ffffff;
         padding: 16px 20px;
         border-radius: 12px;
-        border: 1px solid #334155;
+        border: 1.5px solid #e2e8f0;
         margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
     .filter-select {
-        background: #0f172a;
-        color: #f8fafc;
-        border: 1px solid #475569;
+        background: #f8fafc;
+        color: #0f172a;
+        border: 1.5px solid #cbd5e1;
         padding: 8px 14px;
         border-radius: 8px;
         font-size: 0.9rem;
+        font-weight: 600;
     }
     .b2b-card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 16px;
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
         padding: 24px;
         margin-bottom: 28px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
     .b2b-card-title {
-        color: #f8fafc;
-        font-size: 1.15rem;
+        color: #0f172a;
+        font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 16px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding-bottom: 12px;
-        border-bottom: 1px solid #334155;
+        border-bottom: 1.5px solid #e2e8f0;
     }
     .table-responsive {
         overflow-x: auto;
@@ -72,51 +75,56 @@
     .custom-table {
         width: 100%;
         border-collapse: collapse;
-        color: #cbd5e1;
+        color: #1e293b;
         font-size: 0.875rem;
     }
     .custom-table th {
-        background: #0f172a;
-        color: #94a3b8;
+        background: #f8fafc;
+        color: #475569;
         text-align: left;
         padding: 12px 14px;
-        font-weight: 600;
+        font-weight: 700;
+        border-bottom: 2px solid #e2e8f0;
+        text-transform: uppercase;
+        font-size: 0.8rem;
     }
     .custom-table td {
         padding: 12px 14px;
-        border-bottom: 1px solid #334155;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .custom-table tr:hover td {
+        background: #f8fafc;
     }
     .badge {
         display: inline-block;
-        padding: 4px 8px;
-        border-radius: 9999px;
+        padding: 4px 10px;
+        border-radius: 20px;
         font-size: 0.725rem;
         font-weight: 700;
         text-transform: uppercase;
     }
-    .badge-novicompu { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
-    .badge-rb { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-    .badge-garantia { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
-    .badge-servicios { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; }
+    .badge-novicompu { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-rb { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-garantia { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-servicios { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
     .btn-primary {
-        background: linear-gradient(135deg, #10b981, #059669);
+        background: #10b981;
         color: #ffffff;
         border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
+        padding: 10px 20px;
+        border-radius: 8px;
         font-weight: 600;
+        font-size: 0.9rem;
         cursor: pointer;
         transition: all 0.2s ease;
-        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
     }
     .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.5);
+        background: #059669;
     }
     .btn-primary:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        transform: none;
     }
 </style>
 
@@ -134,19 +142,19 @@
     </div>
 
     <form method="GET" action="{{ route('recuentob2b.index') }}" class="filter-bar">
-        <label style="color: #cbd5e1; font-weight: 600;">Filtrar por Empresa:</label>
+        <label style="color: #0f172a; font-weight: 700;">Filtrar por Empresa:</label>
         <select name="empresa" class="filter-select" onchange="this.form.submit()">
             <option value="">-- Todas las Empresas --</option>
             <option value="Novicompu" {{ $empresaFiltro === 'Novicompu' ? 'selected' : '' }}>Novicompu</option>
             <option value="RB" {{ $empresaFiltro === 'RB' ? 'selected' : '' }}>RB Health</option>
         </select>
-        <a href="{{ route('recuentob2b.index') }}" style="color: #94a3b8; text-decoration: underline; font-size: 0.85rem;">Limpiar filtro</a>
+        <a href="{{ route('recuentob2b.index') }}" style="color: #2563eb; font-weight: 600; text-decoration: underline; font-size: 0.85rem;">Limpiar filtro</a>
     </form>
 
     <div class="b2b-card">
         <div class="b2b-card-title">
             <span>Órdenes Pendientes de Cobro B2B</span>
-            <span style="font-size: 0.85rem; font-weight: 400; color: #94a3b8;">Marque las órdenes que serán cobradas en el próximo lote</span>
+            <span style="font-size: 0.85rem; font-weight: 400; color: #64748b;">Marque las órdenes que serán cobradas en el próximo lote</span>
         </div>
         <div class="table-responsive">
             <table class="custom-table">
@@ -203,11 +211,11 @@
                                     Presupuesto / Manual
                                 @endif
                             </td>
-                            <td><strong style="color: #34d399;">${{ number_format($ord->valor_total_calculado, 2) }}</strong></td>
+                            <td><strong style="color: #059669;">${{ number_format($ord->valor_total_calculado, 2) }}</strong></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #64748b; padding: 24px;">No hay órdenes pendientes de cobro B2B.</td>
+                            <td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">No hay órdenes pendientes de cobro B2B.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -241,7 +249,7 @@
                             <td>{{ $lObj->empresa_nombre ?? $lObj->EmpresaNombre ?? '' }}</td>
                             <td>{{ $lObj->total_ordenes ?? $lObj->TotalOrdenes ?? 0 }} órdenes</td>
                             <td>${{ number_format((float)($lObj->subtotal ?? $lObj->Subtotal ?? 0), 2) }}</td>
-                            <td><strong style="color: #60a5fa;">${{ number_format((float)($lObj->monto_neto_banco ?? $lObj->MontoNetoBanco ?? 0), 2) }}</strong></td>
+                            <td><strong style="color: #2563eb;">${{ number_format((float)($lObj->monto_neto_banco ?? $lObj->MontoNetoBanco ?? 0), 2) }}</strong></td>
                             <td>
                                 Renta: ${{ number_format((float)($lObj->monto_retencion_renta ?? $lObj->MontoRetencionRenta ?? 0), 2) }}<br>
                                 IVA: ${{ number_format((float)($lObj->monto_retencion_iva ?? $lObj->MontoRetencionIva ?? 0), 2) }}
@@ -251,7 +259,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #64748b; padding: 24px;">No hay lotes procesados previamente.</td>
+                            <td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">No hay lotes procesados previamente.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -304,13 +312,13 @@
         Swal.fire({
             title: 'Procesar Cobro Lote B2B',
             html: `
-                <div style="text-align: left; font-size: 0.875rem; color: #334155;">
+                <div style="text-align: left; font-size: 0.875rem; color: #0f172a;">
                     <p><strong>Empresa:</strong> ${empresaNombre}</p>
                     <p><strong>Órdenes Seleccionadas:</strong> ${seleccionadas.length}</p>
                     <p><strong>Subtotal Factura Lote:</strong> $${subtotal.toFixed(2)}</p>
                     
                     <div style="margin-top: 12px;">
-                        <label style="font-weight: 600;">Banco Destino del Pago:</label>
+                        <label style="font-weight: 700; color: #0f172a;">Banco Destino del Pago:</label>
                         <select id="swal-banco" class="swal2-input" style="margin-top: 4px;">
                             <option value="Banco Pichincha Cta Cte">Banco Pichincha Cta Cte</option>
                             <option value="Banco Guayaquil Cta Cte">Banco Guayaquil Cta Cte</option>
@@ -319,28 +327,28 @@
                     </div>
 
                     <div style="margin-top: 10px;">
-                        <label style="font-weight: 600;">Monto Neto Depositado en Banco ($):</label>
+                        <label style="font-weight: 700; color: #0f172a;">Monto Neto Depositado en Banco ($):</label>
                         <input type="number" step="0.01" id="swal-neto" class="swal2-input" value="${subtotal.toFixed(2)}" style="margin-top: 4px;">
                     </div>
 
                     <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
-                            <label style="font-weight: 600;">Retención Renta ($):</label>
+                            <label style="font-weight: 700; color: #0f172a;">Retención Renta ($):</label>
                             <input type="number" step="0.01" id="swal-ret-renta" class="swal2-input" value="0.00" style="margin-top: 4px;">
                         </div>
                         <div>
-                            <label style="font-weight: 600;">Retención IVA ($):</label>
+                            <label style="font-weight: 700; color: #0f172a;">Retención IVA ($):</label>
                             <input type="number" step="0.01" id="swal-ret-iva" class="swal2-input" value="0.00" style="margin-top: 4px;">
                         </div>
                     </div>
 
                     <div style="margin-top: 10px;">
-                        <label style="font-weight: 600;">Nro. Comprobante Retención SRI:</label>
+                        <label style="font-weight: 700; color: #0f172a;">Nro. Comprobante Retención SRI:</label>
                         <input type="text" id="swal-nro-ret" class="swal2-input" placeholder="Ej: 001-002-000012345" style="margin-top: 4px;">
                     </div>
 
                     <div style="margin-top: 10px;">
-                        <label style="font-weight: 600;">Nro. Comprobante / Transf. Bancaria:</label>
+                        <label style="font-weight: 700; color: #0f172a;">Nro. Comprobante / Transf. Bancaria:</label>
                         <input type="text" id="swal-nro-pago" class="swal2-input" placeholder="Ej: TRF-98765432" style="margin-top: 4px;">
                     </div>
                 </div>
@@ -348,6 +356,7 @@
             showCancelButton: true,
             confirmButtonText: 'Registrar Cobro y Facturar',
             cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
             preConfirm: () => {
                 const banco = document.getElementById('swal-banco').value;
                 const neto = parseFloat(document.getElementById('swal-neto').value) || 0;
