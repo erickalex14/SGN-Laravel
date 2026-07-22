@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('content')
+@section('contenido')
 <style>
     .b2b-container {
         padding: 24px;
