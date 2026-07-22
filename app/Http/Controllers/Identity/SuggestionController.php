@@ -39,6 +39,13 @@ class SuggestionController extends Controller
 
         $nombreUsuario = (string) (session('nombre') ?? session('usuario') ?? 'Usuario desconocido');
         $rolUsuario = (string) (session('grupo_nombre') ?? '');
+        $sucursalUsuario = (string) (session('sucursal_nombre') ?? '');
+        if (!$sucursalUsuario && session('sucursal_id')) {
+            $suc = \App\Models\Directory\Sucursal::find(session('sucursal_id'));
+            if ($suc) {
+                $sucursalUsuario = $suc->ciudad;
+            }
+        }
 
         $asuntoEmail = '[SGN Buzón] ' . $asunto;
         $cuerpo = view('emails.sugerencia', [
@@ -46,6 +53,7 @@ class SuggestionController extends Controller
             'detalle' => $detalle,
             'nombre_usuario' => $nombreUsuario,
             'rol_usuario' => $rolUsuario,
+            'sucursal_usuario' => $sucursalUsuario,
             'fecha' => now('America/Guayaquil')->format('d/m/Y H:i:s'),
         ])->render();
 

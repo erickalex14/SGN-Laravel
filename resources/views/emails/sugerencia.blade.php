@@ -13,6 +13,12 @@
                 <td style="padding:8px 12px;background:#eff6ff;font-weight:700;font-size:13px;color:#1e40af;border-radius:6px 0 0 6px;">Rol</td>
                 <td style="padding:8px 12px;background:#fff;border:1px solid #e2e8f0;border-left:none;font-size:14px;">{{ e(ucfirst($rol_usuario)) }}</td>
             </tr>
+            @if(!empty($sucursal_usuario))
+            <tr>
+                <td style="padding:8px 12px;background:#eff6ff;font-weight:700;font-size:13px;color:#1e40af;border-radius:6px 0 0 6px;">Sucursal / Ciudad</td>
+                <td style="padding:8px 12px;background:#fff;border:1px solid #e2e8f0;border-left:none;font-size:14px;">{{ e($sucursal_usuario) }}</td>
+            </tr>
+            @endif
             <tr>
                 <td style="padding:8px 12px;background:#eff6ff;font-weight:700;font-size:13px;color:#1e40af;border-radius:6px 0 0 6px;">Fecha</td>
                 <td style="padding:8px 12px;background:#fff;border:1px solid #e2e8f0;border-left:none;font-size:14px;">{{ e($fecha) }}</td>

@@ -497,6 +497,14 @@
                                 <i class="bi bi-wallet2" style="flex-shrink:0;"></i>
                                 <span class="nav-label" style="margin-left:10px;">Caja Chica (Gestión)</span>
                             </a>
+                            <a data-tip="Caja General" href="{{ route('cajageneral.index') }}">
+                                <i class="bi bi-cash-stack" style="flex-shrink:0;"></i>
+                                <span class="nav-label" style="margin-left:10px;">Caja General</span>
+                            </a>
+                            <a data-tip="Recuento B2B" href="{{ route('recuentob2b.index') }}">
+                                <i class="bi bi-receipt-cutoff" style="flex-shrink:0;"></i>
+                                <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
+                            </a>
                         </div>
                     </div>
                 </div>

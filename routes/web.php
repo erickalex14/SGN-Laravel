@@ -476,4 +476,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/contabilidad/caja-chica/admin', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'adminIndex'])->name('cajachica.admin');
     Route::get('/contabilidad/caja-chica/gestion', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'gestionIndex'])->name('cajachica.gestion');
     Route::post('/contabilidad/caja-chica/subir-comprobante', [\App\Http\Controllers\Accounting\CajaChicaController::class, 'subirComprobante'])->name('cajachica.subir_comprobante');
+
+    // Caja General & Arqueos Diarios
+    Route::get('/contabilidad/caja-general', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'index'])->name('cajageneral.index');
+    Route::post('/contabilidad/caja-general/arqueo', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarArqueo'])->name('cajageneral.guardar_arqueo');
+    Route::post('/contabilidad/caja-general/deposito', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirDeposito'])->name('cajageneral.subir_deposito');
+
+    // Recuento & Facturacion B2B
+    Route::get('/contabilidad/recuento-b2b', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'index'])->name('recuentob2b.index');
+    Route::post('/contabilidad/recuento-b2b/procesar', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'procesarCobro'])->name('recuentob2b.procesar');
 });
