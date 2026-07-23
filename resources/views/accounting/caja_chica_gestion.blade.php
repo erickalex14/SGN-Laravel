@@ -2,7 +2,7 @@
 @section('titulo', 'Gestión de Caja Chica')
 
 @section('contenido')
-<div class="container-fluid px-4 py-3" style="max-width: 1400px;">
+<div class="container-fluid px-4 py-3" style="max-width: 1450px;">
     <!-- Encabezado de Página -->
     <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
         <div>
@@ -41,7 +41,7 @@
             </div>
             <div class="col-12 col-md-3">
                 <div class="card shadow-sm border-0 h-100 p-3" style="border-radius:10px; border-left: 4px solid #e11d48 !important;">
-                    <div class="text-muted small text-uppercase fw-bold">Total Gastado</div>
+                    <div class="text-muted small text-uppercase fw-bold">Total Gastado (Neto)</div>
                     <div class="h3 mb-0 mt-2 fw-bold text-danger" id="stat-total-gastado">$0.00</div>
                 </div>
             </div>
@@ -81,7 +81,7 @@
             <div class="card-body p-0">
                 <!-- Botón de Agregar Comprobante (Solo si está Abierta) -->
                 <div class="p-3 bg-light d-flex justify-content-between align-items-center border-top border-bottom">
-                    <span class="text-muted small">Listado de facturas, notas de venta y vales de caja</span>
+                    <span class="text-muted small">Listado de facturas, notas de venta, retenciones y vales de caja</span>
                     <button type="button" class="btn btn-sm btn-teal" id="btn-agregar-item" style="background:#0f766e; color:#fff; border:none; padding:6px 16px; border-radius:6px;" onclick="mostrarModalAgregarItem()">
                         <i class="bi bi-plus-lg me-1"></i>Agregar Comprobante
                     </button>
@@ -92,20 +92,22 @@
                     <table class="table table-hover align-middle mb-0" id="tabla-detalles" style="font-size: 13px;">
                         <thead class="table-light text-uppercase font-weight-bold" style="font-size: 11px; letter-spacing: 0.5px;">
                             <tr>
-                                <th class="ps-3" style="width: 50px;">Item</th>
-                                <th style="width: 100px;">Fecha</th>
-                                <th style="width: 150px;">Nro. Comprobante</th>
+                                <th class="ps-3" style="width: 45px;">Item</th>
+                                <th style="width: 95px;">Fecha</th>
+                                <th style="width: 140px;">Nro. Comprobante</th>
                                 <th>Descripción</th>
-                                <th style="width: 160px;">Tipo de Gasto</th>
-                                <th class="text-end" style="width: 100px;">Subt. 0%</th>
-                                <th class="text-end" style="width: 100px;">Subt. IVA</th>
-                                <th class="text-end" style="width: 80px;">IVA</th>
-                                <th class="text-end" style="width: 100px;">Total</th>
-                                <th class="text-end" style="width: 100px; background-color: #f8fafc;">V. Entregado</th>
-                                <th style="width: 180px; background-color: #f8fafc;">Beneficiario</th>
-                                <th class="text-end" style="width: 100px; background-color: #f8fafc;">Vuelto</th>
-                                <th class="text-center" style="width: 120px; background-color: #f8fafc;">Est. Vuelto</th>
-                                <th class="text-center" style="width: 90px;">Acciones</th>
+                                <th style="width: 150px;">Tipo de Gasto</th>
+                                <th class="text-end" style="width: 90px;">Subt. 0%</th>
+                                <th class="text-end" style="width: 90px;">Subt. IVA</th>
+                                <th class="text-end" style="width: 75px;">IVA</th>
+                                <th class="text-end" style="width: 95px;">Tot. Fact.</th>
+                                <th class="text-end text-danger" style="width: 95px;">Retención</th>
+                                <th class="text-end text-success fw-bold" style="width: 100px;">Neto Pagado</th>
+                                <th class="text-end" style="width: 95px; background-color: #f8fafc;">V. Entregado</th>
+                                <th style="width: 150px; background-color: #f8fafc;">Beneficiario</th>
+                                <th class="text-end" style="width: 90px; background-color: #f8fafc;">Vuelto</th>
+                                <th class="text-center" style="width: 110px; background-color: #f8fafc;">Est. Vuelto</th>
+                                <th class="text-center" style="width: 85px;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="detalles-body">
@@ -211,10 +213,30 @@
                             </div>
                         </div>
                         <div class="col-12 col-md-4">
-                            <label class="form-label fw-semibold text-teal small">Total Calculado</label>
+                            <label class="form-label fw-semibold text-teal small">Total Factura (Sin Ret.)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-teal-light text-teal fw-bold">$</span>
                                 <input type="text" class="form-control fw-bold text-teal bg-light" id="form-total" value="0.00" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Sección de Retención SRI -->
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold small text-danger">Monto Retención SRI ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text text-danger">$</span>
+                                <input type="number" step="0.01" class="form-control border-danger" id="form-retencion" value="0.00" oninput="actualizarCalculosForm()">
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold small text-danger">Nro. Comprobante Retención</label>
+                            <input type="text" class="form-control" id="form-nro-retencion" placeholder="Ej: 001-002-0000123">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold text-success small">Neto Efectivo Pagado</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-success text-white fw-bold">$</span>
+                                <input type="text" class="form-control fw-bold text-success bg-light" id="form-neto-pagar" value="0.00" readonly>
                             </div>
                         </div>
 
@@ -286,6 +308,26 @@
         };
     }
 
+    function _h(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatFecha(fStr) {
+        if (!fStr) return '-';
+        const d = new Date(fStr);
+        if (isNaN(d.getTime())) return fStr;
+        return d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function formatPeriodo(fStr) {
+        if (!fStr) return '-';
+        const d = new Date(fStr);
+        if (isNaN(d.getTime())) return fStr;
+        const m = d.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
+        return m.charAt(0).toUpperCase() + m.slice(1);
+    }
+
     async function cargarModuloGestion() {
         try {
             const res = await fetch(`${_apiUrl}/api/cajachica`, {
@@ -308,7 +350,6 @@
             }
 
             if (activeCaja) {
-                // Cargar detalles completos
                 const detailRes = await fetch(`${_apiUrl}/api/cajachica/${activeCaja.id}`, {
                     method: 'GET',
                     headers: getHeaders()
@@ -363,14 +404,18 @@
             document.getElementById('btn-agregar-item').style.display = 'none';
         }
 
-        const totalGastado = caja.detalles.reduce((acc, d) => acc + Number(d.total), 0);
+        const totalGastadoFacturas = caja.detalles.reduce((acc, d) => acc + Number(d.total), 0);
+        const totalRetenciones = caja.detalles.reduce((acc, d) => acc + Number(d.montoRetencion || 0), 0);
+        const netoEfectivoGastado = totalGastadoFacturas - totalRetenciones;
+
         const vueltosPendientes = caja.detalles
             .filter(d => d.estadoVuelto === 'Pendiente')
             .reduce((acc, d) => acc + Number(d.vueltoEsperado), 0);
-        const saldoDisponible = Number(caja.fondoInicial) - totalGastado - vueltosPendientes;
+
+        const saldoDisponible = Number(caja.fondoInicial) - netoEfectivoGastado - vueltosPendientes;
 
         document.getElementById('stat-fondo-inicial').innerText = '$' + Number(caja.fondoInicial).toFixed(2);
-        document.getElementById('stat-total-gastado').innerText = '$' + totalGastado.toFixed(2);
+        document.getElementById('stat-total-gastado').innerText = '$' + netoEfectivoGastado.toFixed(2);
         document.getElementById('stat-saldo-disponible').innerText = '$' + saldoDisponible.toFixed(2);
         document.getElementById('stat-vueltos-pendientes').innerText = '$' + vueltosPendientes.toFixed(2);
 
@@ -378,7 +423,7 @@
         tbody.innerHTML = '';
 
         if (caja.detalles.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted p-4"><i class="bi bi-info-circle me-1"></i>No hay comprobantes registrados en esta caja chica.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted p-4"><i class="bi bi-info-circle me-1"></i>No hay comprobantes registrados en esta caja chica.</td></tr>`;
             return;
         }
 
@@ -415,18 +460,23 @@
                 vueltoBadge = `<span class="text-muted small">No Aplica</span>`;
             }
 
+            const ret = Number(d.montoRetencion || 0);
+            const netoPagar = Number(d.total) - ret;
+
             tr.innerHTML = `
                 <td class="ps-3 fw-bold">${idx + 1}</td>
                 <td>${formatFecha(d.fechaComprobante)}</td>
                 <td class="fw-semibold">${_h(d.nroComprobante)}</td>
-                <td class="text-wrap" style="max-width: 300px;">${_h(d.descripcion)}</td>
+                <td class="text-wrap" style="max-width: 250px;">${_h(d.descripcion)}</td>
                 <td><span class="badge bg-secondary py-1 px-2">${_h(d.tipoGasto)}</span></td>
                 <td class="text-end">$${Number(d.subtotalSinIva).toFixed(2)}</td>
                 <td class="text-end">$${Number(d.subtotalConIva).toFixed(2)}</td>
                 <td class="text-end text-muted">$${Number(d.iva).toFixed(2)}</td>
                 <td class="text-end fw-semibold">$${Number(d.total).toFixed(2)}</td>
+                <td class="text-end text-danger">${ret > 0 ? '-$' + ret.toFixed(2) : '$0.00'}</td>
+                <td class="text-end fw-bold text-success">$${netoPagar.toFixed(2)}</td>
                 <td class="text-end font-monospace" style="background-color: #f8fafc;">$${Number(d.valorEntregado).toFixed(2)}</td>
-                <td class="text-wrap" style="background-color: #f8fafc; max-width:150px;">${_h(d.usuarioBeneficiado ?? '')}</td>
+                <td class="text-wrap" style="background-color: #f8fafc; max-width:140px;">${_h(d.usuarioBeneficiado ?? '')}</td>
                 <td class="text-end font-monospace fw-semibold" style="background-color: #f8fafc; color:#b45309;">$${Number(d.vueltoEsperado).toFixed(2)}</td>
                 <td class="text-center" style="background-color: #f8fafc;">${vueltoBadge}</td>
                 <td class="text-center">${btnPDF}${btnEditDel}</td>
@@ -472,6 +522,9 @@
         document.getElementById('itemForm').reset();
         document.getElementById('form-item-id').value = '';
         document.getElementById('form-fecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('form-retencion').value = '0.00';
+        document.getElementById('form-nro-retencion').value = '';
+        document.getElementById('form-neto-pagar').value = '0.00';
         document.getElementById('form-vuelto-esperado-label').innerText = '$0.00';
         document.getElementById('form-file').value = '';
         document.getElementById('form-comprobante-url').value = '';
@@ -483,18 +536,21 @@
     function actualizarCalculosForm() {
         const subtotalSin = parseFloat(document.getElementById('form-subtotal-sin').value || 0);
         const subtotalCon = parseFloat(document.getElementById('form-subtotal-con').value || 0);
+        const retencion = parseFloat(document.getElementById('form-retencion').value || 0);
         
         const iva = Math.round(subtotalCon * 0.15 * 100) / 100;
         const total = subtotalSin + subtotalCon + iva;
+        const netoPagar = Math.max(0, total - retencion);
         
         document.getElementById('form-total').value = total.toFixed(2);
+        document.getElementById('form-neto-pagar').value = netoPagar.toFixed(2);
 
         const entregado = parseFloat(document.getElementById('form-entregado').value || 0);
         const vueltoLabel = document.getElementById('form-vuelto-esperado-label');
         const estadoVueltoSelect = document.getElementById('form-estado-vuelto');
 
-        if (entregado > total) {
-            const vuelto = entregado - total;
+        if (entregado > netoPagar) {
+            const vuelto = entregado - netoPagar;
             vueltoLabel.innerText = '$' + vuelto.toFixed(2);
             if (estadoVueltoSelect.value === 'No Aplica') {
                 estadoVueltoSelect.value = 'Pendiente';
@@ -514,7 +570,6 @@
 
         Swal.showLoading();
 
-        // 1. Subir archivo a Laravel si existe
         if (fileInput.files.length > 0) {
             try {
                 const formData = new FormData();
@@ -543,11 +598,13 @@
         const payload = {
             fechaComprobante: document.getElementById('form-fecha').value,
             nroComprobante: document.getElementById('form-nro').value.trim(),
-            proveedor: null, // Removed input field
+            proveedor: null,
             tipoGasto: document.getElementById('form-tipo-gasto').value,
             descripcion: document.getElementById('form-descripcion').value.trim(),
             subtotalSinIva: parseFloat(document.getElementById('form-subtotal-sin').value || 0),
             subtotalConIva: parseFloat(document.getElementById('form-subtotal-con').value || 0),
+            montoRetencion: parseFloat(document.getElementById('form-retencion').value || 0),
+            nroRetencion: document.getElementById('form-nro-retencion').value.trim(),
             valorEntregado: parseFloat(document.getElementById('form-entregado').value || 0),
             usuarioBeneficiado: document.getElementById('form-beneficiario').value,
             estadoVuelto: document.getElementById('form-estado-vuelto').value,
@@ -572,7 +629,7 @@
             const data = await res.json();
             if (data.ok) {
                 itemsModal.hide();
-                await Swal.fire('¡Éxito!', data.message || 'Comprobante guardado.', 'success');
+                await Swal.fire('Éxito', data.message || 'Comprobante guardado.', 'success');
                 cargarModuloGestion();
             } else {
                 let errorMsg = data.error || 'No se pudo registrar el comprobante.';
@@ -605,11 +662,12 @@
         document.getElementById('form-descripcion').value = item.descripcion;
         document.getElementById('form-subtotal-sin').value = item.subtotalSinIva;
         document.getElementById('form-subtotal-con').value = item.subtotalConIva;
+        document.getElementById('form-retencion').value = item.montoRetencion || 0.00;
+        document.getElementById('form-nro-retencion').value = item.nroRetencion || '';
         document.getElementById('form-entregado').value = item.valorEntregado;
         document.getElementById('form-beneficiario').value = item.usuarioBeneficiado || '';
         document.getElementById('form-estado-vuelto').value = item.estadoVuelto;
 
-        // Cargar comprobante adjunto
         document.getElementById('form-file').value = '';
         const urlComprobante = item.comprobanteUrl || '';
         document.getElementById('form-comprobante-url').value = urlComprobante;
@@ -652,66 +710,47 @@
                 method: 'DELETE',
                 headers: getHeaders()
             });
-
             const data = await res.json();
             if (data.ok) {
-                await Swal.fire('Eliminado', 'Comprobante eliminado.', 'success');
+                await Swal.fire('Eliminado', 'El comprobante ha sido eliminado.', 'success');
                 cargarModuloGestion();
             } else {
-                Swal.fire('Error', data.error || 'No se pudo eliminar el comprobante.', 'error');
+                Swal.fire('Error', data.error || 'No se pudo eliminar el ítem.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Error de conexión.', 'error');
+            Swal.fire('Error', 'Fallo de conexión al eliminar: ' + e.message, 'error');
         }
     }
 
     async function toggleEstadoVueltoDirecto(itemId, nuevoEstado) {
-        const item = activeCaja.detalles.find(d => d.id === itemId);
-        if (!item) return;
-
         Swal.showLoading();
-
         try {
-            const payload = {
-                fechaComprobante: item.fechaComprobante,
-                nroComprobante: item.nroComprobante,
-                proveedor: item.proveedor,
-                tipoGasto: item.tipoGasto,
-                descripcion: item.descripcion,
-                subtotalSinIva: item.subtotalSinIva,
-                subtotalConIva: item.subtotalConIva,
-                valorEntregado: item.valorEntregado,
-                usuarioBeneficiado: item.usuarioBeneficiado,
-                estadoVuelto: nuevoEstado
-            };
-
-            const res = await fetch(`${_apiUrl}/api/cajachica/items/${itemId}`, {
-                method: 'PUT',
-                headers: getHeaders(),
-                body: JSON.stringify(payload)
+            const res = await fetch(`${_apiUrl}/api/cajachica/items/${itemId}/reconcile-vuelto`, {
+                method: 'POST',
+                headers: getHeaders()
             });
 
             const data = await res.json();
             if (data.ok) {
-                Swal.close();
+                await Swal.fire('Conciliado', 'El vuelto ha sido registrado como devuelto exitosamente.', 'success');
                 cargarModuloGestion();
             } else {
-                Swal.fire('Error', data.error || 'No se pudo cambiar el estado.', 'error');
+                Swal.fire('Error', data.error || 'No se pudo actualizar el vuelto.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Error de conexión.', 'error');
+            Swal.fire('Error', 'Fallo de conexión.', 'error');
         }
     }
 
     async function cerrarCajaChica() {
         const confirm = await Swal.fire({
-            title: '¿Cerrar Caja Chica?',
-            text: 'Al cerrarla, no podrás añadir más facturas. Quedará en espera de aprobación de reembolso por el administrador de contabilidad.',
+            title: '¿Cerrar Período de Caja Chica?',
+            text: 'Una vez cerrada, no se podrán agregar más comprobantes ni editar los existentes.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sí, cerrar',
+            confirmButtonText: 'Sí, cerrar período',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#0f766e'
+            confirmButtonColor: '#e11d48'
         });
 
         if (!confirm.isConfirmed) return;
@@ -726,148 +765,71 @@
 
             const data = await res.json();
             if (data.ok) {
-                await Swal.fire('Cerrada', 'Periodo cerrado con éxito. Enviado a reembolso.', 'success');
+                await Swal.fire('Caja Cerrada', 'El período de Caja Chica ha sido cerrado exitosamente.', 'success');
                 cargarModuloGestion();
             } else {
-                Swal.fire('Error', data.error || 'No se pudo cerrar la caja.', 'error');
+                Swal.fire('Error', data.error || 'No se pudo cerrar la Caja Chica.', 'error');
             }
         } catch (e) {
-            Swal.fire('Error', 'Error de conexión.', 'error');
+            Swal.fire('Error', 'Fallo de conexión al cerrar.', 'error');
         }
     }
 
     function exportarExcel() {
         if (!activeCaja) return;
-        exportarExcelHistorial(activeCaja.id);
+        window.open(`${_apiUrl}/api/cajachica/${activeCaja.id}/export`, '_blank');
     }
 
-    async function exportarExcelHistorial(id) {
-        Swal.showLoading();
-        try {
-            const res = await fetch(`${_apiUrl}/api/cajachica/${id}/export`, {
-                method: 'GET',
-                headers: getHeaders()
-            });
-
-            if (!res.ok) {
-                Swal.fire('Error', 'No se pudo generar el reporte.', 'error');
-                return;
-            }
-
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Informe_Caja_Chica_${id}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            Swal.close();
-        } catch (e) {
-            Swal.fire('Error', 'Error al descargar el archivo.', 'error');
-        }
+    function exportarExcelHistorial(cajaId) {
+        window.open(`${_apiUrl}/api/cajachica/${cajaId}/export`, '_blank');
     }
 
-    function formatPeriodo(fechaCreacionStr) {
-        if (!fechaCreacionStr) return '';
-        const d = new Date(fechaCreacionStr);
-        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
-        
-        const start = new Date(d);
-        const end = new Date(d);
-        end.setMonth(end.getMonth() + 1);
-        end.setDate(end.getDate() - 1);
-        
-        return formatFecha(start) + ' al ' + formatFecha(end);
-    }
-
-    function formatFecha(isoStr) {
-        if (!isoStr) return '';
-        const d = new Date(isoStr);
-        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
-        return d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-
-    function _h(str) {
-        if (!str) return '';
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    let currentUploadItemId = null;
-
+    let itemParaSubidaDirectaId = null;
     function subirComprobanteDirecto(itemId) {
-        currentUploadItemId = itemId;
-        document.getElementById('hidden-file-upload').value = '';
+        itemParaSubidaDirectaId = itemId;
         document.getElementById('hidden-file-upload').click();
     }
 
     async function procesarSubidaDirecta() {
         const fileInput = document.getElementById('hidden-file-upload');
-        if (!fileInput || fileInput.files.length === 0 || !currentUploadItemId) return;
-        
-        Swal.fire({
-            title: 'Subiendo comprobante...',
-            text: 'Espere por favor.',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
+        if (!fileInput.files || fileInput.files.length === 0 || !itemParaSubidaDirectaId) return;
+
+        Swal.showLoading();
+
         try {
-            let formData = new FormData();
+            const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('_token', '{{ csrf_token() }}');
-            
-            const uploadRes = await fetch('{{ route("cajachica.subir_comprobante") }}', {
+
+            const uploadRes = await fetch("{{ route('cajachica.subir_comprobante') }}", {
                 method: 'POST',
                 body: formData
             });
-            
+
             const uploadData = await uploadRes.json();
             if (!uploadData.ok) {
-                Swal.fire('Error', uploadData.error || 'Error al subir el archivo.', 'error');
+                Swal.fire('Error', uploadData.error || 'No se pudo subir el comprobante.', 'error');
                 return;
             }
-            
-            const fileUrl = uploadData.url;
-            
-            const updateRes = await fetch(`${_apiUrl}/api/cajachica/items/${currentUploadItemId}/comprobante`, {
-                method: 'PATCH',
-                headers: {
-                    ...getHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ comprobanteUrl: fileUrl })
+
+            const res = await fetch(`${_apiUrl}/api/cajachica/items/${itemParaSubidaDirectaId}/comprobante`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify({ comprobanteUrl: uploadData.url })
             });
-            
-            const updateData = await updateRes.json();
-            if (!updateRes.ok) {
-                Swal.fire('Error', updateData.error || 'Error al actualizar el comprobante.', 'error');
-                return;
+
+            const data = await res.json();
+            if (data.ok) {
+                await Swal.fire('Éxito', 'Comprobante adjuntado correctamente.', 'success');
+                cargarModuloGestion();
+            } else {
+                Swal.fire('Error', data.error || 'No se pudo asociar el comprobante.', 'error');
             }
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Comprobante Subido',
-                text: 'El comprobante se ha adjuntado correctamente.',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            
-            cargarDetallesCaja(activeCaja.id);
-            
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Error', 'Ocurrió un error inesperado al subir el archivo.', 'error');
+        } catch (e) {
+            Swal.fire('Error', 'Fallo de conexión al subir.', 'error');
         } finally {
             fileInput.value = '';
-            currentUploadItemId = null;
+            itemParaSubidaDirectaId = null;
         }
     }
 </script>
