@@ -78,14 +78,16 @@ test('usuario puede buscar ordenes de cliente externo', function () {
     $response->assertJsonFragment(['nro_orden' => $orden->nro_orden]);
 });
 
-test('usuario puede registrar cobro manual de cliente externo en caja general o bancos', function () {
+test('usuario puede registrar cobro manual de cliente externo en caja general o bancos con desglose de vuelto', function () {
     $response = $this->actingAs($this->usuario)
         ->postJson(route('cajageneral.guardar_cobro'), [
             'nro_orden' => 'OT-TEST-5544',
             'cliente_nombre' => 'Carlos Client',
-            'monto_cobrado' => 75.50,
+            'monto_cobrado' => 45.00,
+            'monto_recibido' => 50.00,
+            'vuelto_dado' => 5.00,
             'metodo_pago' => 'Efectivo',
-            'observaciones' => 'Pago en efectivo recepcion',
+            'observaciones' => 'Pago en efectivo recepcion con billete de 50',
         ]);
 
     $response->assertStatus(200);
@@ -93,7 +95,10 @@ test('usuario puede registrar cobro manual de cliente externo en caja general o 
 
     $this->assertDatabaseHas('caja_general_cobros', [
         'nro_orden' => 'OT-TEST-5544',
-        'monto_cobrado' => 75.50,
+        'monto_cobrado' => 45.00,
+        'monto_recibido' => 50.00,
+        'vuelto_dado' => 5.00,
+        'monto_neto_caja' => 45.00,
         'metodo_pago' => 'Efectivo',
         'destino_cuenta' => 'Caja General',
     ]);

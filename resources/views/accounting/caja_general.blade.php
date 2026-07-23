@@ -150,53 +150,58 @@
         font-weight: 700;
         text-transform: uppercase;
     }
-    .badge-exacto { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-faltante { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .badge-sobrante { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-depositado { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-    .badge-pendiente { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .badge-efectivo { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
     .badge-bancos { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+    .badge-exacto { background: #dcfce7; color: #15803d; }
+    .badge-faltante { background: #fee2e2; color: #b91c1c; }
+    .badge-sobrante { background: #fef3c7; color: #b45309; }
+    .badge-pendiente { background: #fef3c7; color: #b45309; }
+    .badge-depositado { background: #e0f2fe; color: #0369a1; }
     .search-results-box {
-        max-height: 180px;
-        overflow-y: auto;
-        border: 1.5px solid #cbd5e1;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
         border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
         margin-top: 6px;
-        background: #fff;
         display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .search-item {
         padding: 10px 14px;
         border-bottom: 1px solid #f1f5f9;
         cursor: pointer;
-        text-align: left;
+        transition: background 0.15s ease;
     }
-    .search-item:hover {
-        background: #eff6ff;
-    }
+    .search-item:hover { background: #f1f5f9; }
+    .search-item:last-child { border-bottom: none; }
 </style>
 
 <div class="cg-container">
     <div class="cg-header">
         <div>
-            <h1 class="cg-title">Caja General y Arqueos Diarios</h1>
-            <div class="cg-subtitle">Sucursal: {{ $sucursalNombre }} ({{ $codigoSucursal }}) — Control de Cobros a Clientes Externos y Arqueos</div>
+            <h1 class="cg-title">Caja General & Flujo de Efectivo Diaria</h1>
+            <p class="cg-subtitle">Manejo de Cobros a Clientes Externos, Recaudación de Efectivo, Vueltos y Arqueo Ciego — Sucursal {{ $sucursalNombre }} ({{ $codigoSucursal }})</p>
         </div>
         <div>
-            <button type="button" class="btn-success-action" onclick="abrirModalIngresoCobro()">+ Registrar Cobro de Orden</button>
-            <button type="button" class="btn-action" onclick="abrirModalArqueo()">Realizar Arqueo Ciego del Día</button>
+            <button class="btn-success-action" onclick="abrirModalIngresoCobro()">
+                <i class="bi bi-plus-circle me-1"></i> Registrar Cobro de Orden
+            </button>
+            <button class="btn-action" onclick="abrirModalArqueo()">
+                <i class="bi bi-safe me-1"></i> Arqueo Ciego Diario
+            </button>
         </div>
     </div>
 
+    <!-- TARJETAS METRICAS DIARIAS -->
     <div class="cg-metrics">
-        <div class="metric-card warning">
-            <div class="metric-label">Efectivo Cobrado Hoy (Caja General)</div>
-            <div class="metric-value">${{ number_format($totalEfectivoCalculado, 2) }}</div>
+        <div class="metric-card success">
+            <div class="metric-label">Efectivo Ingresado Hoy (Caja General)</div>
+            <div class="metric-value" style="color: #10b981;">${{ number_format($totalEfectivoCalculado, 2) }}</div>
         </div>
         <div class="metric-card info">
-            <div class="metric-label">Cobrado Hoy en Bancos (Tarjeta / Transf)</div>
-            <div class="metric-value">${{ number_format($totalBancosCalculado, 2) }}</div>
+            <div class="metric-label">Cobros Bancarios / Tarjeta Hoy</div>
+            <div class="metric-value" style="color: #0284c7;">${{ number_format($totalBancosCalculado, 2) }}</div>
         </div>
         <div class="metric-card success">
             <div class="metric-label">Total Cobros Registrados Hoy</div>
@@ -214,7 +219,7 @@
         </div>
     </div>
 
-    <!-- SECCIÓN 1: COBROS EN EFECTIVO (CAJA GENERAL) -->
+    <!-- SECCIÓN 1: COBROS EN EFECTIVO (CAJA GENERAL) CON DESGLOSE -->
     <div class="cg-card">
         <div class="cg-card-title">
             <span>Cobros de Cliente Externo — Efectivo (Ingresan a Caja General)</span>
@@ -227,29 +232,38 @@
                         <th>Nro. Orden</th>
                         <th>Cliente</th>
                         <th>Equipo / Serie</th>
-                        <th>Método de Pago</th>
-                        <th>Destino Cuenta</th>
-                        <th>Monto Cobrado</th>
+                        <th>Método Pago</th>
+                        <th class="text-end">Monto Cobrado</th>
+                        <th class="text-end">Monto Recibido</th>
+                        <th class="text-end text-warning">Vuelto Dado</th>
+                        <th class="text-end text-success">Neto Caja</th>
                         <th>Registrado Por</th>
                         <th>Fecha / Hora</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($cobrosEfectivo as $cbr)
-                        @php $cObj = (object) $cbr; @endphp
+                        @php 
+                            $cObj = (object) $cbr;
+                            $recibido = (float)($cObj->monto_recibido ?? $cObj->monto_cobrado ?? 0);
+                            $vuelto = (float)($cObj->vuelto_dado ?? 0);
+                            $neto = (float)($cObj->monto_neto_caja ?? ($cObj->monto_cobrado ?? 0));
+                        @endphp
                         <tr>
                             <td><strong>{{ $cObj->nro_orden }}</strong></td>
                             <td>{{ $cObj->cliente_nombre }}</td>
                             <td>{{ $cObj->equipo_info ?? 'N/A' }}</td>
                             <td><span class="badge badge-efectivo">{{ $cObj->metodo_pago }}</span></td>
-                            <td><strong>Caja General</strong></td>
-                            <td><strong style="color: #059669;">${{ number_format((float)$cObj->monto_cobrado, 2) }}</strong></td>
+                            <td class="text-end"><strong>${{ number_format((float)$cObj->monto_cobrado, 2) }}</strong></td>
+                            <td class="text-end">${{ number_format($recibido, 2) }}</td>
+                            <td class="text-end font-monospace text-warning"><strong>${{ number_format($vuelto, 2) }}</strong></td>
+                            <td class="text-end font-monospace text-success"><strong>${{ number_format($neto, 2) }}</strong></td>
                             <td>{{ $cObj->usuario_nombre }}</td>
                             <td>{{ \Carbon\Carbon::parse($cObj->fecha_cobro)->format('d/m/Y H:i') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">No hay cobros en efectivo registrados hoy en Caja General.</td>
+                            <td colspan="10" style="text-align: center; color: #94a3b8; padding: 24px;">No hay cobros en efectivo registrados hoy en Caja General.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -272,7 +286,7 @@
                         <th>Equipo / Serie</th>
                         <th>Método de Pago</th>
                         <th>Destino Cuenta</th>
-                        <th>Monto Cobrado</th>
+                        <th class="text-end">Monto Cobrado</th>
                         <th>Registrado Por</th>
                         <th>Fecha / Hora</th>
                     </tr>
@@ -286,7 +300,7 @@
                             <td>{{ $cObj->equipo_info ?? 'N/A' }}</td>
                             <td><span class="badge badge-bancos">{{ $cObj->metodo_pago }}</span></td>
                             <td><strong>Bancos</strong></td>
-                            <td><strong style="color: #0284c7;">${{ number_format((float)$cObj->monto_cobrado, 2) }}</strong></td>
+                            <td class="text-end"><strong style="color: #0284c7;">${{ number_format((float)$cObj->monto_cobrado, 2) }}</strong></td>
                             <td>{{ $cObj->usuario_nombre }}</td>
                             <td>{{ \Carbon\Carbon::parse($cObj->fecha_cobro)->format('d/m/Y H:i') }}</td>
                         </tr>
@@ -308,7 +322,7 @@
                 <thead>
                     <tr>
                         <th>Fecha</th>
-                        <th>Monto Sistema (Efectivo)</th>
+                        <th>Monto Sistema (Neto Efectivo)</th>
                         <th>Monto Físico Contado</th>
                         <th>Diferencia</th>
                         <th>Resultado Arqueo</th>
@@ -376,7 +390,7 @@
 
         Swal.fire({
             title: 'Registrar Cobro Manual (Cliente Externo)',
-            width: '600px',
+            width: '650px',
             html: `
                 <div style="text-align: left; font-size: 0.875rem; color: #0f172a;">
                     <div style="margin-bottom: 12px;">
@@ -395,12 +409,7 @@
                     </div>
 
                     <div style="margin-bottom: 12px;">
-                        <label style="font-weight: 700; color: #0f172a;">2. Valor Cobrado ($):</label>
-                        <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" style="margin-top: 4px;">
-                    </div>
-
-                    <div style="margin-bottom: 12px;">
-                        <label style="font-weight: 700; color: #0f172a;">3. Método de Pago:</label>
+                        <label style="font-weight: 700; color: #0f172a;">2. Método de Pago:</label>
                         <select id="swal-metodo-pago" class="swal2-input" onchange="actualizarDestinoCuenta()" style="margin-top: 4px;">
                             <option value="Efectivo">Efectivo (Caja General)</option>
                             <option value="Tarjeta Datafast/Kushki">Tarjeta Datafast / Kushki (Bancos)</option>
@@ -409,13 +418,45 @@
                         </select>
                     </div>
 
-                    <div id="swal-destino-notice" style="background: #dcfce7; color: #15803d; padding: 10px 14px; border-radius: 8px; font-weight: 700; border: 1px solid #86efac; margin-bottom: 12px;">
+                    <div id="swal-destino-notice" style="background: #dcfce7; color: #15803d; padding: 10px 14px; border-radius: 8px; font-weight: 700; border: 1px solid #86efac; margin-bottom: 14px;">
                         Cuenta Destino: CAJA GENERAL (Control de Efectivo en Recepción)
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-weight: 700; color: #0f172a;">3. Monto Cobrado (Total OT $):</label>
+                            <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" style="margin-top: 4px; width: 100%;" oninput="actualizarCalculosCobroForm()">
+                        </div>
+                        <div id="container-monto-recibido">
+                            <label style="font-weight: 700; color: #2563eb;">Monto Recibido del Cliente ($):</label>
+                            <input type="number" step="0.01" id="swal-monto-recibido" class="swal2-input" placeholder="0.00" style="margin-top: 4px; width: 100%; border-color: #2563eb;" oninput="actualizarCalculosCobroForm()">
+                        </div>
+                    </div>
+
+                    <div id="container-efectivo-desglose" style="display: block; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-weight: 700; color: #d97706; font-size: 0.8rem;">Vuelto Dado ($):</label>
+                                <input type="text" id="swal-vuelto-dado" class="swal2-input" value="0.00" readonly style="margin-top: 4px; width: 100%; font-weight: 700; color: #d97706; background: #fff;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 700; color: #16a34a; font-size: 0.8rem;">Sobrante / Propina ($):</label>
+                                <input type="number" step="0.01" id="swal-sobrante" class="swal2-input" value="0.00" style="margin-top: 4px; width: 100%; font-weight: 700;" oninput="actualizarCalculosCobroForm()">
+                            </div>
+                            <div>
+                                <label style="font-weight: 700; color: #dc2626; font-size: 0.8rem;">Faltante / Descuento ($):</label>
+                                <input type="number" step="0.01" id="swal-faltante" class="swal2-input" value="0.00" style="margin-top: 4px; width: 100%; font-weight: 700;" oninput="actualizarCalculosCobroForm()">
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; text-align: right;">
+                            <span style="font-size: 0.85rem; color: #64748b;">Neto que Ingresa a Caja: <strong id="swal-neto-label" style="color: #16a34a; font-size: 1.1rem;">$0.00</strong></span>
+                            <input type="hidden" id="swal-neto-caja" value="0.00">
+                        </div>
                     </div>
 
                     <div>
                         <label style="font-weight: 700; color: #0f172a;">4. Observaciones / Nro. Boucher (Opcional):</label>
-                        <textarea id="swal-cobro-obs" class="swal2-textarea" placeholder="Nro. de boucher, referencia o nota..." style="margin-top: 4px; height: 65px;"></textarea>
+                        <textarea id="swal-cobro-obs" class="swal2-textarea" placeholder="Nro. de boucher, referencia o nota..." style="margin-top: 4px; height: 55px; width: 100%;"></textarea>
                     </div>
                 </div>
             `,
@@ -425,7 +466,11 @@
             confirmButtonColor: '#10b981',
             preConfirm: () => {
                 const searchNro = document.getElementById('swal-search-orden').value.trim();
-                const monto = parseFloat(document.getElementById('swal-monto-cobrado').value);
+                const montoCobrado = parseFloat(document.getElementById('swal-monto-cobrado').value || 0);
+                const montoRecibido = parseFloat(document.getElementById('swal-monto-recibido').value || 0);
+                const vueltoDado = parseFloat(document.getElementById('swal-vuelto-dado').value || 0);
+                const sobrante = parseFloat(document.getElementById('swal-sobrante').value || 0);
+                const faltante = parseFloat(document.getElementById('swal-faltante').value || 0);
                 const metodo = document.getElementById('swal-metodo-pago').value;
                 const obs = document.getElementById('swal-cobro-obs').value;
 
@@ -438,7 +483,7 @@
                     Swal.showValidationMessage('Debe digitar o seleccionar una orden de trabajo.');
                     return false;
                 }
-                if (isNaN(monto) || monto <= 0) {
+                if (isNaN(montoCobrado) || montoCobrado <= 0) {
                     Swal.showValidationMessage('Debe ingresar un monto cobrado válido mayor a $0.00.');
                     return false;
                 }
@@ -448,7 +493,11 @@
                     nro_orden: nroOrden,
                     cliente_nombre: clienteNombre,
                     equipo_info: equipoInfo,
-                    monto_cobrado: monto,
+                    monto_cobrado: montoCobrado,
+                    monto_recibido: metodo === 'Efectivo' ? (montoRecibido > 0 ? montoRecibido : montoCobrado) : montoCobrado,
+                    vuelto_dado: vueltoDado,
+                    sobrante: sobrante,
+                    faltante: faltante,
                     metodo_pago: metodo,
                     observaciones: obs
                 };
@@ -458,6 +507,33 @@
                 enviarCobro(result.value);
             }
         });
+    }
+
+    function actualizarCalculosCobroForm() {
+        const cobrado = parseFloat(document.getElementById('swal-monto-cobrado').value || 0);
+        let recibido = parseFloat(document.getElementById('swal-monto-recibido').value || 0);
+        const sobrante = parseFloat(document.getElementById('swal-sobrante').value || 0);
+        const faltante = parseFloat(document.getElementById('swal-faltante').value || 0);
+        const metodo = document.getElementById('swal-metodo-pago').value;
+
+        if (metodo !== 'Efectivo') {
+            recibido = cobrado;
+            document.getElementById('swal-monto-recibido').value = cobrado.toFixed(2);
+        }
+
+        let vuelto = 0.00;
+        if (metodo === 'Efectivo' && recibido > cobrado) {
+            vuelto = recibido - cobrado;
+        }
+        document.getElementById('swal-vuelto-dado').value = vuelto.toFixed(2);
+
+        let neto = (recibido - vuelto) + sobrante - faltante;
+        if (neto <= 0 || metodo !== 'Efectivo') {
+            neto = cobrado + sobrante - faltante;
+        }
+
+        document.getElementById('swal-neto-caja').value = neto.toFixed(2);
+        document.getElementById('swal-neto-label').innerText = '$' + neto.toFixed(2);
     }
 
     function buscarOrdenAjax() {
@@ -505,24 +581,34 @@
 
         if (ord.total_sugerido && ord.total_sugerido > 0) {
             document.getElementById('swal-monto-cobrado').value = ord.total_sugerido.toFixed(2);
+            document.getElementById('swal-monto-recibido').value = ord.total_sugerido.toFixed(2);
+            actualizarCalculosCobroForm();
         }
     }
 
     function actualizarDestinoCuenta() {
         const metodo = document.getElementById('swal-metodo-pago').value;
         const notice = document.getElementById('swal-destino-notice');
+        const desgloseBox = document.getElementById('container-efectivo-desglose');
+        const recibidoBox = document.getElementById('container-monto-recibido');
 
         if (metodo === 'Efectivo') {
             notice.style.background = '#dcfce7';
             notice.style.color = '#15803d';
             notice.style.borderColor = '#86efac';
             notice.innerText = 'Cuenta Destino: CAJA GENERAL (Control de Efectivo en Recepción)';
+            desgloseBox.style.display = 'block';
+            recibidoBox.style.display = 'block';
         } else {
             notice.style.background = '#e0f2fe';
             notice.style.color = '#0369a1';
             notice.style.borderColor = '#7dd3fc';
             notice.innerText = 'Cuenta Destino: BANCOS (Cuenta Bancaria - Tarjeta / Transferencia)';
+            desgloseBox.style.display = 'none';
+            recibidoBox.style.display = 'none';
         }
+
+        actualizarCalculosCobroForm();
     }
 
     function enviarCobro(payload) {

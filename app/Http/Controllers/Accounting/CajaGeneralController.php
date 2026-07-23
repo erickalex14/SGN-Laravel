@@ -44,7 +44,16 @@ class CajaGeneralController extends Controller
         $cobrosEfectivo = $cobrosHoy->where('destino_cuenta', 'Caja General');
         $cobrosBancos = $cobrosHoy->where('destino_cuenta', 'Bancos');
 
-        $totalEfectivoCalculado = (float) $cobrosEfectivo->sum('monto_cobrado');
+        $totalEfectivoCalculado = (float) $cobrosEfectivo->sum(function($c) {
+            if (isset($c->monto_neto_caja) && (float)$c->monto_neto_caja > 0) {
+                return (float)$c->monto_neto_caja;
+            }
+            $cob = (float)($c->monto_cobrado ?? 0);
+            $sob = (float)($c->sobrante ?? 0);
+            $fal = (float)($c->faltante ?? 0);
+            return $cob + $sob - $fal;
+        });
+
         $totalBancosCalculado = (float) $cobrosBancos->sum('monto_cobrado');
 
         // Historial de arqueos desde microservicio C# o fallback local
@@ -135,17 +144,35 @@ class CajaGeneralController extends Controller
         $observaciones = $request->input('observaciones');
         $sucursalId = (int) ($usuario->sucursal_id ?? session('sucursal_id', 1));
 
+        $montoRecibido = $request->input('monto_recibido') ? (float) $request->input('monto_recibido') : $montoCobrado;
+        $vueltoDado = $request->input('vuelto_dado') ? (float) $request->input('vuelto_dado') : 0.00;
+        if ($metodoPago === 'Efectivo' && $vueltoDado == 0 && $montoRecibido > $montoCobrado) {
+            $vueltoDado = $montoRecibido - $montoCobrado;
+        }
+
+        $sobrante = max(0, (float) $request->input('sobrante', 0.00));
+        $faltante = max(0, (float) $request->input('faltante', 0.00));
+
+        $montoNetoCaja = ($montoRecibido - $vueltoDado) + $sobrante - $faltante;
+        if ($montoNetoCaja <= 0) {
+            $montoNetoCaja = $montoCobrado + $sobrante - $faltante;
+        }
+
         $destinoCuenta = ($metodoPago === 'Efectivo') ? 'Caja General' : 'Bancos';
         $now = now();
 
         try {
-            // Guardar localmente
             $cobroId = DB::table('caja_general_cobros')->insertGetId([
                 'orden_id' => $ordenId,
                 'nro_orden' => $nroOrden,
                 'cliente_nombre' => $clienteNombre,
                 'equipo_info' => $equipoInfo,
                 'monto_cobrado' => $montoCobrado,
+                'monto_recibido' => $montoRecibido,
+                'vuelto_dado' => $vueltoDado,
+                'sobrante' => $sobrante,
+                'faltante' => $faltante,
+                'monto_neto_caja' => $montoNetoCaja,
                 'metodo_pago' => $metodoPago,
                 'destino_cuenta' => $destinoCuenta,
                 'sucursal_id' => $sucursalId,
@@ -157,7 +184,6 @@ class CajaGeneralController extends Controller
                 'updated_at' => $now,
             ]);
 
-            // Notificar al microservicio C#
             try {
                 $apiUrl = config('services.contabilidad.url', 'http://localhost:8085') . '/api/CajaGeneral/cobro';
                 $token = session('jwt_token', '');
@@ -167,6 +193,10 @@ class CajaGeneralController extends Controller
                     'clienteNombre' => $clienteNombre,
                     'equipoInfo' => $equipoInfo,
                     'montoCobrado' => $montoCobrado,
+                    'montoRecibido' => $montoRecibido,
+                    'vueltoDado' => $vueltoDado,
+                    'sobrante' => $sobrante,
+                    'faltante' => $faltante,
                     'metodoPago' => $metodoPago,
                     'destinoCuenta' => $destinoCuenta,
                     'sucursalId' => $sucursalId,
