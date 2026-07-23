@@ -479,6 +479,8 @@ Route::middleware('auth')->group(function () {
 
     // Caja General & Arqueos Diarios
     Route::get('/contabilidad/caja-general', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'index'])->name('cajageneral.index');
+    Route::get('/contabilidad/caja-general/buscar-orden', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'buscarOrden'])->name('cajageneral.buscar_orden');
+    Route::post('/contabilidad/caja-general/cobro', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarCobro'])->name('cajageneral.guardar_cobro');
     Route::post('/contabilidad/caja-general/arqueo', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarArqueo'])->name('cajageneral.guardar_arqueo');
     Route::post('/contabilidad/caja-general/deposito', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirDeposito'])->name('cajageneral.subir_deposito');
 

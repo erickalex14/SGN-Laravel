@@ -32,35 +32,31 @@ class CajaGeneralController extends Controller
             }
         }
 
-        // Obtener órdenes cobradas hoy en recepción en efectivo
         $hoy = date('Y-m-d');
-        $ordenesEfectivo = Orden::with(['cliente', 'equipo'])
+
+        // Obtener cobros registrados manualmente hoy para cliente externo
+        $cobrosHoy = DB::table('caja_general_cobros')
             ->where('sucursal_id', $sucursalId)
-            ->whereDate('fecha_de_ingreso', $hoy)
-            ->where(function($q) {
-                $q->where('estado_orden', 'Entregada')
-                  ->orWhere('estado_orden', 'Finalizada')
-                  ->orWhere('estado_orden', 'ENTREGADO')
-                  ->orWhere('estado_orden', 'REPARADO');
-            })
+            ->whereDate('fecha_cobro', $hoy)
+            ->orderByDesc('fecha_cobro')
             ->get();
 
-        $totalEfectivoCalculado = 0.0;
-        foreach ($ordenesEfectivo as $ord) {
-            $totalEfectivoCalculado += (float) ($ord->total ?? $ord->presupuesto ?? 0);
-        }
+        $cobrosEfectivo = $cobrosHoy->where('destino_cuenta', 'Caja General');
+        $cobrosBancos = $cobrosHoy->where('destino_cuenta', 'Bancos');
 
-        // Intentar obtener historial de arqueos desde el microservicio
+        $totalEfectivoCalculado = (float) $cobrosEfectivo->sum('monto_cobrado');
+        $totalBancosCalculado = (float) $cobrosBancos->sum('monto_cobrado');
+
+        // Historial de arqueos desde microservicio C# o fallback local
         $arqueos = [];
         try {
             $apiUrl = config('services.contabilidad.url', 'http://localhost:8085') . '/api/CajaGeneral?sucursalId=' . $sucursalId;
             $token = session('jwt_token', '');
-            $res = Http::withToken($token)->timeout(4)->get($apiUrl);
+            $res = Http::withToken($token)->timeout(3)->get($apiUrl);
             if ($res->successful()) {
                 $arqueos = $res->json()['data'] ?? [];
             }
         } catch (Exception $e) {
-            // Fallback en caso de microservicio desconectado
             $arqueos = DB::table('caja_general_arqueo')
                 ->where('sucursal_id', $sucursalId)
                 ->orderByDesc('fecha')
@@ -72,9 +68,122 @@ class CajaGeneralController extends Controller
             'codigoSucursal' => $codigoSucursal,
             'sucursalId' => $sucursalId,
             'totalEfectivoCalculado' => $totalEfectivoCalculado,
-            'ordenesEfectivo' => $ordenesEfectivo,
+            'totalBancosCalculado' => $totalBancosCalculado,
+            'cobrosEfectivo' => $cobrosEfectivo,
+            'cobrosBancos' => $cobrosBancos,
             'arqueos' => $arqueos,
         ]);
+    }
+
+    public function buscarOrden(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (empty($q) || strlen($q) < 2) {
+            return response()->json(['ok' => true, 'ordenes' => []]);
+        }
+
+        $ordenes = Orden::with(['cliente', 'equipo'])
+            ->where(function($query) use ($q) {
+                $query->where('nro_orden', 'LIKE', "%{$q}%")
+                      ->orWhereHas('cliente', function($cq) use ($q) {
+                          $cq->where('nombres', 'LIKE', "%{$q}%")
+                            ->orWhere('apellidos', 'LIKE', "%{$q}%")
+                            ->orWhere('identificacion', 'LIKE', "%{$q}%");
+                      });
+            })
+            ->limit(10)
+            ->get();
+
+        $resultados = $ordenes->map(function($ord) {
+            $clienteNombre = trim(($ord->cliente->nombres ?? '') . ' ' . ($ord->cliente->apellidos ?? ''));
+            $equipoInfo = trim(($ord->equipo->tipo ?? 'Equipo') . ' ' . ($ord->equipo->marca ?? '') . ' ' . ($ord->equipo->modelo ?? '')) . ' (SN: ' . ($ord->equipo->serie ?? 'N/A') . ')';
+            $montoSugerido = (float) ($ord->total ?? $ord->presupuesto ?? 0.00);
+
+            return [
+                'id' => $ord->id,
+                'nro_orden' => $ord->nro_orden,
+                'cliente' => !empty($clienteNombre) ? $clienteNombre : 'Cliente Generico',
+                'equipo' => $equipoInfo,
+                'estado' => $ord->estado_orden ?? 'Registrada',
+                'total_sugerido' => $montoSugerido,
+            ];
+        });
+
+        return response()->json(['ok' => true, 'ordenes' => $resultados]);
+    }
+
+    public function guardarCobro(Request $request)
+    {
+        $usuario = auth()->user();
+        if (!$usuario) {
+            return response()->json(['ok' => false, 'error' => 'No autenticado.']);
+        }
+
+        $request->validate([
+            'nro_orden' => 'required|string',
+            'monto_cobrado' => 'required|numeric|min:0.01',
+            'metodo_pago' => 'required|string',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        $ordenId = $request->input('orden_id') ? (int) $request->input('orden_id') : null;
+        $nroOrden = (string) $request->input('nro_orden');
+        $clienteNombre = (string) $request->input('cliente_nombre', 'Cliente Externo');
+        $equipoInfo = (string) $request->input('equipo_info', '');
+        $montoCobrado = (float) $request->input('monto_cobrado');
+        $metodoPago = (string) $request->input('metodo_pago');
+        $observaciones = $request->input('observaciones');
+        $sucursalId = (int) ($usuario->sucursal_id ?? session('sucursal_id', 1));
+
+        $destinoCuenta = ($metodoPago === 'Efectivo') ? 'Caja General' : 'Bancos';
+        $now = now();
+
+        try {
+            // Guardar localmente
+            $cobroId = DB::table('caja_general_cobros')->insertGetId([
+                'orden_id' => $ordenId,
+                'nro_orden' => $nroOrden,
+                'cliente_nombre' => $clienteNombre,
+                'equipo_info' => $equipoInfo,
+                'monto_cobrado' => $montoCobrado,
+                'metodo_pago' => $metodoPago,
+                'destino_cuenta' => $destinoCuenta,
+                'sucursal_id' => $sucursalId,
+                'usuario_id' => $usuario->id,
+                'usuario_nombre' => $usuario->nombre_tecnico ?? $usuario->usuario ?? 'Usuario',
+                'observaciones' => $observaciones,
+                'fecha_cobro' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            // Notificar al microservicio C#
+            try {
+                $apiUrl = config('services.contabilidad.url', 'http://localhost:8085') . '/api/CajaGeneral/cobro';
+                $token = session('jwt_token', '');
+                Http::withToken($token)->timeout(3)->post($apiUrl, [
+                    'ordenId' => $ordenId,
+                    'nroOrden' => $nroOrden,
+                    'clienteNombre' => $clienteNombre,
+                    'equipoInfo' => $equipoInfo,
+                    'montoCobrado' => $montoCobrado,
+                    'metodoPago' => $metodoPago,
+                    'destinoCuenta' => $destinoCuenta,
+                    'sucursalId' => $sucursalId,
+                    'observaciones' => $observaciones,
+                ]);
+            } catch (Exception $exMs) {
+                // Microservicio offline fallback silencioso
+            }
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => "Cobro de orden {$nroOrden} registrado con éxito en {$destinoCuenta}.",
+                'cobro_id' => $cobroId
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['ok' => false, 'error' => 'Error al registrar cobro: ' . $e->getMessage()]);
+        }
     }
 
     public function guardarArqueo(Request $request)
@@ -101,7 +210,7 @@ class CajaGeneralController extends Controller
         try {
             $apiUrl = config('services.contabilidad.url', 'http://localhost:8085') . '/api/CajaGeneral/arqueo';
             $token = session('jwt_token', '');
-            $res = Http::withToken($token)->post($apiUrl, [
+            $res = Http::withToken($token)->timeout(3)->post($apiUrl, [
                 'sucursalId' => $sucursalId,
                 'codigoSucursal' => $codigoSucursal,
                 'montoSistema' => $montoSistema,
@@ -110,21 +219,24 @@ class CajaGeneralController extends Controller
             ]);
 
             if ($res->successful()) {
-                return response()->json(['ok' => true, 'mensaje' => 'Arqueo diario guardado exitosamente.']);
+                return response()->json(['ok' => true, 'mensaje' => 'Arqueo registrado exitosamente en microservicio.']);
             }
         } catch (Exception $e) {
-            // Fallback DB directo
+            // Fallback DB
         }
 
         $diferencia = $montoFisico - $montoSistema;
         $tipoDiferencia = 'Cuadre Exacto';
-        if ($diferencia < 0) $tipoDiferencia = 'Faltante';
-        elseif ($diferencia > 0) $tipoDiferencia = 'Sobrante';
+        if ($diferencia < 0) {
+            $tipoDiferencia = 'Faltante';
+        } elseif ($diferencia > 0) {
+            $tipoDiferencia = 'Sobrante';
+        }
 
         DB::table('caja_general_arqueo')->insert([
             'sucursal_id' => $sucursalId,
             'codigo_sucursal' => $codigoSucursal,
-            'fecha' => date('Y-m-d H:i:s'),
+            'fecha' => now(),
             'monto_sistema' => $montoSistema,
             'monto_fisico' => $montoFisico,
             'diferencia' => $diferencia,
@@ -137,7 +249,7 @@ class CajaGeneralController extends Controller
             'updated_at' => now(),
         ]);
 
-        return response()->json(['ok' => true, 'mensaje' => 'Arqueo registrado en base de datos.']);
+        return response()->json(['ok' => true, 'mensaje' => 'Arqueo diario guardado exitosamente en base de datos.']);
     }
 
     public function subirDeposito(Request $request)
@@ -145,27 +257,34 @@ class CajaGeneralController extends Controller
         $request->validate([
             'arqueo_id' => 'required|integer',
             'nro_comprobante_deposito' => 'required|string',
-            'comprobante_file' => 'nullable|file|mimes:pdf,jpg,png,jpeg|max:5120',
         ]);
 
         $arqueoId = (int) $request->input('arqueo_id');
-        $nroComprobante = $request->input('nro_comprobante_deposito');
-        $url = '';
+        $nroDep = $request->input('nro_comprobante_deposito');
 
-        if ($request->hasFile('comprobante_file')) {
-            $path = $request->file('comprobante_file')->store('depositos_caja_general', 'public');
-            $url = '/storage/' . $path;
+        try {
+            $apiUrl = config('services.contabilidad.url', 'http://localhost:8085') . '/api/CajaGeneral/deposito';
+            $token = session('jwt_token', '');
+            $res = Http::withToken($token)->timeout(3)->post($apiUrl, [
+                'arqueoId' => $arqueoId,
+                'nroComprobanteDeposito' => $nroDep,
+            ]);
+
+            if ($res->successful()) {
+                return response()->json(['ok' => true, 'mensaje' => 'Comprobante de depósito bancario guardado.']);
+            }
+        } catch (Exception $e) {
+            // Fallback DB
         }
 
         DB::table('caja_general_arqueo')
             ->where('id', $arqueoId)
             ->update([
-                'comprobante_deposito_url' => $url,
-                'nro_comprobante_deposito' => $nroComprobante,
+                'nro_comprobante_deposito' => $nroDep,
                 'estado' => 'Depositado',
                 'updated_at' => now(),
             ]);
 
-        return response()->json(['ok' => true, 'mensaje' => 'Comprobante de depósito bancario adjuntado con éxito.']);
+        return response()->json(['ok' => true, 'mensaje' => 'Comprobante de depósito actualizado correctamente en base de datos.']);
     }
 }

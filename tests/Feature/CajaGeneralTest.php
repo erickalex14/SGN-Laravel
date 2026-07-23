@@ -3,6 +3,8 @@
 use App\Models\Identity\Usuario;
 use App\Models\Directory\Sucursal;
 use App\Models\Identity\GrupoAcceso;
+use App\Models\Operations\Orden;
+use App\Models\Directory\Cliente;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 uses(DatabaseTransactions::class);
@@ -44,8 +46,57 @@ test('usuario autenticado puede ver el modulo de caja general', function () {
         ->get(route('cajageneral.index'));
     
     $response->assertStatus(200);
-    $response->assertViewHas('ordenesEfectivo');
+    $response->assertViewHas('cobrosEfectivo');
+    $response->assertViewHas('cobrosBancos');
     $response->assertViewHas('arqueos');
+});
+
+test('usuario puede buscar ordenes de cliente externo', function () {
+    $cliente = Cliente::create([
+        'nombres' => 'Juan Pedro',
+        'apellidos' => 'Perez ' . rand(100, 999),
+        'identificacion' => '1712345' . rand(10, 99),
+        'numero_contacto' => '0999999999',
+    ]);
+
+    $orden = Orden::create([
+        'nro_orden' => 'OT-TEST-' . rand(1000, 9999),
+        'cliente_id' => $cliente->id,
+        'equipo_id' => 1,
+        'tecnico_id' => $this->usuario->id,
+        'ingresado_por' => $this->usuario->id,
+        'sucursal_id' => $this->sucursal->id,
+        'estado_orden' => 'Entregada',
+        'fecha_de_ingreso' => now()->format('Y-m-d H:i:s'),
+    ]);
+
+    $response = $this->actingAs($this->usuario)
+        ->get(route('cajageneral.buscar_orden', ['q' => $orden->nro_orden]));
+
+    $response->assertStatus(200);
+    $response->assertJson(['ok' => true]);
+    $response->assertJsonFragment(['nro_orden' => $orden->nro_orden]);
+});
+
+test('usuario puede registrar cobro manual de cliente externo en caja general o bancos', function () {
+    $response = $this->actingAs($this->usuario)
+        ->postJson(route('cajageneral.guardar_cobro'), [
+            'nro_orden' => 'OT-TEST-5544',
+            'cliente_nombre' => 'Carlos Client',
+            'monto_cobrado' => 75.50,
+            'metodo_pago' => 'Efectivo',
+            'observaciones' => 'Pago en efectivo recepcion',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJson(['ok' => true]);
+
+    $this->assertDatabaseHas('caja_general_cobros', [
+        'nro_orden' => 'OT-TEST-5544',
+        'monto_cobrado' => 75.50,
+        'metodo_pago' => 'Efectivo',
+        'destino_cuenta' => 'Caja General',
+    ]);
 });
 
 test('usuario puede registrar arqueo ciego diario en caja general', function () {
