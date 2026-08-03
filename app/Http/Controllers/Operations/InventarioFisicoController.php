@@ -114,9 +114,11 @@ class InventarioFisicoController extends Controller
 
         $sa = session('es_superadmin') === true;
         $sucursalId = (int) session('sucursal_id');
+        $userId = (int) auth()->id();
 
-        // Validar que el usuario pertenezca a la misma sucursal de la orden
-        if (!$sa && $sucursalId > 0 && (int)$orden->sucursal_id !== $sucursalId) {
+        // Validar que el usuario sea superadmin, pertenezca a la sucursal de la orden, o sea el técnico asignado
+        $esTecnicoAsignado = ((int)$orden->tecnico_id === $userId);
+        if (!$sa && $sucursalId > 0 && (int)$orden->sucursal_id !== $sucursalId && !$esTecnicoAsignado) {
             return response()->json(['ok' => false, 'error' => 'No tienes permisos para modificar el inventario físico de esta sucursal.'], 403);
         }
 

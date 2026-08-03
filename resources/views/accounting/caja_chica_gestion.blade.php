@@ -775,13 +775,41 @@
         }
     }
 
-    function exportarExcel() {
+    async function exportarExcel() {
         if (!activeCaja) return;
-        window.open(`${_apiUrl}/api/cajachica/${activeCaja.id}/export`, '_blank');
+        await descargarExcelCajaChica(activeCaja.id);
     }
 
-    function exportarExcelHistorial(cajaId) {
-        window.open(`${_apiUrl}/api/cajachica/${cajaId}/export`, '_blank');
+    async function exportarExcelHistorial(cajaId) {
+        await descargarExcelCajaChica(cajaId);
+    }
+
+    async function descargarExcelCajaChica(cajaId) {
+        if (!cajaId) return;
+        Swal.showLoading();
+        try {
+            const res = await fetch(`${_apiUrl}/api/cajachica/${cajaId}/export?token=${encodeURIComponent(_jwtToken)}`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+
+            if (!res.ok) {
+                Swal.fire('Error', 'No se pudo generar el reporte Excel (Error ' + res.status + ').', 'error');
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Informe_Caja_Chica_${cajaId}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            Swal.close();
+        } catch (e) {
+            Swal.fire('Error', 'Error al descargar el archivo Excel.', 'error');
+        }
     }
 
     let itemParaSubidaDirectaId = null;

@@ -759,6 +759,12 @@
                         ? '<div class="bo-det-lbl" style="margin-bottom:4px;">Observación</div>' +
                           '<div class="bo-text-block">' + escHtml(o.observacion) + '</div>'
                         : '') +
+                    (o.memo_entrega || ['entregada', 'entregado'].includes(String(o.estado_orden || '').toLowerCase())
+                        ? '<div class="bo-det-lbl" style="margin-top:10px;margin-bottom:4px;color:#047857;font-weight:700;"><i class="bi bi-file-earmark-check me-1"></i>Memo de Entrega</div>' +
+                          '<div class="bo-text-block" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-weight:500;">' +
+                            escHtml(o.memo_entrega || 'Orden entregada al cliente.') +
+                          '</div>'
+                        : '') +
                 '</div>' +
             '</div>' +
 

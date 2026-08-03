@@ -854,6 +854,46 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         }
     }
 
+    let memoEntrega = null;
+    if (['entregada', 'entregado'].includes(String(nuevoEstado || '').toLowerCase())) {
+        const row = _moFindRow(ordenId, tipoOrden);
+        const memoPrevio = row?.memo_entrega || '';
+
+        const { value: memoText } = await Swal.fire({
+            title: 'Memo de Entrega Requerido',
+            html: `
+                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:10px;">
+                    Por favor ingrese el memo o detalles de entrega para la orden <b>${_h(nroOrden)}</b>:
+                </div>
+            `,
+            input: 'textarea',
+            inputValue: memoPrevio,
+            inputPlaceholder: 'Ej: Entregado al cliente titular con accesorios completos y comprobante firmado...',
+            inputAttributes: {
+                maxlength: '1000',
+                rows: 3
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Guardar y Entregar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'Debe ingresar un memo de entrega para marcar la orden como Entregada.';
+                }
+            }
+        });
+
+        if (!memoText) {
+            const rowCancel = _moFindRow(ordenId, tipoOrden);
+            if (rowCancel) _moRefrescarModal(rowCancel);
+            return;
+        }
+        memoEntrega = memoText.trim();
+    }
+
     const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
     if (!verificado) {
         const rowCancel = _moFindRow(ordenId, tipoOrden);
@@ -869,6 +909,9 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     if (horasTrabajadas !== null) {
         fd.append('horas_trabajadas', horasTrabajadas);
     }
+    if (memoEntrega !== null) {
+        fd.append('memo_entrega', memoEntrega);
+    }
 
     try {
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
@@ -880,6 +923,9 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.estado_orden = nuevoEstado;
+            if (memoEntrega !== null) {
+                row.memo_entrega = memoEntrega;
+            }
             if (nuevoEstado === 'Nota de Credito') {
                 row.nc_estado = row.nc_estado || 'Pendiente';
             }
@@ -1081,17 +1127,28 @@ function renderRepuestosMisOrdenes(ordenId, repuestos) {
         return;
     }
 
-    box.innerHTML = repuestos.map((r) => `
-        <div class="rep-item" onclick="seleccionarRepuestoMisOrdenes(
-            ${Number(ordenId)},
-            ${Number(r.id || 0)},
-            '${String(r.codigo || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',
-            '${String(r.nombre || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
-        )">
+    box.innerHTML = '';
+    repuestos.forEach((r) => {
+        const item = document.createElement('div');
+        item.className = 'rep-item';
+        item.style.cssText = 'cursor:pointer; user-select:none;';
+        item.innerHTML = `
             <span><code style="font-size:11.5px;color:#b45309;font-weight:800;">${_h(r.codigo || '-')}</code> ${_h(r.nombre || '-')}</span>
             <span style="background:#dcfce7;color:#166534;font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;">Stock ${Number(r.stock || 0)}</span>
-        </div>
-    `).join('');
+        `;
+        
+        item._repuestoData = r;
+
+        const doSelect = (e) => {
+            if (e) e.preventDefault();
+            seleccionarRepuestoMisOrdenes(ordenId, r.id, r.codigo, r.nombre);
+        };
+
+        item.onmousedown = doSelect;
+        item.onclick = doSelect;
+
+        box.appendChild(item);
+    });
     box.style.display = 'block';
 }
 
@@ -1139,7 +1196,15 @@ function onInputBuscarRepuestoMisOrdenes(ordenId, q) {
 }
 
 async function asignarRepuesto(ordenId, tipoOrden = 'personal') {
-    const sel = document.getElementById('rep-inv-' + ordenId);
+    let sel = document.getElementById('rep-inv-' + ordenId);
+    if (!sel || !sel.value) {
+        const firstItem = document.querySelector('#rep-inv-resultados-' + ordenId + ' .rep-item');
+        if (firstItem && firstItem._repuestoData) {
+            const r = firstItem._repuestoData;
+            seleccionarRepuestoMisOrdenes(ordenId, r.id, r.codigo, r.nombre);
+            sel = document.getElementById('rep-inv-' + ordenId);
+        }
+    }
     if (!sel || !sel.value) {
         await mostrarAlertaEstetica('Por favor, <b>seleccione un repuesto</b> del listado de búsqueda antes de continuar.', 'warning', 'Selección Requerida');
         return;
@@ -1611,7 +1676,7 @@ function verDetalleOrden(cardEl) {
                         `}
                     </div>
 
-                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                    <div style="position:relative; border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
                         <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
                             <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
                         </span>
@@ -1754,7 +1819,7 @@ function verDetalleOrden(cardEl) {
                         `}
                     </div>
 
-                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                    <div style="position:relative; border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
                         <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
                             <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
                         </span>
@@ -2337,7 +2402,7 @@ async function abrirModalInventarioFisico(ordenId) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': _moCsrf
+                        'X-CSRF-TOKEN': _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
                     body: JSON.stringify({
                         orden_empresa_id: ordenId,
@@ -2345,30 +2410,34 @@ async function abrirModalInventarioFisico(ordenId) {
                     })
                 });
 
-                const saveResult = await saveRes.json();
+                const saveResult = await saveRes.json().catch(() => null);
                 Swal.close();
 
-                if (saveResult.ok) {
+                if (saveRes.ok && saveResult && saveResult.ok) {
                     Swal.fire('¡Guardado!', saveResult.mensaje || 'Estados físicos actualizados.', 'success');
                 } else {
-                    Swal.fire('Error', saveResult.error || 'No se pudo guardar la información.', 'error');
+                    const errText = (saveResult && (saveResult.error || saveResult.mensaje)) ? (saveResult.error || saveResult.mensaje) : `Error en servidor (${saveRes.status})`;
+                    Swal.fire('Error', errText, 'error');
                 }
             }
         });
 
     } catch (e) {
         Swal.close();
-        Swal.fire('Error', 'No se pudo conectar con el servidor para obtener los datos.', 'error');
+        Swal.fire('Error', 'No se pudo conectar con el servidor: ' + e.message, 'error');
     }
 }
 
 function toggleDetalleOutletRow(id, valor) {
     const row = document.getElementById(`row-detalle-${id}`);
-    if (valor === 'Outlet') {
-        row.style.display = 'table-row';
-    } else {
-        row.style.display = 'none';
-        document.getElementById(`detalle-${id}`).value = '';
+    if (row) {
+        if (valor === 'Outlet') {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+            const detInp = document.getElementById(`detalle-${id}`);
+            if (detInp) detInp.value = '';
+        }
     }
 }
 
@@ -2385,12 +2454,16 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
         }
     }
 
+    const inputDet = document.getElementById('input-detalle-' + productoId);
+    const detalleVal = (nuevoEstado === 'Outlet' && inputDet) ? inputDet.value.trim() : null;
+    const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
     try {
         const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': _moCsrf
+                'X-CSRF-TOKEN': csrfToken
             },
             body: JSON.stringify({
                 orden_empresa_id: ordenId,
@@ -2398,15 +2471,16 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
                     {
                         id: productoId,
                         estado: nuevoEstado,
-                        detalle_outlet: nuevoEstado === 'Outlet' ? document.getElementById('input-detalle-' + productoId).value.trim() : null
+                        detalle_outlet: detalleVal
                     }
                 ]
             })
         });
 
-        const res = await response.json();
-        if (!res.ok) {
-            await mostrarAlertaEstetica(res.error || 'No se pudo actualizar el estado.', 'error', 'Error');
+        const res = await response.json().catch(() => null);
+        if (!response.ok || !res || !res.ok) {
+            const errText = (res && (res.error || res.mensaje)) ? (res.error || res.mensaje) : `Error en el servidor (${response.status})`;
+            await mostrarAlertaEstetica(errText, 'error', 'Error');
             return;
         }
 
@@ -2417,7 +2491,6 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
                 p.estado = nuevoEstado;
                 if (nuevoEstado !== 'Outlet') {
                     p.detalle_outlet = '';
-                    const inputDet = document.getElementById('input-detalle-' + productoId);
                     if (inputDet) inputDet.value = '';
                 }
             }
@@ -2428,7 +2501,7 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
         }
         await mostrarAlertaEstetica('Estado físico actualizado correctamente.', 'success', 'Completado');
     } catch (e) {
-        await mostrarAlertaEstetica('Error al comunicarse con el servidor.', 'error', 'Error');
+        await mostrarAlertaEstetica('Error al comunicarse con el servidor: ' + e.message, 'error', 'Error');
     } finally {
         if (feedback) feedback.classList.remove('loading');
     }
@@ -2438,14 +2511,16 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
     const feedback = document.getElementById('feedback-fisico-' + productoId);
     if (feedback) feedback.classList.add('loading');
 
-    const detalle = document.getElementById('input-detalle-' + productoId).value.trim();
+    const inputDet = document.getElementById('input-detalle-' + productoId);
+    const detalle = inputDet ? inputDet.value.trim() : '';
+    const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
         const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': _moCsrf
+                'X-CSRF-TOKEN': csrfToken
             },
             body: JSON.stringify({
                 orden_empresa_id: ordenId,
@@ -2459,9 +2534,10 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
             })
         });
 
-        const res = await response.json();
-        if (!res.ok) {
-            await mostrarAlertaEstetica(res.error || 'No se pudo guardar el detalle.', 'error', 'Error');
+        const res = await response.json().catch(() => null);
+        if (!response.ok || !res || !res.ok) {
+            const errText = (res && (res.error || res.mensaje)) ? (res.error || res.mensaje) : `Error en el servidor (${response.status})`;
+            await mostrarAlertaEstetica(errText, 'error', 'Error');
             return;
         }
 

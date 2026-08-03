@@ -20,11 +20,19 @@ class CajaChicaController extends Controller
             return redirect()->route('login');
         }
 
-        $esSuperAdmin = (bool)($usuario->es_superadmin ?? ($usuario->rol_id === 3));
-        $esAdmin = $usuario->rol_id === 1 || $usuario->rol_id === 2 || $esSuperAdmin;
-        
-        if (!$esAdmin) {
-            abort(403, 'Acceso denegado. Solo administradores pueden gestionar la administración de Caja Chica.');
+        $sa = session('es_superadmin');
+        $p = session('permisos', []);
+        $rolNombre = mb_strtolower(trim((string) ($usuario->rol->rol ?? '')));
+        $grupoNombre = mb_strtolower(trim((string) ($usuario->grupo->nombre ?? '')));
+        $esAdminMaster = $sa
+            || (bool) ($usuario->grupo->es_superadmin ?? false)
+            || in_array($rolNombre, ['admin master', 'administrador master'], true)
+            || in_array($grupoNombre, ['admin master', 'administrador master', 'superadministrador'], true);
+
+        $tienePermisoCajaChica = !empty($p['caja_chica']['ver']);
+
+        if (!$esAdminMaster && !$tienePermisoCajaChica) {
+            abort(403, 'Acceso denegado. Solo personal autorizado puede gestionar la administración de Caja Chica.');
         }
 
         // Obtener la sucursal del usuario y sucursales
@@ -69,6 +77,21 @@ class CajaChicaController extends Controller
         $usuario = auth()->user();
         if (!$usuario) {
             return redirect()->route('login');
+        }
+
+        $sa = session('es_superadmin');
+        $p = session('permisos', []);
+        $rolNombre = mb_strtolower(trim((string) ($usuario->rol->rol ?? '')));
+        $grupoNombre = mb_strtolower(trim((string) ($usuario->grupo->nombre ?? '')));
+        $esAdminMaster = $sa
+            || (bool) ($usuario->grupo->es_superadmin ?? false)
+            || in_array($rolNombre, ['admin master', 'administrador master'], true)
+            || in_array($grupoNombre, ['admin master', 'administrador master', 'superadministrador'], true);
+
+        $tienePermisoCajaChica = !empty($p['caja_chica']['ver']) || !empty($p['caja_chica']['crear']) || !empty($p['caja_chica']['editar']);
+
+        if (!$esAdminMaster && !$tienePermisoCajaChica) {
+            abort(403, 'Acceso denegado. No tienes permisos para acceder a Caja Chica.');
         }
 
         $sucursal = Sucursal::find($usuario->sucursal_id);

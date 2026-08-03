@@ -125,3 +125,26 @@ test('usuario puede registrar arqueo ciego diario en caja general', function () 
         'tipo_diferencia' => 'Cuadre Exacto',
     ]);
 });
+
+test('usuario puede visualizar e imprimir comprobante de arqueo ciego', function () {
+    $arqueoId = \Illuminate\Support\Facades\DB::table('caja_general_arqueo')->insertGetId([
+        'sucursal_id' => $this->sucursal->id,
+        'codigo_sucursal' => 'ACC30',
+        'fecha' => now(),
+        'monto_sistema' => 100.00,
+        'monto_fisico' => 100.00,
+        'diferencia' => 0.00,
+        'tipo_diferencia' => 'Cuadre Exacto',
+        'usuario_id' => $this->usuario->id,
+        'usuario_nombre' => $this->usuario->nombre_tecnico,
+        'estado' => 'Pendiente Deposito',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $response = $this->actingAs($this->usuario)
+        ->get(route('cajageneral.imprimir_arqueo', $arqueoId));
+
+    $response->assertStatus(200);
+    $response->assertSee('ARQUEO CIEGO');
+});

@@ -45,7 +45,8 @@ class GestionOrdenService
         int $usuarioId,
         bool $esAdmin = false,
         ?float $horasTrabajadas = null,
-        ?float $valorHora = null
+        ?float $valorHora = null,
+        ?string $memoEntrega = null
     ): void {
         $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
         if (!$orden) {
@@ -64,6 +65,10 @@ class GestionOrdenService
         $this->validarTransicionEmpresa($orden, $estadoNormalizado);
 
         $orden->estado = $estadoNormalizado;
+
+        if ($memoEntrega !== null && trim($memoEntrega) !== '') {
+            $orden->memo_entrega = trim($memoEntrega);
+        }
 
         if ($horasTrabajadas !== null) {
             $orden->horas_trabajadas = $horasTrabajadas;
@@ -150,6 +155,10 @@ class GestionOrdenService
             $orden->estado_orden = $estadoNormalizado;
             $orden->modificado_por = $usuarioModificacionId;
             $orden->fecha_modificacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+
+            if ($dto->memo_entrega !== null && trim($dto->memo_entrega) !== '') {
+                $orden->memo_entrega = trim($dto->memo_entrega);
+            }
 
             if ($estadoNormalizado === 'Nota de Credito') {
                 $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
@@ -573,3 +582,7 @@ class GestionOrdenService
         ]);
     }
 }
+
+
+
+
