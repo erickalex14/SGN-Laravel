@@ -203,6 +203,48 @@ class CajaGeneralController extends Controller
         return response()->json(['ok' => true, 'ordenes' => $resultados]);
     }
 
+    public function buscarProducto(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (empty($q) || strlen($q) < 1) {
+            return response()->json(['ok' => true, 'productos' => []]);
+        }
+
+        $repuestos = DB::table('repuestos')
+            ->where('codigo', 'LIKE', "%{$q}%")
+            ->orWhere('nombre', 'LIKE', "%{$q}%")
+            ->limit(10)
+            ->get();
+
+        $productosInv = DB::table('productosinventario')
+            ->where('codigo', 'LIKE', "%{$q}%")
+            ->orWhere('descripcion', 'LIKE', "%{$q}%")
+            ->limit(10)
+            ->get();
+
+        $resultados = [];
+        foreach ($repuestos as $r) {
+            $resultados[] = [
+                'id' => $r->id,
+                'codigo' => $r->codigo,
+                'nombre' => $r->nombre,
+                'costo' => (float) $r->costo,
+                'tipo' => 'Repuesto'
+            ];
+        }
+        foreach ($productosInv as $pi) {
+            $resultados[] = [
+                'id' => $pi->id,
+                'codigo' => $pi->codigo,
+                'nombre' => $pi->descripcion,
+                'costo' => 0.00,
+                'tipo' => 'Producto'
+            ];
+        }
+
+        return response()->json(['ok' => true, 'productos' => array_slice($resultados, 0, 15)]);
+    }
+
     public function guardarCobro(Request $request)
     {
         $usuario = auth()->user();
@@ -211,15 +253,28 @@ class CajaGeneralController extends Controller
         }
 
         $request->validate([
-            'nro_orden' => 'required|string',
             'monto_cobrado' => 'required|numeric|min:0.01',
             'observaciones' => 'nullable|string',
         ]);
 
+        $tipoCobro = $request->input('tipo_cobro', 'orden'); // 'orden' vs 'venta_directa'
         $ordenId = $request->input('orden_id') ? (int) $request->input('orden_id') : null;
-        $nroOrden = (string) $request->input('nro_orden');
-        $clienteNombre = (string) $request->input('cliente_nombre', 'Cliente Externo');
-        $equipoInfo = (string) $request->input('equipo_info', '');
+        $codigoProducto = $request->input('codigo_producto') ? trim((string) $request->input('codigo_producto')) : null;
+        $serieProducto = $request->input('serie_producto') ? trim((string) $request->input('serie_producto')) : null;
+
+        if ($tipoCobro === 'venta_directa') {
+            $nroOrden = $request->input('nro_orden') ? (string) $request->input('nro_orden') : ('VD-' . date('YmdHis'));
+            $clienteNombre = (string) $request->input('cliente_nombre', 'Consumidor Final');
+            $equipoInfo = (string) $request->input('equipo_info', '');
+            if (empty($equipoInfo)) {
+                $equipoInfo = trim(($codigoProducto ? "[{$codigoProducto}] " : "") . ($request->input('descripcion_producto') ?? 'Venta Directa Mostrador') . ($serieProducto ? " (SN: {$serieProducto})" : ""));
+            }
+        } else {
+            $nroOrden = (string) $request->input('nro_orden', '');
+            $clienteNombre = (string) $request->input('cliente_nombre', 'Cliente Externo');
+            $equipoInfo = (string) $request->input('equipo_info', '');
+        }
+
         $montoCobradoGeneral = (float) $request->input('monto_cobrado');
         $observacionesGeneral = $request->input('observaciones');
         $sucursalId = (int) ($usuario->sucursal_id ?? session('sucursal_id', 1));
@@ -283,6 +338,9 @@ class CajaGeneralController extends Controller
                 $cobroId = DB::table('caja_general_cobros')->insertGetId([
                     'orden_id' => $ordenId,
                     'nro_orden' => $nroOrden,
+                    'tipo_cobro' => $tipoCobro,
+                    'codigo_producto' => $codigoProducto,
+                    'serie_producto' => $serieProducto,
                     'cliente_nombre' => $clienteNombre,
                     'equipo_info' => $equipoInfo,
                     'monto_cobrado' => $montoCobrado,
@@ -310,9 +368,10 @@ class CajaGeneralController extends Controller
             DB::commit();
 
             $cant = count($ids);
+            $tipoEtiqueta = $tipoCobro === 'venta_directa' ? 'venta directa' : "orden {$nroOrden}";
             $msg = $cant > 1 
-                ? "Cobro mixto de orden {$nroOrden} registrado con éxito ({$cant} desgloses)."
-                : "Cobro de orden {$nroOrden} registrado con éxito.";
+                ? "Cobro mixto de {$tipoEtiqueta} registrado con éxito ({$cant} desgloses)."
+                : "Cobro de {$tipoEtiqueta} registrado con éxito.";
 
             return response()->json([
                 'ok' => true,

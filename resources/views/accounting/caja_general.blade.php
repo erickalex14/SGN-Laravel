@@ -738,38 +738,103 @@
         return `<select id="${idAttr}" class="swal2-input style-pago-select" onchange="recalcularDesglosePagosUI()" style="margin: 0; width: 100%; font-size: 0.82rem; height: 38px; padding: 4px 8px;">${opts}</select>`;
     }
 
+    let tipoCobroModal = 'orden';
+
+    function cambiarTipoCobroModal(tipo) {
+        tipoCobroModal = tipo;
+        const btnOrden = document.getElementById('btn-tipo-orden');
+        const btnDirecto = document.getElementById('btn-tipo-directo');
+        const boxOrden = document.getElementById('container-tipo-orden');
+        const boxDirecto = document.getElementById('container-tipo-directo');
+
+        if (tipo === 'venta_directa') {
+            if (btnOrden) { btnOrden.style.background = 'transparent'; btnOrden.style.color = '#64748b'; }
+            if (btnDirecto) { btnDirecto.style.background = '#10b981'; btnDirecto.style.color = '#ffffff'; }
+            if (boxOrden) boxOrden.style.display = 'none';
+            if (boxDirecto) boxDirecto.style.display = 'block';
+        } else {
+            if (btnOrden) { btnOrden.style.background = '#2563eb'; btnOrden.style.color = '#ffffff'; }
+            if (btnDirecto) { btnDirecto.style.background = 'transparent'; btnDirecto.style.color = '#64748b'; }
+            if (boxOrden) boxOrden.style.display = 'block';
+            if (boxDirecto) boxDirecto.style.display = 'none';
+        }
+    }
+
     function abrirModalIngresoCobro() {
         ordenSeleccionada = null;
+        tipoCobroModal = 'orden';
         filasPagosModal = [
             { id: 1, metodo: 'Efectivo', monto: 0.00, ref: '' }
         ];
 
         Swal.fire({
-            title: 'Registrar Cobro Manual (Cliente Externo)',
-            width: '720px',
+            title: 'Registrar Cobro en Caja General',
+            width: '750px',
             html: `
                 <div style="text-align: left; font-size: 0.875rem; color: #0f172a;">
-                    <!-- 1. Buscar Orden -->
-                    <div style="margin-bottom: 12px;">
-                        <label style="font-weight: 700; color: #0f172a;">1. Buscar / Digitar Número de Orden de Trabajo:</label>
-                        <div style="display: flex; gap: 8px; margin-top: 4px;">
-                            <input type="text" id="swal-search-orden" class="swal2-input" placeholder="Ej. OT-1002 o Nombre de cliente..." style="margin: 0; flex: 1;">
-                            <button type="button" class="btn-action" onclick="buscarOrdenAjax()">Buscar</button>
+                    <!-- Selector de Tipo de Cobro -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 16px; background: #f1f5f9; padding: 5px; border-radius: 10px; border: 1.5px solid #cbd5e1;">
+                        <button type="button" id="btn-tipo-orden" onclick="cambiarTipoCobroModal('orden')" style="flex: 1; padding: 9px 12px; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: #2563eb; color: #ffffff; transition: all 0.2s;">
+                            <i class="bi bi-file-earmark-text me-1"></i> Por Orden de Servicio
+                        </button>
+                        <button type="button" id="btn-tipo-directo" onclick="cambiarTipoCobroModal('venta_directa')" style="flex: 1; padding: 9px 12px; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: transparent; color: #64748b; transition: all 0.2s;">
+                            <i class="bi bi-cart-check me-1"></i> Venta Directa / Mostrador / Varios
+                        </button>
+                    </div>
+
+                    <!-- CONTAINER 1: POR ORDEN DE SERVICIO -->
+                    <div id="container-tipo-orden">
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-weight: 700; color: #0f172a;">1. Buscar / Digitar Número de Orden de Trabajo:</label>
+                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                <input type="text" id="swal-search-orden" class="swal2-input" placeholder="Ej. OT-1002 o Nombre de cliente..." style="margin: 0; flex: 1;">
+                                <button type="button" class="btn-action" onclick="buscarOrdenAjax()">Buscar</button>
+                            </div>
+                            <div id="swal-results-box" class="search-results-box"></div>
                         </div>
-                        <div id="swal-results-box" class="search-results-box"></div>
+
+                        <div id="swal-orden-info" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 14px;">
+                            <div><strong>Orden:</strong> <span id="info-nro-orden"></span></div>
+                            <div><strong>Cliente:</strong> <span id="info-cliente"></span></div>
+                            <div><strong>Equipo:</strong> <span id="info-equipo"></span></div>
+                        </div>
+
+                        <div id="swal-orden-warning-previo" style="display: none; background: #fff7ed; color: #c2410c; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #fdba74; margin-bottom: 14px; font-size: 0.83rem;"></div>
                     </div>
 
-                    <div id="swal-orden-info" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 14px;">
-                        <div><strong>Orden:</strong> <span id="info-nro-orden"></span></div>
-                        <div><strong>Cliente:</strong> <span id="info-cliente"></span></div>
-                        <div><strong>Equipo:</strong> <span id="info-equipo"></span></div>
-                    </div>
+                    <!-- CONTAINER 2: VENTA DIRECTA / MOSTRADOR / VARIOS -->
+                    <div id="container-tipo-directo" style="display: none; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1.5px solid #e2e8f0; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #0f172a; margin-bottom: 10px; font-size: 0.88rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">
+                            <i class="bi bi-shop me-1" style="color: #10b981;"></i> Datos del Producto / Venta Directa (Sin Orden de Servicio)
+                        </div>
 
-                    <div id="swal-orden-warning-previo" style="display: none; background: #fff7ed; color: #c2410c; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #fdba74; margin-bottom: 14px; font-size: 0.83rem;"></div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Cliente / Comprador:</label>
+                                <input type="text" id="swal-vd-cliente" class="swal2-input" placeholder="Nombre del cliente..." value="Consumidor Final" style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;">
+                            </div>
+                            <div style="position: relative;">
+                                <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Código de Producto / Repuesto (Opcional):</label>
+                                <input type="text" id="swal-vd-codigo" class="swal2-input" placeholder="Buscar código repuesto..." style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;" oninput="buscarProductoVentaDirectaAjax()">
+                                <div id="swal-prod-results-box" class="search-results-box" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Descripción del Producto / Ítem (Cargador, Laptop, etc.):</label>
+                                <input type="text" id="swal-vd-descripcion" class="swal2-input" placeholder="Ej. Cargador Laptop 65W / Laptop Mostrador..." style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Serie del Equipo (Si aplica):</label>
+                                <input type="text" id="swal-vd-serie" class="swal2-input" placeholder="SN: N/A..." style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;">
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- 2. Monto Total Cobrado -->
                     <div style="margin-bottom: 14px;">
-                        <label style="font-weight: 700; color: #0f172a;">2. Monto Total a Cobrar de la Orden ($):</label>
+                        <label style="font-weight: 700; color: #0f172a;">2. Monto Total a Cobrar ($):</label>
                         <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" style="margin-top: 4px; width: 100%; font-size: 1.1rem; font-weight: 800; color: #2563eb;" oninput="onMontoTotalCobradoChange()">
                     </div>
 
@@ -828,19 +893,37 @@
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10b981',
             preConfirm: () => {
-                const searchNro = document.getElementById('swal-search-orden').value.trim();
                 const montoTotalCobrado = parseFloat(document.getElementById('swal-monto-cobrado').value || 0);
                 const obsGeneral = document.getElementById('swal-cobro-obs').value;
 
-                const nroOrden = ordenSeleccionada ? ordenSeleccionada.nro_orden : searchNro;
-                const ordenId = ordenSeleccionada ? ordenSeleccionada.id : null;
-                const clienteNombre = ordenSeleccionada ? ordenSeleccionada.cliente : 'Cliente Externo';
-                const equipoInfo = ordenSeleccionada ? ordenSeleccionada.equipo : '';
+                let nroOrden = '';
+                let ordenId = null;
+                let clienteNombre = 'Consumidor Final';
+                let equipoInfo = '';
+                let codigoProducto = null;
+                let serieProducto = null;
 
-                if (!nroOrden) {
-                    Swal.showValidationMessage('Debe digitar o seleccionar una orden de trabajo.');
-                    return false;
+                if (tipoCobroModal === 'venta_directa') {
+                    clienteNombre = document.getElementById('swal-vd-cliente').value.trim() || 'Consumidor Final';
+                    codigoProducto = document.getElementById('swal-vd-codigo').value.trim();
+                    serieProducto = document.getElementById('swal-vd-serie').value.trim();
+                    const descProd = document.getElementById('swal-vd-descripcion').value.trim() || 'Venta Directa Mostrador';
+
+                    nroOrden = 'VENTA-' + Math.floor(Date.now() / 1000);
+                    equipoInfo = (codigoProducto ? '[' + codigoProducto + '] ' : '') + descProd + (serieProducto ? ' (SN: ' + serieProducto + ')' : '');
+                } else {
+                    const searchNro = document.getElementById('swal-search-orden').value.trim();
+                    nroOrden = ordenSeleccionada ? ordenSeleccionada.nro_orden : searchNro;
+                    ordenId = ordenSeleccionada ? ordenSeleccionada.id : null;
+                    clienteNombre = ordenSeleccionada ? ordenSeleccionada.cliente : 'Cliente Externo';
+                    equipoInfo = ordenSeleccionada ? ordenSeleccionada.equipo : '';
+
+                    if (!nroOrden) {
+                        Swal.showValidationMessage('Debe digitar o seleccionar una orden de trabajo.');
+                        return false;
+                    }
                 }
+
                 if (isNaN(montoTotalCobrado) || montoTotalCobrado <= 0) {
                     Swal.showValidationMessage('Debe ingresar un monto total a cobrar válido mayor a $0.00.');
                     return false;
@@ -896,8 +979,11 @@
                 }
 
                 return {
+                    tipo_cobro: tipoCobroModal,
                     orden_id: ordenId,
                     nro_orden: nroOrden,
+                    codigo_producto: codigoProducto,
+                    serie_producto: serieProducto,
                     cliente_nombre: clienteNombre,
                     equipo_info: equipoInfo,
                     monto_cobrado: montoTotalCobrado,
@@ -1091,6 +1177,50 @@
 
         const lblNeto = document.getElementById('swal-neto-label');
         if (lblNeto) lblNeto.innerText = '$' + neto.toFixed(2);
+    }
+
+    function buscarProductoVentaDirectaAjax() {
+        const q = document.getElementById('swal-vd-codigo').value.trim();
+        const box = document.getElementById('swal-prod-results-box');
+        if (!q || q.length < 1) {
+            box.style.display = 'none';
+            return;
+        }
+
+        fetch("{{ route('cajageneral.buscar_producto') }}?q=" + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(res => {
+                if (res.ok && res.productos && res.productos.length > 0) {
+                    let html = '';
+                    res.productos.forEach(p => {
+                        html += `
+                            <div class="search-item" onclick='seleccionarProductoVentaDirecta(${JSON.stringify(p)})'>
+                                <strong style="color:#b45309;">${p.codigo}</strong> — ${p.nombre}<br>
+                                <span style="font-size: 0.78rem; color: #64748b;">${p.tipo} ${p.costo > 0 ? '| Costo Ref: $' + p.costo.toFixed(2) : ''}</span>
+                            </div>
+                        `;
+                    });
+                    box.innerHTML = html;
+                    box.style.display = 'block';
+                } else {
+                    box.innerHTML = '<div style="padding: 10px; color: #94a3b8;">No se encontraron productos con ese criterio.</div>';
+                    box.style.display = 'block';
+                }
+            })
+            .catch(() => {
+                box.style.display = 'none';
+            });
+    }
+
+    function seleccionarProductoVentaDirecta(p) {
+        document.getElementById('swal-vd-codigo').value = p.codigo;
+        document.getElementById('swal-vd-descripcion').value = p.nombre;
+        document.getElementById('swal-prod-results-box').style.display = 'none';
+
+        if (p.costo && p.costo > 0) {
+            document.getElementById('swal-monto-cobrado').value = p.costo.toFixed(2);
+            onMontoTotalCobradoChange();
+        }
     }
 
     function buscarOrdenAjax() {
