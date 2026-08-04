@@ -220,61 +220,38 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
             <td colspan="4"><span class="lbl">Observaciones</span>{{ $equipo?->observacion ?: '-' }}</td>
         </tr>
         <tr>
-            <td colspan="4">
+            <td colspan="2">
+                <span class="lbl">Estado del Repuesto</span>
+                <span class="badge" style="background: {{ $colorRepuesto[0] }}; color: {{ $colorRepuesto[1] }};">
+                    {{ $estadoRepuesto }}
+                </span>
+            </td>
+            <td colspan="2">
                 @php
                     $repuestosAsignados = $orden->ordenRepuestos ?? collect();
                     $tieneRepuestos = $repuestosAsignados->isNotEmpty();
-                    $totalCostoRepuestos = $repuestosAsignados->sum(fn($or) => ($or->repuesto->costo ?? 0) * $or->cantidad);
                 @endphp
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <div>
-                        <span class="lbl">Estado del Repuesto</span>
-                        <span class="badge" style="background: {{ $colorRepuesto[0] }}; color: {{ $colorRepuesto[1] }};">
-                            {{ $estadoRepuesto }}
-                        </span>
-                    </div>
-                    @if($tieneRepuestos)
-                        <div style="font-size:7pt; font-weight:800; color:#0f172a;">
-                            TOTAL COSTO REPUESTOS: <span style="color:#059669;">${{ number_format($totalCostoRepuestos, 2) }}</span>
-                        </div>
-                    @endif
-                </div>
-
                 @if($tieneRepuestos)
-                    <div style="margin-top:4px;">
-                        <span class="lbl">Repuestos Asignados a la Orden ({{ $repuestosAsignados->count() }})</span>
-                        <table style="width:100%; border-collapse:collapse; margin-top:2px; font-size:6.8pt; border:1px solid #cbd5e1;">
-                            <thead>
-                                <tr style="background:#f1f5f9; color:#334155; font-weight:700;">
-                                    <th style="padding:2px 4px; border:1px solid #cbd5e1; text-align:left;">Código</th>
-                                    <th style="padding:2px 4px; border:1px solid #cbd5e1; text-align:left;">Nombre del Repuesto</th>
-                                    <th style="padding:2px 4px; border:1px solid #cbd5e1; text-align:center;">Cant</th>
-                                    <th style="padding:2px 4px; border:1px solid #cbd5e1; text-align:right;">P. Unit</th>
-                                    <th style="padding:2px 4px; border:1px solid #cbd5e1; text-align:right;">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($repuestosAsignados as $or)
-                                    @php
-                                        $cu = $or->repuesto->costo ?? 0;
-                                        $st = $cu * $or->cantidad;
-                                    @endphp
-                                    <tr>
-                                        <td style="padding:2px 4px; border:1px solid #e2e8f0; font-family:monospace; font-weight:700; color:#b45309;">{{ $or->repuesto->codigo ?? '-' }}</td>
-                                        <td style="padding:2px 4px; border:1px solid #e2e8f0;">{{ $or->repuesto->nombre ?? '-' }}</td>
-                                        <td style="padding:2px 4px; border:1px solid #e2e8f0; text-align:center; font-weight:700;">{{ $or->cantidad }}</td>
-                                        <td style="padding:2px 4px; border:1px solid #e2e8f0; text-align:right;">${{ number_format($cu, 2) }}</td>
-                                        <td style="padding:2px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700;">${{ number_format($st, 2) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <span class="lbl">Repuesto(s) Asignado(s)</span>
+                    <div style="margin-top:2px;">
+                        @foreach($repuestosAsignados as $or)
+                            <div style="font-size:7pt; margin-bottom:1px;">
+                                <strong style="color:#b45309; font-family:monospace;">{{ $or->repuesto->codigo ?? '-' }}</strong>
+                                @if(!empty($or->repuesto->nombre))
+                                    - {{ $or->repuesto->nombre }}
+                                @endif
+                                @if($or->cantidad > 1)
+                                    <span style="font-weight:700; color:#475569;">(x{{ $or->cantidad }})</span>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
                 @elseif($estadoRepuesto !== 'No requerido' && ($repuesto?->codigo || $repuesto?->nombre))
-                    <div style="margin-top:2px;">
-                        <span class="lbl">Repuesto Asignado</span>
-                        {{ trim(($repuesto?->codigo ? $repuesto->codigo . ' - ' : '') . ($repuesto?->nombre ?? '')) ?: '-' }}
-                    </div>
+                    <span class="lbl">Repuesto Asignado</span>
+                    {{ trim(($repuesto?->codigo ? $repuesto->codigo . ' - ' : '') . ($repuesto?->nombre ?? '')) ?: '-' }}
+                @else
+                    <span class="lbl">Repuesto Asignado</span>
+                    -
                 @endif
             </td>
         </tr>
