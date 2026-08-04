@@ -262,7 +262,10 @@
                 'codigo' => (string) ($or->repuesto->codigo ?? ''),
                 'nombre' => (string) ($or->repuesto->nombre ?? $or->repuesto->descripcion ?? ''),
                 'cantidad' => (int) $or->cantidad,
+                'costo_unitario' => (float) ($or->repuesto->costo ?? 0),
+                'costo_total' => (float) (($or->repuesto->costo ?? 0) * $or->cantidad),
             ])->values(),
+            'total_costo_repuestos' => (float) collect($ord->ordenRepuestos ?? [])->sum(fn($or) => ($or->repuesto->costo ?? 0) * $or->cantidad),
             'llamadas' => collect($ord->llamadas ?? [])->map(fn($ll) => [
                 'id' => (int) $ll->id,
                 'fecha_hora' => $ll->fecha_hora ? $ll->fecha_hora->format('d/m/Y H:i') : '',
