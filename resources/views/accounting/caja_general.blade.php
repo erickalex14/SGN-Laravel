@@ -813,10 +813,9 @@
                                 <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Cliente / Comprador:</label>
                                 <input type="text" id="swal-vd-cliente" class="swal2-input" placeholder="Nombre del cliente..." value="Consumidor Final" style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;">
                             </div>
-                            <div style="position: relative;">
+                            <div>
                                 <label style="font-weight: 700; color: #334155; font-size: 0.78rem;">Código de Producto / Repuesto (Opcional):</label>
-                                <input type="text" id="swal-vd-codigo" class="swal2-input" placeholder="Buscar código repuesto..." style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;" oninput="buscarProductoVentaDirectaAjax()">
-                                <div id="swal-prod-results-box" class="search-results-box" style="display: none;"></div>
+                                <input type="text" id="swal-vd-codigo" class="swal2-input" placeholder="Ej. 1PSM1680..." style="margin-top: 4px; width: 100%; font-size: 0.85rem; height: 38px;">
                             </div>
                         </div>
 
