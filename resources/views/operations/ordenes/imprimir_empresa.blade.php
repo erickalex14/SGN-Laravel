@@ -197,9 +197,30 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         <tr>
             <td colspan="4"><span class="lbl">Descripcion</span>{{ $orden->descripcion ?: ($equipo?->falla ?: '-') }}</td>
         </tr>
-        <tr>
-            <td colspan="4"><span class="lbl">Recepcion / Detalles</span>{{ $equipo?->observacion ?: '-' }}</td>
-        </tr>
+        @php
+            $repuestosAsignados = $orden->ordenRepuestos ?? collect();
+            $tieneRepuestos = $repuestosAsignados->isNotEmpty();
+        @endphp
+        @if($tieneRepuestos)
+            <tr>
+                <td colspan="4">
+                    <span class="lbl">Repuesto(s) Asignado(s)</span>
+                    <div style="margin-top:2px;">
+                        @foreach($repuestosAsignados as $or)
+                            <div style="font-size:7pt; margin-bottom:1px;">
+                                <strong style="color:#b45309; font-family:monospace;">{{ $or->repuesto->codigo ?? '-' }}</strong>
+                                @if(!empty($or->repuesto->nombre))
+                                    - {{ $or->repuesto->nombre }}
+                                @endif
+                                @if($or->cantidad > 1)
+                                    <span style="font-weight:700; color:#475569;">(x{{ $or->cantidad }})</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </td>
+            </tr>
+        @endif
     </table>
 
     @if ($hayPrecios)

@@ -165,7 +165,7 @@
                 <table class="perm-table">
                     <thead><tr><th>Módulo</th><th>Ver</th><th>Crear</th><th>Editar</th><th>Eliminar</th></tr></thead>
                     <tbody>
-                    @php $modulos = ['ordenes_crear','ordenes_editar','ordenes_buscar','ordenes_mis','ordenes_asignadas','preordenes','informes','presupuestos','solicitar_nc','solicitar_repuesto','reportes','notas_credito','repuestos_admin','inv_productos','inv_marcas','inv_repuestos','precios','sucursales','sucursales_novicompu','empresas','cas','mi_cuenta','usuarios','grupos_acceso']; @endphp
+                    @php $modulos = ['ordenes_crear','ordenes_editar','ordenes_buscar','ordenes_mis','ordenes_asignadas','preordenes','informes','presupuestos','solicitar_nc','solicitar_repuesto','reportes','notas_credito','repuestos_admin','inv_productos','inv_marcas','inv_repuestos','precios','caja_general','caja_chica','recuento_b2b','nomina_mis_datos','nomina_admin','solicitudes_vacaciones','sucursales','sucursales_novicompu','empresas','cas','mi_cuenta','usuarios','grupos_acceso']; @endphp
                     @foreach($modulos as $mod)
                         <tr>
                             <td>{{ str_replace('_', ' ', $mod) }}</td>

@@ -86,7 +86,9 @@ Route::middleware('auth')->group(function () {
     // Inventario Físico en Servicio Técnico (ST)
     Route::get('/operaciones/inventario-fisico', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'index'])->name('inventario_fisico.index');
     Route::get('/operaciones/ordenes-empresa/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
+    Route::get('/operaciones/ordenes/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
     Route::post('/operaciones/ordenes-empresa/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados'])->name('inventario_fisico.guardar');
+    Route::post('/operaciones/ordenes/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados']);
 
     // -------------------------------------------------------
     // ------------------EMPRESAS-----------------------------
@@ -480,11 +482,50 @@ Route::middleware('auth')->group(function () {
     // Caja General & Arqueos Diarios
     Route::get('/contabilidad/caja-general', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'index'])->name('cajageneral.index');
     Route::get('/contabilidad/caja-general/buscar-orden', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'buscarOrden'])->name('cajageneral.buscar_orden');
+    Route::get('/contabilidad/caja-general/buscar-producto', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'buscarProducto'])->name('cajageneral.buscar_producto');
     Route::post('/contabilidad/caja-general/cobro', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarCobro'])->name('cajageneral.guardar_cobro');
     Route::post('/contabilidad/caja-general/arqueo', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarArqueo'])->name('cajageneral.guardar_arqueo');
     Route::post('/contabilidad/caja-general/deposito', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirDeposito'])->name('cajageneral.subir_deposito');
+    Route::get('/contabilidad/caja-general/arqueo/{id}/imprimir', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'imprimirArqueo'])->name('cajageneral.imprimir_arqueo');
+    Route::get('/contabilidad/caja-general/recibo/{id}', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'imprimirRecibo'])->name('cajageneral.imprimir_recibo');
+    Route::post('/contabilidad/caja-general/cobro/{id}/subir-comprobante', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirComprobanteCobro'])->name('cajageneral.subir_comprobante_cobro');
 
     // Recuento & Facturacion B2B
     Route::get('/contabilidad/recuento-b2b', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'index'])->name('recuentob2b.index');
     Route::post('/contabilidad/recuento-b2b/procesar', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'procesarCobro'])->name('recuentob2b.procesar');
+    Route::post('/contabilidad/recuento-b2b/exportar-excel', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'exportarExcel'])->name('recuentob2b.exportar_excel');
+    Route::get('/contabilidad/recuento-b2b/recibo-cliente/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboCliente'])->name('recuentob2b.recibo_cliente');
+    Route::get('/contabilidad/recuento-b2b/recibo-interno/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboInterno'])->name('recuentob2b.recibo_interno');
+
+    // Reportería & Auditoría de Contabilidad (Páginas separadas por módulo)
+    Route::get('/contabilidad/reportes', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'index'])->name('contabilidad.reportes');
+    Route::get('/contabilidad/reportes/kpis', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'kpis'])->name('contabilidad.reportes.kpis');
+    Route::get('/contabilidad/reportes/caja-general', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'cajaGeneral'])->name('contabilidad.reportes.caja_general');
+    Route::get('/contabilidad/reportes/caja-chica', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'cajaChica'])->name('contabilidad.reportes.caja_chica');
+    Route::get('/contabilidad/reportes/b2b', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'b2b'])->name('contabilidad.reportes.b2b');
+
+    // -------------------------------------------------------
+    // MÓDULO DE NÓMINA (LOCAL ONLY)
+    // -------------------------------------------------------
+    Route::get('/nomina/mis-datos', [\App\Http\Controllers\Identity\NominaController::class, 'misDatos'])->name('nomina.mis_datos');
+    Route::post('/nomina/mis-datos', [\App\Http\Controllers\Identity\NominaController::class, 'guardarMisDatos'])->name('nomina.guardar_mis_datos');
+
+    Route::get('/nomina/admin', [\App\Http\Controllers\Identity\NominaController::class, 'adminIndex'])->name('nomina.admin');
+    Route::post('/nomina/admin/guardar/{usuario_id}', [\App\Http\Controllers\Identity\NominaController::class, 'guardarDatosNominaAdmin'])->name('nomina.admin_guardar');
+    Route::get('/nomina/admin/exportar-excel', [\App\Http\Controllers\Identity\NominaController::class, 'exportarExcel'])->name('nomina.exportar_excel');
+
+    // Solicitudes y Aprobación de Vacaciones
+    Route::post('/nomina/vacaciones/solicitar', [\App\Http\Controllers\Identity\NominaController::class, 'solicitarVacaciones'])->name('nomina.vacaciones_solicitar');
+    Route::post('/nomina/vacaciones/aprobar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'aprobarVacaciones'])->name('nomina.vacaciones_aprobar');
+    Route::post('/nomina/vacaciones/rechazar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'rechazarVacaciones'])->name('nomina.vacaciones_rechazar');
+    Route::get('/nomina/vacaciones/imprimir/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'imprimirSolicitudVacaciones'])->name('nomina.vacaciones_imprimir');
+
+    // Servidor seguro de archivos adjuntos en storage
+    Route::get('/storage/{path}', function ($path) {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Archivo no encontrado.');
+        }
+        return response()->file($fullPath);
+    })->where('path', '.*');
 });

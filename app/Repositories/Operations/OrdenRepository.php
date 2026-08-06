@@ -139,10 +139,13 @@ class OrdenRepository
             'tecnico',
             'sucursal',
             'precioEstandar',
+            'preciosOrden',
             'repuestoInventario',
+            'ordenRepuestos.repuesto',
             'usuarioIngreso',
             'usuarioModificacion',
             'cas',
+            'solicitudesNc',
         ])->find($id);
     }
 
@@ -157,6 +160,7 @@ class OrdenRepository
             'sucursal',
             'cas',
             'ingresadoPor',
+            'ordenRepuestos.repuesto',
         ])->find($id);
     }
 

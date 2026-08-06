@@ -54,7 +54,9 @@ class Orden extends Model
         'tipo_servicio_texto',
         'fecha_facturacion',
         'transferencia_plataforma',
-        'transferencia_numero'
+        'transferencia_numero',
+        'memo_entrega',
+        'estado_facturacion'
     ];
 
     public function cliente()

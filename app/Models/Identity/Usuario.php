@@ -75,6 +75,11 @@ class Usuario extends Authenticatable
         return $this->hasMany(Orden::class, 'tecnico_id', 'id');
     }
 
+    public function datosNomina()
+    {
+        return $this->hasOne(DatosNomina::class, 'usuario_id', 'id');
+    }
+
     public function validarClave(string $clave): bool
     {
         $claveNormalizada = trim($clave);

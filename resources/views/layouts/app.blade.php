@@ -177,11 +177,16 @@
     $sgnValidationMessage = $errors->any() ? $errors->first() : null;
     $p = session('permisos', []);
     $sa = session('es_superadmin');
-    
+
     $usuario = auth()->user();
     $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
     $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+    $esAdminMasterReal = $sa
+        || (bool) ($usuario?->grupo?->es_superadmin ?? false)
+        || in_array($rolNombre, ['admin master', 'administrador master'], true)
+        || in_array($grupoNombre, ['admin master', 'administrador master', 'superadministrador'], true)
+        || in_array($sessionGrupo, ['admin master', 'administrador master', 'superadministrador'], true);
     $tienePermisoEditar = $sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']);
     $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
@@ -480,6 +485,7 @@
                         </div>
                     @endif
 
+                    @if ($sa || $esAdminMasterReal || $can('caja_chica', 'ver') || $can('caja_general', 'ver') || $can('recuento_b2b', 'ver'))
                     <div class="nav-subgroup">
                         <div class="nav-subtoggle" onclick="navSubToggle(this)">
                             <i class="bi bi-calculator" style="font-size:11px;"></i>
@@ -487,26 +493,51 @@
                             <i class="bi bi-chevron-down nav-sub-arrow"></i>
                         </div>
                         <div class="nav-submenu-2">
-                            @if ($sa || $esAdminOAdminMaster)
+                            @if ($sa || $esAdminMasterReal || $can('caja_chica', 'ver'))
                                 <a data-tip="Caja Chica (Admin)" href="{{ route('cajachica.admin') }}">
                                     <i class="bi bi-shield-check" style="flex-shrink:0;"></i>
                                     <span class="nav-label" style="margin-left:10px;">Caja Chica (Admin)</span>
                                 </a>
                             @endif
-                            <a data-tip="Caja Chica (Gestión)" href="{{ route('cajachica.gestion') }}">
-                                <i class="bi bi-wallet2" style="flex-shrink:0;"></i>
-                                <span class="nav-label" style="margin-left:10px;">Caja Chica (Gestión)</span>
-                            </a>
-                            <a data-tip="Caja General" href="{{ route('cajageneral.index') }}">
-                                <i class="bi bi-cash-stack" style="flex-shrink:0;"></i>
-                                <span class="nav-label" style="margin-left:10px;">Caja General</span>
-                            </a>
-                            <a data-tip="Recuento B2B" href="{{ route('recuentob2b.index') }}">
-                                <i class="bi bi-receipt-cutoff" style="flex-shrink:0;"></i>
-                                <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
-                            </a>
+                            @if ($sa || $esAdminMasterReal || $can('caja_chica', 'ver'))
+                                <a data-tip="Caja Chica (Gestión)" href="{{ route('cajachica.gestion') }}">
+                                    <i class="bi bi-wallet2" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Caja Chica (Gestión)</span>
+                                </a>
+                            @endif
+                            @if ($sa || $esAdminMasterReal || $can('caja_general', 'ver'))
+                                <a data-tip="Caja General" href="{{ route('cajageneral.index') }}">
+                                    <i class="bi bi-cash-stack" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Caja General B2C</span>
+                                </a>
+                            @endif
+                            @if ($sa || $esAdminMasterReal || $can('recuento_b2b', 'ver'))
+                                <a data-tip="Recuento B2B" href="{{ route('recuentob2b.index') }}">
+                                    <i class="bi bi-receipt-cutoff" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
+                                </a>
+                            @endif
+                            @if ($sa || $esAdminMasterReal || $can('reportes', 'ver') || $can('caja_general', 'ver') || $can('caja_chica', 'ver'))
+                                <a data-tip="Dashboard KPIs" href="{{ route('contabilidad.reportes.kpis') }}">
+                                    <i class="bi bi-pie-chart-fill" style="flex-shrink:0; color: #2563eb;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Dashboard KPIs</span>
+                                </a>
+                                <a data-tip="Reporte Caja General" href="{{ route('contabilidad.reportes.caja_general') }}">
+                                    <i class="bi bi-cash-stack" style="flex-shrink:0; color: #059669;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Reporte Caja General</span>
+                                </a>
+                                <a data-tip="Reporte Cajas Chicas" href="{{ route('contabilidad.reportes.caja_chica') }}">
+                                    <i class="bi bi-wallet2" style="flex-shrink:0; color: #d97706;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Reporte Cajas Chicas</span>
+                                </a>
+                                <a data-tip="Reporte Recuento B2B" href="{{ route('contabilidad.reportes.b2b') }}">
+                                    <i class="bi bi-building-check" style="flex-shrink:0; color: #7c3aed;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Reporte Recuento B2B</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         @endif
@@ -573,6 +604,12 @@
                             <span class="nav-label" style="margin-left:10px;">Mi Cuenta</span>
                         </a>
                     @endif
+                    @if ($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check())
+                        <a data-tip="Mis Datos / Nómina" href="{{ route('nomina.mis_datos') }}">
+                            <i class="bi bi-person-vcard" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Mis Datos Personales</span>
+                        </a>
+                    @endif
                     <div class="nav-subgroup">
                         <div class="nav-subtoggle" onclick="navSubToggle(this)">
                             <i class="bi bi-shield-lock" style="font-size:11px;"></i>
@@ -598,7 +635,13 @@
                                     <span class="nav-label" style="margin-left:10px;">Grupos de Acceso</span>
                                 </a>
                             @endif
-                            @if ($sa || $esAdminOAdminMaster)
+                            @if ($sa || $esAdminMasterReal || $can('nomina_admin', 'ver'))
+                                <a data-tip="Gestión de Nómina" href="{{ route('nomina.admin') }}">
+                                    <i class="bi bi-bank" style="flex-shrink:0;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Gestión de Nómina</span>
+                                </a>
+                            @endif
+                            @if ($sa || $esAdminMasterReal)
                                 <a data-tip="Bitácora de Auditoría" href="{{ route('bitacora.index') }}">
                                     <i class="bi bi-shield-check" style="flex-shrink:0;"></i>
                                     <span class="nav-label" style="margin-left:10px;">Bitácora de Auditoría</span>
@@ -761,8 +804,8 @@
         $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
         $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
         $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
-        $tienePermisoEditar = session('es_superadmin') === true 
-            || !empty(session('permisos', [])['ordenes_editar']['editar']) 
+        $tienePermisoEditar = session('es_superadmin') === true
+            || !empty(session('permisos', [])['ordenes_editar']['editar'])
             || !empty(session('permisos', [])['ordenes_editar']['ver']);
         $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
             || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
@@ -999,10 +1042,10 @@
             .then(function(data) {
                 if (!data.ok) return;
                 var notifs = data.notificaciones || [];
-                
+
                 var ids = notifs.map(function(n) { return Number(n.id); });
                 var maxId = ids.length ? Math.max.apply(null, ids) : 0;
-                
+
                 if (_lastMaxNotifId === null) {
                     _lastMaxNotifId = maxId;
                 } else if (maxId > _lastMaxNotifId) {
@@ -1519,7 +1562,7 @@
         const opciones = { timeZone: 'America/Guayaquil', hour: '2-digit', minute: '2-digit', hour12: false };
         const formatterTime = new Intl.DateTimeFormat('es-EC', opciones);
         const timeParts = formatterTime.formatToParts(new Date());
-        
+
         let hora = 0;
         let minuto = 0;
         timeParts.forEach(part => {
@@ -1531,7 +1574,7 @@
             const opcionesFecha = { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' };
             const formatterFecha = new Intl.DateTimeFormat('es-EC', opcionesFecha);
             const dateParts = formatterFecha.formatToParts(new Date());
-            
+
             let yyyy = '', mm = '', dd = '';
             dateParts.forEach(part => {
                 if (part.type === 'year') yyyy = part.value;
@@ -1604,7 +1647,7 @@
 
         const tecnicoNombre = @json(session('nombre') ?? session('usuario') ?? 'Técnico');
         const esSistemas = @json(auth()->check() && auth()->user()->grupo && mb_strtolower(auth()->user()->grupo->nombre) === 'sistemas');
-        
+
         fetch(`{{ route('actividades.listar') }}?fecha=${fecha}`)
             .then(res => res.json())
             .then(async res => {
@@ -1811,7 +1854,7 @@
                             clase = mapClase(mainAct.metadata_json?.tipo);
                             serie = mainAct.metadata_json?.serie || 'sn';
                             equipoCode = mainAct.metadata_json?.codigo_equipo || 'sn';
-                            
+
                             if (mainAct.tipo_accion.includes('crear') || mainAct.tipo_accion.includes('ingresar')) {
                                 valActividad = 'ticket';
                             } else if (mainAct.tipo_accion.includes('estado')) {
@@ -1884,7 +1927,7 @@
                     row.eachCell((cell, colNum) => {
                         cell.font = { name: 'Calibri', size: 11, bold: false };
                         cell.border = borderStyle;
-                        
+
                         if (colNum === 1) {
                             cell.numFormat = 'yyyy-mm-dd';
                             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -2024,6 +2067,44 @@
     }
 </script>
 @endif
+@auth
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!localStorage.getItem('alerta_actualizar_nomina_v1')) {
+            if (!window.location.pathname.includes('/nomina/mis-datos')) {
+                Swal.fire({
+                    title: 'Actualización de Datos de Nómina',
+                    icon: 'info',
+                    html: `
+                        <div style="text-align: left; font-size: 0.9rem; color: #334155; line-height: 1.5;">
+                            <p style="margin-bottom: 12px;">Estimado(a) colaborador(a):</p>
+                            <p style="margin-bottom: 12px; font-weight: 500;">
+                                Por favor ingresa a tu sección de <b>Acceso > Mis Datos Personales</b> para actualizar o verificar tu información personal, contacto de emergencia y datos de nómina.
+                            </p>
+                            <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; color: #1e40af;">
+                                Mantén tu información al día para la gestión de rol de pagos y solicitudes de vacaciones.
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Ir a Mis Datos Personales',
+                    cancelButtonText: 'Entendido / Más tarde',
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#64748b',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    localStorage.setItem('alerta_actualizar_nomina_v1', '1');
+                    if (result.isConfirmed) {
+                        window.location.href = "{{ route('nomina.mis_datos') }}";
+                    }
+                });
+            } else {
+                localStorage.setItem('alerta_actualizar_nomina_v1', '1');
+            }
+        }
+    });
+</script>
+@endauth
 @stack('js_adicional')
 </body>
 </html>

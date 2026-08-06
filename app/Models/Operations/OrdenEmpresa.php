@@ -36,7 +36,8 @@ class OrdenEmpresa extends Model
         'fecha_finalizacion',
         'fecha_entrega',
         'estado_repuesto',
-        'repuesto_inventario_id'
+        'repuesto_inventario_id',
+        'memo_entrega'
     ];
 
     public function tecnicos()

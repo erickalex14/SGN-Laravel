@@ -227,9 +227,31 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
                 </span>
             </td>
             <td colspan="2">
-                @if($estadoRepuesto !== 'No requerido' && ($repuesto?->codigo || $repuesto?->nombre))
+                @php
+                    $repuestosAsignados = $orden->ordenRepuestos ?? collect();
+                    $tieneRepuestos = $repuestosAsignados->isNotEmpty();
+                @endphp
+                @if($tieneRepuestos)
+                    <span class="lbl">Repuesto(s) Asignado(s)</span>
+                    <div style="margin-top:2px;">
+                        @foreach($repuestosAsignados as $or)
+                            <div style="font-size:7pt; margin-bottom:1px;">
+                                <strong style="color:#b45309; font-family:monospace;">{{ $or->repuesto->codigo ?? '-' }}</strong>
+                                @if(!empty($or->repuesto->nombre))
+                                    - {{ $or->repuesto->nombre }}
+                                @endif
+                                @if($or->cantidad > 1)
+                                    <span style="font-weight:700; color:#475569;">(x{{ $or->cantidad }})</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @elseif($estadoRepuesto !== 'No requerido' && ($repuesto?->codigo || $repuesto?->nombre))
                     <span class="lbl">Repuesto Asignado</span>
                     {{ trim(($repuesto?->codigo ? $repuesto->codigo . ' - ' : '') . ($repuesto?->nombre ?? '')) ?: '-' }}
+                @else
+                    <span class="lbl">Repuesto Asignado</span>
+                    -
                 @endif
             </td>
         </tr>

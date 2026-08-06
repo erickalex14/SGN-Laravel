@@ -27,4 +27,9 @@ class Repuesto extends Model
     // RELATION_REQUIRES_CONFIRMATION: 'marca_id' y 'tipo_dispositivo_id' están definidas como varchar(36)
     // mientras que las tablas correspondientes tienen int auto_increment.
     // Mientras se migra se mantendra eso, hasta que se tenga el sistema en funcionamineto y corregir
+
+    public function getValorTotalAttribute(): float
+    {
+        return round(((float) $this->stock) * ((float) $this->costo), 2);
+    }
 }

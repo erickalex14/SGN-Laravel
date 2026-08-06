@@ -57,6 +57,7 @@ class BuscarOrdenRepository
                 DB::raw("COALESCE((SELECT GROUP_CONCAT(serie ORDER BY orden SEPARATOR ' | ') FROM equiposseries WHERE equipo_id = vo.equipo_id), vo.serie) as serie"),
                 'vo.falla',
                 'vo.observacion',
+                'vo.memo_entrega',
                 'vo.fecha_facturacion',
                 DB::raw('vo.fecha_de_ingreso_fmt as fecha_de_ingreso'),
                 DB::raw('vo.fecha_entrega_fmt as fecha_entrega'),

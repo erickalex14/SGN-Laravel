@@ -78,14 +78,16 @@ test('usuario puede buscar ordenes de cliente externo', function () {
     $response->assertJsonFragment(['nro_orden' => $orden->nro_orden]);
 });
 
-test('usuario puede registrar cobro manual de cliente externo en caja general o bancos', function () {
+test('usuario puede registrar cobro manual de cliente externo en caja general o bancos con desglose de vuelto', function () {
     $response = $this->actingAs($this->usuario)
         ->postJson(route('cajageneral.guardar_cobro'), [
             'nro_orden' => 'OT-TEST-5544',
             'cliente_nombre' => 'Carlos Client',
-            'monto_cobrado' => 75.50,
+            'monto_cobrado' => 45.00,
+            'monto_recibido' => 50.00,
+            'vuelto_dado' => 5.00,
             'metodo_pago' => 'Efectivo',
-            'observaciones' => 'Pago en efectivo recepcion',
+            'observaciones' => 'Pago en efectivo recepcion con billete de 50',
         ]);
 
     $response->assertStatus(200);
@@ -93,7 +95,10 @@ test('usuario puede registrar cobro manual de cliente externo en caja general o 
 
     $this->assertDatabaseHas('caja_general_cobros', [
         'nro_orden' => 'OT-TEST-5544',
-        'monto_cobrado' => 75.50,
+        'monto_cobrado' => 45.00,
+        'monto_recibido' => 50.00,
+        'vuelto_dado' => 5.00,
+        'monto_neto_caja' => 45.00,
         'metodo_pago' => 'Efectivo',
         'destino_cuenta' => 'Caja General',
     ]);
@@ -119,4 +124,27 @@ test('usuario puede registrar arqueo ciego diario en caja general', function () 
         'monto_fisico' => 150.00,
         'tipo_diferencia' => 'Cuadre Exacto',
     ]);
+});
+
+test('usuario puede visualizar e imprimir comprobante de arqueo ciego', function () {
+    $arqueoId = \Illuminate\Support\Facades\DB::table('caja_general_arqueo')->insertGetId([
+        'sucursal_id' => $this->sucursal->id,
+        'codigo_sucursal' => 'ACC30',
+        'fecha' => now(),
+        'monto_sistema' => 100.00,
+        'monto_fisico' => 100.00,
+        'diferencia' => 0.00,
+        'tipo_diferencia' => 'Cuadre Exacto',
+        'usuario_id' => $this->usuario->id,
+        'usuario_nombre' => $this->usuario->nombre_tecnico,
+        'estado' => 'Pendiente Deposito',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $response = $this->actingAs($this->usuario)
+        ->get(route('cajageneral.imprimir_arqueo', $arqueoId));
+
+    $response->assertStatus(200);
+    $response->assertSee('ARQUEO CIEGO');
 });

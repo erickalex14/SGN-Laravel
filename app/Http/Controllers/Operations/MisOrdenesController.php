@@ -81,7 +81,8 @@ class MisOrdenesController extends Controller
                 $ordenId,
                 (string) $request->input('estado'),
                 $request->input('nc_asunto'),
-                $request->input('nc_detalles')
+                $request->input('nc_detalles'),
+                $request->input('memo_entrega')
             );
 
             $usuarioModificacionId = (int) session('tecnico_id', 0);
@@ -110,7 +111,8 @@ class MisOrdenesController extends Controller
                     $usuarioModificacionId,
                     $esAdmin,
                     $horasTrabajadas,
-                    $valorHora
+                    $valorHora,
+                    $request->input('memo_entrega')
                 );
 
                 if ($orden) {
