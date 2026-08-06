@@ -86,7 +86,9 @@ Route::middleware('auth')->group(function () {
     // Inventario Físico en Servicio Técnico (ST)
     Route::get('/operaciones/inventario-fisico', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'index'])->name('inventario_fisico.index');
     Route::get('/operaciones/ordenes-empresa/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
+    Route::get('/operaciones/ordenes/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
     Route::post('/operaciones/ordenes-empresa/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados'])->name('inventario_fisico.guardar');
+    Route::post('/operaciones/ordenes/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados']);
 
     // -------------------------------------------------------
     // ------------------EMPRESAS-----------------------------

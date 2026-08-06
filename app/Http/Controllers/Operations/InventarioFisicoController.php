@@ -71,14 +71,19 @@ class InventarioFisicoController extends Controller
     }
 
     /**
-     * API GET: Obtiene todos los productos de inventario físico de una orden corporativa.
+     * API GET: Obtiene todos los productos de inventario físico de una orden.
      */
     public function obtenerPorOrden(int $ordenId): JsonResponse
     {
         $sa = session('es_superadmin') === true;
         $sucursalId = (int) session('sucursal_id');
 
-        $query = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId);
+        $query = ProductoInventarioFisicoSt::where(function ($q) use ($ordenId) {
+            $q->where('orden_empresa_id', $ordenId);
+            if (DB::getSchemaBuilder()->hasColumn('productos_inventario_fisico_st', 'orden_id')) {
+                $q->orWhere('orden_id', $ordenId);
+            }
+        });
 
         if (!$sa && $sucursalId > 0) {
             $query->where('sucursal_id', $sucursalId);
@@ -98,36 +103,38 @@ class InventarioFisicoController extends Controller
     public function guardarEstados(Request $request): JsonResponse
     {
         $request->validate([
-            'orden_empresa_id' => 'required|integer',
+            'orden_empresa_id' => 'nullable|integer',
+            'orden_id' => 'nullable|integer',
             'productos' => 'required|array',
             'productos.*.id' => 'required|integer',
             'productos.*.estado' => 'required|string|in:Tienda,Incinerox,Outlet',
             'productos.*.detalle_outlet' => 'nullable|string',
         ]);
 
-        $ordenId = (int) $request->input('orden_empresa_id');
-        $orden = OrdenEmpresa::find($ordenId);
-
-        if (!$orden) {
-            return response()->json(['ok' => false, 'error' => 'Orden corporativa no encontrada.'], 404);
-        }
-
-        $sa = session('es_superadmin') === true;
-        $sucursalId = (int) session('sucursal_id');
-        $userId = (int) auth()->id();
-
-        // Validar que el usuario sea superadmin, pertenezca a la sucursal de la orden, o sea el técnico asignado
-        $esTecnicoAsignado = ((int)$orden->tecnico_id === $userId);
-        if (!$sa && $sucursalId > 0 && (int)$orden->sucursal_id !== $sucursalId && !$esTecnicoAsignado) {
-            return response()->json(['ok' => false, 'error' => 'No tienes permisos para modificar el inventario físico de esta sucursal.'], 403);
+        $ordenId = (int) ($request->input('orden_empresa_id') ?: $request->input('orden_id', 0));
+        
+        $orden = null;
+        if ($ordenId > 0) {
+            $orden = OrdenEmpresa::find($ordenId);
+            if (!$orden) {
+                $orden = DB::table('ordenes')->where('id', $ordenId)->first();
+            }
         }
 
         try {
             DB::transaction(function () use ($request, $ordenId, $orden) {
                 foreach ($request->input('productos') as $pData) {
-                    $prod = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId)
-                        ->where('id', (int) $pData['id'])
-                        ->first();
+                    $productId = (int) $pData['id'];
+
+                    // Buscar el producto en productos_inventario_fisico_st por su ID primario
+                    $prod = ProductoInventarioFisicoSt::find($productId);
+
+                    // Si no se encuentra solo por ID, intentar buscar asociando la orden
+                    if (!$prod && $ordenId > 0) {
+                        $prod = ProductoInventarioFisicoSt::where('orden_empresa_id', $ordenId)
+                            ->where('id', $productId)
+                            ->first();
+                    }
 
                     if ($prod) {
                         $estadoAnterior = $prod->estado;
@@ -135,7 +142,7 @@ class InventarioFisicoController extends Controller
                         $prod->detalle_outlet = $pData['estado'] === 'Outlet' ? trim($pData['detalle_outlet'] ?? '') : null;
                         $prod->save();
 
-                        // Registrar log si el estado cambió
+                        // Registrar log de auditoría si cambió el estado
                         if ($estadoAnterior !== $prod->estado) {
                             AuditLogger::registrar(
                                 'MODIFICAR_ESTADO_FISICO_ST',
