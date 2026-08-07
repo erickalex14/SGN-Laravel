@@ -17,19 +17,19 @@ class GuardarRepuestoRequest extends FormRequest
     {
         $reglas = [
             'accion' => ['required', 'string', 'in:crear,editar,eliminar'],
-            'id'     => ['nullable', 'integer']
+            'id'     => ['nullable']
         ];
 
         if ($this->input('accion') !== 'eliminar') {
             $reglas['codigo']              = ['required', 'string', 'max:100'];
-            $reglas['nro_parte']           = ['nullable', 'string', 'max:100'];
+            $reglas['nro_parte']           = ['nullable'];
             $reglas['nombre']              = ['required', 'string', 'max:255'];
-            $reglas['stock']               = ['required', 'integer', 'min:0'];
+            $reglas['stock']               = ['required', 'numeric', 'min:0'];
             $reglas['costo']               = ['required', 'numeric', 'min:0'];
-            $reglas['bodega']              = ['nullable', 'string', 'max:100'];
-            $reglas['descripcion']         = ['nullable', 'string'];
-            $reglas['marca_id']            = ['nullable', 'string', 'max:100'];
-            $reglas['tipo_dispositivo_id'] = ['nullable', 'string', 'max:100'];
+            $reglas['bodega']              = ['nullable'];
+            $reglas['descripcion']         = ['nullable'];
+            $reglas['marca_id']            = ['nullable'];
+            $reglas['tipo_dispositivo_id'] = ['nullable'];
         }
 
         return $reglas;

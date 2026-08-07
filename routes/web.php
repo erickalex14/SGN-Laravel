@@ -248,10 +248,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
         Route::get('/inventario/repuestos/auditoria', [RepuestoController::class, 'auditoria'])->name('repuestos.auditoria');
         Route::get('/inventario/repuestos/imprimir-reporte', [RepuestoController::class, 'imprimirReporte'])->name('repuestos.imprimir_reporte');
-    });
-
-    // Guardar / Modificar / Eliminar repuestos
-    Route::middleware(['permiso:inv_repuestos,crear'])->group(function () {
         Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
     });
 

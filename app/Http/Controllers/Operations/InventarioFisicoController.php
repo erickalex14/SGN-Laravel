@@ -73,21 +73,16 @@ class InventarioFisicoController extends Controller
     /**
      * API GET: Obtiene todos los productos de inventario físico de una orden.
      */
-    public function obtenerPorOrden(int $ordenId): JsonResponse
+    public function obtenerPorOrden($ordenId): JsonResponse
     {
-        $sa = session('es_superadmin') === true;
-        $sucursalId = (int) session('sucursal_id');
+        $ordenIdInt = (int) $ordenId;
 
-        $query = ProductoInventarioFisicoSt::where(function ($q) use ($ordenId) {
-            $q->where('orden_empresa_id', $ordenId);
+        $query = ProductoInventarioFisicoSt::where(function ($q) use ($ordenIdInt) {
+            $q->where('orden_empresa_id', $ordenIdInt);
             if (DB::getSchemaBuilder()->hasColumn('productos_inventario_fisico_st', 'orden_id')) {
-                $q->orWhere('orden_id', $ordenId);
+                $q->orWhere('orden_id', $ordenIdInt);
             }
         });
-
-        if (!$sa && $sucursalId > 0) {
-            $query->where('sucursal_id', $sucursalId);
-        }
 
         $productos = $query->orderBy('id', 'asc')->get();
 
