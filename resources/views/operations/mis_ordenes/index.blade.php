@@ -2387,8 +2387,10 @@ async function abrirModalInventarioFisico(ordenId) {
                 const rows = document.querySelectorAll('.prod-inv-row');
                 rows.forEach(row => {
                     const id = row.getAttribute('data-id');
-                    const estado = row.querySelector('.select-estado-fisico').value;
-                    const detalle_outlet = row.nextElementSibling.querySelector('.input-detalle-outlet').value;
+                    const estadoEl = row.querySelector('.select-estado-fisico');
+                    const estado = estadoEl ? estadoEl.value : 'Tienda';
+                    const inputDet = row.nextElementSibling ? row.nextElementSibling.querySelector('.input-detalle-outlet') : null;
+                    const detalle_outlet = inputDet ? inputDet.value.trim() : '';
                     productos.push({ id: parseInt(id), estado, detalle_outlet });
                 });
                 return productos;

@@ -107,7 +107,7 @@ class InventarioFisicoController extends Controller
             'orden_id' => 'nullable|integer',
             'productos' => 'required|array',
             'productos.*.id' => 'required|integer',
-            'productos.*.estado' => 'required|string|in:Tienda,Incinerox,Outlet',
+            'productos.*.estado' => 'required|string',
             'productos.*.detalle_outlet' => 'nullable|string',
         ]);
 
@@ -138,8 +138,14 @@ class InventarioFisicoController extends Controller
 
                     if ($prod) {
                         $estadoAnterior = $prod->estado;
-                        $prod->estado = $pData['estado'];
-                        $prod->detalle_outlet = $pData['estado'] === 'Outlet' ? trim($pData['detalle_outlet'] ?? '') : null;
+                        $rawEstado = trim((string) $pData['estado']);
+                        $estadoNorm = ucfirst(strtolower($rawEstado));
+                        if (!in_array($estadoNorm, ['Tienda', 'Incinerox', 'Outlet'])) {
+                            $estadoNorm = $rawEstado;
+                        }
+
+                        $prod->estado = $estadoNorm;
+                        $prod->detalle_outlet = $estadoNorm === 'Outlet' ? trim($pData['detalle_outlet'] ?? '') : null;
                         $prod->save();
 
                         // Registrar log de auditoría si cambió el estado
