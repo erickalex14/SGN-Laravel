@@ -564,6 +564,8 @@ const _moUrlReasignar = @json(route('mis_ordenes.reasignar'));
 const _moTecnicos = @json($tecnicos);
 const _moUrlRegistrarLlamada = @json(route('ordenes.llamadas.registrar'));
 const _moUrlEnviarEmail = @json(route('mis_ordenes.enviar_email'));
+const _moUrlInvFisicoGuardar = @json(route('inventario_fisico.guardar'));
+const _moUrlInvFisicoObtener = @json(url('/operaciones/ordenes-empresa/inventario-fisico'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -2323,7 +2325,7 @@ async function abrirModalInventarioFisico(ordenId) {
     });
 
     try {
-        const response = await fetch(`/operaciones/ordenes-empresa/inventario-fisico/${ordenId}`);
+        const response = await fetch(`${_moUrlInvFisicoObtener}/${ordenId}`);
         const data = await response.json();
         Swal.close();
 
@@ -2403,7 +2405,7 @@ async function abrirModalInventarioFisico(ordenId) {
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                const saveRes = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+                const saveRes = await fetch(_moUrlInvFisicoGuardar, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2464,7 +2466,7 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
     const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2521,7 +2523,7 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
     const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
