@@ -66,7 +66,7 @@ class CajaChicaController extends Controller
             'sucursalId' => $usuario->sucursal_id,
             'codigoSucursal' => $codigoSucursal,
             'sucursalNombre' => $sucursalNombre,
-            'esSuperAdmin' => $esSuperAdmin,
+            'esSuperAdmin' => $esAdminMaster,
             'usuarios' => $usuarios,
             'sucursales' => $sucursales
         ]);

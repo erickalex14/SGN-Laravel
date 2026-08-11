@@ -633,6 +633,10 @@
                                     <a href="{{ route('recuentob2b.recibo_interno', $loteIdVal) }}" target="_blank" class="btn-details" style="text-decoration: none; display: inline-block; margin-right: 4px; background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Interno
                                     </a>
+                                    <form method="POST" action="{{ route('facturas.issue_b2b', $loteIdVal) }}" style="display:inline-block; margin-right:4px;" onsubmit="return confirm('¿Facturar este lote en el ambiente de PRUEBAS del SRI?')">
+                                        @csrf
+                                        <button type="submit" class="btn-details" style="background:#0f172a; color:white; border-color:#0f172a; cursor:pointer;"><i class="bi bi-file-earmark-check me-1"></i>Facturar</button>
+                                    </form>
                                     @if(!empty($lObj->comprobante_path))
                                         <a href="{{ asset($lObj->comprobante_path) }}" target="_blank" class="btn-details" style="text-decoration: none; display: inline-block; background: #fef3c7; color: #92400e; border-color: #fde68a;">
                                             <i class="bi bi-paperclip me-1"></i>Comprobante

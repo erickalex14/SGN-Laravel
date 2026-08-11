@@ -517,6 +517,12 @@
                                     <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
                                 </a>
                             @endif
+                            @if ($sa || $esAdminMasterReal || $can('caja_general', 'ver') || $can('recuento_b2b', 'ver'))
+                                <a data-tip="Facturas electrónicas" href="{{ route('facturas.index') }}">
+                                    <i class="bi bi-file-earmark-check" style="flex-shrink:0; color: #2563eb;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Facturas</span>
+                                </a>
+                            @endif
                             @if ($sa || $esAdminMasterReal || $can('reportes', 'ver') || $can('caja_general', 'ver') || $can('caja_chica', 'ver'))
                                 <a data-tip="Dashboard KPIs" href="{{ route('contabilidad.reportes.kpis') }}">
                                     <i class="bi bi-pie-chart-fill" style="flex-shrink:0; color: #2563eb;"></i>

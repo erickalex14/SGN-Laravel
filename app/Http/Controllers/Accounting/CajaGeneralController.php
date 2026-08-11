@@ -8,6 +8,7 @@ use App\Models\Directory\Sucursal;
 use App\Models\Operations\Orden;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Exception;
 
 class CajaGeneralController extends Controller
@@ -308,6 +309,7 @@ class CajaGeneralController extends Controller
         try {
             DB::beginTransaction();
             $ids = [];
+            $grupoCobroUuid = (string) Str::uuid();
 
             foreach ($pagosInput as $index => $p) {
                 $metodo = (string) ($p['metodo_pago'] ?? 'Efectivo');
@@ -336,6 +338,7 @@ class CajaGeneralController extends Controller
                 }
 
                 $cobroId = DB::table('caja_general_cobros')->insertGetId([
+                    'grupo_cobro_uuid' => $grupoCobroUuid,
                     'orden_id' => $ordenId,
                     'nro_orden' => $nroOrden,
                     'tipo_cobro' => $tipoCobro,

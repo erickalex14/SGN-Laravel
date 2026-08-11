@@ -493,6 +493,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/contabilidad/recuento-b2b/recibo-cliente/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboCliente'])->name('recuentob2b.recibo_cliente');
     Route::get('/contabilidad/recuento-b2b/recibo-interno/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboInterno'])->name('recuentob2b.recibo_interno');
 
+    // Facturación electrónica manual (API local, ambiente SRI de pruebas)
+    Route::get('/contabilidad/facturas', [\App\Http\Controllers\Accounting\FacturaController::class, 'index'])->name('facturas.index');
+    Route::get('/contabilidad/facturas/{invoiceId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'show'])->name('facturas.show');
+    Route::post('/contabilidad/facturas/caja-general/{collectionId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueCash'])->name('facturas.issue_cash');
+    Route::post('/contabilidad/facturas/recuento-b2b/{batchId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueB2b'])->name('facturas.issue_b2b');
+    Route::get('/contabilidad/facturas/{invoiceId}/xml', [\App\Http\Controllers\Accounting\FacturaController::class, 'xml'])->name('facturas.xml');
+    Route::get('/contabilidad/facturas/{invoiceId}/ride', [\App\Http\Controllers\Accounting\FacturaController::class, 'ride'])->name('facturas.ride');
+
     // Reportería & Auditoría de Contabilidad (Páginas separadas por módulo)
     Route::get('/contabilidad/reportes', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'index'])->name('contabilidad.reportes');
     Route::get('/contabilidad/reportes/kpis', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'kpis'])->name('contabilidad.reportes.kpis');

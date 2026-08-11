@@ -415,6 +415,10 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
+                                    <form method="POST" action="{{ route('facturas.issue_cash', $cObj->id) }}" style="display:inline-block; margin-left:4px;" onsubmit="return confirm('¿Emitir factura electrónica en el ambiente de PRUEBAS del SRI?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-dark" style="font-size:.72rem; font-weight:700; padding:4px 8px;"><i class="bi bi-file-earmark-check me-1"></i>Facturar</button>
+                                    </form>
 
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp
@@ -603,6 +607,10 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
+                                    <form method="POST" action="{{ route('facturas.issue_cash', $cObj->id) }}" style="display:inline-block; margin-left:4px;" onsubmit="return confirm('¿Emitir factura electrónica en el ambiente de PRUEBAS del SRI?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-dark" style="font-size:.72rem; font-weight:700; padding:4px 8px;"><i class="bi bi-file-earmark-check me-1"></i>Facturar</button>
+                                    </form>
 
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp
@@ -675,6 +683,10 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
+                                    <form method="POST" action="{{ route('facturas.issue_cash', $cObj->id) }}" style="display:inline-block; margin-left:4px;" onsubmit="return confirm('¿Emitir factura electrónica en el ambiente de PRUEBAS del SRI?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-dark" style="font-size:.72rem; font-weight:700; padding:4px 8px;"><i class="bi bi-file-earmark-check me-1"></i>Facturar</button>
+                                    </form>
 
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp

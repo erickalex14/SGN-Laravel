@@ -6,8 +6,45 @@ use App\Models\Identity\GrupoAcceso;
 use App\Models\Operations\Orden;
 use App\Models\Directory\Cliente;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use App\Services\Facturacion\InvoicePayloadFactory;
+use Illuminate\Support\Facades\DB;
 
 uses(DatabaseTransactions::class);
+
+test('payload selecciona establecimiento fiscal desde ciudad de sucursal', function (string $city, string $code) {
+    $branchId = DB::table('sucursales')->insertGetId([
+        'nro_sucursal' => random_int(1000, 9999),
+        'ciudad' => $city,
+        'secuencial' => 'TEST-' . random_int(1000, 9999),
+        'nro_base' => '000000000',
+    ]);
+    $collectionId = DB::table('caja_general_cobros')->insertGetId([
+        'nro_orden' => 'FACT-TEST-' . random_int(1000, 9999),
+        'monto_cobrado' => 11.50,
+        'metodo_pago' => 'Efectivo',
+        'destino_cuenta' => 'Caja General',
+        'sucursal_id' => $branchId,
+        'usuario_id' => 1,
+        'usuario_nombre' => 'Prueba',
+        'fecha_cobro' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $payload = app(InvoicePayloadFactory::class)->fromCashCollection(
+        $collectionId,
+        (object) ['id' => 1, 'usuario' => 'prueba', 'rol_id' => 1]
+    );
+
+    expect($payload['source']['establishmentCode'])->toBe($code);
+})->with([
+    ['Quito', '001'],
+    ['Novitec Quito', '001'],
+    ['Guayaquil', '002'],
+    ['Novitec Guayaquil', '002'],
+    ['Manta', '003'],
+    ['Novitec Manta', '003'],
+]);
 
 beforeEach(function () {
     $this->sucursal = Sucursal::firstOrCreate(
