@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Directory\Sucursal;
 use App\Models\Operations\Orden;
+use App\Services\Facturacion\AutomaticInvoiceService;
+use App\Services\Facturacion\InvoicePayloadFactory;
+use App\Services\Facturacion\OrderBillingCalculator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -13,6 +16,12 @@ use Exception;
 
 class CajaGeneralController extends Controller
 {
+    public function __construct(
+        private readonly OrderBillingCalculator $billing,
+        private readonly InvoicePayloadFactory $invoicePayloads,
+        private readonly AutomaticInvoiceService $automaticInvoices
+    ) {}
+
     private function base64UrlEncode($data)
     {
         return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
@@ -150,11 +159,8 @@ class CajaGeneralController extends Controller
         $padded6 = $isNumeric ? str_pad($q, 6, '0', STR_PAD_LEFT) : null;
         $padded5 = $isNumeric ? str_pad($q, 5, '0', STR_PAD_LEFT) : null;
 
-        $ordenes = Orden::with(['cliente', 'equipo'])
-            ->where(function($mq) {
-                $mq->where('motivo_ingreso', 'Servicio Cliente Externo')
-                   ->orWhere('motivo_ingreso', 'LIKE', '%Cliente Externo%');
-            })
+        $ordenes = Orden::with(['cliente', 'equipo.series', 'informes'])
+            ->where('motivo_ingreso', 'Servicio Cliente Externo')
             ->where(function($query) use ($q, $isNumeric, $padded6, $padded5) {
                 $query->where('nro_orden', 'LIKE', "%{$q}%")
                       ->orWhereHas('cliente', function($cq) use ($q) {
@@ -179,8 +185,6 @@ class CajaGeneralController extends Controller
         $resultados = $ordenes->map(function($ord) {
             $clienteNombre = trim(($ord->cliente->nombres ?? '') . ' ' . ($ord->cliente->apellidos ?? ''));
             $equipoInfo = trim(($ord->equipo->tipo ?? 'Equipo') . ' ' . ($ord->equipo->marca ?? '') . ' ' . ($ord->equipo->modelo ?? '')) . ' (SN: ' . ($ord->equipo->serie ?? 'N/A') . ')';
-            $montoSugerido = (float) ($ord->total ?? $ord->presupuesto ?? 0.00);
-
             $cobrosPrevios = DB::table('caja_general_cobros')
                 ->where('nro_orden', $ord->nro_orden)
                 ->get();
@@ -194,7 +198,7 @@ class CajaGeneralController extends Controller
                 'equipo' => $equipoInfo,
                 'motivo_ingreso' => $ord->motivo_ingreso,
                 'estado' => $ord->estado_orden ?? 'Registrada',
-                'total_sugerido' => $montoSugerido,
+                'total_sugerido' => 0,
                 'tiene_cobros_previos' => ($countPrev > 0),
                 'cobros_previos_count' => $countPrev,
                 'total_cobrado_previo' => $totalPrev,
@@ -283,6 +287,21 @@ class CajaGeneralController extends Controller
 
         $pagosInput = $request->input('pagos', []);
 
+        $order = null;
+        if ($tipoCobro === 'orden' && $ordenId) {
+            $order = Orden::with(['cliente', 'equipo.series', 'informes'])->find($ordenId);
+            if (!$order) {
+                return response()->json(['ok' => false, 'error' => 'La orden seleccionada ya no existe.'], 422);
+            }
+            if (trim((string) $order->motivo_ingreso) !== 'Servicio Cliente Externo') {
+                return response()->json(['ok' => false, 'error' => 'Caja General sólo permite cobrar órdenes B2C de Servicio Cliente Externo.'], 422);
+            }
+            $nroOrden = (string) $order->nro_orden;
+            $clienteNombre = trim(($order->cliente->nombres ?? '') . ' ' . ($order->cliente->apellidos ?? ''));
+            $equipoInfo = $this->billing->description($order);
+            $sucursalId = (int) $order->sucursal_id;
+        }
+
         if (empty($pagosInput) || !is_array($pagosInput)) {
             $metodo = (string) $request->input('metodo_pago', 'Efectivo');
             $montoRecibido = $request->input('monto_recibido') ? (float) $request->input('monto_recibido') : $montoCobradoGeneral;
@@ -304,6 +323,11 @@ class CajaGeneralController extends Controller
                     'observaciones' => $observacionesGeneral
                 ]
             ];
+        }
+
+        $paymentTotal = round(collect($pagosInput)->sum(fn ($payment) => (float) ($payment['monto_cobrado'] ?? 0)), 2);
+        if (abs($paymentTotal - $montoCobradoGeneral) > .01) {
+            return response()->json(['ok' => false, 'error' => 'El desglose de pagos no coincide con el total a cobrar.'], 422);
         }
 
         try {
@@ -368,7 +392,17 @@ class CajaGeneralController extends Controller
                 $ids[] = $cobroId;
             }
 
+            $invoiceLinkId = null;
+            if ($order && !empty($ids)) {
+                $payload = $this->invoicePayloads->fromCashCollection($ids[0], $usuario);
+                $invoiceLinkId = $this->automaticInvoices->createIntent($ids[0], $payload, $usuario);
+            }
+
             DB::commit();
+
+            $invoice = $invoiceLinkId
+                ? $this->automaticInvoices->dispatch($invoiceLinkId)
+                : null;
 
             $cant = count($ids);
             $tipoEtiqueta = $tipoCobro === 'venta_directa' ? 'venta directa' : "orden {$nroOrden}";
@@ -379,7 +413,8 @@ class CajaGeneralController extends Controller
             return response()->json([
                 'ok' => true,
                 'mensaje' => $msg,
-                'cobro_ids' => $ids
+                'cobro_ids' => $ids,
+                'facturacion' => $invoice,
             ]);
         } catch (Exception $e) {
             DB::rollBack();

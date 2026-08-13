@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Accounting;
 use App\Http\Controllers\Controller;
 use App\Services\Facturacion\FacturacionClient;
 use App\Services\Facturacion\InvoicePayloadFactory;
+use App\Services\Facturacion\InvoiceTraceabilityService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +16,17 @@ class FacturaController extends Controller
 {
     public function __construct(
         private readonly FacturacionClient $client,
-        private readonly InvoicePayloadFactory $payloads
+        private readonly InvoicePayloadFactory $payloads,
+        private readonly InvoiceTraceabilityService $traceability
     ) {}
 
     public function index(Request $request)
     {
         $this->ensureAccess();
         try {
-            $result = $this->client->list($request->only(['page', 'pageSize', 'status', 'search']));
+            $result = $this->traceability->attach(
+                $this->client->list($request->only(['page', 'pageSize', 'status', 'search']))
+            );
             $error = null;
         } catch (Throwable $exception) {
             $result = ['items' => [], 'page' => 1, 'pageSize' => 20, 'totalItems' => 0, 'totalPages' => 0];

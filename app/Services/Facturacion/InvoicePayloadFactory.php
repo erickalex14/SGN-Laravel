@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 
 class InvoicePayloadFactory
 {
+    public function __construct(private readonly OrderBillingCalculator $billing) {}
+
     public function fromCashCollection(int $collectionId, object $user): array
     {
         $selected = DB::table('caja_general_cobros')->where('id', $collectionId)->first();
@@ -26,7 +28,7 @@ class InvoicePayloadFactory
         abort_if($total <= 0, 422, 'El cobro no tiene un monto facturable.');
 
         $order = !empty($selected->orden_id)
-            ? Orden::with('cliente')->find($selected->orden_id)
+            ? Orden::with(['cliente', 'equipo.series', 'preciosOrden', 'informes'])->find($selected->orden_id)
             : null;
         $buyer = $order?->cliente;
         $identification = trim((string) ($buyer->identificacion ?? ''));
@@ -50,10 +52,13 @@ class InvoicePayloadFactory
                     'legalName' => trim(($buyer->nombres ?? '') . ' ' . ($buyer->apellidos ?? '')),
                     'address' => $buyer->direccion_clientes ?? null,
                     'email' => $buyer->correo ?? null,
+                    'phone' => $buyer->numero_contacto ?? null,
                 ],
             [[
                 'mainCode' => $selected->codigo_producto ?: 'SERVICIO',
-                'description' => $selected->equipo_info ?: "Servicio orden {$selected->nro_orden}",
+                'description' => $order
+                    ? $this->billing->description($order)
+                    : ($selected->equipo_info ?: "Servicio orden {$selected->nro_orden}"),
                 'quantity' => 1,
                 'unitPrice' => $unitPrice,
                 'discount' => 0,
@@ -103,6 +108,7 @@ class InvoicePayloadFactory
                 'legalName' => $company->nombre,
                 'address' => $company->direccion_empresa,
                 'email' => $company->correo,
+                'phone' => $company->telefono,
             ],
             $lines,
             [['sriCode' => '20', 'amount' => $invoiceTotal]],
@@ -143,6 +149,7 @@ class InvoicePayloadFactory
             'legalName' => 'CONSUMIDOR FINAL',
             'address' => null,
             'email' => null,
+            'phone' => null,
         ];
     }
 

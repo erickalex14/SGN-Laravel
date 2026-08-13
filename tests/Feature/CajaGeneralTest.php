@@ -8,12 +8,14 @@ use App\Models\Directory\Cliente;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use App\Services\Facturacion\InvoicePayloadFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 uses(DatabaseTransactions::class);
 
 test('payload selecciona establecimiento fiscal desde ciudad de sucursal', function (string $city, string $code) {
     $branchId = DB::table('sucursales')->insertGetId([
-        'nro_sucursal' => random_int(1000, 9999),
+        'nro_sucursal' => random_int(100000, 999999999),
         'ciudad' => $city,
         'secuencial' => 'TEST-' . random_int(1000, 9999),
         'nro_base' => '000000000',
@@ -38,12 +40,12 @@ test('payload selecciona establecimiento fiscal desde ciudad de sucursal', funct
 
     expect($payload['source']['establishmentCode'])->toBe($code);
 })->with([
-    ['Quito', '001'],
-    ['Novitec Quito', '001'],
-    ['Guayaquil', '002'],
-    ['Novitec Guayaquil', '002'],
-    ['Manta', '003'],
-    ['Novitec Manta', '003'],
+    ['Quito', '002'],
+    ['Novitec Quito', '002'],
+    ['Guayaquil', '003'],
+    ['Novitec Guayaquil', '003'],
+    ['Manta', '004'],
+    ['Novitec Manta', '004'],
 ]);
 
 beforeEach(function () {
@@ -113,6 +115,7 @@ test('usuario puede buscar ordenes de cliente externo', function () {
     $response->assertStatus(200);
     $response->assertJson(['ok' => true]);
     $response->assertJsonFragment(['nro_orden' => $orden->nro_orden]);
+    $response->assertJsonPath('ordenes.0.total_sugerido', 0);
 });
 
 test('usuario puede registrar cobro manual de cliente externo en caja general o bancos con desglose de vuelto', function () {
@@ -139,6 +142,177 @@ test('usuario puede registrar cobro manual de cliente externo en caja general o 
         'metodo_pago' => 'Efectivo',
         'destino_cuenta' => 'Caja General',
     ]);
+});
+
+test('cobrar una orden crea y despacha una factura automatica idempotente', function () {
+    $cliente = Cliente::create([
+        'nombres' => 'Cliente',
+        'apellidos' => 'Factura Automatica',
+        'identificacion' => '17' . str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT),
+        'numero_contacto' => '0999999999',
+        'correo' => 'cliente.factura@example.com',
+        'direccion_clientes' => 'Av. Siempre Viva 123',
+    ]);
+    $orden = Orden::create([
+        'nro_orden' => 'OT-AUTO-' . rand(1000, 9999),
+        'cliente_id' => $cliente->id,
+        'equipo_id' => 1,
+        'tecnico_id' => $this->usuario->id,
+        'ingresado_por' => $this->usuario->id,
+        'sucursal_id' => $this->sucursal->id,
+        'motivo_ingreso' => 'Servicio Cliente Externo',
+        'estado_orden' => 'Entregada',
+        'fecha_de_ingreso' => now()->format('Y-m-d H:i:s'),
+    ]);
+    $invoiceId = (string) Str::uuid();
+    Http::fake(['*/api/facturas' => Http::response(['invoiceId' => $invoiceId, 'status' => 'QUEUED'], 202)]);
+
+    $response = $this->actingAs($this->usuario)->postJson(route('cajageneral.guardar_cobro'), [
+        'tipo_cobro' => 'orden',
+        'orden_id' => $orden->id,
+        'nro_orden' => $orden->nro_orden,
+        'monto_cobrado' => 57.50,
+        'pagos' => [[
+            'metodo_pago' => 'Efectivo',
+            'monto_cobrado' => 57.50,
+            'monto_recibido' => 60,
+            'vuelto_dado' => 2.50,
+        ]],
+    ]);
+
+    $response->assertOk()->assertJsonPath('facturacion.status', 'QUEUED')
+        ->assertJsonPath('facturacion.invoice_id', $invoiceId);
+    $this->assertDatabaseHas('facturacion_sgn_links', [
+        'source_type' => 'CAJA_GENERAL',
+        'invoice_id' => $invoiceId,
+        'status' => 'QUEUED',
+        'attempt_count' => 1,
+    ]);
+    Http::assertSent(fn ($request) => $request['lines'][0]['unitPrice'] === 50
+        && $request['payments'][0]['amount'] === 57.50
+        && $request['buyer']['address'] === 'Av. Siempre Viva 123'
+        && $request['buyer']['email'] === 'cliente.factura@example.com'
+        && $request['buyer']['phone'] === '0999999999');
+});
+
+test('caja rechaza ordenes de garantia', function () {
+    $orden = Orden::create([
+        'nro_orden' => 'OT-GAR-' . rand(1000, 9999),
+        'cliente_id' => 1,
+        'equipo_id' => 1,
+        'tecnico_id' => $this->usuario->id,
+        'ingresado_por' => $this->usuario->id,
+        'sucursal_id' => $this->sucursal->id,
+        'motivo_ingreso' => 'Validacion de Garantia',
+        'estado_orden' => 'Entregada',
+        'fecha_de_ingreso' => now()->format('Y-m-d H:i:s'),
+    ]);
+    Http::fake();
+
+    $response = $this->actingAs($this->usuario)->postJson(route('cajageneral.guardar_cobro'), [
+        'tipo_cobro' => 'orden',
+        'orden_id' => $orden->id,
+        'monto_cobrado' => 57.50,
+        'pagos' => [['metodo_pago' => 'Efectivo', 'monto_cobrado' => 57.50]],
+    ]);
+
+    $response->assertStatus(422)->assertJsonPath('error',
+        'Caja General sólo permite cobrar órdenes B2C de Servicio Cliente Externo.');
+    Http::assertNothingSent();
+});
+
+test('listado de facturas muestra trazabilidad completa del cobro y la orden', function () {
+    $cliente = Cliente::create([
+        'nombres' => 'Cliente',
+        'apellidos' => 'Trazable',
+        'identificacion' => '17' . str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT),
+        'numero_contacto' => '0999999999',
+    ]);
+    $orden = Orden::create([
+        'nro_orden' => 'UIO-TRACE-' . rand(1000, 9999),
+        'cliente_id' => $cliente->id,
+        'equipo_id' => 1,
+        'tecnico_id' => $this->usuario->id,
+        'ingresado_por' => $this->usuario->id,
+        'sucursal_id' => $this->sucursal->id,
+        'motivo_ingreso' => 'Servicio Cliente Externo',
+        'estado_orden' => 'Entregada',
+        'fecha_de_ingreso' => now()->format('Y-m-d H:i:s'),
+    ]);
+    $informe = \App\Models\Operations\Informe::create([
+        'orden_id' => $orden->id,
+        'tecnico_id' => $this->usuario->id,
+        'antecedentes' => 'Prueba',
+        'proceso' => 'Revisión',
+        'conclusion' => 'Operativo',
+        'fecha_informe' => now()->toDateString(),
+        'fecha_creacion' => now(),
+    ]);
+    $group = (string) Str::uuid();
+    $chargedAt = now()->setTime(14, 35);
+    $collectionId = DB::table('caja_general_cobros')->insertGetId([
+        'grupo_cobro_uuid' => $group,
+        'orden_id' => $orden->id,
+        'nro_orden' => $orden->nro_orden,
+        'cliente_nombre' => 'Cliente Trazable',
+        'monto_cobrado' => 62.10,
+        'metodo_pago' => 'Transferencia',
+        'destino_cuenta' => 'Bancos',
+        'sucursal_id' => $this->sucursal->id,
+        'usuario_id' => $this->usuario->id,
+        'usuario_nombre' => 'CAJERO TRAZABLE',
+        'fecha_cobro' => $chargedAt,
+        'created_at' => $chargedAt,
+        'updated_at' => $chargedAt,
+    ]);
+    $invoiceId = (string) Str::uuid();
+    DB::table('facturacion_sgn_links')->insert([
+        'source_type' => 'CAJA_GENERAL',
+        'source_key' => 'COBRO|' . $group,
+        'source_id' => $collectionId,
+        'external_reference' => 'SGN-CG-TRACE',
+        'invoice_id' => $invoiceId,
+        'status' => 'AUTHORIZED',
+        'attempt_count' => 1,
+        'request_id' => (string) Str::uuid(),
+        'correlation_id' => (string) Str::uuid(),
+        'requested_by_id' => $this->usuario->id,
+        'requested_by_name' => 'CAJERO TRAZABLE',
+        'request_payload' => '{}',
+        'requested_at' => $chargedAt,
+        'responded_at' => $chargedAt,
+        'created_at' => $chargedAt,
+        'updated_at' => $chargedAt,
+    ]);
+    Http::fake(['*/api/facturas*' => Http::response([
+        'items' => [[
+            'id' => $invoiceId,
+            'externalReference' => 'SGN-CG-TRACE',
+            'buyerName' => 'Cliente Trazable',
+            'buyerIdentification' => '1712345678',
+            'issueDate' => now()->toDateString(),
+            'status' => 'AUTHORIZED',
+            'grandTotal' => 62.10,
+            'sequenceNumber' => 7,
+        ]],
+        'page' => 1,
+        'pageSize' => 20,
+        'totalItems' => 1,
+        'totalPages' => 1,
+    ])]);
+
+    $response = $this->actingAs($this->usuario)
+        ->withSession(['es_superadmin' => true])
+        ->get(route('facturas.index'));
+
+    $response->assertOk()
+        ->assertSee($orden->nro_orden)
+        ->assertSee('Usuario Prueba Caja')
+        ->assertSee('CAJERO TRAZABLE')
+        ->assertSee('Transferencia')
+        ->assertSee('$62.10')
+        ->assertSee(route('ordenes.imprimir', $orden->id), false)
+        ->assertSee(route('informes.imprimir', $informe->id), false);
 });
 
 test('usuario puede registrar arqueo ciego diario en caja general', function () {
