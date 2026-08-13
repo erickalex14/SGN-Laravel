@@ -415,26 +415,30 @@
 </div>
 </section>
 
-<div id="modal-detalle" class="modal-overlay" style="display:none;" onclick="cerrarDetalle(event)">
+<div id="modal-detalle" class="modal-overlay" style="display:none;">
     <div class="modal-box">
         <button class="modal-close" onclick="cerrarModal()">&#10005;</button>
         <div id="modal-contenido"></div>
     </div>
 </div>
 
-<div id="modal-creds" onclick="if(event.target===this)cerrarCreds()">
-    <div class="creds-box">
+<div id="modal-creds">
+    <div class="creds-box" style="position:relative;">
+        <button type="button" class="modal-close" onclick="cerrarCreds()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;" title="Cerrar">&#10005;</button>
         <h4><i class="bi bi-key me-2" style="color:#2563eb;"></i>Credenciales del Equipo</h4>
         <div id="creds-lista"></div>
         <button class="btn-cerrar-creds" onclick="cerrarCreds()">Cerrar</button>
     </div>
 </div>
 
-<div id="modal-nota-credito" onclick="if(event.target===this)cerrarModalNC()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+<div id="modal-nota-credito">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+            </div>
+            <button type="button" onclick="cerrarModalNC()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="nc-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#f59e0b;font-weight:600;"><i class="bi bi-info-circle me-1"></i>La solicitud debe ser aprobada para poder imprimir.</p>
@@ -469,11 +473,14 @@
     </div>
 </div>
 
-<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarModalSR()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+            </div>
+            <button type="button" onclick="cerrarModalSR()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="sr-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#64748b;line-height:1.4;"><i class="bi bi-info-circle me-1"></i>Ingresa los detalles del repuesto requerido. Se creará un ticket en bodega y el estado de la orden pasará a <b>Requerido</b>.</p>
@@ -526,7 +533,7 @@
     </div>
 </div>
 
-<div id="modal-alert" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarAlerta(false)">
+<div id="modal-alert" class="modal-overlay" style="display:none;">
     <div style="background:#fff;border-radius:18px;padding:32px 30px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center;animation:modalIn .2s ease;position:relative;">
         <div id="alert-icon-container" style="border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border: 1.5px solid #fca5a5;background:#fef2f2;">
             <!-- Icono dinámico -->
@@ -1925,7 +1932,7 @@ function cerrarModal() {
     if (m) m.style.display = 'none';
 }
 function cerrarDetalle(e) {
-    if (e.target && e.target.id === 'modal-detalle') cerrarModal();
+    // Backdrop click disabled - use close button
 }
 
 function mostrarCredenciales(e, ordenId) {
@@ -2017,6 +2024,7 @@ async function registrarLlamadaCliente(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#7c3aed',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
     });
 
     if (observacion === undefined) return;
@@ -2105,6 +2113,7 @@ async function abrirModalEnviarEmail(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
         preConfirm: () => {
             const asunto = document.getElementById('swal-email-asunto').value.trim();
             const mensaje = document.getElementById('swal-email-mensaje').value.trim();
@@ -2384,6 +2393,7 @@ async function abrirModalInventarioFisico(ordenId) {
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0f766e',
             cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
             preConfirm: () => {
                 const productos = [];
                 const rows = document.querySelectorAll('.prod-inv-row');
