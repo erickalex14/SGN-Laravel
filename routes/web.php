@@ -436,11 +436,7 @@ Route::middleware('auth')->group(function () {
     // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
-    });
-
-    Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
-
-    Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
+        Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
     });
 

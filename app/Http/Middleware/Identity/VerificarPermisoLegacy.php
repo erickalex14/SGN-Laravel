@@ -67,9 +67,12 @@ class VerificarPermisoLegacy
         $modulosRevisar = array_values(array_unique($modulosRevisar));
 
         $accionesRevisar = [$accionNorm];
-        // En el flujo legacy, "editar" suele implicar gestión completa del módulo.
+        // En el flujo legacy, "editar" o "ver" en repuestos suele implicar gestión del módulo.
         if ($accionNorm === 'crear') {
             $accionesRevisar[] = 'editar';
+            if (in_array($moduloNorm, ['repuestos_admin', 'inv_repuestos'], true)) {
+                $accionesRevisar[] = 'ver';
+            }
         }
         $accionesRevisar = array_values(array_unique($accionesRevisar));
 
