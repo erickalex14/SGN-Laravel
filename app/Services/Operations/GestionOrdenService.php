@@ -46,7 +46,8 @@ class GestionOrdenService
         bool $esAdmin = false,
         ?float $horasTrabajadas = null,
         ?float $valorHora = null,
-        ?string $memoEntrega = null
+        ?string $memoEntrega = null,
+        ?string $fotoEvidenciaEntrega = null
     ): void {
         $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
         if (!$orden) {
@@ -68,6 +69,15 @@ class GestionOrdenService
 
         if ($memoEntrega !== null && trim($memoEntrega) !== '') {
             $orden->memo_entrega = trim($memoEntrega);
+        }
+        if ($fotoEvidenciaEntrega !== null && trim($fotoEvidenciaEntrega) !== '') {
+            $orden->foto_evidencia_entrega = trim($fotoEvidenciaEntrega);
+        }
+
+        if (in_array(mb_strtolower($estadoNormalizado), ['entregada', 'entregado'], true)) {
+            if (empty($orden->foto_evidencia_entrega) && empty($fotoEvidenciaEntrega)) {
+                throw new Exception('Debe adjuntar una foto de evidencia de entrega obligatoriamente para marcar la orden como Entregada.');
+            }
         }
 
         if ($horasTrabajadas !== null) {
@@ -158,6 +168,15 @@ class GestionOrdenService
 
             if ($dto->memo_entrega !== null && trim($dto->memo_entrega) !== '') {
                 $orden->memo_entrega = trim($dto->memo_entrega);
+            }
+            if ($dto->foto_evidencia_entrega !== null && trim($dto->foto_evidencia_entrega) !== '') {
+                $orden->foto_evidencia_entrega = trim($dto->foto_evidencia_entrega);
+            }
+
+            if (in_array(mb_strtolower($estadoNormalizado), ['entregada', 'entregado'], true)) {
+                if (empty($orden->foto_evidencia_entrega) && empty($dto->foto_evidencia_entrega)) {
+                    throw new Exception('Debe adjuntar una foto de evidencia de entrega obligatoriamente para marcar la orden como Entregada.');
+                }
             }
 
             if ($estadoNormalizado === 'Nota de Credito') {

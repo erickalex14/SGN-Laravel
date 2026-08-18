@@ -56,6 +56,7 @@ class Orden extends Model
         'transferencia_plataforma',
         'transferencia_numero',
         'memo_entrega',
+        'foto_evidencia_entrega',
         'estado_facturacion'
     ];
 
