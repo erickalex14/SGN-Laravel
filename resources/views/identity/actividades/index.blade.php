@@ -4,7 +4,7 @@
 
 @php
     $now = \Carbon\Carbon::now('America/Guayaquil');
-    $puedeEditar = $now->hour < 18 || ($now->hour === 18 && $now->minute <= 30);
+    $puedeEditar = $now->hour < 20;
 @endphp
 
 @push('css_adicional')
@@ -188,9 +188,9 @@
                         Guardar Actividades de Hoy
                     </button>
                 @else
-                    <button class="act-btn" id="btn-guardar" style="background: #cbd5e1; color: #94a3b8; cursor: not-allowed;" disabled title="Edición cerrada a las 6:30 PM">
+                    <button class="act-btn" id="btn-guardar" style="background: #cbd5e1; color: #94a3b8; cursor: not-allowed;" disabled title="Edición cerrada a las 8:00 PM">
                         <i class="bi bi-lock-fill"></i>
-                        Edición Cerrada (6:30 PM)
+                        Edición Cerrada (8:00 PM)
                     </button>
                 @endif
                 <button class="act-btn act-btn-green" id="btn-exportar">
@@ -204,7 +204,7 @@
             <div class="alert d-flex align-items-center gap-2 mb-4" style="border-radius: 12px; background-color: #fffbeb; border: 1px solid #fde047; color: #854d0e; padding: 12px 16px; font-weight: 600; font-size: 13px;">
                 <i class="bi bi-exclamation-triangle-fill" style="font-size: 18px; color: #d97706;"></i>
                 <div>
-                    La edición de actividades diarias del día de hoy está cerrada. Las modificaciones están permitidas únicamente hasta las 6:30 PM.
+                    La edición de actividades diarias del día de hoy está cerrada. Las modificaciones están permitidas únicamente hasta las 8:00 PM.
                 </div>
             </div>
         @endif
