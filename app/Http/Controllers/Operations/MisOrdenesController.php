@@ -687,6 +687,10 @@ class MisOrdenesController extends Controller
 
     private function resolverEsAdmin(): bool
     {
+        if (session('es_admin_lectura') === true) {
+            return false;
+        }
+
         $permisos = (array) session('permisos', []);
 
         return (bool) session('es_superadmin', false)

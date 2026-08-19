@@ -104,6 +104,10 @@ class Usuario extends Authenticatable
 
     public function debeLlenarActividades(): bool
     {
+        if ((int) $this->grupo_id === 6 || mb_strtolower($this->grupo?->nombre ?? '') === 'admin solo lectura') {
+            return false;
+        }
+
         $nombresExcluidos = [
             'carlos ramos',
             'antonio pulido',

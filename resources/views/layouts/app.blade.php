@@ -176,22 +176,23 @@
             : (session()->has('warning') ? 'warning' : (session()->has('info') ? 'info' : null)));
     $sgnValidationMessage = $errors->any() ? $errors->first() : null;
     $p = session('permisos', []);
-    $sa = session('es_superadmin');
+    $esAdminLectura = (bool) session('es_admin_lectura');
+    $sa = session('es_superadmin') && !$esAdminLectura;
 
     $usuario = auth()->user();
     $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
     $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
-    $esAdminMasterReal = $sa
+    $esAdminMasterReal = !$esAdminLectura && ($sa
         || (bool) ($usuario?->grupo?->es_superadmin ?? false)
         || in_array($rolNombre, ['admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin master', 'administrador master', 'superadministrador'], true)
-        || in_array($sessionGrupo, ['admin master', 'administrador master', 'superadministrador'], true);
-    $tienePermisoEditar = $sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']);
-    $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($sessionGrupo, ['admin master', 'administrador master', 'superadministrador'], true));
+    $tienePermisoEditar = !$esAdminLectura && ($sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']));
+    $esAdminOAdminMaster = !$esAdminLectura && (in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-        || $tienePermisoEditar;
+        || $tienePermisoEditar);
 
     $permAlias = [
         'grupos' => 'grupos_acceso',
