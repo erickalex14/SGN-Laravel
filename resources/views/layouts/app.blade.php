@@ -611,7 +611,7 @@
                             <span class="nav-label" style="margin-left:10px;">Mi Cuenta</span>
                         </a>
                     @endif
-                    @if ($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check())
+                    @if (($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check()) && !$esAdminLectura && auth()->user()?->grupo_id != 6)
                         <a data-tip="Mis Datos / Nómina" href="{{ route('nomina.mis_datos') }}">
                             <i class="bi bi-person-vcard" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Mis Datos Personales</span>
@@ -2075,6 +2075,7 @@
 </script>
 @endif
 @auth
+@if(!$esAdminLectura && auth()->user()?->grupo_id != 6)
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (!localStorage.getItem('alerta_actualizar_nomina_v1')) {
@@ -2111,6 +2112,7 @@
         }
     });
 </script>
+@endif
 @endauth
 @stack('js_adicional')
 </body>
