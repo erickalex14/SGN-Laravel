@@ -891,10 +891,15 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
                     <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
                         Foto de Evidencia de Entrega <span style="color:#ef4444;">*</span>
                     </label>
-                    <input type="file" id="swal-foto-evidencia" accept="image/*" capture="environment" style="width:100%; font-size:12px; padding:6px; border:1.5px dashed #059669; border-radius:8px; background:#f0fdf4; cursor:pointer;" onchange="previewFotoEvidenciaSwal(this)">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="file" id="swal-foto-evidencia" accept="image/*" style="width:100%; font-size:12.5px; padding:9px 12px; border:1.5px dashed #059669; border-radius:9px; background:#f0fdf4; cursor:pointer;" onchange="previewFotoEvidenciaSwal(this)">
+                        <div style="font-size:11px; color:#64748b;">
+                            <i class="bi bi-phone me-1 text-success"></i>Desde el celular puedes elegir <strong>Tomar Foto</strong> con la cámara o <strong>Seleccionar de la Galería</strong>.
+                        </div>
+                    </div>
                     ${fotoPrevia ? `
-                        <div style="margin-top:6px; font-size:11.5px; color:#059669;">
-                            <i class="bi bi-check-circle-fill me-1"></i>Ya existe una foto previa de evidencia registrada. (Puedes subir una nueva para reemplazarla)
+                        <div style="margin-top:8px; font-size:11.5px; color:#059669;">
+                            <i class="bi bi-check-circle-fill me-1"></i>Ya existe una foto previa registrada. (Puedes seleccionar una nueva para reemplazarla)
                         </div>
                     ` : ''}
                     <div id="swal-foto-preview-container" style="display:none; margin-top:10px; text-align:center;">
@@ -910,18 +915,49 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
             allowOutsideClick: false,
             focusConfirm: false,
             didOpen: () => {
+                window._swalFotoComprimida = null;
                 window.previewFotoEvidenciaSwal = function(input) {
                     const container = document.getElementById('swal-foto-preview-container');
                     const img = document.getElementById('swal-foto-preview');
                     if (input.files && input.files[0]) {
+                        const file = input.files[0];
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             img.src = e.target.result;
                             container.style.display = 'block';
+
+                            // Auto-comprimir en cliente si la imagen es grande (Canvas)
+                            const tempImg = new Image();
+                            tempImg.onload = function() {
+                                const maxDim = 1600;
+                                let w = tempImg.width;
+                                let h = tempImg.height;
+                                if (w > maxDim || h > maxDim) {
+                                    if (w > h) {
+                                        h = Math.round((h * maxDim) / w);
+                                        w = maxDim;
+                                    } else {
+                                        w = Math.round((w * maxDim) / h);
+                                        h = maxDim;
+                                    }
+                                }
+                                const canvas = document.createElement('canvas');
+                                canvas.width = w;
+                                canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(tempImg, 0, 0, w, h);
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        window._swalFotoComprimida = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+                                    }
+                                }, 'image/jpeg', 0.88);
+                            };
+                            tempImg.src = e.target.result;
                         };
-                        reader.readAsDataURL(input.files[0]);
+                        reader.readAsDataURL(file);
                     } else {
                         container.style.display = 'none';
+                        window._swalFotoComprimida = null;
                     }
                 };
             },
@@ -929,7 +965,7 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
                 const memoEl = document.getElementById('swal-memo-entrega');
                 const fotoEl = document.getElementById('swal-foto-evidencia');
                 const memo = memoEl ? memoEl.value.trim() : '';
-                const fotoFile = fotoEl && fotoEl.files ? fotoEl.files[0] : null;
+                const fotoFile = window._swalFotoComprimida || (fotoEl && fotoEl.files ? fotoEl.files[0] : null);
 
                 if (!memo) {
                     Swal.showValidationMessage('Debe ingresar un memo de entrega obligatorio.');

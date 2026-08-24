@@ -26,14 +26,17 @@ class CambiarEstadoOrdenRequest extends FormRequest
             'nc_asunto' => ['nullable', 'string', 'max:255', 'required_if:estado,Nota de Credito'],
             'nc_detalles' => ['nullable', 'string', 'max:5000', 'required_if:estado,Nota de Credito'],
             'horas_trabajadas' => ['nullable', 'numeric', 'min:0'],
+            'memo_entrega' => ['nullable', 'string', 'max:5000'],
+            'foto_evidencia' => ['nullable', 'file', 'max:51200'],
         ];
     }
 
     protected function failedValidation(Validator $validator)
     {
+        $errores = implode(' ', $validator->errors()->all());
         throw new HttpResponseException(response()->json([
             'ok'    => false,
-            'error' => 'Error de validación al intentar cambiar el estado.'
+            'error' => 'Error de validación: ' . ($errores ?: 'Datos inválidos.')
         ]));
     }
 }

@@ -769,9 +769,9 @@
             if (totalInput) { totalInput.readOnly = true; totalInput.value = ''; totalInput.style.background = '#f8fafc'; }
             if (serviceValueInput) serviceValueInput.value = '';
             if (serviceValueBox) serviceValueBox.style.display = 'block';
-            if (totalLabel) totalLabel.innerText = '3. Total a Cobrar y Facturar ($):';
+            if (totalLabel) totalLabel.innerText = '3. Total a Cobrar ($):';
             if (fiscalBox) fiscalBox.style.display = 'none';
-            if (confirmButton) confirmButton.innerHTML = 'Cobrar y facturar';
+            if (confirmButton) confirmButton.innerHTML = 'Guardar cobro';
         }
         ordenSeleccionada = null;
         onMontoTotalCobradoChange();
@@ -861,8 +861,8 @@
 
                     <!-- 2. Monto Total Cobrado -->
                     <div style="margin-bottom: 14px;">
-                        <label id="swal-total-label" style="font-weight: 700; color: #0f172a;">3. Total a Cobrar y Facturar ($):</label>
-                        <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="Se calcula con IVA" readonly style="margin-top: 4px; width: 100%; font-size: 1.1rem; font-weight: 800; color: #2563eb; background:#f8fafc;" oninput="onMontoTotalCobradoChange()">
+                        <label id="swal-total-label" style="font-weight: 700; color: #0f172a;">3. Total a Cobrar ($):</label>
+                        <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" readonly style="margin-top: 4px; width: 100%; font-size: 1.1rem; font-weight: 800; color: #2563eb; background:#f8fafc;" oninput="onMontoTotalCobradoChange()">
                     </div>
 
                     <!-- 3. Desglose de Métodos de Pago / Cuentas Bancarias -->
@@ -916,7 +916,7 @@
                 renderFilasPagoCobroUI();
             },
             showCancelButton: true,
-            confirmButtonText: 'Cobrar y facturar',
+            confirmButtonText: 'Guardar cobro',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10b981',
             preConfirm: () => {
@@ -1335,7 +1335,7 @@
 
     function enviarCobro(payload) {
         Swal.fire({
-            title: payload.tipo_cobro === 'orden' ? 'Cobrando y generando factura...' : 'Procesando cobro...',
+            title: 'Procesando cobro...',
             allowOutsideClick: false,
             didOpen: () => { Swal.showLoading(); }
         });

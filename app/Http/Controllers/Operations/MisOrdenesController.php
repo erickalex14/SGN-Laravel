@@ -79,13 +79,11 @@ class MisOrdenesController extends Controller
 
             $fotoEvidenciaPath = null;
             if ($request->hasFile('foto_evidencia')) {
-                $request->validate([
-                    'foto_evidencia' => 'image|mimes:jpg,jpeg,png,webp,heic,gif|max:10240',
-                ]);
                 $file = $request->file('foto_evidencia');
-                if ($file->isValid()) {
+                if ($file && $file->isValid()) {
                     $prefix = $tipoOrden === 'empresa' ? 'empresa_' : '';
-                    $filename = 'evidencia_' . $prefix . $ordenId . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                    $filename = 'evidencia_' . $prefix . $ordenId . '_' . time() . '_' . uniqid() . '.' . $extension;
                     $path = $file->storeAs('evidencias_entrega', $filename, 'public');
                     $fotoEvidenciaPath = '/storage/' . $path;
                 }

@@ -25,14 +25,7 @@ class SuggestionController extends Controller
         }
 
         $destinatario = (string) env('SGN_SUGERENCIAS_TO', 'josuer@novitec.com.ec');
-        $correosMaster = Usuario::query()
-            ->whereHas('rol', function ($q) {
-                $q->where('rol', 'administrador master');
-            })
-            ->whereNotNull('correo_tec')
-            ->where('correo_tec', '!=', '')
-            ->pluck('correo_tec')
-            ->unique()
+        $correosMaster = collect(\App\Services\Operations\SgnMailService::obtenerCorreosNotificacionAdmins())
             ->reject(fn ($correo) => strcasecmp($correo, $destinatario) === 0)
             ->values()
             ->all();

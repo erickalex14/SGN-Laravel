@@ -393,14 +393,14 @@ class CajaGeneralController extends Controller
             }
 
             $invoiceLinkId = null;
-            if ($order && !empty($ids)) {
+            if (config('facturacion.enabled', false) && $order && !empty($ids)) {
                 $payload = $this->invoicePayloads->fromCashCollection($ids[0], $usuario);
                 $invoiceLinkId = $this->automaticInvoices->createIntent($ids[0], $payload, $usuario);
             }
 
             DB::commit();
 
-            $invoice = $invoiceLinkId
+            $invoice = ($invoiceLinkId && config('facturacion.enabled', false))
                 ? $this->automaticInvoices->dispatch($invoiceLinkId)
                 : null;
 

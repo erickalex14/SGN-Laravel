@@ -232,24 +232,7 @@ class PreordenRepository
 
     public function obtenerCorreosAdministradores(int $sucursalId, ?string $excluirCorreo = null): array
     {
-        $query = DB::table('usuarios as u')
-            ->join('roles as r', 'u.rol_id', '=', 'r.id')
-            ->select('u.correo_tec')
-            ->whereIn('r.rol', ['administrador', 'admin', 'administrador master'])
-            ->where(function ($q) use ($sucursalId) {
-                $q->where('u.sucursal_id', $sucursalId)
-                    ->orWhere('r.rol', 'administrador master');
-            })
-            ->whereNotNull('u.correo_tec')
-            ->where('u.correo_tec', '!=', '')
-            ->limit(10);
-
-        $correos = $query->pluck('correo_tec')
-            ->map(fn ($correo) => trim((string) $correo))
-            ->filter(fn ($correo) => $correo !== '')
-            ->unique()
-            ->values()
-            ->all();
+        $correos = \App\Services\Operations\SgnMailService::obtenerCorreosNotificacionAdmins($sucursalId);
 
         if ($excluirCorreo) {
             $correos = array_values(array_filter($correos, fn ($correo) => strcasecmp($correo, $excluirCorreo) !== 0));

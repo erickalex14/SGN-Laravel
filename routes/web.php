@@ -520,6 +520,43 @@ Route::middleware('auth')->group(function () {
     Route::post('/nomina/vacaciones/rechazar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'rechazarVacaciones'])->name('nomina.vacaciones_rechazar');
     Route::get('/nomina/vacaciones/imprimir/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'imprimirSolicitudVacaciones'])->name('nomina.vacaciones_imprimir');
 
+    // -------------------------------------------------------
+    // MÓDULO DE TICKETS DE SOPORTE & SISTEMAS
+    // -------------------------------------------------------
+    // Portal de Solicitantes (Usuarios Externos / Tiendas)
+    Route::get('/tickets/mis-tickets', [\App\Http\Controllers\Operations\MisTicketsController::class, 'index'])->name('mistickets.index');
+    Route::get('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'create'])->name('mistickets.create');
+    Route::post('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'store'])->name('mistickets.store');
+    Route::get('/tickets/mis-tickets/{id}', [\App\Http\Controllers\Operations\MisTicketsController::class, 'show'])->name('mistickets.show');
+    Route::post('/tickets/mis-tickets/{id}/responder', [\App\Http\Controllers\Operations\MisTicketsController::class, 'responder'])->name('mistickets.responder');
+    Route::post('/tickets/mis-tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar'])->name('mistickets.calificar');
+    Route::get('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'perfil'])->name('mistickets.perfil');
+    Route::post('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'guardarPerfil'])->name('mistickets.guardar_perfil');
+
+    // Mesa de Ayuda / Gestión Centralizada Quito (Técnicos, Admins, Sistemas)
+    Route::get('/tickets/gestion', [\App\Http\Controllers\Operations\TicketGestionController::class, 'index'])->name('tickets.gestion');
+    Route::get('/tickets/gestion/{id}', [\App\Http\Controllers\Operations\TicketGestionController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/gestion/{id}/asignar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'asignar'])->name('tickets.asignar');
+    Route::post('/tickets/gestion/{id}/cambiar-estado', [\App\Http\Controllers\Operations\TicketGestionController::class, 'cambiarEstado'])->name('tickets.cambiar_estado');
+    Route::post('/tickets/gestion/{id}/responder', [\App\Http\Controllers\Operations\TicketGestionController::class, 'responder'])->name('tickets.responder');
+
+    // Administración de Solicitantes de Tiendas
+    Route::get('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'index'])->name('tickets.solicitantes');
+    Route::post('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'store'])->name('tickets.solicitantes.store');
+    Route::post('/tickets/solicitantes/{id}', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'update'])->name('tickets.solicitantes.update');
+
+    // Motor de Chat en Tiempo Real
+    Route::get('/tickets/chat/{id}/sync', [\App\Http\Controllers\Operations\TicketChatController::class, 'sync'])->name('tickets.chat.sync');
+    Route::post('/tickets/chat/{id}/enviar', [\App\Http\Controllers\Operations\TicketChatController::class, 'enviar'])->name('tickets.chat.enviar');
+
+    // Motor de Llamada de Voz WebRTC & Compartir Pantalla en Tiempo Real
+    Route::post('/tickets/llamada/{id}/iniciar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'iniciar'])->name('tickets.llamada.iniciar');
+    Route::post('/tickets/llamada/{id}/contestar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'contestar'])->name('tickets.llamada.contestar');
+    Route::post('/tickets/llamada/{id}/ice', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'enviarIce'])->name('tickets.llamada.ice');
+    Route::get('/tickets/llamada/{id}/estado', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'estado'])->name('tickets.llamada.estado');
+    Route::post('/tickets/llamada/{id}/rechazar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'rechazar'])->name('tickets.llamada.rechazar');
+    Route::post('/tickets/llamada/{id}/finalizar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'finalizar'])->name('tickets.llamada.finalizar');
+
     // Servidor seguro de archivos adjuntos en storage
     Route::get('/storage/{path}', function ($path) {
         $fullPath = storage_path('app/public/' . $path);

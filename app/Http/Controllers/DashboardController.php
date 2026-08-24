@@ -16,12 +16,16 @@ class DashboardController extends Controller
         $this->service = $service;
     }
 
-    public function index(): View
+    public function index()
     {
+        $usuario = auth()->user() ?: \App\Models\Identity\Usuario::find(session('tecnico_id'));
+        if ($usuario && ((int)($usuario->grupo_id ?? 0) === 9 || str_contains(mb_strtolower($usuario->grupo?->nombre ?? ''), 'generador'))) {
+            return redirect()->route('mistickets.index');
+        }
+
         $permisos = session('permisos', []);
         $esSuperadmin = session('es_superadmin') === true;
 
-        $usuario = auth()->user();
         $esTecnico = $usuario && in_array((int) $usuario->rol_id, [2, 4], true);
 
         $puedeVerGestion = !$esTecnico && ($esSuperadmin

@@ -17,8 +17,9 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-        $response->headers->set('Content-Security-Policy-Report-Only', self::CSP_REPORT_ONLY);
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), display-capture=(self), geolocation=()');
+        $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        $response->headers->set('Content-Security-Policy', 'upgrade-insecure-requests');
 
         return $response;
     }
