@@ -77,12 +77,25 @@ class MisOrdenesController extends Controller
                 $estadoAnterior = $orden ? $orden->estado_orden : '';
             }
 
+            $fotoEvidenciaPath = null;
+            if ($request->hasFile('foto_evidencia')) {
+                $file = $request->file('foto_evidencia');
+                if ($file && $file->isValid()) {
+                    $prefix = $tipoOrden === 'empresa' ? 'empresa_' : '';
+                    $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                    $filename = 'evidencia_' . $prefix . $ordenId . '_' . time() . '_' . uniqid() . '.' . $extension;
+                    $path = $file->storeAs('evidencias_entrega', $filename, 'public');
+                    $fotoEvidenciaPath = '/storage/' . $path;
+                }
+            }
+
             $dto = new CambiarEstadoOrdenDTO(
                 $ordenId,
                 (string) $request->input('estado'),
                 $request->input('nc_asunto'),
                 $request->input('nc_detalles'),
-                $request->input('memo_entrega')
+                $request->input('memo_entrega'),
+                $fotoEvidenciaPath
             );
 
             $usuarioModificacionId = (int) session('tecnico_id', 0);
@@ -112,7 +125,8 @@ class MisOrdenesController extends Controller
                     $esAdmin,
                     $horasTrabajadas,
                     $valorHora,
-                    $request->input('memo_entrega')
+                    $request->input('memo_entrega'),
+                    $fotoEvidenciaPath
                 );
 
                 if ($orden) {
@@ -136,9 +150,11 @@ class MisOrdenesController extends Controller
                     );
                 }
 
+                $ordenActualizada = \App\Models\Operations\OrdenEmpresa::find($ordenId);
                 return response()->json([
                     'ok' => true,
-                    'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.'
+                    'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.',
+                    'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath
                 ]);
             }
 
@@ -165,9 +181,11 @@ class MisOrdenesController extends Controller
                 );
             }
 
+            $ordenActualizada = \App\Models\Operations\Orden::find($ordenId);
             return response()->json([
                 'ok'      => true,
-                'mensaje' => 'El estado de la orden ha sido actualizado correctamente.'
+                'mensaje' => 'El estado de la orden ha sido actualizado correctamente.',
+                'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -667,6 +685,10 @@ class MisOrdenesController extends Controller
 
     private function resolverEsAdmin(): bool
     {
+        if (session('es_admin_lectura') === true) {
+            return false;
+        }
+
         $permisos = (array) session('permisos', []);
 
         return (bool) session('es_superadmin', false)

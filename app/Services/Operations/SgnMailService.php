@@ -13,43 +13,39 @@ use Illuminate\Support\Facades\Log;
 class SgnMailService
 {
     /**
-     * Obtiene los correos de administradores de la sucursal especificada,
-     * más todos los administradores master del sistema, de manera única.
+     * Obtiene los correos de administradores para notificaciones del sistema.
+     * Restringido exclusivamente a Carlos Ramos y Lady Benavides (o configurados en SGN_NOTIFICACION_EMAILS).
      */
-    public static function obtenerCorreosNotificacionAdmins(int $sucursalId): array
+    public static function obtenerCorreosNotificacionAdmins(?int $sucursalId = null): array
     {
-        return Usuario::query()
-            ->where(function ($q) use ($sucursalId) {
-                // Admin de la sucursal (columna principal o en la relación de asignadas)
-                $q->where(function ($q2) use ($sucursalId) {
-                    $q2->where(function ($qSub) use ($sucursalId) {
-                        $qSub->where('sucursal_id', $sucursalId)
-                             ->orWhereHas('sucursalesAsignadas', fn($s) => $s->where('sucursales.id', $sucursalId));
-                    })
-                    ->where(function ($q3) {
-                        $q3->whereHas('rol', fn($r) => $r->whereIn('rol', ['admin', 'administrador', 'ADMIN', 'ADMINISTRADOR', 'Admin', 'Administrador']))
-                           ->orWhereHas('grupo', fn($g) => $g->whereIn('nombre', ['admin', 'administrador', 'ADMIN', 'ADMINISTRADOR', 'Admin', 'Administrador']));
-                    });
-                })
-                // O Admin Master / Superadministrador de cualquier sucursal (reciben de todas)
-                ->orWhere(function ($q2) {
-                    $q2->whereHas('rol', fn($r) => $r->whereIn('rol', [
-                        'admin master', 'administrador master', 'ADMIN MASTER', 'ADMINISTRADOR MASTER', 'Admin Master', 'Administrador Master',
-                        'superadmin', 'superadministrador', 'SUPERADMIN', 'SUPERADMINISTRADOR', 'Superadmin', 'Superadministrador'
-                    ]))
-                    ->orWhereHas('grupo', fn($g) => $g->whereIn('nombre', [
-                        'admin master', 'administrador master', 'ADMIN MASTER', 'ADMINISTRADOR MASTER', 'Admin Master', 'Administrador Master',
-                        'superadmin', 'superadministrador', 'SUPERADMIN', 'SUPERADMINISTRADOR', 'Superadmin', 'Superadministrador'
-                    ]))
-                    ->orWhereHas('grupo', fn($g) => $g->where('es_superadmin', 1));
-                });
-            })
+        $envEmails = env('SGN_NOTIFICACION_EMAILS');
+        if (!empty($envEmails)) {
+            return array_values(array_filter(array_map('trim', explode(',', $envEmails))));
+        }
+
+        $usuarios = Usuario::query()
             ->where('activo', 1)
+            ->where(function ($q) {
+                $q->where('id', 2)
+                  ->orWhere('id', 31)
+                  ->orWhere('nombre_tecnico', 'LIKE', '%Carlos Ramos%')
+                  ->orWhere('nombre_tecnico', 'LIKE', '%Lady Venavides%')
+                  ->orWhere('nombre_tecnico', 'LIKE', '%Lady Benavides%')
+                  ->orWhere('usuario', '1721443610')
+                  ->orWhere('usuario', '1004109912');
+            })
             ->whereNotNull('correo_tec')
             ->where('correo_tec', '!=', '')
             ->pluck('correo_tec')
             ->unique()
             ->all();
+
+        $destinatarios = array_values($usuarios);
+        if (empty($destinatarios)) {
+            $destinatarios = ['administracion@novitec.com.ec'];
+        }
+
+        return $destinatarios;
     }
 
     /**

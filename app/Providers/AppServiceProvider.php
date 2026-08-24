@@ -20,8 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->environment('production') || env('FORCE_HTTPS', false)) {
+        if (config('app.env') === 'production' || env('FORCE_HTTPS', true) || request()->server('HTTP_X_FORWARDED_PROTO') === 'https' || str_contains(config('app.url'), 'https://') || !app()->isLocal()) {
             URL::forceScheme('https');
+            URL::forceRootUrl(config('app.url', 'https://novitec.com.ec/sgn'));
         }
     }
 }

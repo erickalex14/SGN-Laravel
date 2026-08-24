@@ -1,4 +1,25 @@
 @php
+    $getCategoria = function($est) {
+        if (!$est) return 'Pendiente';
+        $s = trim((string) $est);
+        if ($s === 'Nota de Credito' || str_starts_with($s, 'NC') || str_contains(mb_strtolower($s), 'nota de cred')) {
+            return 'Nota de Credito';
+        }
+        if ($s === 'Pendiente' || $s === 'Abierta') {
+            return 'Pendiente';
+        }
+        if ($s === 'En proceso' || $s === 'En Proceso') {
+            return 'En proceso';
+        }
+        if ($s === 'Finalizada' || $s === 'FINALIZADA' || $s === 'REPARADO') {
+            return 'Finalizada';
+        }
+        if ($s === 'Entregada' || $s === 'ENTREGADA' || $s === 'ENTREGADO') {
+            return 'Entregada';
+        }
+        return $s;
+    };
+
     $total = $resultados->count();
     $cnt = [
         'Pendiente' => 0,
@@ -8,9 +29,11 @@
         'Nota de Credito' => 0
     ];
     foreach ($resultados as $r) {
-        $est = $r['estado_orden'] ?? 'Pendiente';
+        $est = $getCategoria($r['estado_orden'] ?? 'Pendiente');
         if (isset($cnt[$est])) {
             $cnt[$est]++;
+        } else {
+            $cnt['Pendiente']++;
         }
     }
     $tasa = $total > 0 ? round(($cnt['Entregada'] / $total) * 100) : 0;

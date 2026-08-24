@@ -247,7 +247,12 @@ class OrdenRepository
             }
 
             if (!empty($filtro->estado)) {
-                $queryPersonal->where('estado_orden', $filtro->estado);
+                $estFiltro = trim((string) $filtro->estado);
+                if (str_starts_with($estFiltro, 'NC') || str_contains(mb_strtolower($estFiltro), 'nota de cred')) {
+                    $queryPersonal->whereIn('estado_orden', ['Nota de Credito', 'NC Aprobada-Abierta', 'NC Aprobada-Cerrada']);
+                } else {
+                    $queryPersonal->where('estado_orden', $estFiltro);
+                }
             }
 
             if (!empty($filtro->estado_repuesto)) {

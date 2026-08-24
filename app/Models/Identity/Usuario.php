@@ -27,6 +27,11 @@ class Usuario extends Authenticatable
         'rol_id',
         'grupo_id',
         'sucursal_id',
+        'sucursal_cliente_id',
+        'empresa_origen',
+        'usuario_mba',
+        'codigo_usuario',
+        'anydesk_id',
         'activo',
     ];
 
@@ -53,6 +58,11 @@ class Usuario extends Authenticatable
     public function sucursalPrincipal()
     {
         return $this->belongsTo(Sucursal::class, 'sucursal_id', 'id');
+    }
+
+    public function sucursalCliente()
+    {
+        return $this->belongsTo(\App\Models\Directory\SucursalCliente::class, 'sucursal_cliente_id', 'id');
     }
 
     public function sucursalesAsignadas()
@@ -104,6 +114,10 @@ class Usuario extends Authenticatable
 
     public function debeLlenarActividades(): bool
     {
+        if ((int) $this->grupo_id === 6 || mb_strtolower($this->grupo?->nombre ?? '') === 'admin solo lectura') {
+            return false;
+        }
+
         $nombresExcluidos = [
             'carlos ramos',
             'antonio pulido',

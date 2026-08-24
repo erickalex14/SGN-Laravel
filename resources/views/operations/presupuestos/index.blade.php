@@ -77,8 +77,7 @@
     </div>
 </div>
 
-<div id="modal-cat-pres" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;"
-     onclick="if(event.target===this)cerrarCatalogoPres()">
+<div id="modal-cat-pres" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
     <div class="modal-cat-inner">
         <h4><i class="bi bi-tag me-2" style="color:#2563eb;"></i>Seleccionar del Catalogo</h4>
         <input type="text" id="buscar-cat-pres" placeholder="Buscar servicio..." oninput="filtrarCatPres(this.value)">

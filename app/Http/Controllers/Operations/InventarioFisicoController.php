@@ -73,21 +73,16 @@ class InventarioFisicoController extends Controller
     /**
      * API GET: Obtiene todos los productos de inventario físico de una orden.
      */
-    public function obtenerPorOrden(int $ordenId): JsonResponse
+    public function obtenerPorOrden($ordenId): JsonResponse
     {
-        $sa = session('es_superadmin') === true;
-        $sucursalId = (int) session('sucursal_id');
+        $ordenIdInt = (int) $ordenId;
 
-        $query = ProductoInventarioFisicoSt::where(function ($q) use ($ordenId) {
-            $q->where('orden_empresa_id', $ordenId);
+        $query = ProductoInventarioFisicoSt::where(function ($q) use ($ordenIdInt) {
+            $q->where('orden_empresa_id', $ordenIdInt);
             if (DB::getSchemaBuilder()->hasColumn('productos_inventario_fisico_st', 'orden_id')) {
-                $q->orWhere('orden_id', $ordenId);
+                $q->orWhere('orden_id', $ordenIdInt);
             }
         });
-
-        if (!$sa && $sucursalId > 0) {
-            $query->where('sucursal_id', $sucursalId);
-        }
 
         $productos = $query->orderBy('id', 'asc')->get();
 
@@ -107,7 +102,7 @@ class InventarioFisicoController extends Controller
             'orden_id' => 'nullable|integer',
             'productos' => 'required|array',
             'productos.*.id' => 'required|integer',
-            'productos.*.estado' => 'required|string|in:Tienda,Incinerox,Outlet',
+            'productos.*.estado' => 'required|string',
             'productos.*.detalle_outlet' => 'nullable|string',
         ]);
 
@@ -138,8 +133,14 @@ class InventarioFisicoController extends Controller
 
                     if ($prod) {
                         $estadoAnterior = $prod->estado;
-                        $prod->estado = $pData['estado'];
-                        $prod->detalle_outlet = $pData['estado'] === 'Outlet' ? trim($pData['detalle_outlet'] ?? '') : null;
+                        $rawEstado = trim((string) $pData['estado']);
+                        $estadoNorm = ucfirst(strtolower($rawEstado));
+                        if (!in_array($estadoNorm, ['Tienda', 'Incinerox', 'Outlet'])) {
+                            $estadoNorm = $rawEstado;
+                        }
+
+                        $prod->estado = $estadoNorm;
+                        $prod->detalle_outlet = $estadoNorm === 'Outlet' ? trim($pData['detalle_outlet'] ?? '') : null;
                         $prod->save();
 
                         // Registrar log de auditoría si cambió el estado

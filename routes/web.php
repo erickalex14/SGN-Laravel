@@ -248,10 +248,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
         Route::get('/inventario/repuestos/auditoria', [RepuestoController::class, 'auditoria'])->name('repuestos.auditoria');
         Route::get('/inventario/repuestos/imprimir-reporte', [RepuestoController::class, 'imprimirReporte'])->name('repuestos.imprimir_reporte');
-    });
-
-    // Guardar / Modificar / Eliminar repuestos
-    Route::middleware(['permiso:inv_repuestos,crear'])->group(function () {
         Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
     });
 
@@ -440,11 +436,7 @@ Route::middleware('auth')->group(function () {
     // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
-    });
-
-    Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
-
-    Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
+        Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
     });
 
@@ -497,6 +489,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/contabilidad/recuento-b2b/recibo-cliente/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboCliente'])->name('recuentob2b.recibo_cliente');
     Route::get('/contabilidad/recuento-b2b/recibo-interno/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboInterno'])->name('recuentob2b.recibo_interno');
 
+    // Facturación electrónica manual (API local, ambiente SRI de pruebas)
+    Route::get('/contabilidad/facturas', [\App\Http\Controllers\Accounting\FacturaController::class, 'index'])->name('facturas.index');
+    Route::get('/contabilidad/facturas/{invoiceId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'show'])->name('facturas.show');
+    Route::post('/contabilidad/facturas/caja-general/{collectionId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueCash'])->name('facturas.issue_cash');
+    Route::post('/contabilidad/facturas/recuento-b2b/{batchId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueB2b'])->name('facturas.issue_b2b');
+    Route::get('/contabilidad/facturas/{invoiceId}/xml', [\App\Http\Controllers\Accounting\FacturaController::class, 'xml'])->name('facturas.xml');
+    Route::get('/contabilidad/facturas/{invoiceId}/ride', [\App\Http\Controllers\Accounting\FacturaController::class, 'ride'])->name('facturas.ride');
+
     // Reportería & Auditoría de Contabilidad (Páginas separadas por módulo)
     Route::get('/contabilidad/reportes', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'index'])->name('contabilidad.reportes');
     Route::get('/contabilidad/reportes/kpis', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'kpis'])->name('contabilidad.reportes.kpis');
@@ -519,6 +519,43 @@ Route::middleware('auth')->group(function () {
     Route::post('/nomina/vacaciones/aprobar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'aprobarVacaciones'])->name('nomina.vacaciones_aprobar');
     Route::post('/nomina/vacaciones/rechazar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'rechazarVacaciones'])->name('nomina.vacaciones_rechazar');
     Route::get('/nomina/vacaciones/imprimir/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'imprimirSolicitudVacaciones'])->name('nomina.vacaciones_imprimir');
+
+    // -------------------------------------------------------
+    // MÓDULO DE TICKETS DE SOPORTE & SISTEMAS
+    // -------------------------------------------------------
+    // Portal de Solicitantes (Usuarios Externos / Tiendas)
+    Route::get('/tickets/mis-tickets', [\App\Http\Controllers\Operations\MisTicketsController::class, 'index'])->name('mistickets.index');
+    Route::get('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'create'])->name('mistickets.create');
+    Route::post('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'store'])->name('mistickets.store');
+    Route::get('/tickets/mis-tickets/{id}', [\App\Http\Controllers\Operations\MisTicketsController::class, 'show'])->name('mistickets.show');
+    Route::post('/tickets/mis-tickets/{id}/responder', [\App\Http\Controllers\Operations\MisTicketsController::class, 'responder'])->name('mistickets.responder');
+    Route::post('/tickets/mis-tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar'])->name('mistickets.calificar');
+    Route::get('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'perfil'])->name('mistickets.perfil');
+    Route::post('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'guardarPerfil'])->name('mistickets.guardar_perfil');
+
+    // Mesa de Ayuda / Gestión Centralizada Quito (Técnicos, Admins, Sistemas)
+    Route::get('/tickets/gestion', [\App\Http\Controllers\Operations\TicketGestionController::class, 'index'])->name('tickets.gestion');
+    Route::get('/tickets/gestion/{id}', [\App\Http\Controllers\Operations\TicketGestionController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/gestion/{id}/asignar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'asignar'])->name('tickets.asignar');
+    Route::post('/tickets/gestion/{id}/cambiar-estado', [\App\Http\Controllers\Operations\TicketGestionController::class, 'cambiarEstado'])->name('tickets.cambiar_estado');
+    Route::post('/tickets/gestion/{id}/responder', [\App\Http\Controllers\Operations\TicketGestionController::class, 'responder'])->name('tickets.responder');
+
+    // Administración de Solicitantes de Tiendas
+    Route::get('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'index'])->name('tickets.solicitantes');
+    Route::post('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'store'])->name('tickets.solicitantes.store');
+    Route::post('/tickets/solicitantes/{id}', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'update'])->name('tickets.solicitantes.update');
+
+    // Motor de Chat en Tiempo Real
+    Route::get('/tickets/chat/{id}/sync', [\App\Http\Controllers\Operations\TicketChatController::class, 'sync'])->name('tickets.chat.sync');
+    Route::post('/tickets/chat/{id}/enviar', [\App\Http\Controllers\Operations\TicketChatController::class, 'enviar'])->name('tickets.chat.enviar');
+
+    // Motor de Llamada de Voz WebRTC & Compartir Pantalla en Tiempo Real
+    Route::post('/tickets/llamada/{id}/iniciar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'iniciar'])->name('tickets.llamada.iniciar');
+    Route::post('/tickets/llamada/{id}/contestar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'contestar'])->name('tickets.llamada.contestar');
+    Route::post('/tickets/llamada/{id}/ice', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'enviarIce'])->name('tickets.llamada.ice');
+    Route::get('/tickets/llamada/{id}/estado', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'estado'])->name('tickets.llamada.estado');
+    Route::post('/tickets/llamada/{id}/rechazar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'rechazar'])->name('tickets.llamada.rechazar');
+    Route::post('/tickets/llamada/{id}/finalizar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'finalizar'])->name('tickets.llamada.finalizar');
 
     // Servidor seguro de archivos adjuntos en storage
     Route::get('/storage/{path}', function ($path) {

@@ -236,6 +236,8 @@
             'repuesto_inventario_id' => (int) ($ord->repuesto_inventario_id ?? 0),
             'repuesto_codigo' => (string) ($ord->repuestoInventario->codigo ?? ''),
             'repuesto_nombre' => (string) ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? ''),
+            'memo_entrega' => (string) ($ord->memo_entrega ?? ''),
+            'foto_evidencia_entrega' => (string) ($ord->foto_evidencia_entrega ?? ''),
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'empresa_id' => $esEmpresa ? (int) $ord->empresa_id : null,
             'subtipo' => $esEmpresa ? (string) $ord->subtipo : null,
@@ -415,26 +417,30 @@
 </div>
 </section>
 
-<div id="modal-detalle" class="modal-overlay" style="display:none;" onclick="cerrarDetalle(event)">
+<div id="modal-detalle" class="modal-overlay" style="display:none;">
     <div class="modal-box">
         <button class="modal-close" onclick="cerrarModal()">&#10005;</button>
         <div id="modal-contenido"></div>
     </div>
 </div>
 
-<div id="modal-creds" onclick="if(event.target===this)cerrarCreds()">
-    <div class="creds-box">
+<div id="modal-creds">
+    <div class="creds-box" style="position:relative;">
+        <button type="button" class="modal-close" onclick="cerrarCreds()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;" title="Cerrar">&#10005;</button>
         <h4><i class="bi bi-key me-2" style="color:#2563eb;"></i>Credenciales del Equipo</h4>
         <div id="creds-lista"></div>
         <button class="btn-cerrar-creds" onclick="cerrarCreds()">Cerrar</button>
     </div>
 </div>
 
-<div id="modal-nota-credito" onclick="if(event.target===this)cerrarModalNC()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+<div id="modal-nota-credito">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+            </div>
+            <button type="button" onclick="cerrarModalNC()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="nc-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#f59e0b;font-weight:600;"><i class="bi bi-info-circle me-1"></i>La solicitud debe ser aprobada para poder imprimir.</p>
@@ -469,11 +475,14 @@
     </div>
 </div>
 
-<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarModalSR()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+            </div>
+            <button type="button" onclick="cerrarModalSR()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="sr-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#64748b;line-height:1.4;"><i class="bi bi-info-circle me-1"></i>Ingresa los detalles del repuesto requerido. Se creará un ticket en bodega y el estado de la orden pasará a <b>Requerido</b>.</p>
@@ -526,7 +535,7 @@
     </div>
 </div>
 
-<div id="modal-alert" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarAlerta(false)">
+<div id="modal-alert" class="modal-overlay" style="display:none;">
     <div style="background:#fff;border-radius:18px;padding:32px 30px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center;animation:modalIn .2s ease;position:relative;">
         <div id="alert-icon-container" style="border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border: 1.5px solid #fca5a5;background:#fef2f2;">
             <!-- Icono dinámico -->
@@ -564,6 +573,8 @@ const _moUrlReasignar = @json(route('mis_ordenes.reasignar'));
 const _moTecnicos = @json($tecnicos);
 const _moUrlRegistrarLlamada = @json(route('ordenes.llamadas.registrar'));
 const _moUrlEnviarEmail = @json(route('mis_ordenes.enviar_email'));
+const _moUrlInvFisicoGuardar = @json(route('inventario_fisico.guardar'));
+const _moUrlInvFisicoObtener = @json(url('/operaciones/ordenes-empresa/inventario-fisico'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -858,43 +869,124 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     }
 
     let memoEntrega = null;
+    let fotoEvidenciaFile = null;
     if (['entregada', 'entregado'].includes(String(nuevoEstado || '').toLowerCase())) {
         const row = _moFindRow(ordenId, tipoOrden);
         const memoPrevio = row?.memo_entrega || '';
+        const fotoPrevia = row?.foto_evidencia_entrega || '';
 
-        const { value: memoText } = await Swal.fire({
-            title: 'Memo de Entrega Requerido',
+        const { value: entregaData } = await Swal.fire({
+            title: 'Requisitos de Entrega de Orden',
             html: `
-                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:10px;">
-                    Por favor ingrese el memo o detalles de entrega para la orden <b>${_h(nroOrden)}</b>:
+                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:12px;">
+                    Para entregar la orden <b>${_h(nroOrden)}</b> debe ingresar el memo de entrega y adjuntar la foto de evidencia.
+                </div>
+                <div style="text-align:left; margin-bottom:14px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Memo de Entrega <span style="color:#ef4444;">*</span>
+                    </label>
+                    <textarea id="swal-memo-entrega" class="swal2-textarea" style="width:100%; height:85px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 10px; resize:vertical;" placeholder="Ej: Entregado al cliente titular con accesorios completos y comprobante firmado...">${_h(memoPrevio)}</textarea>
+                </div>
+                <div style="text-align:left;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Foto de Evidencia de Entrega <span style="color:#ef4444;">*</span>
+                    </label>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="file" id="swal-foto-evidencia" accept="image/*" style="width:100%; font-size:12.5px; padding:9px 12px; border:1.5px dashed #059669; border-radius:9px; background:#f0fdf4; cursor:pointer;" onchange="previewFotoEvidenciaSwal(this)">
+                        <div style="font-size:11px; color:#64748b;">
+                            <i class="bi bi-phone me-1 text-success"></i>Desde el celular puedes elegir <strong>Tomar Foto</strong> con la cámara o <strong>Seleccionar de la Galería</strong>.
+                        </div>
+                    </div>
+                    ${fotoPrevia ? `
+                        <div style="margin-top:8px; font-size:11.5px; color:#059669;">
+                            <i class="bi bi-check-circle-fill me-1"></i>Ya existe una foto previa registrada. (Puedes seleccionar una nueva para reemplazarla)
+                        </div>
+                    ` : ''}
+                    <div id="swal-foto-preview-container" style="display:none; margin-top:10px; text-align:center;">
+                        <img id="swal-foto-preview" style="max-width:100%; max-height:160px; border-radius:8px; border:2px solid #059669; object-fit:cover;">
+                    </div>
                 </div>
             `,
-            input: 'textarea',
-            inputValue: memoPrevio,
-            inputPlaceholder: 'Ej: Entregado al cliente titular con accesorios completos y comprobante firmado...',
-            inputAttributes: {
-                maxlength: '1000',
-                rows: 3
-            },
             showCancelButton: true,
             confirmButtonText: 'Guardar y Entregar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#059669',
             cancelButtonColor: '#64748b',
             allowOutsideClick: false,
-            inputValidator: (value) => {
-                if (!value || !value.trim()) {
-                    return 'Debe ingresar un memo de entrega para marcar la orden como Entregada.';
+            focusConfirm: false,
+            didOpen: () => {
+                window._swalFotoComprimida = null;
+                window.previewFotoEvidenciaSwal = function(input) {
+                    const container = document.getElementById('swal-foto-preview-container');
+                    const img = document.getElementById('swal-foto-preview');
+                    if (input.files && input.files[0]) {
+                        const file = input.files[0];
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            img.src = e.target.result;
+                            container.style.display = 'block';
+
+                            // Auto-comprimir en cliente si la imagen es grande (Canvas)
+                            const tempImg = new Image();
+                            tempImg.onload = function() {
+                                const maxDim = 1600;
+                                let w = tempImg.width;
+                                let h = tempImg.height;
+                                if (w > maxDim || h > maxDim) {
+                                    if (w > h) {
+                                        h = Math.round((h * maxDim) / w);
+                                        w = maxDim;
+                                    } else {
+                                        w = Math.round((w * maxDim) / h);
+                                        h = maxDim;
+                                    }
+                                }
+                                const canvas = document.createElement('canvas');
+                                canvas.width = w;
+                                canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(tempImg, 0, 0, w, h);
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        window._swalFotoComprimida = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+                                    }
+                                }, 'image/jpeg', 0.88);
+                            };
+                            tempImg.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        container.style.display = 'none';
+                        window._swalFotoComprimida = null;
+                    }
+                };
+            },
+            preConfirm: () => {
+                const memoEl = document.getElementById('swal-memo-entrega');
+                const fotoEl = document.getElementById('swal-foto-evidencia');
+                const memo = memoEl ? memoEl.value.trim() : '';
+                const fotoFile = window._swalFotoComprimida || (fotoEl && fotoEl.files ? fotoEl.files[0] : null);
+
+                if (!memo) {
+                    Swal.showValidationMessage('Debe ingresar un memo de entrega obligatorio.');
+                    return false;
                 }
+                if (!fotoFile && !fotoPrevia) {
+                    Swal.showValidationMessage('Debe tomar o adjuntar una foto de evidencia de entrega obligatoriamente.');
+                    return false;
+                }
+                return { memo, fotoFile };
             }
         });
 
-        if (!memoText) {
+        if (!entregaData) {
             const rowCancel = _moFindRow(ordenId, tipoOrden);
             if (rowCancel) _moRefrescarModal(rowCancel);
             return;
         }
-        memoEntrega = memoText.trim();
+
+        memoEntrega = entregaData.memo;
+        fotoEvidenciaFile = entregaData.fotoFile;
     }
 
     const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
@@ -915,6 +1007,9 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     if (memoEntrega !== null) {
         fd.append('memo_entrega', memoEntrega);
     }
+    if (fotoEvidenciaFile !== null) {
+        fd.append('foto_evidencia', fotoEvidenciaFile);
+    }
 
     try {
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
@@ -928,6 +1023,9 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
             row.estado_orden = nuevoEstado;
             if (memoEntrega !== null) {
                 row.memo_entrega = memoEntrega;
+            }
+            if (d.foto_evidencia_entrega) {
+                row.foto_evidencia_entrega = d.foto_evidencia_entrega;
             }
             if (nuevoEstado === 'Nota de Credito') {
                 row.nc_estado = row.nc_estado || 'Pendiente';
@@ -1567,6 +1665,22 @@ function verDetalleOrden(cardEl) {
                     ` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
+                    ${(o.memo_entrega || o.foto_evidencia_entrega) ? `
+                    <div class="det-campo det-full" style="grid-column: 1 / -1; margin-top: 8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
+                        <label style="color:#166534; font-weight:700; font-size:12.5px; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <i class="bi bi-patch-check-fill" style="color:#16a34a; font-size:16px;"></i>Evidencia de Entrega
+                        </label>
+                        ${o.memo_entrega ? `<div style="font-size:12px; color:#14532d; margin-bottom:6px;"><b>Memo:</b> ${_h(o.memo_entrega)}</div>` : ''}
+                        ${o.foto_evidencia_entrega ? `
+                            <div style="margin-top:6px;">
+                                <span style="font-size:11px; font-weight:700; color:#166534; display:block; margin-bottom:4px;"><i class="bi bi-camera me-1"></i>Foto Adjunta:</span>
+                                <a href="${_h(o.foto_evidencia_entrega)}" target="_blank" title="Clic para abrir imagen en tamaño completo">
+                                    <img src="${_h(o.foto_evidencia_entrega)}" style="max-width:100%; max-height:220px; border-radius:8px; border:2px solid #86efac; object-fit:cover; cursor:pointer;" alt="Foto Evidencia Entrega">
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
@@ -1923,7 +2037,7 @@ function cerrarModal() {
     if (m) m.style.display = 'none';
 }
 function cerrarDetalle(e) {
-    if (e.target && e.target.id === 'modal-detalle') cerrarModal();
+    // Backdrop click disabled - use close button
 }
 
 function mostrarCredenciales(e, ordenId) {
@@ -2015,6 +2129,7 @@ async function registrarLlamadaCliente(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#7c3aed',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
     });
 
     if (observacion === undefined) return;
@@ -2103,6 +2218,7 @@ async function abrirModalEnviarEmail(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
         preConfirm: () => {
             const asunto = document.getElementById('swal-email-asunto').value.trim();
             const mensaje = document.getElementById('swal-email-mensaje').value.trim();
@@ -2323,7 +2439,7 @@ async function abrirModalInventarioFisico(ordenId) {
     });
 
     try {
-        const response = await fetch(`/operaciones/ordenes-empresa/inventario-fisico/${ordenId}`);
+        const response = await fetch(`${_moUrlInvFisicoObtener}/${ordenId}`);
         const data = await response.json();
         Swal.close();
 
@@ -2382,13 +2498,16 @@ async function abrirModalInventarioFisico(ordenId) {
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0f766e',
             cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
             preConfirm: () => {
                 const productos = [];
                 const rows = document.querySelectorAll('.prod-inv-row');
                 rows.forEach(row => {
                     const id = row.getAttribute('data-id');
-                    const estado = row.querySelector('.select-estado-fisico').value;
-                    const detalle_outlet = row.nextElementSibling.querySelector('.input-detalle-outlet').value;
+                    const estadoEl = row.querySelector('.select-estado-fisico');
+                    const estado = estadoEl ? estadoEl.value : 'Tienda';
+                    const inputDet = row.nextElementSibling ? row.nextElementSibling.querySelector('.input-detalle-outlet') : null;
+                    const detalle_outlet = inputDet ? inputDet.value.trim() : '';
                     productos.push({ id: parseInt(id), estado, detalle_outlet });
                 });
                 return productos;
@@ -2401,7 +2520,7 @@ async function abrirModalInventarioFisico(ordenId) {
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                const saveRes = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+                const saveRes = await fetch(_moUrlInvFisicoGuardar, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2462,7 +2581,7 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
     const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2519,7 +2638,7 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
     const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

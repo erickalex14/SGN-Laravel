@@ -270,15 +270,16 @@
 
             try {
                 const r = await fetch('{{ route("repuestos.guardar") }}', { method: 'POST', body: fd });
-                const d = await r.json();
+                const d = await r.json().catch(() => null);
 
-                if (d.ok) {
+                if (r.ok && d && d.ok) {
                     location.reload();
                 } else {
-                    mostrarError(d.error);
+                    const msg = (d && (d.error || d.mensaje)) ? (d.error || d.mensaje) : `Error (${r.status}): ${r.statusText || 'Acceso denegado o error del servidor'}`;
+                    mostrarError(msg);
                 }
             } catch (e) {
-                mostrarError('Error de comunicación con el servidor.');
+                mostrarError('Error de comunicación con el servidor: ' + e.message);
             } finally {
                 btn.disabled = false;
             }

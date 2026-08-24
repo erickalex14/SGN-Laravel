@@ -44,6 +44,10 @@ class NominaController extends Controller
             return redirect()->route('login');
         }
 
+        if ((int)$usuario->grupo_id === 6 || mb_strtolower($usuario->grupo?->nombre ?? '') === 'admin solo lectura') {
+            return redirect()->route('mis_ordenes.index')->with('info', 'Tu usuario de lectura externa no pertenece al registro de nómina.');
+        }
+
         $datosNomina = DatosNomina::firstOrCreate(
             ['usuario_id' => $usuario->id],
             [
@@ -79,6 +83,10 @@ class NominaController extends Controller
         $usuario = auth()->user();
         if (!$usuario) {
             return redirect()->route('login');
+        }
+
+        if ((int)$usuario->grupo_id === 6 || mb_strtolower($usuario->grupo?->nombre ?? '') === 'admin solo lectura') {
+            return redirect()->route('mis_ordenes.index')->with('info', 'Tu usuario de lectura externa no pertenece al registro de nómina.');
         }
 
         $request->validate([
@@ -130,7 +138,14 @@ class NominaController extends Controller
         }
 
         $query = Usuario::with(['datosNomina', 'sucursalPrincipal', 'rol', 'grupo'])
-            ->where('activo', 1);
+            ->where('activo', 1)
+            ->where(function($sub) {
+                $sub->whereNull('grupo_id')
+                    ->orWhere('grupo_id', '!=', 6);
+            })
+            ->whereDoesntHave('grupo', function($g) {
+                $g->whereRaw('LOWER(nombre) = ?', ['admin solo lectura']);
+            });
 
         // Filtro de búsqueda
         if ($request->filled('buscar')) {

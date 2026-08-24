@@ -51,19 +51,14 @@
         ]
     ]);
 
-    // Cálculos de subtotal y totales
-    $subtotalAdicionales = $preciosAdicionales->sum('precio');
-    $subtotalEstandar = $preciosEstandar->sum('precio');
-    $subtotalTotal = $subtotalAdicionales + $subtotalEstandar;
-
-    // Descuento 100% si es Validación de Garantía y el estado de la garantía no es Rechazada
-    $esGarantiaRechazada = trim(strtolower((string)($orden->estado_garantia ?? ''))) === 'rechazada';
-    $aplicaDescuento = $esGarantia && !$esGarantiaRechazada;
-
-    $descuento = $aplicaDescuento ? $subtotalTotal : 0;
-    $baseIva = $subtotalTotal - $descuento;
-    $iva = $baseIva * 0.15;
-    $total = $baseIva + $iva;
+    // Fuente única: Caja, factura y orden impresa usan exactamente el mismo cálculo.
+    $calculoFacturacion = app(\App\Services\Facturacion\OrderBillingCalculator::class)->calculate($orden);
+    $subtotalTotal = $calculoFacturacion['subtotal'];
+    $descuento = $calculoFacturacion['discount'];
+    $baseIva = $calculoFacturacion['taxable'];
+    $iva = $calculoFacturacion['tax'];
+    $total = $calculoFacturacion['total'];
+    $aplicaDescuento = $descuento > 0;
 
     $hayPrecios = $preciosAdicionales->isNotEmpty() || $preciosEstandar->isNotEmpty();
 @endphp

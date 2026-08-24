@@ -477,6 +477,27 @@ const ESTADO_C = {
 const PAL = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#14b8a6'];
 
 /* ═══════════ HELPERS ═══════════ */
+function getEstadoCategoria(est) {
+    if (!est) return 'Pendiente';
+    const s = String(est).trim();
+    if (s === 'Nota de Credito' || s.startsWith('NC') || s.toLowerCase().includes('nota de cred')) {
+        return 'Nota de Credito';
+    }
+    if (s === 'Pendiente' || s === 'Abierta') {
+        return 'Pendiente';
+    }
+    if (s === 'En proceso' || s === 'En Proceso') {
+        return 'En proceso';
+    }
+    if (s === 'Finalizada' || s === 'FINALIZADA' || s === 'REPARADO') {
+        return 'Finalizada';
+    }
+    if (s === 'Entregada' || s === 'ENTREGADA' || s === 'ENTREGADO') {
+        return 'Entregada';
+    }
+    return s;
+}
+
 function esc(v) { return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function pct(n, t) { return t > 0 ? Math.round(n / t * 100) + '%' : '0%'; }
 function countBy(arr, k) { const o = {}; arr.forEach(r => { const v = r[k] || '(Sin dato)'; o[v] = (o[v] || 0) + 1; }); return o; }
@@ -635,7 +656,15 @@ async function generarReporte() {
 function renderKpis() {
     const total = _all.length;
     const c = { Pendiente:0, 'En proceso':0, Finalizada:0, Entregada:0, 'Nota de Credito':0 };
-    _all.forEach(r => { if (c[r.estado_orden] !== undefined) c[r.estado_orden]++; });
+    _all.forEach(r => {
+        const cat = getEstadoCategoria(r.estado_orden);
+        if (c[cat] !== undefined) {
+            c[cat]++;
+        } else {
+            if (cat.startsWith('NC') || cat.includes('Credito')) c['Nota de Credito']++;
+            else c['Pendiente']++;
+        }
+    });
     document.getElementById('k-total').textContent = total;
     document.getElementById('k-pend').textContent  = c['Pendiente'];
     document.getElementById('k-proc').textContent  = c['En proceso'];
@@ -646,7 +675,14 @@ function renderKpis() {
     document.getElementById('k-proc-pct').textContent = pct(c['En proceso'], total);
     document.getElementById('k-fin-pct').textContent  = pct(c['Finalizada'], total);
     document.getElementById('k-ent-pct').textContent  = Math.round(c['Entregada'] / (total || 1) * 100) + '% entrega';
-    document.getElementById('k-nc-pct').textContent   = pct(c['Nota de Credito'], total);
+
+    const ncAbiertas = _all.filter(r => r.estado_orden === 'NC Aprobada-Abierta').length;
+    const ncCerradas = _all.filter(r => r.estado_orden === 'NC Aprobada-Cerrada').length;
+    let ncSub = pct(c['Nota de Credito'], total);
+    if (ncAbiertas > 0 || ncCerradas > 0) {
+        ncSub += ` (${ncAbiertas} Ab. / ${ncCerradas} Ce.)`;
+    }
+    document.getElementById('k-nc-pct').textContent = ncSub;
 }
 
 /* ═══════════ GRÁFICOS ═══════════ */
@@ -961,7 +997,12 @@ async function exportarXLSX() {
 
     const total = _filtered.length;
     const cnt = { Pendiente:0, 'En proceso':0, Finalizada:0, Entregada:0, 'Nota de Credito':0 };
-    _filtered.forEach(r => { if (cnt[r.estado_orden] !== undefined) cnt[r.estado_orden]++; });
+    _filtered.forEach(r => {
+        const cat = getEstadoCategoria(r.estado_orden);
+        if (cnt[cat] !== undefined) cnt[cat]++;
+        else if (cat.startsWith('NC') || cat.includes('Credito')) cnt['Nota de Credito']++;
+        else cnt['Pendiente']++;
+    });
     const tasa = Math.round(cnt['Entregada'] / (total || 1) * 100);
     const pp = n => (n / (total || 1) * 100).toFixed(1) + '%';
     const mT2 = topN(countBy(_filtered, 'marca'), 10);

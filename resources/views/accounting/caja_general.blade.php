@@ -415,7 +415,6 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
-
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp
                                         <a href="{{ $compUrl }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #e0f2fe; color: #0369a1; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;" title="Ver Comprobante PDF / Imagen">
@@ -603,7 +602,6 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
-
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp
                                         <a href="{{ $compUrl }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #e0f2fe; color: #0369a1; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;" title="Ver Comprobante PDF / Imagen">
@@ -675,7 +673,6 @@
                                     <a href="{{ route('cajageneral.imprimir_recibo', ['id' => $cObj->id, 'tipo' => 'interno']) }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #2563eb; color: #ffffff; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;">
                                         <i class="bi bi-file-earmark-text me-1"></i>Recibo Interno
                                     </a>
-
                                     @if(!empty($cObj->comprobante_url))
                                         @php $compUrl = str_starts_with($cObj->comprobante_url, 'http') ? $cObj->comprobante_url : asset($cObj->comprobante_url); @endphp
                                         <a href="{{ $compUrl }}" target="_blank" style="display: inline-block; padding: 4px 8px; background: #e0f2fe; color: #0369a1; border-radius: 6px; font-size: 0.72rem; text-decoration: none; font-weight: 700; margin-left: 4px;" title="Ver Comprobante PDF / Imagen">
@@ -746,18 +743,38 @@
         const btnDirecto = document.getElementById('btn-tipo-directo');
         const boxOrden = document.getElementById('container-tipo-orden');
         const boxDirecto = document.getElementById('container-tipo-directo');
+        const totalInput = document.getElementById('swal-monto-cobrado');
+        const serviceValueInput = document.getElementById('swal-valor-servicio');
+        const serviceValueBox = document.getElementById('swal-valor-servicio-container');
+        const totalLabel = document.getElementById('swal-total-label');
+        const fiscalBox = document.getElementById('swal-resumen-fiscal');
+        const confirmButton = document.querySelector('.swal2-confirm');
 
         if (tipo === 'venta_directa') {
             if (btnOrden) { btnOrden.style.background = 'transparent'; btnOrden.style.color = '#64748b'; }
             if (btnDirecto) { btnDirecto.style.background = '#10b981'; btnDirecto.style.color = '#ffffff'; }
             if (boxOrden) boxOrden.style.display = 'none';
             if (boxDirecto) boxDirecto.style.display = 'block';
+            if (totalInput) { totalInput.readOnly = false; totalInput.value = ''; totalInput.style.background = '#ffffff'; }
+            if (serviceValueInput) serviceValueInput.value = '';
+            if (serviceValueBox) serviceValueBox.style.display = 'none';
+            if (totalLabel) totalLabel.innerText = '2. Monto Total a Cobrar ($):';
+            if (fiscalBox) fiscalBox.style.display = 'none';
+            if (confirmButton) confirmButton.innerHTML = 'Guardar cobro';
         } else {
             if (btnOrden) { btnOrden.style.background = '#2563eb'; btnOrden.style.color = '#ffffff'; }
             if (btnDirecto) { btnDirecto.style.background = 'transparent'; btnDirecto.style.color = '#64748b'; }
             if (boxOrden) boxOrden.style.display = 'block';
             if (boxDirecto) boxDirecto.style.display = 'none';
+            if (totalInput) { totalInput.readOnly = true; totalInput.value = ''; totalInput.style.background = '#f8fafc'; }
+            if (serviceValueInput) serviceValueInput.value = '';
+            if (serviceValueBox) serviceValueBox.style.display = 'block';
+            if (totalLabel) totalLabel.innerText = '3. Total a Cobrar ($):';
+            if (fiscalBox) fiscalBox.style.display = 'none';
+            if (confirmButton) confirmButton.innerHTML = 'Guardar cobro';
         }
+        ordenSeleccionada = null;
+        onMontoTotalCobradoChange();
     }
 
     function abrirModalIngresoCobro() {
@@ -831,10 +848,21 @@
                         </div>
                     </div>
 
+                    <div id="swal-valor-servicio-container" style="margin-bottom:14px;">
+                        <label style="font-weight:700; color:#0f172a;">2. Valor Manual del Servicio (sin IVA) ($):</label>
+                        <input type="number" step="0.01" min="0.01" id="swal-valor-servicio" class="swal2-input" placeholder="Ingrese el valor acordado" style="margin-top:4px; width:100%; font-size:1.1rem; font-weight:800; color:#2563eb;" oninput="onValorServicioChange()">
+                    </div>
+
+                    <div id="swal-resumen-fiscal" style="display:none; margin-bottom:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><strong id="swal-fiscal-subtotal">$0.00</strong></div>
+                        <div style="display:flex; justify-content:space-between;"><span>Descuento:</span><strong id="swal-fiscal-descuento">$0.00</strong></div>
+                        <div style="display:flex; justify-content:space-between;"><span>IVA <span id="swal-fiscal-tasa">15</span>%:</span><strong id="swal-fiscal-iva">$0.00</strong></div>
+                    </div>
+
                     <!-- 2. Monto Total Cobrado -->
                     <div style="margin-bottom: 14px;">
-                        <label style="font-weight: 700; color: #0f172a;">2. Monto Total a Cobrar ($):</label>
-                        <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" style="margin-top: 4px; width: 100%; font-size: 1.1rem; font-weight: 800; color: #2563eb;" oninput="onMontoTotalCobradoChange()">
+                        <label id="swal-total-label" style="font-weight: 700; color: #0f172a;">3. Total a Cobrar ($):</label>
+                        <input type="number" step="0.01" id="swal-monto-cobrado" class="swal2-input" placeholder="0.00" readonly style="margin-top: 4px; width: 100%; font-size: 1.1rem; font-weight: 800; color: #2563eb; background:#f8fafc;" oninput="onMontoTotalCobradoChange()">
                     </div>
 
                     <!-- 3. Desglose de Métodos de Pago / Cuentas Bancarias -->
@@ -888,7 +916,7 @@
                 renderFilasPagoCobroUI();
             },
             showCancelButton: true,
-            confirmButtonText: 'Guardar Cobro',
+            confirmButtonText: 'Guardar cobro',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10b981',
             preConfirm: () => {
@@ -917,8 +945,8 @@
                     clienteNombre = ordenSeleccionada ? ordenSeleccionada.cliente : 'Cliente Externo';
                     equipoInfo = ordenSeleccionada ? ordenSeleccionada.equipo : '';
 
-                    if (!nroOrden) {
-                        Swal.showValidationMessage('Debe digitar o seleccionar una orden de trabajo.');
+                    if (!ordenId) {
+                        Swal.showValidationMessage('Debe seleccionar una orden de trabajo de la lista.');
                         return false;
                     }
                 }
@@ -1066,6 +1094,20 @@
             if (inputMonto) inputMonto.value = total > 0 ? total.toFixed(2) : '';
         }
         recalcularDesglosePagosUI();
+    }
+
+    function onValorServicioChange() {
+        const subtotal = parseFloat(document.getElementById('swal-valor-servicio').value || 0);
+        const iva = Math.round((subtotal * 0.15 + Number.EPSILON) * 100) / 100;
+        const total = Math.round((subtotal + iva + Number.EPSILON) * 100) / 100;
+
+        document.getElementById('swal-fiscal-subtotal').innerText = '$' + subtotal.toFixed(2);
+        document.getElementById('swal-fiscal-descuento').innerText = '$0.00';
+        document.getElementById('swal-fiscal-tasa').innerText = '15';
+        document.getElementById('swal-fiscal-iva').innerText = '$' + iva.toFixed(2);
+        document.getElementById('swal-resumen-fiscal').style.display = subtotal > 0 ? 'block' : 'none';
+        document.getElementById('swal-monto-cobrado').value = total > 0 ? total.toFixed(2) : '';
+        onMontoTotalCobradoChange();
     }
 
     function agregarFilaPagoCobro() {
@@ -1243,7 +1285,7 @@
                         html += `
                             <div class="search-item" onclick='seleccionarOrden(${JSON.stringify(o)})'>
                                 <strong>${o.nro_orden}</strong> — ${o.cliente} ${badgePrevio}<br>
-                                <span style="font-size: 0.78rem; color: #64748b;">${o.equipo} | Sugerido: $${o.total_sugerido.toFixed(2)}</span>
+                                <span style="font-size: 0.78rem; color: #64748b;">${o.equipo} | Valor definido manualmente en Caja</span>
                             </div>
                         `;
                     });
@@ -1269,6 +1311,12 @@
         document.getElementById('info-equipo').innerText = ord.equipo;
         document.getElementById('swal-orden-info').style.display = 'block';
 
+        document.getElementById('swal-valor-servicio').value = '';
+        document.getElementById('swal-monto-cobrado').value = '';
+        document.getElementById('swal-resumen-fiscal').style.display = 'none';
+        onMontoTotalCobradoChange();
+        document.getElementById('swal-valor-servicio').focus();
+
         const warnBox = document.getElementById('swal-orden-warning-previo');
         if (warnBox) {
             if (ord.tiene_cobros_previos) {
@@ -1283,10 +1331,6 @@
             }
         }
 
-        if (ord.total_sugerido && ord.total_sugerido > 0) {
-            document.getElementById('swal-monto-cobrado').value = ord.total_sugerido.toFixed(2);
-            onMontoTotalCobradoChange();
-        }
     }
 
     function enviarCobro(payload) {
@@ -1297,8 +1341,11 @@
         });
 
         const formData = new FormData();
+        formData.append('tipo_cobro', payload.tipo_cobro);
         formData.append('nro_orden', payload.nro_orden);
         if (payload.orden_id) formData.append('orden_id', payload.orden_id);
+        if (payload.codigo_producto) formData.append('codigo_producto', payload.codigo_producto);
+        if (payload.serie_producto) formData.append('serie_producto', payload.serie_producto);
         formData.append('cliente_nombre', payload.cliente_nombre);
         formData.append('equipo_info', payload.equipo_info);
         formData.append('monto_cobrado', payload.monto_cobrado);
@@ -1334,9 +1381,13 @@
         .then(res => {
             if (res.ok) {
                 const primerId = (res.cobro_ids && res.cobro_ids.length > 0) ? res.cobro_ids[0] : null;
+                const factura = res.facturacion || null;
+                const facturaHtml = factura
+                    ? `<div style="margin-top:8px"><strong>Factura electrónica:</strong> ${factura.status}${factura.error ? '<br><span style="color:#b45309">' + factura.error + '</span>' : ''}${factura.invoice_id ? '<br><a href="{{ url('/contabilidad/facturas') }}/' + factura.invoice_id + '" target="_blank">Ver seguimiento de factura</a>' : ''}</div>`
+                    : '';
                 Swal.fire({
-                    title: '¡Cobro Registrado con Éxito!',
-                    text: res.mensaje,
+                    title: factura ? '¡Cobro registrado y factura iniciada!' : '¡Cobro registrado con éxito!',
+                    html: `<div>${res.mensaje}</div>${facturaHtml}`,
                     icon: 'success',
                     showCancelButton: true,
                     confirmButtonText: '<i class="bi bi-printer me-1"></i> Imprimir Recibo PDF',

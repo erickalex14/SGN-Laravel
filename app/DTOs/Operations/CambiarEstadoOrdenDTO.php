@@ -9,6 +9,7 @@ readonly class CambiarEstadoOrdenDTO
         public string $estado_orden,
         public ?string $nc_asunto = null,
         public ?string $nc_detalles = null,
-        public ?string $memo_entrega = null
+        public ?string $memo_entrega = null,
+        public ?string $foto_evidencia_entrega = null
     ) {}
 }

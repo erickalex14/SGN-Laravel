@@ -145,9 +145,9 @@ class ActividadDiariaController extends Controller
             return response()->json(['ok' => false, 'error' => 'Solo se permite editar las actividades del día de hoy.'], 403);
         }
 
-        // Limit: allow editing only until 6:30 PM (18:30) of today
-        if ($now->hour > 18 || ($now->hour === 18 && $now->minute > 30)) {
-            return response()->json(['ok' => false, 'error' => 'La edición de actividades está permitida solo hasta las 6:30 PM de hoy.'], 403);
+        // Limit: allow editing only until 8:00 PM (20:00) of today
+        if ($now->hour >= 20) {
+            return response()->json(['ok' => false, 'error' => 'La edición de actividades está permitida solo hasta las 8:00 PM de hoy.'], 403);
         }
 
         $actividades = $request->input('actividades', []);

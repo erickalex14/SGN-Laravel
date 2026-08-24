@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>SGN - @yield('titulo', 'Sistema de Soporte')</title>
 
     <link rel="icon" type="image/svg+xml" href="{{ asset('SGN1.png') }}">
     <link rel="shortcut icon" href="{{ asset('SGN1.png') }}">
+    <script>
+        if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+        }
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ asset('estilos.css') }}">
@@ -176,22 +182,27 @@
             : (session()->has('warning') ? 'warning' : (session()->has('info') ? 'info' : null)));
     $sgnValidationMessage = $errors->any() ? $errors->first() : null;
     $p = session('permisos', []);
-    $sa = session('es_superadmin');
+    $esAdminLectura = (bool) session('es_admin_lectura');
+    $sa = session('es_superadmin') && !$esAdminLectura;
 
     $usuario = auth()->user();
     $rolNombre = mb_strtolower(trim((string) ($usuario?->rol?->rol ?? '')));
     $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
     $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
-    $esAdminMasterReal = $sa
+    $esAdminMasterReal = !$esAdminLectura && ($sa
         || (bool) ($usuario?->grupo?->es_superadmin ?? false)
         || in_array($rolNombre, ['admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin master', 'administrador master', 'superadministrador'], true)
-        || in_array($sessionGrupo, ['admin master', 'administrador master', 'superadministrador'], true);
-    $tienePermisoEditar = $sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']);
-    $esAdminOAdminMaster = in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+        || in_array($sessionGrupo, ['admin master', 'administrador master', 'superadministrador'], true));
+    $tienePermisoEditar = !$esAdminLectura && ($sa || !empty($p['ordenes_editar']['editar']) || !empty($p['ordenes_editar']['ver']));
+    $esAdminOAdminMaster = !$esAdminLectura && (in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($grupoNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true)
         || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
-        || $tienePermisoEditar;
+        || $tienePermisoEditar);
+    $esAdmin = $esAdminOAdminMaster;
+    $esTecnico = in_array($rolNombre, ['tecnico', 'tecnico master'], true)
+        || in_array($grupoNombre, ['tecnico', 'tecnico master', 'técnico', 'técnico master'], true);
+    $esSistemas = $grupoNombre === 'sistemas' || $sessionGrupo === 'sistemas';
 
     $permAlias = [
         'grupos' => 'grupos_acceso',
@@ -242,11 +253,29 @@
         || $can('notas_credito', 'ver')
         || $can('repuestos_admin', 'ver');
 
-    $hasInventario = true;
-    $hasControl = true;
-    $hasServicios = $can('empresas', 'ver') || $can('cas', 'ver');
-    $hasAccesoAdmin = $can('usuarios', 'ver') || $can('grupos', 'ver');
-    $hasAcceso = $can('mi_cuenta', 'ver') || $hasAccesoAdmin;
+    $esGeneradorTickets = (
+        (int)($usuario?->grupo_id ?? 0) === 9
+        || str_contains($grupoNombre, 'generador')
+        || str_contains($grupoNombre, 'solicitante')
+        || str_contains($sessionGrupo, 'generador')
+        || str_contains($sessionGrupo, 'solicitante')
+    );
+
+    $hasInventario = !$esGeneradorTickets;
+    $hasControl = !$esGeneradorTickets;
+    $hasServicios = !$esGeneradorTickets && ($can('empresas', 'ver') || $can('cas', 'ver'));
+    $hasAccesoAdmin = !$esGeneradorTickets && ($can('usuarios', 'ver') || $can('grupos', 'ver'));
+    $hasAcceso = !$esGeneradorTickets && ($can('mi_cuenta', 'ver') || $hasAccesoAdmin);
+
+    if ($esGeneradorTickets) {
+        $hasOrdenes = false;
+        $hasDocTec = false;
+        $hasDocAdm = false;
+        $esAdmin = false;
+        $esAdminOAdminMaster = false;
+        $esAdminMasterReal = false;
+        $sa = false;
+    }
 @endphp
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -259,10 +288,12 @@
             </button>
         </div>
 
-        <a data-tip="Dashboard" href="{{ route('dashboard') }}">
-            <i class="bi bi-speedometer2" style="flex-shrink:0;"></i>
-            <span class="nav-label" style="margin-left:10px;">Dashboard</span>
-        </a>
+        @if (!$esGeneradorTickets)
+            <a data-tip="Dashboard" href="{{ route('dashboard') }}">
+                <i class="bi bi-speedometer2" style="flex-shrink:0;"></i>
+                <span class="nav-label" style="margin-left:10px;">Dashboard</span>
+            </a>
+        @endif
 
         @if ($hasOrdenes)
             <div class="nav-group">
@@ -517,6 +548,12 @@
                                     <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
                                 </a>
                             @endif
+                            @if (config('facturacion.enabled', false) && ($sa || $esAdminMasterReal || $can('caja_general', 'ver') || $can('recuento_b2b', 'ver')))
+                                <a data-tip="Facturas electrónicas" href="{{ route('facturas.index') }}">
+                                    <i class="bi bi-file-earmark-check" style="flex-shrink:0; color: #2563eb;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Facturas</span>
+                                </a>
+                            @endif
                             @if ($sa || $esAdminMasterReal || $can('reportes', 'ver') || $can('caja_general', 'ver') || $can('caja_chica', 'ver'))
                                 <a data-tip="Dashboard KPIs" href="{{ route('contabilidad.reportes.kpis') }}">
                                     <i class="bi bi-pie-chart-fill" style="flex-shrink:0; color: #2563eb;"></i>
@@ -590,6 +627,50 @@
             </div>
         @endif
 
+        {{-- MÓDULO DE TICKETS DE SOPORTE & SISTEMAS --}}
+        <div class="nav-group">
+            <a class="nav-toggle" data-tip="Tickets" onclick="navToggle(this)">
+                <i class="bi bi-ticket-perforated" style="flex-shrink:0; color: #2563eb;"></i>
+                <span class="nav-label" style="margin-left:10px;">Tickets & Soporte</span>
+                <i class="bi bi-chevron-down nav-arrow ms-auto"></i>
+            </a>
+            <div class="nav-submenu">
+                {{-- Visible para Solicitantes y Admins (Generar y ver mis tickets) --}}
+                @if ($esGeneradorTickets || $sa || $esAdminMasterReal || $esAdmin)
+                    <a data-tip="Mis Solicitudes" href="{{ route('mistickets.index') }}">
+                        <i class="bi bi-journal-text" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">Mis Solicitudes</span>
+                    </a>
+                    <a data-tip="Crear Ticket" href="{{ route('mistickets.create') }}">
+                        <i class="bi bi-plus-circle" style="flex-shrink:0;"></i>
+                        <span class="nav-label" style="margin-left:10px;">+ Crear Ticket</span>
+                    </a>
+                    @if ($esGeneradorTickets)
+                        <a data-tip="Mis Datos de Soporte" href="{{ route('mistickets.perfil') }}">
+                            <i class="bi bi-person-gear" style="flex-shrink:0; color: #0284c7;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Mis Datos de Soporte</span>
+                        </a>
+                    @endif
+                @endif
+
+                {{-- Mesa de Ayuda: Técnicos y Admins Operativos atienden los tickets --}}
+                @if (!$esAdminLectura && !$esGeneradorTickets && ($sa || $esAdminMasterReal || $esAdmin || $esTecnico || $esSistemas))
+                    <a data-tip="Mesa de Ayuda" href="{{ route('tickets.gestion') }}">
+                        <i class="bi bi-headset" style="flex-shrink:0; color: #7c3aed;"></i>
+                        <span class="nav-label" style="margin-left:10px; font-weight: 600;">Mesa de Ayuda (Quito)</span>
+                    </a>
+                @endif
+
+                {{-- Gestión de Solicitantes: Exclusivo para Admin Master / Superadmin / Admin (Nunca para solicitantes ni técnicos) --}}
+                @if (!$esGeneradorTickets && ($sa || $esAdminMasterReal || $esAdmin))
+                    <a data-tip="Usuarios Solicitantes" href="{{ route('tickets.solicitantes') }}">
+                        <i class="bi bi-people-fill" style="flex-shrink:0; color: #059669;"></i>
+                        <span class="nav-label" style="margin-left:10px;">Gestión Solicitantes</span>
+                    </a>
+                @endif
+            </div>
+        </div>
+
         @if ($hasAcceso)
             <div class="nav-group">
                 <a class="nav-toggle" data-tip="Acceso" onclick="navToggle(this)">
@@ -604,7 +685,7 @@
                             <span class="nav-label" style="margin-left:10px;">Mi Cuenta</span>
                         </a>
                     @endif
-                    @if ($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check())
+                    @if (($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check()) && !$esAdminLectura && auth()->user()?->grupo_id != 6)
                         <a data-tip="Mis Datos / Nómina" href="{{ route('nomina.mis_datos') }}">
                             <i class="bi bi-person-vcard" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Mis Datos Personales</span>
@@ -2068,6 +2149,7 @@
 </script>
 @endif
 @auth
+@if(!$esAdminLectura && auth()->user()?->grupo_id != 6)
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (!localStorage.getItem('alerta_actualizar_nomina_v1')) {
@@ -2104,6 +2186,7 @@
         }
     });
 </script>
+@endif
 @endauth
 @stack('js_adicional')
 </body>
