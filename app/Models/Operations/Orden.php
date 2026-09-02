@@ -36,6 +36,7 @@ class Orden extends Model
         'estado_repuesto',
         'estado_garantia',
         'garantia_tipo',
+        'empresa_garantia',
         'garantia_cas',
         'cas_id',
         'cas_fecha_envio',

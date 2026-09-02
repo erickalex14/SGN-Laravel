@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('contenido')
-<div class="container-fluid px-4 py-4" style="max-width: 1300px;">
+<div class="container-fluid px-2 px-sm-3 px-md-4 py-3 py-md-4" style="max-width: 1300px;">
     <!-- Barra Flotante de Llamada Activa WebRTC -->
     <div id="call-active-bar" class="card border-0 shadow-lg rounded-4 p-3 bg-dark text-white mb-4 animate__animated animate__fadeInDown" style="display: none !important;">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
@@ -69,12 +69,21 @@
 
                 @if($ticket->estado === 'abierto')
                     <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">Abierto</span>
-                @elseif($ticket->estado === 'en_atencion')
+                @elseif($ticket->estado === 'en_atencion' || $ticket->estado === 'en_proceso')
                     <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-1 rounded-pill fw-semibold">En Atención</span>
                 @elseif($ticket->estado === 'en_espera')
                     <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-1 rounded-pill fw-semibold">En Espera</span>
+                @elseif($ticket->estado === 'en_mba')
+                    <span class="badge text-white px-3 py-1 rounded-pill fw-bold shadow-sm" style="background: #9333ea;">
+                        <i class="bi bi-clock-history me-1"></i> En Manos de MBA (Máx. 48h)
+                    </span>
+                    @if($ticket->numero_ticket_mba)
+                        <span class="badge bg-light text-dark border px-2.5 py-1 rounded-pill fw-semibold font-monospace" style="font-size: 0.8rem;">
+                            Ticket MBA: #{{ $ticket->numero_ticket_mba }}
+                        </span>
+                    @endif
                 @elseif($ticket->estado === 'resuelto')
-                    <span class="badge bg-success text-white px-3 py-1 rounded-pill fw-bold">✓ Resuelto</span>
+                    <span class="badge bg-success text-white px-3 py-1 rounded-pill fw-bold"><i class="bi bi-check-circle me-1"></i> Resuelto</span>
                 @elseif($ticket->estado === 'cerrado')
                     <span class="badge bg-dark text-white px-3 py-1 rounded-pill fw-semibold">Cerrado</span>
                 @elseif($ticket->estado === 'cancelado')
@@ -83,28 +92,65 @@
             </div>
         </div>
 
-        <!-- Acciones rápidas (Calificar si está resuelto) -->
-        <div class="d-flex gap-2">
-            @if($ticket->estado === 'resuelto' && !$ticket->calificacion)
-                <button type="button" class="btn btn-warning text-dark fw-bold px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" onclick="abrirModalCalificar()">
-                    <i class="bi bi-star-fill text-warning"></i> Calificar Atención
+        <!-- Acciones rápidas (Imprimir / Reabrir / Calificar si está resuelto o cerrado) -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="{{ route('tickets.imprimir', $ticket->id) }}" target="_blank" class="btn btn-outline-danger fw-semibold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" title="Imprimir PDF del Ticket (Estilo OT)">
+                <i class="bi bi-printer-fill"></i> Imprimir PDF (OT)
+            </a>
+
+            @if(in_array($ticket->estado, ['resuelto', 'cerrado']))
+                <button type="button" class="btn btn-outline-danger fw-semibold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" onclick="abrirModalReabrir()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reabrir Ticket
+                </button>
+                <button type="button" class="btn btn-warning text-dark fw-bold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" onclick="abrirModalCalificar()">
+                    <i class="bi bi-star-fill text-dark"></i> {{ $ticket->calificacion ? 'Modificar Calificación / Reseña' : 'Calificar Atención' }}
                 </button>
             @endif
         </div>
     </div>
 
+    <!-- Alerta de Caso Escalado a MBA si está en_mba -->
+    @if($ticket->estado === 'en_mba')
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-dark" style="background: #faf5ff; border: 2px solid #a855f7 !important;">
+            <div class="d-flex align-items-start gap-3">
+                <div class="rounded-circle p-2.5 d-flex align-items-center justify-content-center flex-shrink-0 text-white shadow-sm" style="background: #9333ea; width: 48px; height: 48px;">
+                    <i class="bi bi-clock-history fs-4"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <h5 class="fw-bold mb-0" style="color: #7e22ce;">Tu requerimiento ha sido escalado al Soporte Oficial de MBA</h5>
+                        <span class="badge text-white rounded-pill px-2.5 py-1" style="background: #9333ea;"><i class="bi bi-clock-history me-1"></i> En Manos de MBA (Máx 48h)</span>
+                    </div>
+                    <p class="text-muted small mb-2">Debido a la complejidad del caso, se generó un ticket directo con el equipo de MBA. El tiempo estimado de respuesta es de hasta <b>48 horas</b>.</p>
+                    <div class="d-flex flex-wrap gap-3 small">
+                        <div>
+                            <span class="text-muted">N° Caso MBA:</span>
+                            <b class="text-dark font-monospace fs-6">#{{ $ticket->numero_ticket_mba ?: 'Pendiente' }}</b>
+                        </div>
+                        @if($ticket->fecha_escalado_mba)
+                            <div>
+                                <span class="text-muted">Escalado el:</span>
+                                <b class="text-dark">{{ $ticket->fecha_escalado_mba->format('d/m/Y H:i') }}</b>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Alerta de Resolución si está resuelto o cerrado -->
     @if(in_array($ticket->estado, ['resuelto', 'cerrado']))
         <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #f0fdf4; border: 1.5px solid #86efac !important;">
             <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
-                <div class="d-flex align-items-start gap-3">
+                <div class="d-flex align-items-start gap-3 flex-grow-1">
                     <div class="bg-success text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 44px; height: 44px;">
                         <i class="bi bi-patch-check-fill fs-4"></i>
                     </div>
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <h5 class="fw-bold text-success mb-0">¡Ticket Resuelto por Soporte!</h5>
-                            <span class="badge bg-success text-white rounded-pill px-2.5 py-1 small">✓ Finalizado</span>
+                            <span class="badge bg-success text-white rounded-pill px-2.5 py-1 small"><i class="bi bi-check-circle me-1"></i> Finalizado</span>
                         </div>
                         <div class="text-muted small mb-2">
                             <i class="bi bi-calendar-check me-1"></i>Fecha de resolución: <strong>{{ $ticket->fecha_resolucion ? $ticket->fecha_resolucion->format('d/m/Y H:i:s') : ($ticket->updated_at ? $ticket->updated_at->format('d/m/Y H:i:s') : 'Hoy') }}</strong>
@@ -112,34 +158,80 @@
                                 &nbsp;·&nbsp; <i class="bi bi-person-badge me-1"></i>Técnico: <strong>{{ $ticket->asignadoA->nombre_tecnico ?: $ticket->asignadoA->usuario }}</strong>
                             @endif
                         </div>
-                        <div class="bg-white p-3 rounded-3 border border-success border-opacity-25 text-dark small shadow-sm" style="white-space: pre-line; line-height: 1.6;">
+                        <div class="bg-white p-3 rounded-3 border border-success border-opacity-25 text-dark small shadow-sm mb-3" style="white-space: pre-line; line-height: 1.6;">
                             <strong class="text-success d-block mb-1"><i class="bi bi-check2-circle me-1"></i>Solución / Comentario Técnico:</strong>
                             {{ $ticket->solucion_texto ?: ($ticket->solucion ?: 'El equipo técnico de Quito ha concluido la atención de tu requerimiento satisfactoriamente.') }}
                         </div>
-                    </div>
-                </div>
 
-                @if(!$ticket->calificacion)
-                    <button type="button" class="btn btn-success fw-bold rounded-3 px-3 py-2 text-nowrap shadow-sm" onclick="abrirModalCalificar()">
-                        <i class="bi bi-star-fill text-warning me-1"></i> Calificar Atención
-                    </button>
-                @else
-                    <div class="bg-white p-3 rounded-3 border text-center flex-shrink-0 shadow-sm" style="min-width: 160px;">
-                        <div class="small text-muted fw-semibold mb-1">Tu Calificación</div>
-                        <div class="text-warning fs-5">
-                            @for($i = 1; $i <= 5; $i++)
-                                <i class="bi {{ $i <= $ticket->calificacion ? 'bi-star-fill' : 'bi-star' }}"></i>
-                            @endfor
-                        </div>
+                        @if(!$ticket->calificacion && in_array($ticket->estado, ['resuelto', 'cerrado']))
+                    <div class="text-center flex-shrink-0">
+                        <button type="button" class="btn btn-warning text-dark fw-bold rounded-3 px-3 py-2 text-nowrap shadow-sm" onclick="abrirModalCalificar()">
+                            <i class="bi bi-star-fill me-1"></i> Calificar Atención
+                        </button>
                     </div>
                 @endif
             </div>
         </div>
     @endif
 
-    <div class="row g-4">
+    <!-- Resumen Rápido Móvil (Visible solo en celulares < 992px) -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3 d-block d-lg-none">
+        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+            <span class="small fw-bold text-muted text-uppercase"><i class="bi bi-info-circle me-1"></i> Resumen del Ticket</span>
+            <span class="badge bg-light text-dark border font-monospace">{{ $ticket->codigo_ticket }}</span>
+        </div>
+        <div class="row g-2 small">
+            <div class="col-6">
+                <span class="text-muted d-block" style="font-size: 11px;">Técnico Asignado:</span>
+                <strong class="text-dark">{{ $ticket->asignadoA ? ($ticket->asignadoA->nombre_tecnico ?: $ticket->asignadoA->usuario) : 'Por asignar (Quito)' }}</strong>
+            </div>
+            <div class="col-6">
+                <span class="text-muted d-block" style="font-size: 11px;">Tienda / Origen:</span>
+                <strong class="text-dark text-truncate d-block">{{ $ticket->tienda_nombre ?: ($ticket->sucursalCliente->nombre ?? 'Tienda') }}</strong>
+            </div>
+            <div class="col-6">
+                <span class="text-muted d-block" style="font-size: 11px;">Prioridad:</span>
+                <span class="fw-bold {{ $ticket->prioridad === 'urgente' ? 'text-danger' : ($ticket->prioridad === 'alta' ? 'text-warning' : 'text-primary') }}">{{ ucfirst($ticket->prioridad) }}</span>
+            </div>
+            <div class="col-6">
+                <span class="text-muted d-block" style="font-size: 11px;">Fecha Apertura:</span>
+                <span class="text-dark">{{ $ticket->fecha_apertura ? $ticket->fecha_apertura->format('d/m/Y H:i') : $ticket->created_at->format('d/m/Y H:i') }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 g-md-4">
         <!-- Columna Izquierda: Detalle Inicial + Chat en Tiempo Real -->
         <div class="col-12 col-lg-8">
+            @php
+                $esCasoMba = ($ticket->categoria === 'Casos MBA3' || str_contains($ticket->descripcion, 'CASO MBA3') || str_contains($ticket->categoria, 'MBA'));
+            @endphp
+
+            @if($esCasoMba)
+                <!-- Tarjeta Destacada de Caso MBA3 con Descarga Word (.docx) -->
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 text-dark" style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: 1.5px solid #c4b5fd !important;">
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-2.5 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="background: #7c3aed; color: #ffffff; width: 46px; height: 46px;">
+                                <i class="bi bi-file-earmark-word-fill fs-3"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                    Plantilla Oficial de Caso MBA3
+                                    <span class="badge" style="background: #7c3aed; color: #fff; font-size: 0.7rem;">Word .docx</span>
+                                </h6>
+                                <p class="text-muted small mb-0 mt-0.5">Se generó el reporte oficial en Word con los datos de acceso y descripción de tu caso.</p>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <a href="{{ route('mistickets.word_mba', $ticket->id) }}" class="btn btn-purple fw-bold px-3 py-2 rounded-3 shadow-sm d-inline-flex align-items-center gap-2 text-white" style="background: #7c3aed; border-color: #7c3aed;">
+                                <i class="bi bi-file-earmark-arrow-down-fill"></i> Descargar Word (.docx)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Tarjeta con Descripción Inicial -->
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -155,19 +247,42 @@
                 @endphp
                 @if($adjuntosIniciales->isNotEmpty())
                     <div class="border-top pt-3 mt-3">
-                        <div class="fw-semibold text-dark small mb-2"><i class="bi bi-paperclip me-1"></i> Evidencias adjuntas iniciales ({{ $adjuntosIniciales->count() }}):</div>
+                        <div class="fw-bold text-dark small mb-2 d-flex align-items-center gap-1.5">
+                            <i class="bi bi-paperclip text-primary fs-6"></i> Evidencias adjuntas iniciales ({{ $adjuntosIniciales->count() }}):
+                        </div>
                         <div class="d-flex flex-wrap gap-2">
                             @foreach($adjuntosIniciales as $adj)
-                                @php
-                                    $esImg = str_starts_with($adj->tipo_mime ?? '', 'image/');
-                                @endphp
-                                <a href="{{ asset('storage/' . $adj->ruta_archivo) }}" target="_blank" class="btn btn-sm btn-light border rounded-3 d-inline-flex align-items-center gap-2 p-2 text-decoration-none">
-                                    <i class="bi {{ $esImg ? 'bi-file-earmark-image text-primary' : 'bi-file-earmark-pdf text-danger' }} fs-5"></i>
-                                    <div class="text-start">
-                                        <div class="fw-semibold text-dark text-truncate" style="max-width: 180px;">{{ $adj->nombre_original }}</div>
-                                        <div class="text-muted" style="font-size: 0.7rem;">{{ number_format(($adj->tamano_bytes ?? 0) / 1024, 1) }} KB</div>
+                                @if($adj->es_imagen)
+                                    <div class="border rounded-3 p-2 bg-light d-flex align-items-center gap-2 shadow-sm">
+                                        <a href="{{ $adj->url }}" target="_blank" class="d-inline-block rounded-2 overflow-hidden border flex-shrink-0" style="width: 55px; height: 50px;">
+                                            <img src="{{ $adj->url }}" alt="{{ $adj->nombre_archivo }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </a>
+                                        <div class="overflow-hidden" style="max-width: 200px;">
+                                            <a href="{{ $adj->url }}" target="_blank" class="fw-bold text-dark text-truncate d-block small text-decoration-none" title="{{ $adj->nombre_archivo }}">
+                                                {{ $adj->nombre_archivo }}
+                                            </a>
+                                            <span class="text-muted" style="font-size: 11px;">{{ $adj->tamano_legible }} · Imagen</span>
+                                        </div>
+                                        <a href="{{ $adj->url }}" target="_blank" download class="btn btn-sm btn-white bg-white border rounded-2 p-1 px-2 text-primary ms-1" title="Descargar">
+                                            <i class="bi bi-download"></i>
+                                        </a>
                                     </div>
-                                </a>
+                                @else
+                                    <div class="border rounded-3 p-2 bg-light d-flex align-items-center gap-2 shadow-sm">
+                                        <div class="rounded-2 bg-white border p-2 text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                                            <i class="bi bi-file-earmark-arrow-down-fill fs-5"></i>
+                                        </div>
+                                        <div class="overflow-hidden" style="max-width: 200px;">
+                                            <a href="{{ $adj->url }}" target="_blank" class="fw-bold text-dark text-truncate d-block small text-decoration-none" title="{{ $adj->nombre_archivo }}">
+                                                {{ $adj->nombre_archivo }}
+                                            </a>
+                                            <span class="text-muted" style="font-size: 11px;">{{ $adj->tamano_legible }}</span>
+                                        </div>
+                                        <a href="{{ $adj->url }}" target="_blank" download class="btn btn-sm btn-white bg-white border rounded-2 p-1 px-2 text-primary ms-1" title="Descargar">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>
@@ -225,15 +340,14 @@
                                 @if($msg->adjuntos && $msg->adjuntos->isNotEmpty())
                                     <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">
                                         @foreach($msg->adjuntos as $adj)
-                                            @php $esImg = str_starts_with($adj->tipo_mime ?? '', 'image/'); @endphp
-                                            @if($esImg)
-                                                <a href="{{ asset('storage/' . $adj->ruta_archivo) }}" target="_blank" class="d-block mt-1">
-                                                    <img src="{{ asset('storage/' . $adj->ruta_archivo) }}" class="rounded-3 border shadow-sm" style="max-height: 140px; max-width: 100%; object-fit: contain;">
+                                            @if($adj->es_imagen)
+                                                <a href="{{ $adj->url }}" target="_blank" class="d-block mt-1">
+                                                    <img src="{{ $adj->url }}" class="rounded-3 border shadow-sm" style="max-height: 140px; max-width: 100%; object-fit: contain;">
                                                 </a>
                                             @else
-                                                <a href="{{ asset('storage/' . $adj->ruta_archivo) }}" target="_blank" class="btn btn-sm btn-white bg-white border rounded-2 p-1 px-2 d-inline-flex align-items-center gap-1 text-decoration-none">
+                                                <a href="{{ $adj->url }}" target="_blank" class="btn btn-sm btn-white bg-white border rounded-2 p-1 px-2 d-inline-flex align-items-center gap-1 text-decoration-none">
                                                     <i class="bi bi-paperclip text-muted"></i>
-                                                    <span class="small fw-semibold text-dark text-truncate" style="max-width: 160px;">{{ $adj->nombre_original }}</span>
+                                                    <span class="small fw-semibold text-dark text-truncate" style="max-width: 160px;">{{ $adj->nombre_archivo }}</span>
                                                 </a>
                                             @endif
                                         @endforeach
@@ -293,7 +407,7 @@
                     </div>
                     <div>
                         <div class="text-muted">Tipo de Ticket:</div>
-                        <div class="fw-semibold text-dark">{{ $ticket->tipo_ticket === 'sistemas' ? '⚡ Sistemas TI (Quito)' : '🛠️ Soporte Técnico' }}</div>
+                        <div class="fw-semibold text-dark">{{ $ticket->tipo_ticket === 'sistemas' ? 'Sistemas TI (Quito)' : 'Soporte Técnico' }}</div>
                     </div>
                     <div>
                         <div class="text-muted">Categoría:</div>
@@ -313,6 +427,12 @@
                             @endif
                         </div>
                     </div>
+                    @if($ticket->numero_ticket_mba)
+                        <div class="p-2 rounded-3" style="background: #f5f3ff; border: 1px solid #ddd6fe;">
+                            <div class="text-muted" style="font-size: 11px;">N° Caso / Ticket MBA:</div>
+                            <div class="fw-bold font-monospace" style="color: #7e22ce; font-size: 13px;">#{{ $ticket->numero_ticket_mba }}</div>
+                        </div>
+                    @endif
                     <div>
                         <div class="text-muted">Tienda / Ubicación:</div>
                         <div class="fw-semibold text-dark">{{ $ticket->tienda_nombre ?: ($ticket->sucursalCliente->nombre ?? 'Tienda Externa') }} ({{ $ticket->empresa_origen }})</div>
@@ -568,7 +688,7 @@ function mostrarModalLlamadaEntrante(nombreIniciador, offerSdp) {
     startRingtone();
 
     incomingCallSwal = Swal.fire({
-        title: '📞 ¡Llamada de Soporte Entrante!',
+        title: 'Llamada de Soporte Entrante',
         html: `
             <div class="py-2">
                 <div class="spinner-grow text-success mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
@@ -577,8 +697,8 @@ function mostrarModalLlamadaEntrante(nombreIniciador, offerSdp) {
             </div>
         `,
         showCancelButton: true,
-        confirmButtonText: '✅ Contestar Llamada',
-        cancelButtonText: '❌ Rechazar',
+        confirmButtonText: '<i class="bi bi-telephone-fill me-1"></i> Contestar Llamada',
+        cancelButtonText: 'Rechazar',
         confirmButtonColor: '#059669',
         cancelButtonColor: '#dc2626',
         allowOutsideClick: false,
@@ -906,35 +1026,64 @@ function limpiarAdjuntosPreview() {
     if (fileInput) fileInput.value = '';
 }
 
-function abrirModalCalificar() {
+function abrirModalCalificar(esObligatorio = false) {
+    const califActual = parseInt("{{ $ticket->calificacion ?? '5' }}") || 5;
+    const comentarioActual = @json($ticket->comentario_calificacion ?? '');
+    const solucionTexto = @json($ticket->solucion_texto ?: ($ticket->solucion ?: 'Atención técnica completada.'));
+
     Swal.fire({
-        title: 'Calificar Atención del Ticket',
+        title: 'Calificación del Servicio',
+        width: window.innerWidth < 500 ? '94%' : '500px',
         html: `
-            <div style="text-align: left; font-size: 0.9rem;">
-                <p class="text-muted mb-3">Tu opinión nos ayuda a mejorar el servicio de soporte y sistemas.</p>
-                <div class="mb-3">
-                    <label class="fw-bold mb-1">¿Cómo calificarías la atención recibida?</label>
-                    <select id="swal-calificacion" class="swal2-input" style="width: 100%; margin: 0;">
-                        <option value="5">⭐⭐⭐⭐⭐ Excelente (5 estrellas)</option>
-                        <option value="4">⭐⭐⭐⭐ Muy Bueno (4 estrellas)</option>
-                        <option value="3">⭐⭐⭐ Regular / Aceptable (3 estrellas)</option>
-                        <option value="2">⭐⭐ Insatisfecho (2 estrellas)</option>
-                        <option value="1">⭐ Muy Malo (1 estrella)</option>
-                    </select>
+            <div style="text-align: left; font-size: 0.88rem;">
+                <div class="p-2.5 mb-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3">
+                    <strong class="text-success d-block mb-1" style="font-size: 0.82rem;"><i class="bi bi-patch-check-fill me-1"></i>Solución Técnica:</strong>
+                    <div class="small text-dark" style="white-space: pre-line; font-size: 0.82rem;">${solucionTexto}</div>
+                </div>
+                <div class="text-center mb-3">
+                    <label class="fw-bold mb-2 text-dark d-block">¿Cómo calificarías la atención recibida?</label>
+                    <div class="d-flex justify-content-center gap-2 mb-2" id="star-rating-container" style="font-size: 2rem; cursor: pointer; color: #cbd5e1;">
+                        <span class="star-btn" data-val="1" onclick="setStarRating(1)" style="color: #f59e0b;">★</span>
+                        <span class="star-btn" data-val="2" onclick="setStarRating(2)" style="color: #f59e0b;">★</span>
+                        <span class="star-btn" data-val="3" onclick="setStarRating(3)" style="color: #f59e0b;">★</span>
+                        <span class="star-btn" data-val="4" onclick="setStarRating(4)" style="color: #f59e0b;">★</span>
+                        <span class="star-btn" data-val="5" onclick="setStarRating(5)" style="color: #f59e0b;">★</span>
+                    </div>
+                    <div id="star-rating-label" class="small fw-bold text-warning" style="font-size: 13px;">5 Estrellas — Excelente</div>
+                    <input type="hidden" id="swal-calificacion" value="${califActual}">
                 </div>
                 <div>
-                    <label class="fw-bold mb-1">Comentarios adicionales (Opcional):</label>
-                    <textarea id="swal-comentario" class="swal2-textarea" placeholder="Escribe tu opinión o sugerencia..." style="width: 100%; margin: 0; height: 80px;"></textarea>
+                    <label class="fw-bold mb-1 text-dark" style="font-size: 0.82rem;">Reseña u observación (Opcional):</label>
+                    <textarea id="swal-comentario" class="form-control rounded-3" placeholder="Comenta si la atención fue rápida, trato recibido, etc..." style="height: 75px; font-size: 13px;">${comentarioActual}</textarea>
                 </div>
             </div>
         `,
-        showCancelButton: true,
-        confirmButtonText: 'Guardar Calificación y Cerrar',
+        showCancelButton: !esObligatorio,
+        allowOutsideClick: !esObligatorio,
+        allowEscapeKey: !esObligatorio,
+        confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Guardar Calificación',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b',
+        didOpen: () => {
+            window.setStarRating = function(rating) {
+                document.getElementById('swal-calificacion').value = rating;
+                const stars = document.querySelectorAll('.star-btn');
+                const labels = ['', '1 Estrella — Muy Malo', '2 Estrellas — Insatisfecho', '3 Estrellas — Regular', '4 Estrellas — Muy Bueno', '5 Estrellas — Excelente'];
+                stars.forEach((s, idx) => {
+                    s.style.color = (idx < rating) ? '#f59e0b' : '#cbd5e1';
+                });
+                document.getElementById('star-rating-label').textContent = labels[rating];
+            };
+            setStarRating(califActual);
+        },
         preConfirm: () => {
             const calificacion = document.getElementById('swal-calificacion').value;
             const comentario = document.getElementById('swal-comentario').value;
+            if (!calificacion) {
+                Swal.showValidationMessage('Por favor selecciona las estrellas de calificación.');
+                return false;
+            }
             return { calificacion, comentario };
         }
     }).then((result) => {
@@ -944,6 +1093,7 @@ function abrirModalCalificar() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify(result.value)
@@ -951,12 +1101,71 @@ function abrirModalCalificar() {
             .then(r => r.json())
             .then(res => {
                 if (res.ok) {
-                    Swal.fire('¡Gracias!', res.mensaje, 'success').then(() => location.reload());
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Muchas Gracias!',
+                        text: res.mensaje,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
                 } else {
-                    Swal.fire('Error', res.error, 'error');
+                    Swal.fire('Error', res.error || 'No se pudo registrar la calificación', 'error');
                 }
             })
-            .catch(err => Swal.fire('Error', 'No se pudo registrar la calificación', 'error'));
+            .catch(err => Swal.fire('Error', 'No se pudo conectar con el servidor', 'error'));
+        }
+    });
+}
+
+function abrirModalReabrir() {
+    Swal.fire({
+        title: 'Reabrir Ticket de Soporte',
+        html: `
+            <div style="text-align: left; font-size: 0.9rem;">
+                <p class="text-muted mb-3">
+                    Si el problema persiste, volvió a fallar o la solución no fue efectiva, indica detalladamente el motivo para que el equipo de soporte retome el caso de inmediato.
+                </p>
+                <div>
+                    <label class="fw-bold mb-1 text-dark">Motivo de reapertura <span class="text-danger">*</span>:</label>
+                    <textarea id="swal-motivo-reabrir" class="swal2-textarea" placeholder="Explica qué sigue fallando o por qué no quedó resuelto..." style="width: 100%; margin: 0; height: 110px;"></textarea>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar Reapertura',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#64748b',
+        preConfirm: () => {
+            const motivo = document.getElementById('swal-motivo-reabrir').value.trim();
+            if (!motivo) {
+                Swal.showValidationMessage('Debe indicar el motivo de reapertura.');
+                return false;
+            }
+            return { motivo };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+            fetch("{{ route('mistickets.reabrir', $ticket->id) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.ok) {
+                    Swal.fire('¡Ticket Reabierto!', res.mensaje, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', res.error || 'No se pudo reabrir el ticket', 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error', 'No se pudo procesar la reapertura del ticket', 'error'));
         }
     });
 }
@@ -964,6 +1173,12 @@ function abrirModalCalificar() {
 document.addEventListener('DOMContentLoaded', () => {
     scrollToBottom();
     setInterval(syncChatLoop, 1800);
+
+    @if($ticket->estado === 'resuelto' && empty($ticket->calificacion))
+        setTimeout(() => {
+            abrirModalCalificar(true);
+        }, 400);
+    @endif
 });
 </script>
 @endsection

@@ -34,6 +34,8 @@ class Ticket extends Model
         'fecha_resolucion',
         'fecha_cierre',
         'solucion',
+        'numero_ticket_mba',
+        'fecha_escalado_mba',
         'calificacion',
         'comentario_calificacion',
     ];
@@ -44,6 +46,7 @@ class Ticket extends Model
         'fecha_primera_respuesta' => 'datetime',
         'fecha_resolucion' => 'datetime',
         'fecha_cierre' => 'datetime',
+        'fecha_escalado_mba' => 'datetime',
         'calificacion' => 'integer',
     ];
 

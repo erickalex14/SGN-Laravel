@@ -295,15 +295,15 @@
     <!-- TARJETAS METRICAS DIARIAS -->
     <div class="cg-metrics">
         <div class="metric-card success">
-            <div class="metric-label">Efectivo Pendiente (Últimas 72 Horas)</div>
+            <div class="metric-label">Efectivo Pendiente por Arquear</div>
             <div class="metric-value" id="metric-efectivo-val" style="color: #10b981;">${{ number_format($totalEfectivoCalculado, 2) }}</div>
         </div>
         <div class="metric-card info">
-            <div class="metric-label">Cobros Bancarios (Últimas 72h)</div>
+            <div class="metric-label">Cobros Bancarios Registrados</div>
             <div class="metric-value" style="color: #0284c7;">${{ number_format($totalBancosCalculado, 2) }}</div>
         </div>
         <div class="metric-card success">
-            <div class="metric-label">Total Cobros Registrados (72h)</div>
+            <div class="metric-label">Total Cobros Registrados</div>
             <div class="metric-value">{{ count($cobrosEfectivo) + count($cobrosBancos) }}</div>
         </div>
         <div class="metric-card">
@@ -354,7 +354,7 @@
         <div class="cg-card">
             <div class="cg-card-title">
                 <div>
-                    <span>Cobros de Cliente Externo — Efectivo Pendientes (Últimas 72 Horas)</span>
+                    <span>Cobros de Cliente Externo — Efectivo Pendientes por Arquear</span>
                     <div style="font-size: 0.85rem; color: #64748b; font-weight: 400; margin-top: 2px;">
                         Seleccione los cobros pendientes que ingresarán al nuevo Arqueo o Depósito a Bancos.
                     </div>
@@ -633,7 +633,7 @@
         <div class="cg-card">
             <div class="cg-card-title">
                 <div>
-                    <span>Cobros de Cliente Externo — Tarjetas y Transferencias (Ingresan a Bancos / Últimas 72 Horas)</span>
+                    <span>Cobros de Cliente Externo — Tarjetas y Transferencias (Bancos)</span>
                     <div style="font-size: 0.85rem; color: #64748b; font-weight: 400; margin-top: 2px;">
                         Cobros mediante Datafast, Kushki, Transferencias Bancarias y Depósitos Directos.
                     </div>

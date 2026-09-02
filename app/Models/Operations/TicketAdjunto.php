@@ -34,4 +34,23 @@ class TicketAdjunto extends Model
     {
         return $this->belongsTo(Usuario::class, 'usuario_id');
     }
+
+    public function getUrlAttribute(): string
+    {
+        return asset('storage/' . $this->ruta_archivo);
+    }
+
+    public function getEsImagenAttribute(): bool
+    {
+        return str_starts_with($this->mime_type ?? '', 'image/');
+    }
+
+    public function getTamanoLegibleAttribute(): string
+    {
+        $bytes = $this->tamano_bytes ?? 0;
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 1) . ' MB';
+        }
+        return number_format($bytes / 1024, 1) . ' KB';
+    }
 }

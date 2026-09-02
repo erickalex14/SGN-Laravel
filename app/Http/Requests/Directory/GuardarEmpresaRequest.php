@@ -23,10 +23,10 @@ class GuardarEmpresaRequest extends FormRequest
         }
 
         return [
-            'nombre'    => ['required', 'string', 'max:15'],
+            'nombre'    => ['required', 'string', 'max:200'],
             'ruc'       => ['required', 'string', new EcuadorIdentificacion('ruc')],
             'telefono'  => ['nullable', 'string', new EcuadorTelefono()],
-            'correo'    => ['nullable', 'email', 'max:30'],
+            'correo'    => ['nullable', 'email', 'max:200'],
             'direccion' => ['nullable', 'string', 'max:200'],
         ];
     }
@@ -34,8 +34,12 @@ class GuardarEmpresaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nombre.required' => 'El nombre es obligatorio.',
+            'nombre.required' => 'El nombre de la empresa es obligatorio.',
+            'nombre.max'      => 'El nombre no puede exceder los 200 caracteres.',
             'ruc.required'    => 'El RUC es obligatorio.',
+            'correo.email'    => 'El correo electrónico no tiene un formato válido.',
+            'correo.max'      => 'El correo no puede exceder los 200 caracteres.',
+            'direccion.max'   => 'La dirección no puede exceder los 200 caracteres.',
             'id.required'     => 'ID inválido.'
         ];
     }

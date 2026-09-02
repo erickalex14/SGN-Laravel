@@ -48,18 +48,36 @@
             <hr class="my-4">
 
             <div class="row g-3 mb-3">
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <label class="form-label small fw-semibold text-dark">
-                        <i class="bi bi-envelope-at me-1 text-primary"></i> Correo de Empresa / Institucional
+                        <i class="bi bi-envelope-at me-1 text-primary"></i> Correo de Empresa
                     </label>
-                    <input type="email" name="correo_tec" class="form-control" value="{{ $usuario->correo_tec ?? '' }}" placeholder="ejemplo@novicompu.com / ejemplo@env.com.ec">
-                    <div class="form-text small">Recibirás notificaciones cuando tu ticket sea atendido o resuelto.</div>
+                    <input type="email" name="correo_tec" class="form-control" value="{{ $usuario->correo_tec ?? '' }}" placeholder="ejemplo@novicompu.com">
+                    <div class="form-text small">Para notificaciones del ticket.</div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <label class="form-label small fw-semibold text-dark">
-                        <i class="bi bi-whatsapp me-1 text-success"></i> Teléfono / WhatsApp de Contacto
+                        <i class="bi bi-whatsapp me-1 text-success"></i> Teléfono / WhatsApp
                     </label>
                     <input type="text" name="telefono" class="form-control" value="{{ $usuario->telefono ?? '' }}" placeholder="Ej: 0991234567">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold text-dark">
+                        <i class="bi bi-briefcase me-1 text-dark"></i> Departamento o Área
+                    </label>
+                    <input type="text" name="departamento" class="form-control" list="lista-departamentos" value="{{ $usuario->departamento ?? '' }}" placeholder="Ej: Ventas / Bodega">
+                    <datalist id="lista-departamentos">
+                        <option value="Ventas / Comercial">
+                        <option value="Caja / Facturación">
+                        <option value="Inventario / Bodega">
+                        <option value="Servicio Técnico / CAS">
+                        <option value="Administración / Gerencia">
+                        <option value="Contabilidad / Finanzas">
+                        <option value="Marketing">
+                        <option value="Logística / Envíos">
+                        <option value="Atención al Cliente">
+                        <option value="Sistemas / TI">
+                    </datalist>
                 </div>
             </div>
 

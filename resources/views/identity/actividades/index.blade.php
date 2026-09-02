@@ -327,7 +327,7 @@
         { key: 11, label: "11:00 a 12:00" },
         { key: 12, label: "12:00 a 13:00" },
         { key: 13, label: "13:00 a 14:00" },
-        { key: 14, label: "14:00 a 15:00", esAlmuerzo: true },
+        { key: 14, label: "14:00 a 15:00" },
         { key: 15, label: "15:00 a 16:00" },
         { key: 16, label: "16:00 a 17:00" },
         { key: 17, label: "17:00 a 18:00" }
@@ -354,14 +354,10 @@
             });
     }
 
-    function formatearBitacoraAutomatica(slotActs, esAlmuerzo) {
+    function formatearBitacoraAutomatica(slotActs) {
         let lines = [];
-        if (esAlmuerzo) {
-            lines.push('Almuerzo');
-        }
-
         if (slotActs.length === 0) {
-            return esAlmuerzo ? 'Almuerzo' : 'sn';
+            return 'sn';
         }
 
         let groups = {};
@@ -390,8 +386,23 @@
 
     function parseHour(fechaHoraStr) {
         try {
-            const timePart = fechaHoraStr.includes('T') ? fechaHoraStr.split('T')[1] : fechaHoraStr.split(' ')[1];
-            return parseInt(timePart.split(':')[0]);
+            if (!fechaHoraStr) return 9;
+            const str = String(fechaHoraStr).trim();
+            if (str.includes(' ')) {
+                const timePart = str.split(' ')[1];
+                return parseInt(timePart.split(':')[0], 10);
+            }
+            if (str.includes('T')) {
+                if (str.includes('Z') || str.includes('+') || (str.split('-').length > 3)) {
+                    const d = new Date(str);
+                    if (!isNaN(d.getTime())) {
+                        return d.getHours();
+                    }
+                }
+                const timePart = str.split('T')[1];
+                return parseInt(timePart.split(':')[0], 10);
+            }
+            return parseInt(str, 10);
         } catch (e) {
             return 9;
         }
@@ -466,46 +477,30 @@
             let codigoEquipo = 'sn';
             let observaciones = 'sn';
 
-            if (slot.esAlmuerzo) {
-                valActividad = 'almuerzo';
-                valNovedad = 'Oficina';
-                valEstado = 'realizado ';
-                observaciones = 'Almuerzo';
-            }
-
             let hasWork = false;
             const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
-            if (manualAct) {
-                const meta = manualAct.metadata_json || {};
-                valActividad = meta.actividad || 'sn';
-                valNovedad = meta.novedad || 'sn';
-                valEstado = meta.estado || 'sn';
-                valModalidad = meta.modalidad || 'presencial';
-                ots = meta.ot || 'sn';
-                clase = meta.clase || 'sn';
-                serie = meta.serie || 'sn';
-                codigoEquipo = meta.codigo_equipo || 'sn';
-                observaciones = manualAct.descripcion || 'sn';
-                if (!slot.esAlmuerzo && valActividad !== 'sn' && valActividad !== 'almuerzo') {
-                    hasWork = true;
-                }
-                if (ots && ots !== 'sn') {
-                    ots.split(',').map(o => o.trim()).filter(Boolean).forEach(o => otsSet.add(o));
-                }
-            } else if (slotActs.length > 0) {
-                if (!slot.esAlmuerzo) {
-                    hasWork = true;
+            const autoActs = slotActs.filter(a => a.tipo_accion !== 'registro_manual');
+            const hasRealManual = manualAct && manualAct.descripcion && manualAct.descripcion.trim() !== '' && manualAct.descripcion.trim() !== 'sn';
+
+            if (autoActs.length > 0) {
+                hasWork = true;
+                const autoBitacora = formatearBitacoraAutomatica(autoActs);
+
+                if (hasRealManual && !autoBitacora.includes(manualAct.descripcion.trim())) {
+                    observaciones = autoBitacora + "\n\nNota técnica adicional:\n" + manualAct.descripcion.trim();
+                } else if (hasRealManual) {
+                    observaciones = manualAct.descripcion.trim();
+                } else {
+                    observaciones = autoBitacora;
                 }
 
-                observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
-
-                const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
+                const otsEnSlot = autoActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                 if (otsEnSlot.length > 0) {
                     ots = [...new Set(otsEnSlot)].join(', ');
                     otsEnSlot.forEach(o => otsSet.add(o));
                 }
 
-                const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
+                const mainAct = autoActs.find(a => a.metadata_json?.nro_orden);
                 if (mainAct) {
                     clase = mapClase(mainAct.metadata_json?.tipo);
                     serie = mainAct.metadata_json?.serie || 'sn';
@@ -540,10 +535,39 @@
                     valNovedad = 'Oficina';
                     valEstado = 'realizado ';
                 }
+
+                if (manualAct && manualAct.metadata_json) {
+                    const meta = manualAct.metadata_json;
+                    if (meta.actividad && meta.actividad !== 'sn') valActividad = meta.actividad;
+                    if (meta.novedad && meta.novedad !== 'sn') valNovedad = meta.novedad;
+                    if (meta.estado && meta.estado !== 'sn') valEstado = meta.estado;
+                    if (meta.modalidad && meta.modalidad !== 'sn') valModalidad = meta.modalidad;
+                    if (meta.ot && meta.ot !== 'sn') ots = meta.ot;
+                    if (meta.clase && meta.clase !== 'sn') clase = meta.clase;
+                    if (meta.serie && meta.serie !== 'sn') serie = meta.serie;
+                    if (meta.codigo_equipo && meta.codigo_equipo !== 'sn') codigoEquipo = meta.codigo_equipo;
+                }
+            } else if (manualAct) {
+                const meta = manualAct.metadata_json || {};
+                valActividad = meta.actividad || 'sn';
+                valNovedad = meta.novedad || 'sn';
+                valEstado = meta.estado || 'sn';
+                valModalidad = meta.modalidad || 'presencial';
+                ots = meta.ot || 'sn';
+                clase = meta.clase || 'sn';
+                serie = meta.serie || 'sn';
+                codigoEquipo = meta.codigo_equipo || 'sn';
+                observaciones = manualAct.descripcion || 'sn';
+                if (valActividad !== 'sn' && valActividad !== 'almuerzo') {
+                    hasWork = true;
+                }
+                if (ots && ots !== 'sn') {
+                    ots.split(',').map(o => o.trim()).filter(Boolean).forEach(o => otsSet.add(o));
+                }
             }
 
             if (esSistemas) {
-                valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                valActividad = 'ticket';
                 valNovedad = 'sn';
                 valEstado = 'sn';
                 valModalidad = 'sn';
@@ -661,15 +685,15 @@
             horasJornada.forEach(slot => {
                 const key = slot.key;
                 payload.actividades[key] = {
-                    actividad: slot.esAlmuerzo ? 'almuerzo' : 'ticket',
-                    novedad: slot.esAlmuerzo ? 'Oficina' : 'Empresa',
+                    actividad: 'ticket',
+                    novedad: 'Empresa',
                     estado: 'realizado ',
                     modalidad: 'presencial',
                     ot: 'sn',
                     clase: 'sn',
                     serie: 'sn',
                     codigo_equipo: 'sn',
-                    observacion: slot.esAlmuerzo ? 'Almuerzo' : desc
+                    observacion: desc
                 };
             });
         } else {
@@ -839,35 +863,29 @@
                 let repuestoCode = 'sn';
                 let equipoCode = 'sn';
 
-                if (slot.esAlmuerzo) {
-                    valActividad = 'almuerzo';
-                    valNovedad = 'Oficina';
-                    valEstado = 'realizado ';
-                    observaciones = 'Almuerzo';
-                }
+                // Sin almuerzo automatico
 
                 const manualAct = slotActs.find(a => a.tipo_accion === 'registro_manual');
-                if (manualAct) {
-                    const meta = manualAct.metadata_json || {};
-                    valActividad = meta.actividad || 'sn';
-                    valNovedad = meta.novedad || 'sn';
-                    valEstado = meta.estado || 'sn';
-                    valModalidad = meta.modalidad || 'presencial';
-                    ots = meta.ot || 'sn';
-                    clase = meta.clase || 'sn';
-                    serie = meta.serie || 'sn';
-                    observaciones = manualAct.descripcion || 'sn';
-                    repuestoCode = meta.codigo_repuesto || 'sn';
-                    equipoCode = meta.codigo_equipo || 'sn';
-                } else if (slotActs.length > 0) {
-                    observaciones = formatearBitacoraAutomatica(slotActs, slot.esAlmuerzo);
+                const autoActs = slotActs.filter(a => a.tipo_accion !== 'registro_manual');
+                const hasRealManual = manualAct && manualAct.descripcion && manualAct.descripcion.trim() !== '' && manualAct.descripcion.trim() !== 'sn';
 
-                    const otsEnSlot = slotActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
+                if (autoActs.length > 0) {
+                    const autoBitacora = formatearBitacoraAutomatica(autoActs);
+
+                    if (hasRealManual && !autoBitacora.includes(manualAct.descripcion.trim())) {
+                        observaciones = autoBitacora + "\n\nNota técnica adicional:\n" + manualAct.descripcion.trim();
+                    } else if (hasRealManual) {
+                        observaciones = manualAct.descripcion.trim();
+                    } else {
+                        observaciones = autoBitacora;
+                    }
+
+                    const otsEnSlot = autoActs.map(a => a.metadata_json?.nro_orden).filter(Boolean);
                     if (otsEnSlot.length > 0) {
                         ots = [...new Set(otsEnSlot)].join(', ');
                     }
 
-                    const mainAct = slotActs.find(a => a.metadata_json?.nro_orden);
+                    const mainAct = autoActs.find(a => a.metadata_json?.nro_orden);
                     if (mainAct) {
                         clase = mapClase(mainAct.metadata_json?.tipo);
                         serie = mainAct.metadata_json?.serie || 'sn';
@@ -906,9 +924,35 @@
                         valNovedad = 'Oficina';
                         valEstado = 'realizado ';
                     }
+
+                    if (manualAct && manualAct.metadata_json) {
+                        const meta = manualAct.metadata_json;
+                        if (meta.actividad && meta.actividad !== 'sn') valActividad = meta.actividad;
+                        if (meta.novedad && meta.novedad !== 'sn') valNovedad = meta.novedad;
+                        if (meta.estado && meta.estado !== 'sn') valEstado = meta.estado;
+                        if (meta.modalidad && meta.modalidad !== 'sn') valModalidad = meta.modalidad;
+                        if (meta.ot && meta.ot !== 'sn') ots = meta.ot;
+                        if (meta.clase && meta.clase !== 'sn') clase = meta.clase;
+                        if (meta.serie && meta.serie !== 'sn') serie = meta.serie;
+                        if (meta.codigo_equipo && meta.codigo_equipo !== 'sn') equipoCode = meta.codigo_equipo;
+                        if (meta.codigo_repuesto && meta.codigo_repuesto !== 'sn') repuestoCode = meta.codigo_repuesto;
+                    }
+                } else if (manualAct) {
+                    const meta = manualAct.metadata_json || {};
+                    valActividad = meta.actividad || 'sn';
+                    valNovedad = meta.novedad || 'sn';
+                    valEstado = meta.estado || 'sn';
+                    valModalidad = meta.modalidad || 'presencial';
+                    ots = meta.ot || 'sn';
+                    clase = meta.clase || 'sn';
+                    serie = meta.serie || 'sn';
+                    observaciones = manualAct.descripcion || 'sn';
+                    repuestoCode = meta.codigo_repuesto || 'sn';
+                    equipoCode = meta.codigo_equipo || 'sn';
                 }
+
                 if (esSistemas) {
-                    valActividad = slot.esAlmuerzo ? 'almuerzo' : 'ticket';
+                    valActividad = 'ticket';
                     valNovedad = 'sn';
                     valEstado = 'sn';
                     valModalidad = 'sn';

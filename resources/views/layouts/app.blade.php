@@ -667,6 +667,10 @@
                         <i class="bi bi-people-fill" style="flex-shrink:0; color: #059669;"></i>
                         <span class="nav-label" style="margin-left:10px;">Gestión Solicitantes</span>
                     </a>
+                    <a data-tip="Auditoría & Reportes" href="{{ route('tickets.auditoria') }}">
+                        <i class="bi bi-bar-chart-line-fill" style="flex-shrink:0; color: #2563eb;"></i>
+                        <span class="nav-label" style="margin-left:10px; font-weight: 600;">Auditoría & Reportes</span>
+                    </a>
                 @endif
             </div>
         </div>
@@ -685,7 +689,7 @@
                             <span class="nav-label" style="margin-left:10px;">Mi Cuenta</span>
                         </a>
                     @endif
-                    @if (($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check()) && !$esAdminLectura && auth()->user()?->grupo_id != 6)
+                    @if (($sa || $can('mi_cuenta', 'ver') || $can('nomina_mis_datos', 'ver') || auth()->check()) && !$esAdminLectura && auth()->user()?->grupo_id != 6 && !$esGeneradorTickets)
                         <a data-tip="Mis Datos / Nómina" href="{{ route('nomina.mis_datos') }}">
                             <i class="bi bi-person-vcard" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Mis Datos Personales</span>
@@ -1632,7 +1636,7 @@
     }
 </style>
 
-@if (auth()->check() && auth()->user()->debeLlenarActividades())
+@if (auth()->check() && auth()->user()->debeLlenarActividades() && !$esGeneradorTickets)
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         verificarAlertaFinJornada();
@@ -2149,7 +2153,7 @@
 </script>
 @endif
 @auth
-@if(!$esAdminLectura && auth()->user()?->grupo_id != 6)
+@if(!$esAdminLectura && auth()->user()?->grupo_id != 6 && !$esGeneradorTickets)
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (!localStorage.getItem('alerta_actualizar_nomina_v1')) {
@@ -2188,6 +2192,106 @@
 </script>
 @endif
 @endauth
+
+@php
+    $usuarioSesionId = auth()->id() ?: session('tecnico_id');
+    $ticketPendienteCalificarGlobal = null;
+    if ($usuarioSesionId && !request()->routeIs('mistickets.show')) {
+        $ticketPendienteCalificarGlobal = \App\Models\Operations\Ticket::with(['asignadoA'])
+            ->where('solicitante_id', $usuarioSesionId)
+            ->where('estado', 'resuelto')
+            ->whereNull('calificacion')
+            ->orderBy('id', 'asc')
+            ->first();
+    }
+@endphp
+
+@if($ticketPendienteCalificarGlobal)
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ticketId = {{ $ticketPendienteCalificarGlobal->id }};
+        const ticketCodigo = @json($ticketPendienteCalificarGlobal->codigo_ticket);
+        const ticketTitulo = @json($ticketPendienteCalificarGlobal->titulo);
+        const tecnicoNombre = @json($ticketPendienteCalificarGlobal->asignadoA ? ($ticketPendienteCalificarGlobal->asignadoA->nombre_tecnico ?: $ticketPendienteCalificarGlobal->asignadoA->usuario) : 'Soporte Técnico');
+        const solucionTexto = @json($ticketPendienteCalificarGlobal->solucion_texto ?: ($ticketPendienteCalificarGlobal->solucion ?: 'Atención técnica finalizada con éxito.'));
+
+        Swal.fire({
+            title: '⭐ Calificación Obligatoria de Atención',
+            html: `
+                <div style="text-align: left; font-size: 0.9rem;">
+                    <div class="p-3 mb-2 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-success text-white fw-bold">${ticketCodigo}</span>
+                            <span class="small text-muted">Técnico: <b>${tecnicoNombre}</b></span>
+                        </div>
+                        <div class="fw-bold text-dark small mb-1">${ticketTitulo}</div>
+                        <div class="small text-muted" style="white-space: pre-line;"><b>Solución:</b> ${solucionTexto}</div>
+                    </div>
+                    <p class="text-danger fw-semibold mb-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Para continuar navegando en el sistema, debes calificar obligatoriamente la atención recibida en este ticket resuelto.
+                    </p>
+                    <div class="mb-3">
+                        <label class="fw-bold mb-1 text-dark">Calificación de la Atención <span class="text-danger">*</span>:</label>
+                        <select id="swal-global-calificacion" class="swal2-input" style="width: 100%; margin: 0; font-size: 14px;">
+                            <option value="5" selected>⭐⭐⭐⭐⭐ 5 Estrellas - Excelente</option>
+                            <option value="4">⭐⭐⭐⭐ 4 Estrellas - Muy Bueno</option>
+                            <option value="3">⭐⭐⭐ 3 Estrellas - Regular / Aceptable</option>
+                            <option value="2">⭐⭐ 2 Estrellas - Insatisfecho</option>
+                            <option value="1">⭐ 1 Estrella - Muy Malo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="fw-bold mb-1 text-dark">Comentario / Reseña (Opcional):</label>
+                        <textarea id="swal-global-comentario" class="swal2-textarea" placeholder="Indica si la atención fue oportuna, trato recibido o cualquier sugerencia..." style="width: 100%; margin: 0; height: 75px; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+            `,
+            showCancelButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Confirmar y Enviar Calificación',
+            confirmButtonColor: '#059669',
+            preConfirm: () => {
+                const calificacion = document.getElementById('swal-global-calificacion').value;
+                const comentario = document.getElementById('swal-global-comentario').value;
+                if (!calificacion) {
+                    Swal.showValidationMessage('Debes seleccionar una calificación.');
+                    return false;
+                }
+                return { calificacion, comentario };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.showLoading();
+                fetch("{{ url('/tickets/mis-tickets') }}/" + ticketId + "/calificar", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(result.value)
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.ok) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Calificación Registrada!',
+                            text: res.mensaje,
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', res.error || 'No se pudo guardar la calificación', 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Error', 'No se pudo registrar la calificación', 'error'));
+            }
+        });
+    });
+</script>
+@endif
 @stack('js_adicional')
 </body>
 </html>

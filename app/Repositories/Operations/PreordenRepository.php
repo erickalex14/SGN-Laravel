@@ -30,9 +30,25 @@ class PreordenRepository
         return DB::table('usuarios as u')
             ->join('roles as r', 'u.rol_id', '=', 'r.id')
             ->select('u.id', 'u.nombre_tecnico')
-            ->whereIn('r.rol', ['tecnico', 'tecnico master'])
+            ->where('u.activo', 1)
+            ->whereNotNull('u.nombre_tecnico')
+            ->where(function ($q) {
+                $q->whereIn('u.grupo_id', [1, 2, 3, 4, 5])
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('u.grupo_id')
+                          ->whereIn('u.rol_id', [1, 2, 3, 4]);
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('u.grupo_id', [8, 9])
+                  ->orWhereNull('u.grupo_id');
+            })
+            ->whereNull('u.sucursal_cliente_id')
             ->when(!$esSuperadmin && $sucursalSesion > 0, function ($q) use ($sucursalSesion) {
-                $q->where('u.sucursal_id', $sucursalSesion);
+                $q->where(function ($sub) use ($sucursalSesion) {
+                    $sub->where('u.sucursal_id', $sucursalSesion)
+                        ->orWhereIn('r.rol', ['administrador master', 'admin master']);
+                });
             })
             ->orderBy('u.nombre_tecnico')
             ->get();
@@ -87,8 +103,12 @@ class PreordenRepository
         return DB::table('usuarios as u')
             ->join('roles as r', 'u.rol_id', '=', 'r.id')
             ->where('u.id', $tecnicoId)
-            ->where('u.sucursal_id', $sucursalSesion)
-            ->whereIn('r.rol', ['tecnico', 'tecnico master'])
+            ->where('u.activo', 1)
+            ->where(function ($q) use ($sucursalSesion) {
+                $q->where('u.sucursal_id', $sucursalSesion)
+                    ->orWhereIn('r.rol', ['administrador master', 'admin master']);
+            })
+            ->whereIn('r.rol', ['tecnico', 'tecnico master', 'administrador master', 'admin master'])
             ->exists();
     }
 

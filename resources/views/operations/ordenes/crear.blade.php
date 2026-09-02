@@ -1116,6 +1116,15 @@
 
                     </div>
 
+                    
+                    <div class="campo">
+                        <label>Empresa de la Garantía <span class="req">*</span></label>
+                        <select id="empresa_garantia" name="empresa_garantia" style="font-weight: 600;">
+                            <option value="NOVISOLUTIONS" selected>NOVISOLUTIONS (Novicompu)</option>
+                            <option value="ENV">ENV (Accesorios y Sistemas)</option>
+                        </select>
+                    </div>
+    
                     <div class="campo">
 
                         <label>Tipo de Garantia <span class="req">*</span></label>
@@ -1330,13 +1339,14 @@
 
                     <div class="campo">
 
-                        <label>Código <span class="req">*</span></label>
+                        <label id="lbl-prod-codigo">Código <span class="req" id="req-prod-codigo">*</span></label>
 
                         <div style="position:relative;">
 
-                            <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo" required
+                            <input type="text" id="producto_inventario_codigo" name="producto_inventario_codigo"
 
                                    autocomplete="off" style="width:100%;text-transform:uppercase;"
+                                   placeholder="Ej: 1CENV97"
 
                                    oninput="this.value=this.value.toUpperCase(); manejarInputCodigoProducto();">
 
@@ -2441,20 +2451,24 @@ function mostrarEstadoProductoNuevo(codigo, mantenerDescripcion = false) {
 }
 
 function ocultarEstadoProductoNuevo() {
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
     const aviso = document.getElementById('producto-nuevo-aviso');
     const campo = document.getElementById('campo-producto-nuevo-descripcion');
     const input = document.getElementById('producto_nuevo_descripcion');
 
     if (aviso) aviso.style.display = 'none';
-    if (campo) campo.style.display = 'none';
-    if (input) input.value = '';
+    if (motivo !== 'Servicio Cliente Externo') {
+        if (campo) campo.style.display = 'none';
+        if (input) input.value = '';
+    }
 }
 
 function limpiarEstadoProducto(codigo = '') {
     _productoEstado = { status: codigo ? 'pending' : 'idle', codigo: codigo };
     ocultarEstadoProductoNuevo();
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
     const modelInp = document.getElementById('eq_modelo');
-    if (modelInp) {
+    if (modelInp && motivo !== 'Servicio Cliente Externo') {
         modelInp.value = '';
     }
 }
@@ -2980,12 +2994,39 @@ function actualizarMotivo() {
 
     }
 
+    const empGarantia = document.getElementById('empresa_garantia');
+    if (empGarantia) {
+        empGarantia.required = !esEmpresa && esGarantia;
+        if (!esGarantia) empGarantia.value = 'NOVISOLUTIONS';
+    }
+
     if (garantiaTipo) {
 
         garantiaTipo.required = !esEmpresa && esGarantia;
 
         if (!esGarantia) garantiaTipo.value = '';
 
+    }
+
+    const inpCod = document.getElementById('producto_inventario_codigo');
+    const reqCod = document.getElementById('req-prod-codigo');
+    const campoDesc = document.getElementById('campo-producto-nuevo-descripcion');
+    const avisoNuevo = document.getElementById('producto-nuevo-aviso');
+
+    if (inpCod) {
+        inpCod.required = !esEmpresa && esGarantia;
+        if (reqCod) {
+            reqCod.style.display = esGarantia ? 'inline' : 'none';
+        }
+    }
+
+    if (esExterno) {
+        if (campoDesc) campoDesc.style.display = 'block';
+        if (avisoNuevo) avisoNuevo.style.display = 'none';
+    } else if (esGarantia) {
+        if (_productoEstado.status !== 'nuevo' && campoDesc) {
+            campoDesc.style.display = 'none';
+        }
     }
 
 
@@ -4181,13 +4222,14 @@ async function guardarOrden() {
         const cod = (document.getElementById('producto_inventario_codigo')?.value || '').trim().toUpperCase();
         const motivo = document.getElementById('motivo_ingreso')?.value || '';
         const isEmpresa = motivo === 'Servicios a Empresas';
+        const isExterno = motivo === 'Servicio Cliente Externo';
 
         if (!isEmpresa && cod !== '') {
             const resultadoProducto = await buscarProductoPorCodigo(cod);
             if (resultadoProducto.status === 'nuevo') {
                 const descripcionNueva = obtenerDescripcionProductoNuevo();
-                if (descripcionNueva.length < 3) {
-                    mostrarMensaje(true, 'Este codigo no esta registrado. Ingresa una descripcion valida del equipo antes de crear la orden.');
+                if (descripcionNueva.length < 2) {
+                    mostrarMensaje(true, 'Este código no está registrado. Ingresa una descripción válida del equipo antes de crear la orden.');
                     document.getElementById('producto_nuevo_descripcion')?.focus();
                     return;
                 }
@@ -4195,10 +4237,20 @@ async function guardarOrden() {
                     modelInp.value = descripcionNueva;
                 }
             }
+        } else if (isExterno && cod === '') {
+            const descripcionNueva = obtenerDescripcionProductoNuevo();
+            if (descripcionNueva.length < 2) {
+                mostrarMensaje(true, 'Por favor ingresa la descripción o modelo del equipo.');
+                document.getElementById('producto_nuevo_descripcion')?.focus();
+                return;
+            }
+            if (modelInp) {
+                modelInp.value = descripcionNueva;
+            }
         }
 
         if (modelInp && !modelInp.value) {
-            modelInp.value = cod || '';
+            modelInp.value = obtenerDescripcionProductoNuevo() || cod || 'GENERICO';
         }
 
         const form = document.getElementById('form-orden');

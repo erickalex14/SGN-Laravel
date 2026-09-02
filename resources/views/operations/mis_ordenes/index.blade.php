@@ -211,6 +211,7 @@
             'fecha_entrega' => (string) ($esEmpresa ? '' : ($ord->fecha_entrega ?? '')),
             'motivo_ingreso' => (string) ($esEmpresa ? ('Empresa - ' . ($ord->subtipo ?? '')) : ($ord->motivo_ingreso ?? '')),
             'estado_garantia' => (string) ($esEmpresa ? '' : ($ord->estado_garantia ?? 'Pendiente')),
+            'empresa_garantia' => (string) ($esEmpresa ? '' : ($ord->empresa_garantia ?? 'NOVISOLUTIONS')),
             'cliente' => $esEmpresa
                 ? (string) ($ord->empresa->nombre ?? '')
                 : trim(((string) ($ord->cliente->nombres ?? '')) . ' ' . ((string) ($ord->cliente->apellidos ?? ''))),

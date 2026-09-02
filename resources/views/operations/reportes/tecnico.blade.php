@@ -290,6 +290,15 @@
                 </div>
 
                 <div class="rep-campo">
+                    <label>Tipo Garantía</label>
+                    <select name="garantia_tipo" id="f-garantia-tipo">
+                        <option value="">Todas</option>
+                        <option value="interna">Interna (Propia)</option>
+                        <option value="externa">Externa (CAS)</option>
+                    </select>
+                </div>
+
+                <div class="rep-campo">
                     <label>Fecha desde</label>
                     <input type="date" name="fecha_inicio" id="f-desde">
                 </div>
@@ -426,14 +435,16 @@
                         <th onclick="sortTabla(13,'cas_nombre')">CAS</th>
                         <th onclick="sortTabla(14,'tipo_orden')">Tipo orden</th>
                         <th onclick="sortTabla(15,'estado_repuesto')">Repuesto</th>
-                        <th onclick="sortTabla(16,'estado_garantia')">Garantía</th>
-                        <th onclick="sortTabla(17,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(18,'dias_transcurridos')">Días</th>
-                        <th onclick="sortTabla(19,'fecha_prometido')">F. Prometido</th>
-                        <th onclick="sortTabla(20,'fecha_entrega')">F. Entrega</th>
+                        <th onclick="sortTabla(16,'estado_garantia')">Estado Garantía</th>
+                        <th onclick="sortTabla(17,'garantia_tipo')">Tipo Garantía</th>
+                        <th onclick="sortTabla(18,'garantia_destino_cas')">CAS Destino</th>
+                        <th onclick="sortTabla(19,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(20,'dias_transcurridos')">Días</th>
+                        <th onclick="sortTabla(21,'fecha_prometido')">F. Prometido</th>
+                        <th onclick="sortTabla(22,'fecha_entrega')">F. Entrega</th>
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
-                        <th onclick="sortTabla(23,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(25,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>
@@ -527,6 +538,8 @@ function normalizeRow(raw) {
         motivo_ingreso    : raw.motivo_ingreso || '-',
         estado_repuesto   : raw.estado_repuesto || '-',
         estado_garantia   : raw.estado_garantia || '-',
+        garantia_tipo     : raw.garantia_tipo || '-',
+        garantia_destino_cas: raw.garantia_destino_cas || raw.cas_nombre || '-',
         estado_orden      : raw.estado_orden || '-',
         tecnico_nombre    : raw.tecnico_nombre || raw.tecnico?.nombre_tecnico || '-',
         sucursal_nombre   : raw.sucursal_nombre || raw.sucursal?.ciudad || '-',
@@ -550,6 +563,7 @@ const FILTROS = [
     { id:'f-motivo',    label:'Motivo',      sel:true  },
     { id:'f-repuesto',  label:'Repuesto',    sel:true  },
     { id:'f-garantia',  label:'Garantía',    sel:true  },
+    { id:'f-garantia-tipo', label:'Tipo Garantía', sel:true },
     { id:'f-desde',     label:'Desde',       sel:false },
     { id:'f-hasta',     label:'Hasta',       sel:false },
 ];
@@ -785,6 +799,8 @@ function renderTabla() {
             <td>${tB}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_garantia)}</td>
+            <td style="font-size:11px;">${r.garantia_tipo === 'Externa' ? '<span class="tipo-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;"><i class="bi bi-box-arrow-up-right me-1"></i>Externa</span>' : (r.garantia_tipo === 'Interna' ? '<span class="tipo-badge" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;"><i class="bi bi-house-door me-1"></i>Interna</span>' : '<span style="color:#94a3b8;">—</span>')}</td>
+            <td style="font-size:11px;font-weight:${r.garantia_tipo === 'Externa' ? '700' : '400'};color:${r.garantia_tipo === 'Externa' ? '#1e40af' : '#64748b'};">${esc(r.garantia_destino_cas)}</td>
             <td><span class="estado-badge" style="background:${ec.bg};color:${ec.fg};">${esc(r.estado_orden)}</span></td>
             <td style="text-align:center;font-weight:700;color:${dC};">${r.dias_transcurridos}d</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_prometido || '—')}</td>
@@ -891,7 +907,6 @@ function generarPDFEnterprise() {
     const url = '{{ route("reportes.tecnico.imprimir") }}?' + params.toString();
     window.open(url, '_blank');
 }
-}
 
 /* ════════════════════════════════════════════════
     CSV ENTERPRISE
@@ -904,7 +919,7 @@ function exportarCSV() {
     const headers = [
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
-        'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
         'Técnico','Sucursal','Sucursal Cliente','CAS','Días Transcurridos','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'URL PDF Orden', 'URL PDF Informe'
     ];
@@ -919,7 +934,7 @@ function exportarCSV() {
         return [
             r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.cliente_nombre, r.identificacion,
             r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
-            r.tipo_equipo, r.motivo_ingreso, r.estado_repuesto, r.estado_garantia,
+            r.tipo_equipo, r.motivo_ingreso, r.estado_repuesto, r.estado_garantia, r.garantia_tipo || '-', r.garantia_destino_cas || '-',
             r.estado_orden, r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
             r.dias_transcurridos, r.fecha_prometido || '', r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
@@ -1013,7 +1028,7 @@ async function exportarXLSX() {
         'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Días','Vencida',
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
-        'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
         'Técnico','Ingresado por',
         'Sucursal',
         'Sucursal Cliente',
@@ -1024,7 +1039,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,18,22,20,16,22,16,12,22,18,18];
+    const widths1 = [14,18,14,14,7,8,28,14,14,22,28,18,18,16,16,22,18,14,16,26,18,22,20,16,22,16,12,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ state:'frozen', ySplit:20 }],
@@ -1066,9 +1081,9 @@ async function exportarXLSX() {
     const sep6 = ws1.getCell(6, 1); sep6.value = 'RESUMEN EJECUTIVO';
     sep6.fill = fl(C.azulO); sep6.font = fn(true, 10, C.blanco); sep6.alignment = al('center'); ws1.getRow(6).height = 18;
 
-    const resHdr = ['Estado','Cant.','%','','Marca','Cant.','%','','Técnico','Cant.','%'];
+    const resHdr = ['Estado','Cant.','%','','Marca','Cant.','%','','Tipo de Equipo','Cant.','%'];
     ws1.getRow(7).height = 15;
-    resHdr.forEach((h, i) => { if (!h) return; const c = ws1.getCell(7, i+1); c.value = h; c.fill = fl(C.grisMed); c.font = fn(true, 9, C.negro); c.alignment = al(i===0?'left':'center'); c.border = bd('CBD5E1'); });
+    resHdr.forEach((h, i) => { if (!h) return; const c = ws1.getCell(7, i+1); c.value = h; c.fill = fl(C.grisMed); c.font = fn(true, 9, C.negro); c.alignment = al('center'); c.border = bd(); });
 
     const estadosList = [
         ['Total Órdenes', total, '100%', C.azulXL, C.azul],
@@ -1079,7 +1094,7 @@ async function exportarXLSX() {
         ['Notas de Crédito', cnt['Nota de Credito'], pp(cnt['Nota de Credito']), C.rojoL, C.rojo],
         ['Tasa de entrega', tasa+'%', '', C.tealL, C.teal],
     ];
-    const maxR = Math.max(estadosList.length, mT2.length, tT2.length);
+    const maxR = Math.max(estadosList.length, mT2.length, tiT2.length);
     for (let ri = 0; ri < maxR; ri++) {
         const dr = 8 + ri; ws1.getRow(dr).height = 14;
         const bg = ri % 2 === 0 ? C.blanco : C.gris;
@@ -1095,8 +1110,8 @@ async function exportarXLSX() {
             const m2 = ws1.getCell(dr,6); m2.value = m[1]; m2.fill = fl(bg); m2.font = fn(true,9,C.violet); m2.border = bd(); m2.alignment = al('center');
             const m3 = ws1.getCell(dr,7); m3.value = pp(m[1]); m3.fill = fl(bg); m3.font = fn(false,9,C.grisOsc); m3.border = bd(); m3.alignment = al('center');
         }
-        if (ri < tT2.length) {
-            const t = tT2[ri];
+        if (ri < tiT2.length) {
+            const t = tiT2[ri];
             const t1c = ws1.getCell(dr,9); t1c.value = t[0]; t1c.fill = fl(bg); t1c.font = fn(false,9); t1c.border = bd(); t1c.alignment = al('left');
             const t2c = ws1.getCell(dr,10); t2c.value = t[1]; t2c.fill = fl(bg); t2c.font = fn(true,9,C.teal); t2c.border = bd(); t2c.alignment = al('center');
             const t3c = ws1.getCell(dr,11); t3c.value = pp(t[1]); t3c.fill = fl(bg); t3c.font = fn(false,9,C.grisOsc); t3c.border = bd(); t3c.alignment = al('center');
@@ -1131,7 +1146,7 @@ async function exportarXLSX() {
             r.dias_transcurridos ?? '', r.vencida ? 'Sí' : 'No',
             r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
-            r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
+            r.estado_repuesto, r.estado_garantia || '', r.garantia_tipo || '-', r.garantia_destino_cas || '-', r.estado_orden,
             r.tecnico_nombre, '',
             r.sucursal_nombre,
             r.sucursal_cliente || '',
@@ -1143,12 +1158,22 @@ async function exportarXLSX() {
         ];
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = 19;
+        const estadoIdx = 21;
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 25) { 
+            else if (ci === 18) { // Tipo Garantía
+                cell.fill = fl(bgBase);
+                if (v === 'Externa') { cell.font = fn(true, 9, 'B45309'); cell.alignment = al('center','middle'); }
+                else if (v === 'Interna') { cell.font = fn(true, 9, '15803D'); cell.alignment = al('center','middle'); }
+                else { cell.alignment = al('center','middle'); }
+            }
+            else if (ci === 19) { // CAS Destino
+                cell.fill = fl(bgBase);
+                if (v !== '-') { cell.font = fn(true, 9, C.azul); }
+            }
+            else if (ci === 27) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);

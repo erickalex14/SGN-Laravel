@@ -162,7 +162,11 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         </tr>
         <tr>
             <td colspan="2"><span class="lbl">Sucursal del Cliente</span>{{ $nombreSucursalCliente ?? '-' }}</td>
-            <td colspan="2"></td>
+            @if($esGarantia)
+                <td colspan="2"><span class="lbl">Empresa de la Garantía</span><strong style="color:#1e40af; font-size:7.5pt;">{{ $orden->empresa_garantia ?: 'NOVISOLUTIONS' }}</strong></td>
+            @else
+                <td colspan="2"></td>
+            @endif
         </tr>
     </table>
 

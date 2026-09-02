@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('contenido')
-<div class="container-fluid px-4 py-4" style="max-width: 1400px;">
+<div class="container-fluid px-2 px-sm-3 px-md-4 py-3 py-md-4" style="max-width: 1400px;">
     <!-- Encabezado -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 bg-white p-4 rounded-4 shadow-sm border">
         <div>
@@ -46,7 +46,55 @@
     </div>
 
     <!-- Tabla de Solicitantes -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <!-- VISTA MÓVIL: Tarjetas de Solicitantes (Pantallas < 768px) -->
+    <div class="d-block d-md-none mb-4">
+        <div class="d-flex flex-column gap-3">
+            @forelse($solicitantes as $sol)
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 {{ $sol->activo ? 'border-success' : 'border-secondary' }}">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div>
+                            <span class="fw-bold text-dark fs-6">{{ $sol->nombre_tecnico ?: $sol->usuario }}</span>
+                            <div class="text-muted small" style="font-size: 11px;">Usuario: <strong>{{ $sol->usuario }}</strong> · ID #{{ $sol->id }}</div>
+                        </div>
+                        <div>
+                            @if($sol->activo)
+                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">Activo</span>
+                            @else
+                                <span class="badge bg-secondary rounded-pill px-2 py-1">Inactivo</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="small mb-2">
+                        <div class="text-dark fw-semibold"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ $sol->sucursalCliente ? $sol->sucursalCliente->codigo . ' - ' . $sol->sucursalCliente->nombre : 'Sin Tienda Asignada' }}</div>
+                        <div class="text-muted mt-0.5"><i class="bi bi-envelope me-1"></i>{{ $sol->correo_tec ?: 'Sin correo' }}</div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 small mb-2">
+                        @if($sol->anydesk_id)
+                            <span class="badge bg-danger bg-opacity-10 text-danger font-monospace">AnyDesk: {{ $sol->anydesk_id }}</span>
+                        @endif
+                        @if($sol->usuario_mba)
+                            <span class="badge bg-purple bg-opacity-10 text-purple" style="color: #7c3aed; background: #f3e8ff;">MBA: {{ $sol->usuario_mba }}</span>
+                        @endif
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-3 fw-bold" onclick="abrirModalEditarSolicitante({{ $sol->id }})">
+                            <i class="bi bi-pencil-square me-1"></i> Editar
+                        </button>
+                    </div>
+                </div>
+            @empty
+                <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white">
+                    No se encontraron usuarios solicitantes.
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <!-- VISTA ESCRITORIO: Tabla (Pantallas >= 768px) -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white d-none d-md-block">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light text-muted small text-uppercase">
@@ -77,9 +125,14 @@
                                     <div class="fw-bold text-dark">
                                         <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ $sol->sucursalCliente->codigo }} - {{ $sol->sucursalCliente->nombre }}
                                     </div>
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary mt-1">{{ $sol->empresa_origen ?? 'NOVICOMPU' }}</span>
+                                    <div class="d-flex align-items-center gap-1 flex-wrap mt-1">
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ $sol->empresa_origen ?? 'NOVICOMPU' }}</span>
+                                        @if($sol->departamento)
+                                            <span class="badge bg-primary bg-opacity-10 text-primary"><i class="bi bi-briefcase me-1"></i>{{ $sol->departamento }}</span>
+                                        @endif
+                                    </div>
                                 @else
-                                    <span class="badge bg-warning text-dark">⚠️ Sin Tienda</span>
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Sin Tienda</span>
                                 @endif
                             </td>
                             <td>
@@ -168,7 +221,7 @@
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label class="form-label small fw-semibold text-dark">Cadena / Empresa <span class="text-danger">*</span></label>
                             <select name="empresa_origen" class="form-select" required>
                                 <option value="NOVICOMPU" selected>Novicompu</option>
@@ -176,15 +229,20 @@
                                 <option value="OTRO">Otro</option>
                             </select>
                         </div>
-                        <div class="col-12 col-md-8">
-                            <label class="form-label small fw-semibold text-dark">Sucursal / Tienda Asignada <span class="text-danger">*</span></label>
-                            <select name="sucursal_cliente_id" class="form-select" required>
-                                <option value="">-- Seleccionar tienda --</option>
-                                @foreach($tiendasNovicompu as $t)
-                                    <option value="{{ $t->id }}">{{ $t->codigo }} - {{ $t->nombre }} ({{ $t->provincia ?? 'Ecuador' }})</option>
-                                @endforeach
-                            </select>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-semibold text-dark">Departamento o Área <span class="text-danger">*</span></label>
+                            <input type="text" name="departamento" class="form-control" list="lista-departamentos" placeholder="Ej: Ventas / Facturación / Bodega" required>
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Sucursal / Tienda Asignada <span class="text-danger">*</span></label>
+                        <select name="sucursal_cliente_id" class="form-select" required>
+                            <option value="">-- Seleccionar tienda --</option>
+                            @foreach($tiendasNovicompu as $t)
+                                <option value="{{ $t->id }}">{{ $t->codigo }} - {{ $t->nombre }} ({{ $t->provincia ?? 'Ecuador' }})</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="row g-3 mb-2">
@@ -245,7 +303,7 @@
                     </div>
 
                     <div class="row g-3 mb-3">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label class="form-label small fw-semibold text-dark">Cadena / Empresa <span class="text-danger">*</span></label>
                             <select name="empresa_origen" id="edit-empresa" class="form-select" required>
                                 <option value="NOVICOMPU">Novicompu</option>
@@ -253,15 +311,20 @@
                                 <option value="OTRO">Otro</option>
                             </select>
                         </div>
-                        <div class="col-12 col-md-8">
-                            <label class="form-label small fw-semibold text-dark">Sucursal / Tienda Asignada <span class="text-danger">*</span></label>
-                            <select name="sucursal_cliente_id" id="edit-tienda" class="form-select" required>
-                                <option value="">-- Seleccionar tienda --</option>
-                                @foreach($tiendasNovicompu as $t)
-                                    <option value="{{ $t->id }}">{{ $t->codigo }} - {{ $t->nombre }} ({{ $t->provincia ?? 'Ecuador' }})</option>
-                                @endforeach
-                            </select>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-semibold text-dark">Departamento o Área</label>
+                            <input type="text" name="departamento" id="edit-departamento" class="form-control" list="lista-departamentos" placeholder="Ej: Ventas / Facturación / Bodega">
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Sucursal / Tienda Asignada <span class="text-danger">*</span></label>
+                        <select name="sucursal_cliente_id" id="edit-tienda" class="form-select" required>
+                            <option value="">-- Seleccionar tienda --</option>
+                            @foreach($tiendasNovicompu as $t)
+                                <option value="{{ $t->id }}">{{ $t->codigo }} - {{ $t->nombre }} ({{ $t->provincia ?? 'Ecuador' }})</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -302,12 +365,27 @@
     </div>
 </div>
 
+<!-- Datalist compartido de departamentos sugeridos -->
+<datalist id="lista-departamentos">
+    <option value="Ventas / Comercial">
+    <option value="Caja / Facturación">
+    <option value="Inventario / Bodega">
+    <option value="Servicio Técnico / CAS">
+    <option value="Administración / Gerencia">
+    <option value="Contabilidad / Finanzas">
+    <option value="Marketing">
+    <option value="Logística / Envíos">
+    <option value="Atención al Cliente">
+    <option value="Sistemas / TI">
+</datalist>
+
 <script>
 function editarSolicitante(sol) {
     document.getElementById('edit-usuario').value = sol.usuario;
     document.getElementById('edit-nombre').value = sol.nombre_tecnico;
     document.getElementById('edit-correo').value = sol.correo_tec || '';
     document.getElementById('edit-empresa').value = sol.empresa_origen || 'NOVICOMPU';
+    document.getElementById('edit-departamento').value = sol.departamento || '';
     document.getElementById('edit-tienda').value = sol.sucursal_cliente_id || '';
     document.getElementById('edit-anydesk').value = sol.anydesk_id || '';
     document.getElementById('edit-mba').value = sol.usuario_mba || '';

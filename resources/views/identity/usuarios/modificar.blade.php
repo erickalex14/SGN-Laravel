@@ -52,17 +52,33 @@
         <div class="mu-lista">
             <div class="mu-lista-hdr">
                 <span>Usuarios Registrados</span>
-                <span style="color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:12px;font-size:11px;">{{ count($usuarios) }}</span>
+                <span id="badge-usuarios-count" style="color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">{{ count($usuarios) }}</span>
             </div>
-            <div class="mu-lista-scroll">
+            
+            <!-- Buscador interactivo por nombre o cédula -->
+            <div style="padding: 10px 14px; background: #ffffff; border-bottom: 1.5px solid #e2e8f0;">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <i class="bi bi-search" style="position: absolute; left: 10px; color: #94a3b8; font-size: 13px;"></i>
+                    <input type="text" id="buscador-usuarios" placeholder="Buscar por nombre o cédula..." 
+                           oninput="filtrarUsuarios(this.value)"
+                           autocomplete="off"
+                           style="width: 100%; padding: 7px 10px 7px 32px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; color: #1e293b; background: #f8fafc; outline: none; transition: all 0.2s ease;">
+                </div>
+            </div>
+
+            <div class="mu-lista-scroll" id="lista-usuarios-scroll">
                 @foreach($usuarios as $u)
-                    <div class="u-item" onclick="cargarDatos(this, {{ json_encode($u) }})">
+                    <div class="u-item" data-nombre="{{ strtolower($u->nombre_tecnico) }}" data-cedula="{{ strtolower($u->usuario) }}" onclick="cargarDatos(this, {{ json_encode($u) }})">
                         <strong>{{ $u->nombre_tecnico }}
                             <span class="badge {{ $u->activo ? 'bg-act' : 'bg-inact' }}">{{ $u->activo ? 'Activo' : 'Inactivo' }}</span>
                         </strong>
                         <span>@ {{ $u->usuario }} | {{ $u->grupo ? $u->grupo->nombre : 'Sin Grupo' }}</span>
                     </div>
                 @endforeach
+                <div id="u-item-vacio" style="display: none; padding: 30px 16px; text-align: center; color: #94a3b8; font-size: 12.5px;">
+                    <i class="bi bi-person-x" style="font-size: 26px; display: block; margin-bottom: 6px; opacity: 0.5;"></i>
+                    No se encontraron usuarios coincidentes.
+                </div>
             </div>
         </div>
 
@@ -189,6 +205,32 @@
 
 @push('js_adicional')
     <script>
+        function filtrarUsuarios(query) {
+            const q = query.toLowerCase().trim();
+            const items = document.querySelectorAll('.u-item');
+            const emptyEl = document.getElementById('u-item-vacio');
+            const countBadge = document.getElementById('badge-usuarios-count');
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const nombre = item.getAttribute('data-nombre') || '';
+                const cedula = item.getAttribute('data-cedula') || '';
+                if (!q || nombre.includes(q) || cedula.includes(q)) {
+                    item.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            if (emptyEl) {
+                emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+            if (countBadge) {
+                countBadge.textContent = visibleCount;
+            }
+        }
+
         function cargarDatos(item, u) {
             document.querySelectorAll('.u-item').forEach(el => el.classList.remove('activo'));
             item.classList.add('activo');

@@ -351,8 +351,14 @@
                     </td>
                     <td>
                         Rep: {{ $r['estado_repuesto'] }}
-                        @if(!empty($r['estado_garantia']))
-                            <br><span style="color:#64748b; font-size:6.2pt;">Gar: {{ $r['estado_garantia'] }}</span>
+                        @if(!empty($r['estado_garantia']) && $r['estado_garantia'] !== '-')
+                            <br><span style="color:#64748b; font-size:6.2pt;">Est. Gar: {{ $r['estado_garantia'] }}</span>
+                        @endif
+                        @if(!empty($r['garantia_tipo']) && $r['garantia_tipo'] !== '-')
+                            <br><span style="color:{{ $r['garantia_tipo'] === 'Externa' ? '#92400e' : '#166534' }}; font-size:6.2pt; font-weight:bold;">Tipo: {{ $r['garantia_tipo'] }}</span>
+                        @endif
+                        @if(!empty($r['garantia_destino_cas']) && $r['garantia_destino_cas'] !== '-')
+                            <br><span style="color:#1e40af; font-size:6.2pt; font-weight:bold;">Dest. CAS: {{ $r['garantia_destino_cas'] }}</span>
                         @endif
                     </td>
                     <td>

@@ -529,16 +529,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'store'])->name('mistickets.store');
     Route::get('/tickets/mis-tickets/{id}', [\App\Http\Controllers\Operations\MisTicketsController::class, 'show'])->name('mistickets.show');
     Route::post('/tickets/mis-tickets/{id}/responder', [\App\Http\Controllers\Operations\MisTicketsController::class, 'responder'])->name('mistickets.responder');
+    // Endpoints Universales de Calificación
     Route::post('/tickets/mis-tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar'])->name('mistickets.calificar');
+    Route::post('/mistickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar']);
+    Route::post('/tickets/gestion/{id}/calificar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'calificar'])->name('tickets.calificar');
+    Route::post('/tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar']);
+    Route::post('/tickets/mis-tickets/{id}/reabrir', [\App\Http\Controllers\Operations\MisTicketsController::class, 'reabrir'])->name('mistickets.reabrir');
+    Route::get('/tickets/mis-tickets/{id}/word-mba', [\App\Http\Controllers\Operations\MisTicketsController::class, 'descargarWordMba'])->name('mistickets.word_mba');
     Route::get('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'perfil'])->name('mistickets.perfil');
     Route::post('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'guardarPerfil'])->name('mistickets.guardar_perfil');
 
     // Mesa de Ayuda / Gestión Centralizada Quito (Técnicos, Admins, Sistemas)
     Route::get('/tickets/gestion', [\App\Http\Controllers\Operations\TicketGestionController::class, 'index'])->name('tickets.gestion');
     Route::get('/tickets/gestion/{id}', [\App\Http\Controllers\Operations\TicketGestionController::class, 'show'])->name('tickets.show');
+    Route::get('/tickets/gestion/{id}/word-mba', [\App\Http\Controllers\Operations\TicketGestionController::class, 'descargarWordMba'])->name('tickets.word_mba');
     Route::post('/tickets/gestion/{id}/asignar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'asignar'])->name('tickets.asignar');
     Route::post('/tickets/gestion/{id}/cambiar-estado', [\App\Http\Controllers\Operations\TicketGestionController::class, 'cambiarEstado'])->name('tickets.cambiar_estado');
     Route::post('/tickets/gestion/{id}/responder', [\App\Http\Controllers\Operations\TicketGestionController::class, 'responder'])->name('tickets.responder');
+    Route::get('/tickets/{id}/imprimir', [\App\Http\Controllers\Operations\TicketGestionController::class, 'imprimir'])->name('tickets.imprimir');
 
     // Administración de Solicitantes de Tiendas
     Route::get('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'index'])->name('tickets.solicitantes');
@@ -557,6 +565,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/llamada/{id}/rechazar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'rechazar'])->name('tickets.llamada.rechazar');
     Route::post('/tickets/llamada/{id}/finalizar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'finalizar'])->name('tickets.llamada.finalizar');
 
+    // Auditoría & Reportería de Tickets (Admin Master & Admins)
+    Route::get('/tickets/auditoria', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'index'])->name('tickets.auditoria');
+    Route::get('/tickets/auditoria/exportar', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'exportarExcel'])->name('tickets.auditoria.exportar');
+    Route::get('/tickets/auditoria/data-excel', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'dataExcel'])->name('tickets.auditoria.data_excel');
+    Route::get('/tickets/auditoria/{id}/detalle', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'detalleModal'])->name('tickets.auditoria.detalle');
+
     // Servidor seguro de archivos adjuntos en storage
     Route::get('/storage/{path}', function ($path) {
         $fullPath = storage_path('app/public/' . $path);
@@ -565,4 +579,19 @@ Route::middleware('auth')->group(function () {
         }
         return response()->file($fullPath);
     })->where('path', '.*');
+});
+
+// Descarga Directa de la App Móvil Android
+Route::get('/app/tickets', function () {
+    $path = public_path('downloads/NovitecTickets.apk');
+    if (file_exists($path)) {
+        return response()->download($path, 'NovitecTickets.apk', [
+            'Content-Type' => 'application/vnd.android.package-archive'
+        ]);
+    }
+    return response()->file(public_path('NovitecTickets.apk'));
+})->name('app.tickets.download');
+
+Route::get('/apk', function () {
+    return redirect('/sgn/downloads/NovitecTickets.apk');
 });
