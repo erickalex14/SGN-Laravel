@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Directory\SucursalCliente;
 use App\Models\Identity\GrupoAcceso;
 use App\Models\Identity\Usuario;
+use App\Services\Operations\TicketMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -28,37 +29,40 @@ class TicketSolicitantesController extends Controller
         }
 
         // Buscar grupo de generadores
-        $grupoGenerador = GrupoAcceso::where('nombre', 'LIKE', '%Generador%')
-            ->orWhere('nombre', 'LIKE', '%Solicitante%')
-            ->first();
+        $grupo = GrupoAcceso::where('nombre', 'Generador de Tickets (Tiendas)')->first();
+        $grupoId = $grupo ? $grupo->id : null;
 
-        $query = Usuario::with(['grupo', 'rol', 'sucursalCliente'])
-            ->where(function ($q) use ($grupoGenerador) {
-                if ($grupoGenerador) {
-                    $q->where('grupo_id', $grupoGenerador->id);
-                } else {
-                    $q->where('rol_id', 1)->whereNull('correo_tec'); // Fallback
-                }
-            });
+        $q = trim($request->input('q', ''));
+        $activo = $request->input('activo');
 
-        if ($request->filled('q')) {
-            $q = trim($request->input('q'));
+        $query = Usuario::query()
+            ->with('sucursalCliente')
+            ->where('grupo_id', $grupoId);
+
+        if ($q !== '') {
             $query->where(function ($sub) use ($q) {
                 $sub->where('usuario', 'LIKE', "%{$q}%")
                     ->orWhere('nombre_tecnico', 'LIKE', "%{$q}%")
-                    ->orWhere('telefono', 'LIKE', "%{$q}%");
+                    ->orWhere('correo_tec', 'LIKE', "%{$q}%")
+                    ->orWhere('telefono', 'LIKE', "%{$q}%")
+                    ->orWhere('usuario_mba', 'LIKE', "%{$q}%")
+                    ->orWhere('codigo_usuario', 'LIKE', "%{$q}%")
+                    ->orWhere('anydesk_id', 'LIKE', "%{$q}%")
+                    ->orWhereHas('sucursalCliente', function ($sc) use ($q) {
+                        $sc->where('nombre', 'LIKE', "%{$q}%")
+                            ->orWhere('codigo', 'LIKE', "%{$q}%");
+                    });
             });
         }
 
-        if ($request->filled('activo')) {
-            $query->where('activo', (int) $request->input('activo'));
+        if ($activo !== null && $activo !== '') {
+            $query->where('activo', (int) $activo);
         }
 
-        $solicitantes = $query->orderByDesc('id')->paginate(20)->withQueryString();
+        $solicitantes = $query->orderBy('id', 'desc')->paginate(25)->withQueryString();
+        $tiendasNovicompu = SucursalCliente::where('activa', 1)->orderBy('codigo')->get();
 
-        $tiendasNovicompu = SucursalCliente::where('activa', 1)->orderBy('nombre')->get();
-
-        return view('tickets.solicitantes', compact('solicitantes', 'tiendasNovicompu', 'usuarioSesion'));
+        return view('tickets.solicitantes', compact('solicitantes', 'tiendasNovicompu'));
     }
 
     /**
@@ -72,6 +76,7 @@ class TicketSolicitantesController extends Controller
             'clave' => 'required|string|min:4',
             'correo_tec' => 'nullable|email|max:100',
             'empresa_origen' => 'required|in:NOVICOMPU,ENV,OTRO',
+            'departamento' => 'nullable|string|max:100',
             'sucursal_cliente_id' => 'required|integer',
             'telefono' => 'nullable|string|max:30',
             'usuario_mba' => 'nullable|string|max:60',
@@ -86,10 +91,12 @@ class TicketSolicitantesController extends Controller
                 ['es_superadmin' => 0]
             );
 
+            $clavePlana = trim($request->input('clave'));
+
             $usuario = Usuario::create([
                 'usuario' => trim($request->input('usuario')),
                 'nombre_tecnico' => trim($request->input('nombre_tecnico')),
-                'clave_hash' => Hash::make($request->input('clave')),
+                'clave_hash' => Hash::make($clavePlana),
                 'clave' => '', // Legacy
                 'correo_tec' => $request->input('correo_tec') ? trim($request->input('correo_tec')) : null,
                 'telefono' => $request->input('telefono'),
@@ -98,6 +105,7 @@ class TicketSolicitantesController extends Controller
                 'sucursal_id' => 1, // Default Quito
                 'sucursal_cliente_id' => (int) $request->input('sucursal_cliente_id'),
                 'empresa_origen' => $request->input('empresa_origen', 'NOVICOMPU'),
+                'departamento' => $request->input('departamento') ? trim($request->input('departamento')) : null,
                 'usuario_mba' => $request->input('usuario_mba') ? trim($request->input('usuario_mba')) : null,
                 'codigo_usuario' => $request->input('codigo_usuario') ? trim($request->input('codigo_usuario')) : null,
                 'anydesk_id' => $request->input('anydesk_id') ? trim($request->input('anydesk_id')) : null,
@@ -115,11 +123,18 @@ class TicketSolicitantesController extends Controller
                 ['permitido' => 1]
             );
 
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['ok' => true, 'mensaje' => "Usuario solicitante '{$usuario->usuario}' creado con éxito."]);
+            // Enviar credenciales al correo institucional registrado
+            if ($usuario->correo_tec) {
+                TicketMailService::enviarCredencialesSolicitante($usuario, $clavePlana);
             }
 
-            return back()->with('success', "Usuario solicitante '{$usuario->usuario}' creado con éxito.");
+            $mensajeExito = "Usuario solicitante '{$usuario->usuario}' creado con éxito" . ($usuario->correo_tec ? " y credenciales enviadas a {$usuario->correo_tec}." : ".");
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['ok' => true, 'mensaje' => $mensajeExito]);
+            }
+
+            return back()->with('success', $mensajeExito);
         } catch (Throwable $e) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['ok' => false, 'error' => 'Error al crear usuario: ' . $e->getMessage()], 500);
@@ -139,6 +154,7 @@ class TicketSolicitantesController extends Controller
             'nombre_tecnico' => 'required|string|max:100',
             'correo_tec' => 'nullable|email|max:100',
             'empresa_origen' => 'required|in:NOVICOMPU,ENV,OTRO',
+            'departamento' => 'nullable|string|max:100',
             'sucursal_cliente_id' => 'required|integer',
             'telefono' => 'nullable|string|max:30',
             'usuario_mba' => 'nullable|string|max:60',
@@ -153,6 +169,7 @@ class TicketSolicitantesController extends Controller
                 'nombre_tecnico' => trim($request->input('nombre_tecnico')),
                 'correo_tec' => $request->input('correo_tec') ? trim($request->input('correo_tec')) : null,
                 'empresa_origen' => $request->input('empresa_origen'),
+                'departamento' => $request->input('departamento') ? trim($request->input('departamento')) : null,
                 'sucursal_cliente_id' => (int) $request->input('sucursal_cliente_id'),
                 'telefono' => $request->input('telefono'),
                 'usuario_mba' => $request->input('usuario_mba') ? trim($request->input('usuario_mba')) : null,
@@ -161,12 +178,23 @@ class TicketSolicitantesController extends Controller
                 'activo' => (int) $request->input('activo'),
             ];
 
+            $claveCambiada = false;
+            $nuevaClavePlana = '';
             if ($request->filled('clave')) {
-                $data['clave_hash'] = Hash::make($request->input('clave'));
+                $nuevaClavePlana = trim($request->input('clave'));
+                $data['clave_hash'] = Hash::make($nuevaClavePlana);
                 $data['clave'] = '';
+                $claveCambiada = true;
             }
 
             $usuario->update($data);
+
+            // Si se cambió la contraseña y tiene correo, enviar notificación de credenciales actualizadas
+            if ($claveCambiada && ($usuario->correo_tec || $data['correo_tec'])) {
+                $usuarioMail = clone $usuario;
+                $usuarioMail->fill($data);
+                TicketMailService::enviarCredencialesSolicitante($usuarioMail, $nuevaClavePlana);
+            }
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['ok' => true, 'mensaje' => 'Usuario actualizado correctamente.']);

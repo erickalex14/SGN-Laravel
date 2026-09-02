@@ -28,7 +28,8 @@ class FiltrarReporteRequest extends FormRequest
             'tecnico_id'   => ['nullable', 'integer', 'exists:usuarios,id'],
             'sucursal_id'  => ['nullable', 'integer', 'exists:sucursales,id'],
             'cas_id'       => ['nullable', 'integer', 'exists:cas,id'],
-            'empresa_id'   => ['nullable', 'integer', 'exists:empresas,id']
+            'empresa_id'   => ['nullable', 'integer', 'exists:empresas,id'],
+            'garantia_tipo'=> ['nullable', 'string', 'max:50']
         ];
     }
 

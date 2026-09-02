@@ -70,6 +70,10 @@ class GuardarOrdenRequest extends FormRequest
 
                     $codigo = strtoupper(trim((string) $this->input('producto_inventario_codigo', '')));
                     if ($codigo === '') {
+                        $descripcion = strtoupper(trim((string) $value));
+                        if ($descripcion === '' || mb_strlen($descripcion) < 2) {
+                            $fail('Debes ingresar la descripción o modelo del equipo.');
+                        }
                         return;
                     }
 
@@ -79,8 +83,8 @@ class GuardarOrdenRequest extends FormRequest
                     }
 
                     $descripcion = strtoupper(trim((string) $value));
-                    if ($descripcion === '' || $descripcion === $codigo || $descripcion === 'GENERICO' || mb_strlen($descripcion) < 3) {
-                        $fail('Debes ingresar una descripcion valida para el producto nuevo antes de crear la orden.');
+                    if ($descripcion === '' || $descripcion === $codigo || $descripcion === 'GENERICO' || mb_strlen($descripcion) < 2) {
+                        $fail('Debes ingresar una descripción válida para el producto nuevo antes de crear la orden.');
                     }
                 },
             ],
@@ -89,7 +93,7 @@ class GuardarOrdenRequest extends FormRequest
             'eq_observacion' => ['nullable', 'string'],
             'eq_tipo_servicio' => [$esGarantia ? 'required' : 'nullable', 'integer', 'exists:tiposservicio,id'],
             'tipo_servicio_texto' => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
-            'producto_inventario_codigo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
+            'producto_inventario_codigo' => [$esGarantia ? 'required' : 'nullable', 'string', 'max:50'],
 
             'series' => [$esEmpresa ? 'nullable' : 'required', 'array', 'min:1'],
             'series.*' => ['nullable', 'string', 'max:100'],
@@ -118,6 +122,12 @@ class GuardarOrdenRequest extends FormRequest
                 },
             ],
             'estado_repuesto' => ['nullable', 'string', 'max:50'],
+            'empresa_garantia' => [
+                $esGarantia ? 'required' : 'nullable',
+                'string',
+                'max:50',
+                Rule::in(['NOVISOLUTIONS', 'ENV', 'novisolutions', 'env', 'Novisolutions', 'Env'])
+            ],
             'garantia_tipo' => [
                 $esGarantia ? 'required' : 'nullable',
                 'string',

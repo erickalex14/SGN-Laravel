@@ -52,7 +52,7 @@ class TicketLlamadaController extends Controller
                 $this->ticketService->agregarMensaje(
                     $ticket,
                     $usuario,
-                    "📞 Llamada de soporte iniciada por " . ($usuario->nombre_tecnico ?: $usuario->usuario) . "...",
+                    "Llamada de soporte iniciada por " . ($usuario->nombre_tecnico ?: $usuario->usuario) . "...",
                     false,
                     null
                 );
@@ -213,7 +213,7 @@ class TicketLlamadaController extends Controller
                     $this->ticketService->agregarMensaje(
                         $ticket,
                         $usuario,
-                        "📞 Llamada rechazada por " . ($usuario ? ($usuario->nombre_tecnico ?: $usuario->usuario) : 'la tienda'),
+                        "Llamada rechazada por " . ($usuario ? ($usuario->nombre_tecnico ?: $usuario->usuario) : 'la tienda'),
                         false,
                         null
                     );
@@ -260,7 +260,7 @@ class TicketLlamadaController extends Controller
                     $this->ticketService->agregarMensaje(
                         $ticket,
                         $usuario,
-                        "📞 Llamada finalizada · Duración: {$textoDuracion}",
+                        "Llamada finalizada · Duración: {$textoDuracion}",
                         false,
                         null
                     );

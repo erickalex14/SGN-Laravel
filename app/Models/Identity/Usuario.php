@@ -29,6 +29,7 @@ class Usuario extends Authenticatable
         'sucursal_id',
         'sucursal_cliente_id',
         'empresa_origen',
+        'departamento',
         'usuario_mba',
         'codigo_usuario',
         'anydesk_id',
@@ -112,9 +113,37 @@ class Usuario extends Authenticatable
         $this->clave = '';
     }
 
+    
+    /**
+     * Scope para técnicos, administradores y superadministradores operativos
+     * que pueden ejecutar órdenes, ser asignados y aparecer en reportes/auditoría.
+     * Excluye estrictamente Admin Solo Lectura (grupo 8) y Generadores de Ticket / Tiendas (grupo 9).
+     */
+    public function scopeTecnicosOperativos($query)
+    {
+        return $query->where('activo', 1)
+            ->whereNotNull('nombre_tecnico')
+            ->where(function ($q) {
+                $q->whereIn('grupo_id', [1, 2, 3, 4, 5])
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('grupo_id')
+                          ->whereIn('rol_id', [1, 2, 3, 4]);
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('grupo_id', [8, 9])
+                  ->orWhereNull('grupo_id');
+            })
+            ->whereNull('sucursal_cliente_id');
+    }
+
     public function debeLlenarActividades(): bool
     {
         if ((int) $this->grupo_id === 6 || mb_strtolower($this->grupo?->nombre ?? '') === 'admin solo lectura') {
+            return false;
+        }
+
+        if ((int) $this->grupo_id === 9 || !empty($this->sucursal_cliente_id) || str_contains(mb_strtolower($this->grupo?->nombre ?? ''), 'generador') || str_contains(mb_strtolower($this->grupo?->nombre ?? ''), 'solicitante')) {
             return false;
         }
 

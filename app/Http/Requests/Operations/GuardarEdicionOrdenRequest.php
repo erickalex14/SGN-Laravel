@@ -87,6 +87,7 @@ class GuardarEdicionOrdenRequest extends FormRequest
             // Nuevos campos de la orden
             'motivo_ingreso' => ['required', 'string', 'max:100'],
             'garantia_tipo' => ['nullable', 'string', 'max:50'],
+            'empresa_garantia' => ['nullable', 'string', 'max:50'],
             'observacion_orden' => ['nullable', 'string'],
         ];
     }

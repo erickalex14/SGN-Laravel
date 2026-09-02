@@ -36,6 +36,7 @@ class BuscarOrdenRepository
                 'vo.estado_orden',
                 'vo.estado_repuesto',
                 'vo.estado_garantia',
+                DB::raw("(CASE WHEN vo.tipo_orden = 'personal' THEN (SELECT empresa_garantia FROM ordenes WHERE id = vo.orden_id) ELSE NULL END) as empresa_garantia"),
                 DB::raw("CASE WHEN vo.tipo_orden COLLATE utf8mb4_0900_ai_ci = 'empresa' THEN oe.nro_ticket ELSE vo.nro_factura END as nro_factura"),
                 'vo.nro_factura_2',
                 'vo.motivo_ingreso',
@@ -58,6 +59,7 @@ class BuscarOrdenRepository
                 'vo.falla',
                 'vo.observacion',
                 'vo.memo_entrega',
+                'vo.foto_evidencia_entrega',
                 'vo.fecha_facturacion',
                 DB::raw('vo.fecha_de_ingreso_fmt as fecha_de_ingreso'),
                 DB::raw('vo.fecha_entrega_fmt as fecha_entrega'),
@@ -173,6 +175,19 @@ class BuscarOrdenRepository
         return DB::table('usuarios as u')
             ->select(['u.id', 'u.nombre_tecnico'])
             ->where('u.activo', 1)
+            ->whereNotNull('u.nombre_tecnico')
+            ->where(function ($q) {
+                $q->whereIn('u.grupo_id', [1, 2, 3, 4, 5])
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('u.grupo_id')
+                          ->whereIn('u.rol_id', [1, 2, 3, 4]);
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('u.grupo_id', [8, 9])
+                  ->orWhereNull('u.grupo_id');
+            })
+            ->whereNull('u.sucursal_cliente_id')
             ->when(!$esSuperadmin && $sucursalId > 0, fn ($q) => $q->where('u.sucursal_id', $sucursalId))
             ->orderBy('u.nombre_tecnico')
             ->get();

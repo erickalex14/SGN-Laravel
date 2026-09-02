@@ -90,12 +90,9 @@ class CajaGeneralController extends Controller
             }
         }
 
-        $hace72Horas = now()->subHours(72);
-
-        // Obtener cobros de los últimos 72 horas para cliente externo
+        // Obtener todos los cobros de la sucursal para cliente externo (sin límite de 72 horas para que permanezcan en el historial)
         $cobrosPeriodo = DB::table('caja_general_cobros')
             ->where('sucursal_id', $sucursalId)
-            ->where('fecha_cobro', '>=', $hace72Horas)
             ->orderByDesc('fecha_cobro')
             ->get();
 

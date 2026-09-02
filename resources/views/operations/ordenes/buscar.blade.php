@@ -636,6 +636,11 @@
         if (o.estado_repuesto && o.estado_repuesto !== 'No requerido') {
             out += ' <span class="bo-badge st-otro">' + o.estado_repuesto + '</span>';
         }
+        if (o.motivo_ingreso === 'Validacion de Garantia' || o.empresa_garantia) {
+            var empG = o.empresa_garantia || 'NOVISOLUTIONS';
+            var colorStyle = empG === 'ENV' ? 'background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;' : 'background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;';
+            out += ' <span class="bo-badge" style="' + colorStyle + '">Garantía ' + escHtml(empG) + '</span>';
+        }
         return out;
     }
 
@@ -759,11 +764,19 @@
                         ? '<div class="bo-det-lbl" style="margin-bottom:4px;">Observación</div>' +
                           '<div class="bo-text-block">' + escHtml(o.observacion) + '</div>'
                         : '') +
-                    (o.memo_entrega || ['entregada', 'entregado'].includes(String(o.estado_orden || '').toLowerCase())
+                    (o.memo_entrega || o.foto_evidencia_entrega || ['entregada', 'entregado'].includes(String(o.estado_orden || '').toLowerCase())
                         ? '<div class="bo-det-lbl" style="margin-top:10px;margin-bottom:4px;color:#047857;font-weight:700;"><i class="bi bi-file-earmark-check me-1"></i>Memo de Entrega</div>' +
-                          '<div class="bo-text-block" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-weight:500;">' +
+                          '<div class="bo-text-block" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-weight:500;margin-bottom:8px;">' +
                             escHtml(o.memo_entrega || 'Orden entregada al cliente.') +
-                          '</div>'
+                          '</div>' +
+                          (o.foto_evidencia_entrega
+                            ? '<div style="margin-top:8px;">' +
+                                '<div class="bo-det-lbl" style="margin-bottom:4px;color:#047857;font-size:11.5px;font-weight:700;"><i class="bi bi-camera-fill me-1"></i>Foto de Evidencia de Entrega:</div>' +
+                                '<a href="' + escHtml(o.foto_evidencia_entrega.startsWith('http') || o.foto_evidencia_entrega.startsWith('/') ? o.foto_evidencia_entrega : '/' + o.foto_evidencia_entrega) + '" target="_blank" title="Clic para abrir foto en tamaño completo" style="display:inline-block;border-radius:10px;overflow:hidden;border:2px solid #86efac;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:transform 0.15s ease;">' +
+                                    '<img src="' + escHtml(o.foto_evidencia_entrega.startsWith('http') || o.foto_evidencia_entrega.startsWith('/') ? o.foto_evidencia_entrega : '/' + o.foto_evidencia_entrega) + '" alt="Evidencia de entrega" style="max-width:100%;max-height:220px;object-fit:cover;display:block;border-radius:8px;cursor:pointer;" onerror="this.parentElement.style.display=\'none\'">' +
+                                '</a>' +
+                              '</div>'
+                            : '')
                         : '') +
                 '</div>' +
             '</div>' +

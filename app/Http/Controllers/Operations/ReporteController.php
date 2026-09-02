@@ -8,6 +8,7 @@ use App\Http\Requests\Operations\FiltrarReporteRequest;
 use App\Models\Operations\Equipo;
 use App\Models\Operations\Orden;
 use App\Models\Operations\OrdenEmpresa;
+use App\Models\Identity\Usuario;
 use App\Repositories\Directory\SucursalRepository;
 use App\Repositories\Directory\CasRepository;
 use App\Repositories\Identity\UsuarioRepository;
@@ -43,14 +44,14 @@ class ReporteController extends Controller
     public function index(): View
     {
         $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
-        $esMaster = $rol === 'master';
+        $esMaster = true; // En el panel de Reportes Admin se visualiza la información de todas las sucursales
         $sucursalSesion = (int) session('sucursal_id', 0);
 
-        $tecnicos = $this->filtrarTecnicosSegunRol(
-            $this->usuarioRepo->obtenerTodosConRelaciones(),
-            $esMaster,
-            $sucursalSesion
-        );
+        // Técnicos, administradores y superadministradores de TODAS las sucursales (excluyendo admin solo lectura y generadores de tickets)
+        $tecnicos = Usuario::tecnicosOperativos()
+            ->with('sucursalPrincipal')
+            ->orderBy('nombre_tecnico')
+            ->get();
 
         // Permitir ver todas las sucursales de Novitec universalmente en reportes
         $sucursales = $this->sucursalRepo->obtenerTodas();
@@ -157,11 +158,12 @@ class ReporteController extends Controller
                 $request->input('tecnico_id') ? (int) $request->input('tecnico_id') : null,
                 $request->input('sucursal_id') ? (int) $request->input('sucursal_id') : null,
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
-                $request->input('empresa_id') ? (int) $request->input('empresa_id') : null
+                $request->input('empresa_id') ? (int) $request->input('empresa_id') : null,
+                $request->input('garantia_tipo')
             );
 
             $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
-            $esMaster = $rol === 'master';
+            $esMaster = true;
             $sucursalSesion = (int) session('sucursal_id', 0);
 
             $resultados = $this->service->generarReporte(
@@ -184,10 +186,21 @@ class ReporteController extends Controller
     {
         return $usuarios
             ->filter(function ($usuario) use ($esMaster, $sucursalSesion) {
-                $rol = mb_strtolower(trim((string) ($usuario->rol->rol ?? $usuario->grupo->nombre ?? '')));
-                $esTecnico = in_array($rol, ['tecnico', 'tecnico master'], true);
+                if (!$usuario->activo || empty($usuario->nombre_tecnico)) {
+                    return false;
+                }
 
-                if (!$esTecnico) {
+                $grupoId = (int) ($usuario->grupo_id ?? 0);
+                $rolId = (int) ($usuario->rol_id ?? 0);
+
+                // Excluir estrictamente Admin Solo Lectura (8) y Generadores de Ticket / Tiendas (9)
+                if (in_array($grupoId, [8, 9], true) || !empty($usuario->sucursal_cliente_id)) {
+                    return false;
+                }
+
+                // Debe ser Superadmin (1), Admin (2), Tecnico Master (3), Tecnico (4), Sistemas (5)
+                $esOperativo = in_array($grupoId, [1, 2, 3, 4, 5], true) || in_array($rolId, [1, 2, 3, 4], true);
+                if (!$esOperativo) {
                     return false;
                 }
 
@@ -368,7 +381,8 @@ class ReporteController extends Controller
                 $tecnicoIdFilter,
                 $sucursalIdFilter,
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
-                $request->input('empresa_id') ? (int) $request->input('empresa_id') : null
+                $request->input('empresa_id') ? (int) $request->input('empresa_id') : null,
+                $request->input('garantia_tipo')
             );
 
             $resultados = $this->service->generarReporte(
@@ -406,7 +420,7 @@ class ReporteController extends Controller
         );
 
         $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
-        $esMaster = $rol === 'master';
+            $esMaster = true;
         $sucursalSesion = (int) session('sucursal_id', 0);
 
         $resultados = $this->service->generarReporte(

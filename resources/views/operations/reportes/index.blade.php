@@ -2,6 +2,50 @@
 @section('titulo', 'Reportes — SGN')
 
 @push('css_adicional')
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+/* TomSelect custom styling for SGN */
+.ts-wrapper.single .ts-control {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: 36px;
+    background: #fff;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+}
+.ts-wrapper.single.focus .ts-control {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+.ts-dropdown {
+    font-size: 12px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    border: 1px solid #e2e8f0;
+    z-index: 1050;
+}
+.ts-dropdown .option {
+    padding: 8px 12px;
+}
+.ts-dropdown .active {
+    background-color: #eff6ff;
+    color: #1e40af;
+    font-weight: 600;
+}
+.ts-dropdown .option .badge-ciudad {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 6px;
+}
+</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -200,12 +244,15 @@
         <form id="rep-form">
             <div class="rep-filtros-grid">
 
-                <div class="rep-campo">
-                    <label>Técnico</label>
-                    <select name="tecnico_id" id="f-tecnico">
-                        <option value="">Todos</option>
+                <div class="rep-campo" style="grid-column: span 2;">
+                    <label style="display:flex; align-items:center; gap:5px; font-weight:700;"><i class="bi bi-person-badge text-primary"></i> Técnico / Administrador (Nacional)</label>
+                    <select name="tecnico_id" id="f-tecnico" placeholder="🔍 Escriba para buscar técnico o admin...">
+                        <option value="">Todos los técnicos y administradores</option>
                         @foreach($tecnicos as $t)
-                            <option value="{{ $t->id }}">{{ $t->nombre_tecnico }}</option>
+                            @php
+                                $ciudad = $t->sucursalPrincipal?->ciudad ?? 'Nacional';
+                            @endphp
+                            <option value="{{ $t->id }}">{{ $t->nombre_tecnico }} ({{ $ciudad }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -306,6 +353,15 @@
                         @foreach($estadosGarantia as $eg)
                             <option value="{{ $eg }}">{{ $eg }}</option>
                         @endforeach
+                    </select>
+                </div>
+
+                <div class="rep-campo">
+                    <label>Tipo Garantía</label>
+                    <select name="garantia_tipo" id="f-garantia-tipo">
+                        <option value="">Todas</option>
+                        <option value="interna">Interna (Propia)</option>
+                        <option value="externa">Externa (CAS)</option>
                     </select>
                 </div>
 
@@ -451,16 +507,18 @@
                         <th onclick="sortTabla(18,'cas_nombre')">CAS</th>
                         <th onclick="sortTabla(19,'tipo_orden')">Tipo orden</th>
                         <th onclick="sortTabla(20,'estado_repuesto')">Repuesto</th>
-                        <th onclick="sortTabla(21,'estado_garantia')">Garantía</th>
-                        <th onclick="sortTabla(22,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(23,'transferencia_numero')">Transf. Inventario</th>
-                        <th onclick="sortTabla(24,'dias_transcurridos')">Días</th>
-                        <th onclick="sortTabla(25,'fecha_prometido')">F. Prometido</th>
-                        <th onclick="sortTabla(26,'fecha_entrega')">F. Entrega</th>
+                        <th onclick="sortTabla(21,'estado_garantia')">Estado Garantía</th>
+                        <th onclick="sortTabla(22,'garantia_tipo')">Tipo Garantía</th>
+                        <th onclick="sortTabla(23,'garantia_destino_cas')">CAS Destino</th>
+                        <th onclick="sortTabla(24,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(25,'transferencia_numero')">Transf. Inventario</th>
+                        <th onclick="sortTabla(26,'dias_transcurridos')">Días</th>
+                        <th onclick="sortTabla(27,'fecha_prometido')">F. Prometido</th>
+                        <th onclick="sortTabla(28,'fecha_entrega')">F. Entrega</th>
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
-                        <th onclick="sortTabla(29,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
-                        <th onclick="sortTabla(30,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
+                        <th onclick="sortTabla(31,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(32,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>
@@ -480,6 +538,7 @@
 @endsection
 
 @push('js_adicional')
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
 (function () {
 'use strict';
@@ -487,6 +546,7 @@
 /* === ESTADO === */
 let _all = [], _filtered = [], _charts = {};
 let _sortCol = -1, _sortDir = 1;
+window.tsTecnico = null;
 let _reportesPager = null;
 let _chartJsLoaded = false;
 const ES_MASTER = @json($esMaster);
@@ -564,6 +624,8 @@ function normalizeRow(raw) {
         horas_trabajadas  : raw.horas_trabajadas ?? 0,
         estado_repuesto   : raw.estado_repuesto || '-',
         estado_garantia   : raw.estado_garantia || '-',
+        garantia_tipo     : raw.garantia_tipo || '-',
+        garantia_destino_cas: raw.garantia_destino_cas || raw.cas_nombre || '-',
         estado_orden      : raw.estado_orden || '-',
         tecnico_nombre    : raw.tecnico_nombre || raw.tecnico?.nombre_tecnico || '-',
         sucursal_nombre   : raw.sucursal_nombre || raw.sucursal?.ciudad || '-',
@@ -578,7 +640,7 @@ function normalizeRow(raw) {
     };
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â• PILLS FILTROS â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════ PILLS FILTROS ═══════════════════ */
 const FILTROS = [
     { id:'f-tecnico',   label:'Técnico',     sel:true  },
     { id:'f-sucursal',  label:'Sucursal',    sel:true  },
@@ -591,6 +653,7 @@ const FILTROS = [
     { id:'f-motivo',    label:'Motivo',      sel:true  },
     { id:'f-repuesto',  label:'Repuesto',    sel:true  },
     { id:'f-garantia',  label:'Garantía',    sel:true  },
+    { id:'f-garantia-tipo', label:'Tipo Garantía', sel:true },
     { id:'f-desde',     label:'Desde',       sel:false },
     { id:'f-hasta',     label:'Hasta',       sel:false },
 ];
@@ -638,6 +701,30 @@ if (fTipoOrden && campoEmpresa) {
         campoEmpresa.style.display = 'none';
     }
 }
+
+/* === INIT TOMSELECT === */
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('f-tecnico') && typeof TomSelect !== 'undefined') {
+        window.tsTecnico = new TomSelect('#f-tecnico', {
+            create: false,
+            sortField: { field: "text", direction: "asc" },
+            placeholder: "🔍 Escriba para buscar técnico o admin...",
+            allowEmptyOption: true,
+            maxOptions: 100,
+            render: {
+                option: function(data, escape) {
+                    return '<div>' + escape(data.text) + '</div>';
+                },
+                item: function(data, escape) {
+                    return '<div>' + escape(data.text) + '</div>';
+                }
+            }
+        });
+        window.tsTecnico.on('change', function() {
+            actualizarPills();
+        });
+    }
+});
 
 /* === GENERAR REPORTE === */
 document.getElementById('rep-form').addEventListener('submit', function(e) {
@@ -849,6 +936,8 @@ function renderTabla() {
             <td>${tB}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_repuesto)}</td>
             <td style="font-size:10.5px;color:#64748b;">${esc(r.estado_garantia)}</td>
+            <td style="font-size:11px;">${r.garantia_tipo === 'Externa' ? '<span class="tipo-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;"><i class="bi bi-box-arrow-up-right me-1"></i>Externa</span>' : (r.garantia_tipo === 'Interna' ? '<span class="tipo-badge" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;"><i class="bi bi-house-door me-1"></i>Interna</span>' : '<span style="color:#94a3b8;">—</span>')}</td>
+            <td style="font-size:11px;font-weight:${r.garantia_tipo === 'Externa' ? '700' : '400'};color:${r.garantia_tipo === 'Externa' ? '#1e40af' : '#64748b'};">${esc(r.garantia_destino_cas)}</td>
             <td><span class="estado-badge" style="background:${ec.bg};color:${ec.fg};">${esc(r.estado_orden)}</span></td>
             <td>${r.transferencia_numero ? `<span style="font-size:10.5px; font-weight:600; color:#374151;">${esc(r.transferencia_plataforma)}: ${esc(r.transferencia_numero)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
             <td style="text-align:center;font-weight:700;color:${dC};">${r.dias_transcurridos}d</td>
@@ -906,6 +995,7 @@ window.sortTabla = function(col, key) {
 /* â•â•â•â•â•â•â•â•â•â•â• LIMPIAR â•â•â•â•â•â•â•â•â•â•â• */
 window.limpiarFiltros = function() {
     FILTROS.forEach(f => { const el = document.getElementById(f.id); if (el) { el.value = ''; el.classList.remove('filter-active'); } });
+    if (window.tsTecnico) { window.tsTecnico.clear(true); }
     document.getElementById('rep-pills').innerHTML = '';
     document.getElementById('badge-filtros').style.display = 'none';
     document.getElementById('rep-resultados').style.display = 'none';
@@ -916,6 +1006,7 @@ window.limpiarFiltros = function() {
 };
 
 /* â•â•â•â•â•â•â•â•â•â•â• HELPERS FILTROS TEXTO â•â•â•â•â•â•â•â•â•â•â• */
+/* ════════════ HELPERS FILTROS TEXTO ════════════ */
 function getFiltrosTxt() {
     const partes = [];
     FILTROS.forEach(f => {
@@ -926,9 +1017,9 @@ function getFiltrosTxt() {
     return partes;
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════
    PDF ENTERPRISE — igual formato que imprimir.blade.php
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+════════════════════════════════════════════════════ */
 document.getElementById('btn-pdf').addEventListener('click', generarPDFEnterprise);
 
 function generarPDFEnterprise() {
@@ -952,9 +1043,9 @@ function generarPDFEnterprise() {
     window.open(url, '_blank');
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════
    CSV ENTERPRISE
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+════════════════════════════════════════════════════ */
 document.getElementById('btn-csv').addEventListener('click', exportarCSV);
 
 function exportarCSV() {
@@ -964,7 +1055,7 @@ function exportarCSV() {
         'Nro. Orden','Fecha Ingreso','Tipo Orden','Subtipo Empresa','Cliente','C.I./RUC','Teléfono','Correo',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
-        'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
         'Plataforma Transferencia Inventario', 'Número Transferencia Inventario',
         'Técnico','Sucursal','Sucursal Cliente','CAS','F. Prometido','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
@@ -982,7 +1073,7 @@ function exportarCSV() {
             r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
             r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
-            r.estado_repuesto, r.estado_garantia,
+            r.estado_repuesto, r.estado_garantia, r.garantia_tipo || '-', r.garantia_destino_cas || '-',
             r.estado_orden,
             r.transferencia_plataforma || '', r.transferencia_numero || '',
             r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
@@ -1003,9 +1094,9 @@ function exportarCSV() {
     a.click(); URL.revokeObjectURL(url);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════
    XLSX ENTERPRISE con ExcelJS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+════════════════════════════════════════════════════ */
 document.getElementById('btn-xlsx').addEventListener('click', () => {
     document.getElementById('btn-xlsx').disabled = true;
     document.getElementById('btn-xlsx').innerHTML = '<i class="bi bi-hourglass-split"></i> Generando…';
@@ -1077,13 +1168,13 @@ async function exportarXLSX() {
     const tT2 = topN(countBy(_filtered, 'tecnico_nombre'), 10);
     const tiT2 = topN(countBy(_filtered, 'tipo_equipo'), 10);
 
-    /* â•â• HOJA 1: DETALLE â•â• */
+    /* ══════ HOJA 1: DETALLE ══════ */
     const cols1 = [
         'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Vencida',
         'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
-        'Estado Repuesto','Estado Garantía','Estado Orden',
+        'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
         'Plataforma Transf. Inventario', 'Número Transf. Inventario',
         'Técnico','Ingresado por',
         'Sucursal',
@@ -1097,7 +1188,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,14,18,22,22,22,20,16,22,16,12,16,22,22,18,18];
+    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,16,16,26,18,22,22,22,20,16,22,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1120,7 +1211,7 @@ async function exportarXLSX() {
         { l:'TOTAL',      v:total,                p:'100%',            bg:C.azulXL,  fg:C.azul  },
         { l:'PENDIENTES', v:cnt['Pendiente'],      p:pp(cnt['Pendiente']),   bg:C.ambarL,  fg:C.ambar },
         { l:'EN PROCESO', v:cnt['En proceso'],     p:pp(cnt['En proceso']),  bg:C.azulL,   fg:C.azul  },
-        { l:'FINALIZADAS',v:cnt['Finalizada'],     p:pp(cnt['Finalizada']),  bg:C.verdeL,  fg:C.verde },
+        { l:'FINALIZADAS',v:cnt['Finalizada'],     p:pp(cnt['Finalizada']),  bg:C.verdeL, fg:C.verde  },
         { l:'ENTREGADAS', v:cnt['Entregada'],      p:pp(cnt['Entregada']),   bg:C.verdeXL, fg:C.verdeO},
         { l:'N. CRÉDITO', v:cnt['Nota de Credito'],p:pp(cnt['Nota de Credito']),bg:C.rojoL, fg:C.rojo },
         { l:'TASA ENTREGA',v:tasa+'%',             p:'',                bg:C.tealL,   fg:C.teal  },
@@ -1210,7 +1301,7 @@ async function exportarXLSX() {
             r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
-            r.estado_repuesto, r.estado_garantia || '', r.estado_orden,
+            r.estado_repuesto, r.estado_garantia || '', r.garantia_tipo || '-', r.garantia_destino_cas || '-', r.estado_orden,
             r.transferencia_plataforma || '', r.transferencia_numero || '',
             r.tecnico_nombre, '',
             r.sucursal_nombre,
@@ -1225,16 +1316,26 @@ async function exportarXLSX() {
         ];
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = 24;
+        const estadoIdx = 26;
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 33 || ci === 34) { 
+            else if (ci === 23) { // Tipo Garantía
+                cell.fill = fl(bgBase);
+                if (v === 'Externa') { cell.font = fn(true, 9, 'B45309'); cell.alignment = al('center','middle'); }
+                else if (v === 'Interna') { cell.font = fn(true, 9, '15803D'); cell.alignment = al('center','middle'); }
+                else { cell.alignment = al('center','middle'); }
+            }
+            else if (ci === 24) { // CAS Destino
+                cell.fill = fl(bgBase);
+                if (v !== '-') { cell.font = fn(true, 9, C.azul); }
+            }
+            else if (ci === 35 || ci === 36) { 
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 33 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 35 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }

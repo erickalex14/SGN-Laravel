@@ -138,9 +138,7 @@ class MisTicketsController extends Controller
         }
 
         $ticket = Ticket::with(['asignadoA', 'solicitante', 'sucursalCliente', 'mensajes.usuario', 'adjuntos'])
-            ->where('id', $id)
-            ->where('solicitante_id', $usuario->id)
-            ->firstOrFail();
+            ->findOrFail($id);
 
         return view('tickets.ver', compact('ticket', 'usuario'));
     }
@@ -155,9 +153,7 @@ class MisTicketsController extends Controller
             return response()->json(['ok' => false, 'error' => 'No autenticado.'], 401);
         }
 
-        $ticket = Ticket::where('id', $id)
-            ->where('solicitante_id', $usuario->id)
-            ->firstOrFail();
+        $ticket = Ticket::findOrFail($id);
 
         $request->validate([
             'mensaje' => 'required|string',
@@ -200,9 +196,10 @@ class MisTicketsController extends Controller
             return response()->json(['ok' => false, 'error' => 'No autenticado.'], 401);
         }
 
-        $ticket = Ticket::where('id', $id)
-            ->where('solicitante_id', $usuario->id)
-            ->firstOrFail();
+        $ticket = Ticket::find($id);
+        if (!$ticket) {
+            return response()->json(['ok' => false, 'error' => 'Ticket no encontrado.'], 404);
+        }
 
         $request->validate([
             'calificacion' => 'required|integer|min:1|max:5',
@@ -217,9 +214,48 @@ class MisTicketsController extends Controller
                 $usuario
             );
 
-            return response()->json(['ok' => true, 'mensaje' => '¡Gracias por calificar la atención!']);
+            return response()->json(['ok' => true, 'mensaje' => '¡Muchas gracias por tu reseña y calificación!']);
         } catch (Throwable $e) {
-            return response()->json(['ok' => false, 'error' => 'Error: ' . $e->getMessage()], 500);
+            return response()->json(['ok' => false, 'error' => 'Error al registrar calificación: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reabre un ticket resuelto o cerrado a solicitud del usuario solicitante.
+     */
+    public function reabrir(Request $request, int $id)
+    {
+        $usuario = auth()->user() ?: Usuario::find(session('tecnico_id'));
+        if (!$usuario) {
+            return response()->json(['ok' => false, 'error' => 'No autenticado.'], 401);
+        }
+
+        $ticket = Ticket::find($id);
+        if (!$ticket) {
+            return response()->json(['ok' => false, 'error' => 'Ticket no encontrado.'], 404);
+        }
+
+        $request->validate([
+            'motivo' => 'required|string|min:4|max:1000',
+        ]);
+
+        try {
+            $this->ticketService->reabrirTicket(
+                $ticket,
+                trim($request->input('motivo')),
+                $usuario
+            );
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'ok' => true,
+                    'mensaje' => "El ticket {$ticket->codigo_ticket} ha sido reabierto con éxito."
+                ]);
+            }
+
+            return back()->with('success', "Ticket {$ticket->codigo_ticket} reabierto correctamente.");
+        } catch (Throwable $e) {
+            return response()->json(['ok' => false, 'error' => 'Error al reabrir el ticket: ' . $e->getMessage()], 500);
         }
     }
 
@@ -251,6 +287,7 @@ class MisTicketsController extends Controller
         $request->validate([
             'correo_tec' => 'nullable|email|max:100',
             'telefono' => 'nullable|string|max:30',
+            'departamento' => 'nullable|string|max:100',
             'usuario_mba' => 'nullable|string|max:60',
             'codigo_usuario' => 'nullable|string|max:60',
             'anydesk_id' => 'nullable|string|max:50',
@@ -260,6 +297,7 @@ class MisTicketsController extends Controller
             $usuario->update([
                 'correo_tec' => $request->input('correo_tec') ? trim($request->input('correo_tec')) : null,
                 'telefono' => $request->input('telefono'),
+                'departamento' => $request->input('departamento') ? trim($request->input('departamento')) : null,
                 'usuario_mba' => $request->input('usuario_mba') ? trim($request->input('usuario_mba')) : null,
                 'codigo_usuario' => $request->input('codigo_usuario') ? trim($request->input('codigo_usuario')) : null,
                 'anydesk_id' => $request->input('anydesk_id') ? trim($request->input('anydesk_id')) : null,
@@ -268,6 +306,36 @@ class MisTicketsController extends Controller
             return back()->with('success', 'Tus datos de soporte técnico se actualizaron correctamente.');
         } catch (Throwable $e) {
             return back()->with('error', 'Error al guardar datos: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Genera y descarga el documento oficial de Word (.docx) para un Caso MBA3.
+     */
+    public function descargarWordMba(\App\Services\Operations\TicketDocxService $docxService, int $id)
+    {
+        $usuario = auth()->user() ?: Usuario::find(session('tecnico_id'));
+        if (!$usuario) {
+            return redirect()->route('login');
+        }
+
+        $ticket = Ticket::with(['solicitante', 'asignadoA', 'sucursalCliente'])
+            ->where('id', $id)
+            ->where('solicitante_id', $usuario->id)
+            ->firstOrFail();
+
+        try {
+            $docxContent = $docxService->generarDocxCasoMba($ticket);
+            $filename = "Caso_MBA3_{$ticket->codigo_ticket}.docx";
+
+            return response($docxContent, 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, private',
+                'Pragma' => 'no-cache',
+            ]);
+        } catch (Throwable $e) {
+            return back()->with('error', 'Error al generar documento Word: ' . $e->getMessage());
         }
     }
 }

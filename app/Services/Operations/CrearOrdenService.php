@@ -177,6 +177,7 @@ class CrearOrdenService
                     $orden->estado_garantia = $esValidacionGarantia ? 'Pendiente' : null;
                     $orden->fecha_prometido = $dto->fecha_prometido;
                     $orden->garantia_tipo = $garantiaTipo;
+                    $orden->empresa_garantia = $esValidacionGarantia ? strtoupper(trim((string)($dto->empresa_garantia ?: 'NOVISOLUTIONS'))) : null;
                     $orden->cas_id = $casAsignado ? $casAsignado->id : $casId;
                     $orden->repuesto_inventario_id = ! empty($repuestosSeleccionados) ? (int) $repuestosSeleccionados[0] : null;
                     $orden->fecha_facturacion = $esValidacionGarantia ? $dto->fecha_facturacion : null;

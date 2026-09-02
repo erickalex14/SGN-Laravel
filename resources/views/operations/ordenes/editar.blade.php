@@ -322,6 +322,13 @@
                             <option value="propia" {{ $orden->garantia_tipo === 'propia' || $orden->garantia_tipo === 'interna' ? 'selected' : '' }}>Interna</option>
                             <option value="externa" {{ $orden->garantia_tipo === 'externa' ? 'selected' : '' }}>Externa</option>
                         </select>
+                        <div style="margin-top:10px;">
+                            <label>Empresa de la Garantía <span class="req">*</span></label>
+                            <select id="empresa_garantia" style="font-weight: 600;">
+                                <option value="NOVISOLUTIONS" {{ ($orden->empresa_garantia ?? 'NOVISOLUTIONS') === 'NOVISOLUTIONS' ? 'selected' : '' }}>NOVISOLUTIONS (Novicompu)</option>
+                                <option value="ENV" {{ ($orden->empresa_garantia ?? '') === 'ENV' ? 'selected' : '' }}>ENV (Accesorios y Sistemas)</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="campo">
                         <label>Estado Actual de la Orden <span class="req">*</span></label>
@@ -529,6 +536,7 @@ async function guardarActualizacion() {
     // Nuevos campos de orden
     fd.append('motivo_ingreso', document.getElementById('motivo_ingreso').value);
     fd.append('garantia_tipo', document.getElementById('garantia_tipo').value);
+    fd.append('empresa_garantia', document.getElementById('empresa_garantia') ? document.getElementById('empresa_garantia').value : 'NOVISOLUTIONS');
     fd.append('observacion_orden', document.getElementById('observacion_orden').value.trim());
 
     // Facturación / CAS

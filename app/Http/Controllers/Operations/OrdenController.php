@@ -236,6 +236,7 @@ class OrdenController extends Controller
                 $nroSucursalCliente,
                 $request->input('estado_repuesto'),
                 $request->input('garantia_tipo'),
+            $request->input('empresa_garantia', 'NOVISOLUTIONS'),
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
                 $request->input('repuesto_inventario_id') ? (int) $request->input('repuesto_inventario_id') : null,
                 $request->input('repuestos_seleccionados', [])
