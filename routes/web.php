@@ -23,6 +23,7 @@ use App\Http\Controllers\Operations\InformeController;
 use App\Http\Controllers\Operations\MisOrdenesController;
 use App\Http\Controllers\Operations\NotaCreditoController;
 use App\Http\Controllers\Operations\OrdenController;
+use App\Http\Controllers\Operations\RecepcionController;
 use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
@@ -306,6 +307,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/operaciones/ordenes/buscar/listar', [BuscarOrdenController::class, 'listar'])->name('ordenes_buscar.listar');
     });
 
+    // Modulo de Recepcion
+    Route::middleware(['permiso:ordenes_recepcion,ver'])->group(function () {
+        Route::get('/operaciones/recepcion', [RecepcionController::class, 'index'])->name('recepcion.index');
+        Route::post('/operaciones/recepcion/recibir-tecnico', [RecepcionController::class, 'recibirEnRecepcion'])->name('recepcion.recibir');
+        Route::post('/operaciones/recepcion/entregar', [RecepcionController::class, 'entregarOrden'])->name('recepcion.entregar');
+        Route::get('/operaciones/recepcion/detalle/{id}', [RecepcionController::class, 'obtenerDetalle'])->name('recepcion.detalle');
+    });
+
     // Modulo de Edicion de Ordenes
     Route::middleware(['permiso:ordenes_editar,ver'])->group(function () {
         Route::get('/operaciones/ordenes/editar/{id}', [EdicionOrdenController::class, 'edit'])->name('ordenes.editar');
@@ -369,6 +378,9 @@ Route::middleware('auth')->group(function () {
     // -------------------------------------------------------
     Route::middleware(['permiso:presupuestos,ver'])->group(function () {
         Route::get('/operaciones/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
+        Route::get('/operaciones/presupuestos/buscar-ordenes', [PresupuestoController::class, 'buscarOrdenes'])->name('presupuestos.buscar_ordenes');
+        Route::get('/operaciones/presupuestos/buscar-articulos', [PresupuestoController::class, 'buscarArticulos'])->name('presupuestos.buscar_articulos');
+        Route::get('/operaciones/presupuestos/imprimir-directa', [PresupuestoController::class, 'imprimirDirecta'])->name('presupuestos.imprimir_directa');
         Route::get('/operaciones/presupuestos/{id}/imprimir', [PresupuestoController::class, 'imprimir'])->name('presupuestos.imprimir');
     });
 

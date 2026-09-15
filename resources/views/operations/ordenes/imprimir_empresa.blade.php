@@ -307,7 +307,7 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
     </div>
 
     <div style="margin-top:8px;padding:5px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:3px;font-size:7.5pt;color:#713f12;text-align:center;">
-        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 + IVA</b>.
+        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 d&oacute;lares</b>.
     </div>
 
     <div class="firmas">

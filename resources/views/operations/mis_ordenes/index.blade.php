@@ -47,11 +47,15 @@
     transition: box-shadow .18s, border-color .18s, transform .18s; display: flex; flex-direction: column;
 }
 .orden-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.09); border-color: #93c5fd; transform: translateY(-2px); }
-.orden-card[data-estado="Pendiente"] { border-top: 3px solid #f59e0b; }
-.orden-card[data-estado="En proceso"] { border-top: 3px solid #3b82f6; }
-.orden-card[data-estado="Finalizada"] { border-top: 3px solid #10b981; }
-.orden-card[data-estado="Entregada"] { border-top: 3px solid #0d9488; }
+.orden-card[data-estado="Recibido en Recepcion"], .orden-card[data-estado="INGRESO"] { border-top: 3px solid #64748b; }
+.orden-card[data-estado="Entregado al Tecnico"], .orden-card[data-estado="Recibida"] { border-top: 3px solid #0284c7; }
+.orden-card[data-estado="Pendiente"], .orden-card[data-estado="Abierta"] { border-top: 3px solid #f59e0b; }
+.orden-card[data-estado="En reparacion"], .orden-card[data-estado="En proceso"] { border-top: 3px solid #3b82f6; }
+.orden-card[data-estado="Reparada"], .orden-card[data-estado="Finalizada"] { border-top: 3px solid #10b981; }
+.orden-card[data-estado="Entregado en Recepcion para Entrega"], .orden-card[data-estado="Lista para entrega"] { border-top: 3px solid #d97706; }
+.orden-card[data-estado="Cerrado"], .orden-card[data-estado="Entregada"] { border-top: 3px solid #0d9488; }
 .orden-card[data-estado="Nota de Credito"] { border-top: 3px solid #db2777; }
+.orden-card[data-estado="Incinerox"] { border-top: 3px solid #dc2626; }
 .card-top { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px 7px; cursor: pointer; }
 .card-nro { font-family: 'Courier New', monospace; font-weight: 800; font-size: 13.5px; color: var(--mo-blue); letter-spacing: .02em; }
 .card-cliente { padding: 0 14px 3px; font-size: 13.5px; font-weight: 700; color: var(--mo-slate); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -208,7 +212,12 @@
             'estado_orden' => (string) ($esEmpresa ? ($ord->estado ?? '') : ($ord->estado_orden ?? '')),
             'estado_repuesto' => (string) ($ord->estado_repuesto ?: 'No requerido'),
             'fecha_de_ingreso' => (string) ($esEmpresa ? ($ord->fecha_ingreso ?? '') : ($ord->fecha_de_ingreso ?? '')),
-            'fecha_entrega' => (string) ($esEmpresa ? '' : ($ord->fecha_entrega ?? '')),
+            'fecha_recibida_tecnico' => (string) ($ord->fecha_recibida_tecnico ?? ''),
+            'fecha_prometido' => (string) ($ord->fecha_prometido ?? ''),
+            'fecha_finalizacion' => (string) ($ord->fecha_finalizacion ?? ''),
+            'fecha_lista_entrega' => (string) ($ord->fecha_lista_entrega ?? ''),
+            'fecha_entrega' => (string) ($ord->fecha_entrega ?? ''),
+            'fecha_modificacion' => (string) ($ord->fecha_modificacion ?? ''),
             'motivo_ingreso' => (string) ($esEmpresa ? ('Empresa - ' . ($ord->subtipo ?? '')) : ($ord->motivo_ingreso ?? '')),
             'estado_garantia' => (string) ($esEmpresa ? '' : ($ord->estado_garantia ?? 'Pendiente')),
             'empresa_garantia' => (string) ($esEmpresa ? '' : ($ord->empresa_garantia ?? 'NOVISOLUTIONS')),
@@ -242,7 +251,7 @@
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'empresa_id' => $esEmpresa ? (int) $ord->empresa_id : null,
             'subtipo' => $esEmpresa ? (string) $ord->subtipo : null,
-            'productos_inventario_st' => ($esEmpresa && (int)$ord->empresa_id === 1 && $ord->subtipo === 'Stock')
+            'productos_inventario_st' => ($esEmpresa && (int)$ord->empresa_id === 1 && in_array($ord->subtipo, ['Stock', 'Autoconsumo'], true))
                 ? \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $ord->id)->get()->map(function($p) {
                     return [
                         'id' => (int) $p->id,
@@ -281,11 +290,14 @@
     })->values();
 
     $cntTotal = $rows->count();
+    $cntRecibidoRecepcion = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Recibido en Recepcion', 'INGRESO'], true))->count();
+    $cntEntregadoTecnico = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Entregado al Tecnico', 'Recibida'], true))->count();
     $cntPendiente = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Pendiente', 'Abierta'], true))->count();
-    $cntProceso = $rows->filter(fn($o) => $o['estado_orden'] === 'En proceso')->count();
-    $cntFinal = $rows->filter(fn($o) => $o['estado_orden'] === 'Finalizada')->count();
+    $cntReparacion = $rows->filter(fn($o) => in_array($o['estado_orden'], ['En reparacion', 'En proceso'], true))->count();
+    $cntReparada = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Reparada', 'Finalizada'], true))->count();
+    $cntParaEntrega = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Entregado en Recepcion para Entrega', 'Lista para entrega'], true))->count();
     $cntNc = $rows->filter(fn($o) => $o['estado_orden'] === 'Nota de Credito')->count();
-    $cntEnt = $rows->filter(fn($o) => $o['estado_orden'] === 'Entregada')->count();
+    $cntCerrado = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Cerrado', 'Entregada'], true))->count();
 
 @endphp
 
@@ -297,20 +309,29 @@
     </div>
 
     <div class="mo-kpis">
+        <div class="mo-kpi-card" style="border-top:3px solid #64748b;" onclick="filtrarOrdenes('Recibido en Recepcion')" id="mo-kpi-recibido-recepcion">
+            <div class="mo-kpi-num">{{ $cntRecibidoRecepcion }}</div><div class="mo-kpi-lbl">En Recepción</div>
+        </div>
+        <div class="mo-kpi-card" style="border-top:3px solid #0284c7;" onclick="filtrarOrdenes('Entregado al Tecnico')" id="mo-kpi-recibida">
+            <div class="mo-kpi-num">{{ $cntEntregadoTecnico }}</div><div class="mo-kpi-lbl">Recibidas</div>
+        </div>
         <div class="mo-kpi-card mo-kpi-pendiente" onclick="filtrarOrdenes('Pendiente')" id="mo-kpi-pendiente">
-            <div class="mo-kpi-num">{{ $cntPendiente }}</div><div class="mo-kpi-lbl">Pendiente</div>
+            <div class="mo-kpi-num">{{ $cntPendiente }}</div><div class="mo-kpi-lbl">Pendientes</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-en-proceso" onclick="filtrarOrdenes('En proceso')" id="mo-kpi-enproceso">
-            <div class="mo-kpi-num">{{ $cntProceso }}</div><div class="mo-kpi-lbl">En Proceso</div>
+        <div class="mo-kpi-card mo-kpi-en-proceso" onclick="filtrarOrdenes('En reparacion')" id="mo-kpi-enproceso">
+            <div class="mo-kpi-num">{{ $cntReparacion }}</div><div class="mo-kpi-lbl">En Reparación</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-finalizada" onclick="filtrarOrdenes('Finalizada')" id="mo-kpi-finalizada">
-            <div class="mo-kpi-num">{{ $cntFinal }}</div><div class="mo-kpi-lbl">Finalizada</div>
+        <div class="mo-kpi-card mo-kpi-finalizada" onclick="filtrarOrdenes('Reparada')" id="mo-kpi-finalizada">
+            <div class="mo-kpi-num">{{ $cntReparada }}</div><div class="mo-kpi-lbl">Reparadas</div>
+        </div>
+        <div class="mo-kpi-card" style="border-top:3px solid #d97706;" onclick="filtrarOrdenes('Entregado en Recepcion para Entrega')" id="mo-kpi-listaentrega">
+            <div class="mo-kpi-num">{{ $cntParaEntrega }}</div><div class="mo-kpi-lbl">Para Entrega</div>
         </div>
         <div class="mo-kpi-card mo-kpi-nota-cred" onclick="filtrarOrdenes('Nota de Credito')" id="mo-kpi-notacred">
-            <div class="mo-kpi-num">{{ $cntNc }}</div><div class="mo-kpi-lbl">Nota de Credito</div>
+            <div class="mo-kpi-num">{{ $cntNc }}</div><div class="mo-kpi-lbl">Nota de Crédito</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-entregada" onclick="filtrarOrdenes('Entregada')" id="mo-kpi-entregada">
-            <div class="mo-kpi-num">{{ $cntEnt }}</div><div class="mo-kpi-lbl">Entregada</div>
+        <div class="mo-kpi-card mo-kpi-entregada" onclick="filtrarOrdenes('Cerrado')" id="mo-kpi-entregada">
+            <div class="mo-kpi-num">{{ $cntCerrado }}</div><div class="mo-kpi-lbl">Cerradas</div>
         </div>
         <div class="mo-kpi-card" onclick="filtrarOrdenes('')" id="mo-kpi-todos">
             <div class="mo-kpi-num">{{ $cntTotal }}</div><div class="mo-kpi-lbl">Total</div>
@@ -328,18 +349,24 @@
                 @php
                     $e = $o['estado_orden'];
                     $estadoBg = match($e) {
+                        'Recibido en Recepcion', 'INGRESO' => '#f1f5f9',
+                        'Entregado al Tecnico', 'Recibida' => '#e0f2fe',
                         'Pendiente', 'Abierta' => '#fef9c3',
-                        'En proceso' => '#dbeafe',
-                        'Finalizada' => '#dcfce7',
-                        'Entregada' => '#f0fdf4',
+                        'En reparacion', 'En proceso' => '#dbeafe',
+                        'Reparada', 'Finalizada' => '#dcfce7',
+                        'Entregado en Recepcion para Entrega', 'Lista para entrega' => '#fef3c7',
+                        'Cerrado', 'Entregada' => '#ecfdf5',
                         'Nota de Credito' => '#fce7f3',
                         default => '#f1f5f9',
                     };
                     $estadoColor = match($e) {
+                        'Recibido en Recepcion', 'INGRESO' => '#475569',
+                        'Entregado al Tecnico', 'Recibida' => '#0369a1',
                         'Pendiente', 'Abierta' => '#854d0e',
-                        'En proceso' => '#1e40af',
-                        'Finalizada' => '#166534',
-                        'Entregada' => '#15803d',
+                        'En reparacion', 'En proceso' => '#1e40af',
+                        'Reparada', 'Finalizada' => '#166534',
+                        'Entregado en Recepcion para Entrega', 'Lista para entrega' => '#92400e',
+                        'Cerrado', 'Entregada' => '#047857',
                         'Nota de Credito' => '#9d174d',
                         default => '#475569',
                     };
@@ -358,6 +385,7 @@
                         'Sin stock', 'Sin Stock' => '#991b1b',
                         default => '#475569',
                     };
+                    $esRecibidoRecepcion = in_array($o['estado_orden'], ['Recibido en Recepcion', 'INGRESO'], true);
                 @endphp
                 <div class="orden-card" data-estado="{{ $o['estado_orden'] }}" id="card-{{ $o['tipo_orden'] }}-{{ $o['id'] }}" data-orden='@json($o)'>
                     <div class="card-top" onclick="verDetalleOrden(this.parentElement)">
@@ -383,6 +411,11 @@
                     </div>
 
                     <div class="card-actions">
+                        @if($esRecibidoRecepcion)
+                            <button class="btn-accion" style="background:#0284c7;color:#fff;font-weight:700;" onclick="confirmarRecibidoTecnico({{ $o['id'] }}, '{{ $o['nro_orden'] }}', '{{ $o['tipo_orden'] }}')">
+                                <i class="bi bi-box-arrow-in-down-left"></i> Confirmar Recepción
+                            </button>
+                        @endif
                         <button class="btn-accion btn-detalle-orden" onclick="verDetalleOrden(this.closest('[data-orden]'))">
                             <i class="bi bi-sliders"></i> {{ $o['tipo_orden'] === 'empresa' ? 'Detalle' : 'Gestionar' }}
                         </button>
@@ -658,17 +691,51 @@ function _h(v) {
     return String(v ?? '').replace(/[&<>"']/g, (s) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[s]));
 }
 
-function _badgeEstadoHtml(estado) {
+function _fmtDateTime(v) {
+    if (!v) return '-';
+    try {
+        const parts = String(v).trim().split(/[\sT]+/);
+        if (!parts[0]) return '-';
+        const dParts = parts[0].split('-');
+        if (dParts.length === 3) {
+            const dateStr = `${dParts[2]}/${dParts[1]}/${dParts[0]}`;
+            if (parts[1]) {
+                const tParts = parts[1].split(':');
+                return `${dateStr} ${tParts[0]}:${tParts[1]}`;
+            }
+            return dateStr;
+        }
+        return v;
+    } catch {
+        return v;
+    }
+}
+
+function _moEstadoColors(estado) {
     const map = {
+        'Recibido en Recepcion': ['#f1f5f9', '#475569'],
+        'INGRESO': ['#f1f5f9', '#475569'],
+        'Entregado al Tecnico': ['#e0f2fe', '#0369a1'],
+        'Recibida': ['#e0f2fe', '#0369a1'],
         'Pendiente': ['#fef9c3', '#854d0e'],
         'Abierta': ['#fef9c3', '#854d0e'],
+        'En reparacion': ['#dbeafe', '#1e40af'],
         'En proceso': ['#dbeafe', '#1e40af'],
+        'Reparada': ['#dcfce7', '#166534'],
         'Finalizada': ['#dcfce7', '#166534'],
+        'Entregado en Recepcion para Entrega': ['#fef3c7', '#92400e'],
+        'Lista para entrega': ['#fef3c7', '#92400e'],
+        'Cerrado': ['#ecfdf5', '#047857'],
         'Entregada': ['#f0fdf4', '#15803d'],
         'Nota de Credito': ['#fce7f3', '#9d174d'],
+        'Incinerox': ['#fee2e2', '#991b1b'],
     };
-    const pair = map[estado] || ['#f1f5f9', '#475569'];
-    return `<span style="background:${pair[0]};color:${pair[1]};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${_h(estado)}</span>`;
+    return map[estado] || ['#f1f5f9', '#475569'];
+}
+
+function _badgeEstadoHtml(estado) {
+    const [bg, color] = _moEstadoColors(estado);
+    return `<span style="background:${bg};color:${color};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${_h(estado)}</span>`;
 }
 
 function _badgeRepuestoHtml(estado) {
@@ -695,18 +762,6 @@ function _moCardId(row) {
     return 'card-' + (row.tipo_orden || 'personal') + '-' + Number(row.id || 0);
 }
 
-function _moEstadoColors(estado) {
-    const map = {
-        'Pendiente': ['#fef9c3', '#854d0e'],
-        'Abierta': ['#fef9c3', '#854d0e'],
-        'En proceso': ['#dbeafe', '#1e40af'],
-        'Finalizada': ['#dcfce7', '#166534'],
-        'Entregada': ['#f0fdf4', '#15803d'],
-        'Nota de Credito': ['#fce7f3', '#9d174d'],
-    };
-    return map[estado] || ['#f1f5f9', '#475569'];
-}
-
 function _moRepuestoColors(estado) {
     const map = {
         'No requerido': ['#f1f5f9', '#475569'],
@@ -727,9 +782,25 @@ function _moOption(value, label, actual) {
 }
 
 function _estadoOrdenOptions(actual, esEmpresa = false) {
-    const estados = esEmpresa
-        ? ['Pendiente', 'En proceso', 'Finalizada', 'Entregada']
-        : ['Pendiente', 'En proceso', 'Finalizada', 'Entregada', 'Nota de Credito'];
+    const sessionGrupo = '{{ mb_strtolower(trim((string) session("grupo_nombre", ""))) }}';
+    const esAdmin = {{ (session('es_superadmin') || in_array(mb_strtolower(trim((string) session('grupo_nombre', ''))), ['admin', 'administrador', 'admin master', 'administrador master'])) ? 'true' : 'false' }};
+    
+    let estados;
+    if (esEmpresa) {
+        estados = ['Pendiente', 'Recibida', 'En proceso', 'Finalizada', 'Lista para entrega', 'Incinerox'];
+        if (esAdmin) estados.push('Entregada');
+    } else {
+        estados = [
+            'Recibido en Recepcion',
+            'Entregado al Tecnico',
+            'Pendiente',
+            'En reparacion',
+            'Reparada',
+            'Entregado en Recepcion para Entrega',
+            'Nota de Credito'
+        ];
+        if (esAdmin) estados.push('Cerrado');
+    }
     const normalizado = actual === 'Abierta' ? 'Pendiente' : actual;
     const lista = estados.includes(normalizado) ? estados : [normalizado, ...estados].filter(Boolean);
     return lista.map((estado) => _moOption(estado, estado === normalizado ? `Actual: ${estado}` : estado, normalizado)).join('');
@@ -770,17 +841,24 @@ function _moRefrescarModal(row) {
 
 function _moActualizarKpis() {
     const total = _moRows.length;
+    const recibidoRecepcion = _moRows.filter((o) => ['Recibido en Recepcion', 'INGRESO'].includes(o.estado_orden)).length;
+    const entregadoTecnico = _moRows.filter((o) => ['Entregado al Tecnico', 'Recibida'].includes(o.estado_orden)).length;
     const pendientes = _moRows.filter((o) => ['Pendiente', 'Abierta'].includes(o.estado_orden)).length;
-    const proceso = _moRows.filter((o) => o.estado_orden === 'En proceso').length;
-    const finalizadas = _moRows.filter((o) => o.estado_orden === 'Finalizada').length;
+    const reparacion = _moRows.filter((o) => ['En reparacion', 'En proceso'].includes(o.estado_orden)).length;
+    const reparadas = _moRows.filter((o) => ['Reparada', 'Finalizada'].includes(o.estado_orden)).length;
+    const paraEntrega = _moRows.filter((o) => ['Entregado en Recepcion para Entrega', 'Lista para entrega'].includes(o.estado_orden)).length;
     const notas = _moRows.filter((o) => o.estado_orden === 'Nota de Credito').length;
-    const entregadas = _moRows.filter((o) => o.estado_orden === 'Entregada').length;
+    const cerradas = _moRows.filter((o) => ['Cerrado', 'Entregada'].includes(o.estado_orden)).length;
+    
     const valores = {
+        'mo-kpi-recibido-recepcion': recibidoRecepcion,
+        'mo-kpi-recibida': entregadoTecnico,
         'mo-kpi-pendiente': pendientes,
-        'mo-kpi-enproceso': proceso,
-        'mo-kpi-finalizada': finalizadas,
+        'mo-kpi-enproceso': reparacion,
+        'mo-kpi-finalizada': reparadas,
+        'mo-kpi-listaentrega': paraEntrega,
         'mo-kpi-notacred': notas,
-        'mo-kpi-entregada': entregadas,
+        'mo-kpi-entregada': cerradas,
         'mo-kpi-todos': total,
     };
     Object.entries(valores).forEach(([id, valor]) => {
@@ -796,7 +874,7 @@ function _moAplicarCambioLocal(row) {
     _moRefrescarModal(row);
 }
 
-let _moFiltroActual = 'Pendiente';
+let _moFiltroActual = '';
 
 function filtrarOrdenes(estado) {
     _moFiltroActual = estado;
@@ -805,10 +883,30 @@ function filtrarOrdenes(estado) {
     cards.forEach((card) => {
         const est = card.getAttribute('data-estado') || '';
         const estNorm = est === 'Abierta' ? 'Pendiente' : est;
-        const show = !estado || estNorm === estado;
+        
+        let show = false;
+        if (!estado) {
+            show = true;
+        } else if (estNorm === estado) {
+            show = true;
+        } else if (estado === 'Recibido en Recepcion' && est === 'INGRESO') {
+            show = true;
+        } else if (estado === 'Entregado al Tecnico' && est === 'Recibida') {
+            show = true;
+        } else if (estado === 'En reparacion' && est === 'En proceso') {
+            show = true;
+        } else if (estado === 'Reparada' && est === 'Finalizada') {
+            show = true;
+        } else if (estado === 'Entregado en Recepcion para Entrega' && est === 'Lista para entrega') {
+            show = true;
+        } else if (estado === 'Cerrado' && est === 'Entregada') {
+            show = true;
+        }
+
         card.style.display = show ? '' : 'none';
         if (show) visibles++;
     });
+
     const cnt = document.getElementById('panel-count-visible');
     if (cnt) cnt.textContent = visibles;
     const empty = document.getElementById('empty-filtro');
@@ -818,13 +916,84 @@ function filtrarOrdenes(estado) {
         grid.style.display = visibles === 0 ? 'none' : '';
     }
 
-    ['todos','pendiente','enproceso','finalizada','notacred','entregada'].forEach((k) => {
+    [
+        'recibido-recepcion',
+        'recibida',
+        'pendiente',
+        'enproceso',
+        'finalizada',
+        'listaentrega',
+        'notacred',
+        'entregada',
+        'todos'
+    ].forEach((k) => {
         const el = document.getElementById('mo-kpi-' + k);
         if (el) el.classList.remove('activo');
     });
-    const mapa = { '': 'todos', 'Pendiente': 'pendiente', 'En proceso': 'enproceso', 'Finalizada': 'finalizada', 'Nota de Credito': 'notacred', 'Entregada': 'entregada' };
+
+    const mapa = {
+        '': 'todos',
+        'Recibido en Recepcion': 'recibido-recepcion',
+        'Entregado al Tecnico': 'recibida',
+        'Pendiente': 'pendiente',
+        'En reparacion': 'enproceso',
+        'Reparada': 'finalizada',
+        'Entregado en Recepcion para Entrega': 'listaentrega',
+        'Nota de Credito': 'notacred',
+        'Cerrado': 'entregada',
+        'Recibida': 'recibida',
+        'En proceso': 'enproceso',
+        'Finalizada': 'finalizada',
+        'Lista para entrega': 'listaentrega',
+        'Entregada': 'entregada'
+    };
     const active = document.getElementById('mo-kpi-' + (mapa[estado] || 'todos'));
     if (active) active.classList.add('activo');
+}
+
+async function confirmarRecibidoTecnico(ordenId, nroOrden, tipoOrden = 'personal') {
+    const verificado = await mostrarAlertaEstetica(
+        `¿Confirmas que recibiste físicamente el equipo de la orden <b>${_h(nroOrden)}</b>?<br><br><small style="color:#64748b;">A partir de este momento comenzará a correr el tiempo de reparación del equipo en taller.</small>`,
+        'confirm',
+        'Confirmar Recepción de Equipo'
+    );
+    if (!verificado) return;
+
+    Swal.fire({
+        title: 'Confirmando recepción...',
+        text: 'Iniciando contador de reparación',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('id', ordenId);
+    fd.append('estado', 'Entregado al Tecnico');
+    fd.append('tipo_orden', tipoOrden);
+
+    try {
+        const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
+        const d = await r.json();
+        Swal.close();
+
+        if (!d.ok) {
+            await mostrarAlertaEstetica(d.error || 'No se pudo confirmar la recepción.', 'error', 'Error');
+            return;
+        }
+
+        await Swal.fire({
+            title: '¡Equipo Recibido!',
+            text: `La orden ${nroOrden} ha sido marcada como recibida en taller. El tiempo de reparación ha comenzado a registrarse.`,
+            icon: 'success',
+            confirmButtonColor: '#0284c7'
+        });
+
+        window.location.reload();
+    } catch (e) {
+        Swal.close();
+        await mostrarAlertaEstetica('Error de conexión con el servidor: ' + e.message, 'error', 'Error de Conexión');
+    }
 }
 
 async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'personal') {
@@ -1027,6 +1196,21 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
             }
             if (d.foto_evidencia_entrega) {
                 row.foto_evidencia_entrega = d.foto_evidencia_entrega;
+            }
+            if (d.fecha_modificacion) {
+                row.fecha_modificacion = d.fecha_modificacion;
+            }
+            if (d.fecha_recibida_tecnico !== undefined) {
+                row.fecha_recibida_tecnico = d.fecha_recibida_tecnico;
+            }
+            if (d.fecha_finalizacion !== undefined) {
+                row.fecha_finalizacion = d.fecha_finalizacion;
+            }
+            if (d.fecha_lista_entrega !== undefined) {
+                row.fecha_lista_entrega = d.fecha_lista_entrega;
+            }
+            if (d.fecha_entrega !== undefined) {
+                row.fecha_entrega = d.fecha_entrega;
             }
             if (nuevoEstado === 'Nota de Credito') {
                 row.nc_estado = row.nc_estado || 'Pendiente';
@@ -1666,6 +1850,13 @@ function verDetalleOrden(cardEl) {
                     ` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
+                    <div class="det-campo"><label>Fecha Ingreso</label><span>${_fmtDateTime(o.fecha_de_ingreso)}</span></div>
+                    <div class="det-campo"><label>Recibida Técnico</label><span>${_fmtDateTime(o.fecha_recibida_tecnico)}</span></div>
+                    <div class="det-campo"><label>Fecha Prometida</label><span>${o.fecha_prometido ? _fmtDateTime(o.fecha_prometido).split(' ')[0] : '-'}</span></div>
+                    <div class="det-campo"><label>Últ. Modificación</label><span>${_fmtDateTime(o.fecha_modificacion)}</span></div>
+                    <div class="det-campo"><label>Fecha Finalización</label><span>${_fmtDateTime(o.fecha_finalizacion)}</span></div>
+                    <div class="det-campo"><label>Lista para Entrega</label><span>${_fmtDateTime(o.fecha_lista_entrega)}</span></div>
+                    <div class="det-campo"><label>Fecha Entrega</label><span>${_fmtDateTime(o.fecha_entrega)}</span></div>
                     ${(o.memo_entrega || o.foto_evidencia_entrega) ? `
                     <div class="det-campo det-full" style="grid-column: 1 / -1; margin-top: 8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
                         <label style="color:#166534; font-weight:700; font-size:12.5px; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
@@ -1736,14 +1927,15 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
 
-                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' && o.productos_inventario_st ? o.productos_inventario_st.map(p => `
+                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && (o.subtipo === 'Stock' || o.subtipo === 'Autoconsumo') && o.productos_inventario_st ? o.productos_inventario_st.map(p => `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-box-seam" style="color: #0f766e;"></i></span>
                     <span class="gestion-label" style="color: #0f766e; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;" title="${_h(p.nombre)}">ST: ${_h(p.serie)}</span>
                     <select class="gestion-select" onchange="cambiarEstadoFisicoDirecto(${Number(o.id)}, ${p.id}, this.value)" style="border-color:#0f766e;">
-                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo)</option>
-                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Incinerar)</option>
+                        <option value="En ST" ${p.estado === 'En ST' ? 'selected' : ''}>En ST (Ingresado)</option>
+                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo / Reparado)</option>
                         <option value="Outlet" ${p.estado === 'Outlet' ? 'selected' : ''}>Outlet (Con Detalle)</option>
+                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Desguace / Incinerar)</option>
                     </select>
                     <span class="gestion-feedback" id="feedback-fisico-${p.id}">&#8635;</span>
                 </div>

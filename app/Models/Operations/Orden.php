@@ -32,6 +32,7 @@ class Orden extends Model
         'tecnico_id',
         'sucursal_id',
         'fecha_de_ingreso',
+        'fecha_recibida_tecnico',
         'estado_orden',
         'estado_repuesto',
         'estado_garantia',
@@ -46,8 +47,9 @@ class Orden extends Model
         'fecha_prometido',
         'modificado_por',
         'fecha_modificacion',
-        'fecha_entrega',
         'fecha_finalizacion',
+        'fecha_lista_entrega',
+        'fecha_entrega',
         'valor_estandar_id',
         'repuesto_inventario_id',
         'observacion',
@@ -134,6 +136,11 @@ class Orden extends Model
     public function llamadas()
     {
         return $this->hasMany(LlamadaOrden::class, 'orden_id')->latest('fecha_hora');
+    }
+
+    public function adjuntos()
+    {
+        return $this->hasMany(OrdenAdjunto::class, 'orden_id', 'id');
     }
 
     public function getNcEstadoAttribute()

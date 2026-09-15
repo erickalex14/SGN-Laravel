@@ -175,14 +175,22 @@ class ActualizarOrdenService
                     && empty($orden->transferencia_numero);
 
                 if (in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
-                    if (! $orden->fecha_finalizacion && !$esGarantiaNcSinTransfer) {
+                    if (($estadoCambiado || ! $orden->fecha_finalizacion) && !$esGarantiaNcSinTransfer) {
                         $orden->fecha_finalizacion = $orden->fecha_modificacion;
                     }
                     if ($orden->estado_orden === 'Entregada' || $orden->estado_orden === 'ENTREGADO') {
-                        if (! $orden->fecha_entrega) {
+                        if ($estadoCambiado || ! $orden->fecha_entrega) {
                             $orden->fecha_entrega = $orden->fecha_modificacion;
                         }
+                        if (! $orden->fecha_finalizacion) {
+                            $orden->fecha_finalizacion = $orden->fecha_modificacion;
+                        }
+                    } else {
+                        $orden->fecha_entrega = null;
                     }
+                } else {
+                    $orden->fecha_finalizacion = null;
+                    $orden->fecha_entrega = null;
                 }
 
                 $tecnicoAnterior = (int) ($orden->getOriginal('tecnico_id') ?? 0);
@@ -211,6 +219,7 @@ class ActualizarOrdenService
                 'tipo_orden' => 'personal',
                 'estado_anterior' => $estadoAnterior,
                 'estado_nuevo' => $orden->estado_orden,
+                'fecha_cambio' => Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s'),
             ]);
 
             if ($estadoCambiado) {
@@ -252,14 +261,21 @@ class ActualizarOrdenService
                 $orden->fecha_prometido = $data['fecha_prometido'];
                 $orden->descripcion = trim($data['descripcion']);
 
+                $now = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                $orden->fecha_modificacion = $now;
+                $orden->modificado_por = $usuarioModificacionId;
+
                 // Cierre y entrega automática para empresas
                 if (in_array($orden->estado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
-                    if (!$orden->fecha_finalizacion) {
-                        $orden->fecha_finalizacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                    if ($estadoCambiado || !$orden->fecha_finalizacion) {
+                        $orden->fecha_finalizacion = $now;
                     }
                     if ($orden->estado === 'Entregada' || $orden->estado === 'ENTREGADO') {
-                        if (!$orden->fecha_entrega) {
-                            $orden->fecha_entrega = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                        if ($estadoCambiado || !$orden->fecha_entrega) {
+                            $orden->fecha_entrega = $now;
+                        }
+                        if (!$orden->fecha_finalizacion) {
+                            $orden->fecha_finalizacion = $now;
                         }
                     } else {
                         $orden->fecha_entrega = null;
@@ -393,7 +409,7 @@ class ActualizarOrdenService
                                 'codigo' => $codigoProducto,
                                 'serie' => $serieMayus,
                                 'nombre' => $nombreProducto,
-                                'estado' => 'Tienda',
+                                'estado' => 'En ST',
                             ]);
                         } else {
                             \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
@@ -419,6 +435,7 @@ class ActualizarOrdenService
                 'tipo_orden' => 'empresa',
                 'estado_anterior' => $estadoAnterior,
                 'estado_nuevo' => $orden->estado,
+                'fecha_cambio' => Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s'),
             ]);
 
             if ($estadoCambiado) {

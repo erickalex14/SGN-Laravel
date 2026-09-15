@@ -26,4 +26,14 @@ class PresupuestoService
     {
         return $this->repository->obtenerOrdenPorId($contexto, $ordenId);
     }
+
+    public function buscarOrdenesDinamicas(PresupuestoContextDTO $contexto, string $q): \Illuminate\Support\Collection
+    {
+        return $this->repository->buscarOrdenesDinamicas($contexto, $q);
+    }
+
+    public function buscarArticulosCatalogo(string $q): \Illuminate\Support\Collection
+    {
+        return $this->repository->buscarArticulosCatalogo($q);
+    }
 }

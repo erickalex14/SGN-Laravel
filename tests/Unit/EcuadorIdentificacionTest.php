@@ -23,3 +23,39 @@ it('acepta pasaporte alfanumerico', function () {
 
     expect($errores)->toBeEmpty();
 });
+
+it('acepta cualquier pasaporte numerico o alfanumerico cuando el tipo es pasaporte', function () {
+    $rule = new EcuadorIdentificacion('pasaporte');
+    $errores = [];
+
+    $rule->validate('cli_identificacion', '31725536', function ($mensaje) use (&$errores) {
+        $errores[] = $mensaje;
+    });
+
+    expect($errores)->toBeEmpty();
+});
+
+it('rechaza cedula con menos o mas de 10 digitos cuando el tipo es cedula', function () {
+    $rule = new EcuadorIdentificacion('cedula');
+    $erroresMenos = [];
+    $rule->validate('cli_identificacion', '31725536', function ($mensaje) use (&$erroresMenos) {
+        $erroresMenos[] = $mensaje;
+    });
+    expect($erroresMenos)->not->toBeEmpty();
+
+    $erroresMas = [];
+    $rule->validate('cli_identificacion', '17123456789', function ($mensaje) use (&$erroresMas) {
+        $erroresMas[] = $mensaje;
+    });
+    expect($erroresMas)->not->toBeEmpty();
+});
+
+it('rechaza ruc con menos o mas de 13 digitos cuando el tipo es ruc', function () {
+    $rule = new EcuadorIdentificacion('ruc');
+    $errores = [];
+    $rule->validate('cli_identificacion', '1712345678', function ($mensaje) use (&$errores) {
+        $errores[] = $mensaje;
+    });
+    expect($errores)->not->toBeEmpty();
+});
+

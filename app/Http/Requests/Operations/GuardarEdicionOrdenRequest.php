@@ -36,7 +36,8 @@ class GuardarEdicionOrdenRequest extends FormRequest
             'tecnico_id' => ['required', 'integer', 'exists:usuarios,id'],
 
             // Campos de cliente
-            'cli_identificacion' => ['required', 'string', new EcuadorIdentificacion],
+            'cli_tipo_documento' => ['nullable', 'string', 'in:cedula,ruc,pasaporte'],
+            'cli_identificacion' => ['required', 'string', new EcuadorIdentificacion($this->input('cli_tipo_documento') ?: 'both')],
             'cli_nombres' => [
                 'required', 
                 'string', 

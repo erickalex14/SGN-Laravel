@@ -170,13 +170,13 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         </tr>
     </table>
 
-    <div class="sec-titulo">Tecnico Responsable</div>
+    <div class="sec-titulo">Personal Asignado y Recepción</div>
     <table class="datos">
         <tr>
-            <td width="25%"><span class="lbl">Tecnico Asignado</span>{{ $tecnico?->nombre_tecnico ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Correo</span>{{ $tecnico?->correo_tec ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Contacto</span>{{ $sucursal?->nro_base ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Ingresado por</span>{{ $usuarioIngreso?->nombre_tecnico ?? $usuarioIngreso?->usuario ?? '-' }}</td>
+            <td width="25%"><span class="lbl">Recepcionista / Ingresado por</span><b>{{ $usuarioIngreso?->nombre_tecnico ?? ($usuarioIngreso?->usuario ?? '-') }}</b></td>
+            <td width="25%"><span class="lbl">Técnico Asignado</span><b>{{ $tecnico?->nombre_tecnico ?? '-' }}</b></td>
+            <td width="25%"><span class="lbl">Correo Técnico</span>{{ $tecnico?->correo_tec ?? '-' }}</td>
+            <td width="25%"><span class="lbl">Contacto Sucursal</span>{{ $sucursal?->nro_base ?? '-' }}</td>
         </tr>
         <tr>
             <td width="25%"><span class="lbl">Fecha Prometido</span>{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('d/m/Y') : '-' }}</td>
@@ -390,11 +390,11 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
     </div>
 
     <div style="margin-top:8px;padding:5px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:3px;font-size:7.5pt;color:#713f12;text-align:center;">
-        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 + IVA</b>.
+        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 d&oacute;lares</b>.
     </div>
 
     <div class="firmas">
-        <div class="firma-box"><div class="firma-linea">Recibido por:</div></div>
+        <div class="firma-box"><div class="firma-linea">Recibido por: {{ $usuarioIngreso?->nombre_tecnico ?? ($usuarioIngreso?->usuario ?? 'Recepción') }}</div></div>
         <div class="firma-box"><div class="firma-linea">Firma del cliente:</div></div>
     </div>
 

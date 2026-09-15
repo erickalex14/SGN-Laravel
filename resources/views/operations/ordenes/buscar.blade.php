@@ -235,12 +235,15 @@
     padding: 3px 10px;
     border-radius: 20px;
 }
-.st-pendiente  { background:#fef9c3; color:#854d0e; }
-.st-proceso    { background:#dbeafe; color:#1e40af; }
-.st-finalizada { background:#dcfce7; color:#166534; }
-.st-entregada  { background:#ecfdf5; color:#047857; }
-.st-nc         { background:#fce7f3; color:#9d174d; }
-.st-otro       { background:#f1f5f9; color:#475569; }
+.st-recibido-recepcion { background:#f1f5f9; color:#475569; }
+.st-recibida            { background:#e0f2fe; color:#0369a1; }
+.st-pendiente           { background:#fef9c3; color:#854d0e; }
+.st-proceso             { background:#dbeafe; color:#1e40af; }
+.st-finalizada          { background:#dcfce7; color:#166534; }
+.st-lista-entrega       { background:#fef3c7; color:#92400e; }
+.st-entregada           { background:#ecfdf5; color:#047857; }
+.st-nc                  { background:#fce7f3; color:#9d174d; }
+.st-otro                { background:#f1f5f9; color:#475569; }
 
 .bo-card-info {
     display: grid;
@@ -623,11 +626,14 @@
     /* ── Estado visual ────────────────────────────────────────── */
     function claseEstado(v) {
         var t = (v || '').toLowerCase().trim();
-        if (t === 'pendiente' || t === 'abierta') return 'st-pendiente';
-        if (t === 'en proceso')                   return 'st-proceso';
-        if (t === 'finalizada')                   return 'st-finalizada';
-        if (t === 'entregada')                    return 'st-entregada';
-        if (t === 'nota de credito')              return 'st-nc';
+        if (t === 'recibido en recepcion' || t === 'ingreso') return 'st-recibido-recepcion';
+        if (t === 'entregado al tecnico' || t === 'recibida') return 'st-recibida';
+        if (t === 'pendiente' || t === 'abierta')             return 'st-pendiente';
+        if (t === 'en reparacion' || t === 'en proceso')      return 'st-proceso';
+        if (t === 'reparada' || t === 'finalizada')           return 'st-finalizada';
+        if (t === 'entregado en recepcion para entrega' || t === 'lista para entrega') return 'st-lista-entrega';
+        if (t === 'cerrado' || t === 'entregada')             return 'st-entregada';
+        if (t === 'nota de credito')                          return 'st-nc';
         return 'st-otro';
     }
 
@@ -722,7 +728,10 @@
                         campo('Sucursal',    o.sucursal || '—') +
                         campo('Técnico',     o.tecnico  || '—') +
                         campo('Ingreso',     o.fecha_de_ingreso || '—') +
-                        campo('Entrega prom.', o.fecha_entrega || '—') +
+                        campo('Prometido',   o.fecha_prometido  || '—') +
+                        campo('Finalización',o.fecha_finalizacion || '—') +
+                        campo('Entrega',     o.fecha_entrega    || '—') +
+                        campo('Últ. Modif.', o.fecha_modificacion || '—') +
                         campo(esEmpresa ? 'Nro. Ticket' : 'Nro. Factura', facturas) +
                     '</div>' +
                     (o.motivo_ingreso

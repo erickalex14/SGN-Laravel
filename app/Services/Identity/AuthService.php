@@ -50,6 +50,7 @@ class AuthService
         $grupo = $usuario->grupo;
         $esSuperadmin = $grupo ? (bool) $grupo->es_superadmin : false;
         $esAdminLectura = $grupo && (mb_strtolower($grupo->nombre) === 'admin solo lectura' || (int)$grupo->id === 6);
+        $esRecepcion = $grupo && (mb_strtolower(trim($grupo->nombre)) === 'recepcion');
 
         $sucursalesIds = [];
         foreach ($usuario->sucursalesAsignadas as $sucursalAsignada) {
@@ -80,6 +81,7 @@ class AuthService
             'grupo_nombre' => $grupo ? $grupo->nombre : 'Sin grupo',
             'es_superadmin' => $esSuperadmin || $esAdminLectura,
             'es_admin_lectura' => $esAdminLectura,
+            'es_recepcion' => $esRecepcion,
             'permisos' => $permisosFinales,
         ]);
     }

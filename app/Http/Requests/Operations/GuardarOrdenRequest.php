@@ -31,10 +31,11 @@ class GuardarOrdenRequest extends FormRequest
 
         $reglas = [
             // Validacion de Cliente
+            'cli_tipo_documento' => ['nullable', 'string', 'in:cedula,ruc,pasaporte'],
             'cli_identificacion' => [
                 $esEmpresa ? 'nullable' : 'required',
                 'string',
-                new EcuadorIdentificacion,
+                new EcuadorIdentificacion($this->input('cli_tipo_documento') ?: 'both'),
             ],
             'cli_nombres' => [
                 $esEmpresa ? 'nullable' : 'required', 
@@ -142,6 +143,13 @@ class GuardarOrdenRequest extends FormRequest
             'cred_usuario' => ['nullable', 'array'],
             'cred_contrasena' => ['nullable', 'array'],
             'cred_es_patron' => ['nullable', 'array'],
+
+            // Validacion de 6 fotos obligatorias del equipo (Garantia, Cliente Externo, Stock, Autoconsumo)
+            'fotos_equipo' => [(!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'required' : 'nullable', 'array', (!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'size:6' : 'max:6'],
+            'fotos_equipo.*' => [(!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
+
+            // Validacion de factura (Solo en Validacion de Garantia)
+            'archivo_factura' => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:15360'],
         ];
 
         if ($esEmpresa) {
@@ -225,6 +233,15 @@ class GuardarOrdenRequest extends FormRequest
             'cli_apellidos.regex' => 'El apellido del cliente sólo debe contener letras, tildes y espacios.',
             'fecha_facturacion.before_or_equal' => 'La fecha de facturación no puede ser superior al día de hoy.',
             'fecha_prometido.after_or_equal' => 'La fecha prometida de entrega no puede ser anterior al día de hoy.',
+            'fotos_equipo.required' => 'Es obligatorio subir las 6 fotos del equipo.',
+            'fotos_equipo.size' => 'Debe adjuntar exactamente 6 fotos del equipo.',
+            'fotos_equipo.*.required' => 'Cada una de las 6 fotos del equipo es obligatoria.',
+            'fotos_equipo.*.mimes' => 'Las fotos del equipo deben ser archivos de imagen válidos (JPG, PNG, WEBP).',
+            'fotos_equipo.*.max' => 'Cada foto del equipo no puede superar los 15MB.',
+            'archivo_factura.required' => 'El archivo de la factura es obligatorio para órdenes de Validación de Garantía.',
+            'archivo_factura.required_if' => 'El archivo de la factura es obligatorio para órdenes de Validación de Garantía.',
+            'archivo_factura.mimes' => 'La factura debe ser un archivo PDF o imagen (JPG, PNG, WEBP).',
+            'archivo_factura.max' => 'El archivo de la factura no puede superar los 15MB.',
         ];
     }
 

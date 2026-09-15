@@ -23,6 +23,16 @@ class DashboardController extends Controller
             return redirect()->route('mistickets.index');
         }
 
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $grupoNombre = mb_strtolower(trim((string) ($usuario?->grupo?->nombre ?? '')));
+        $esRecepcion = session('es_recepcion') === true
+            || in_array($sessionGrupo, ['recepcion', 'recepción'], true)
+            || in_array($grupoNombre, ['recepcion', 'recepción'], true);
+
+        if ($esRecepcion) {
+            return redirect()->route('recepcion.index');
+        }
+
         $permisos = session('permisos', []);
         $esSuperadmin = session('es_superadmin') === true;
 

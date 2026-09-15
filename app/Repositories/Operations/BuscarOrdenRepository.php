@@ -62,7 +62,12 @@ class BuscarOrdenRepository
                 'vo.foto_evidencia_entrega',
                 'vo.fecha_facturacion',
                 DB::raw('vo.fecha_de_ingreso_fmt as fecha_de_ingreso'),
+                DB::raw('vo.fecha_recibida_tecnico_fmt as fecha_recibida_tecnico'),
+                DB::raw('vo.fecha_prometido_fmt as fecha_prometido'),
+                DB::raw('vo.fecha_finalizacion_fmt as fecha_finalizacion'),
+                DB::raw('vo.fecha_lista_entrega_fmt as fecha_lista_entrega'),
                 DB::raw('vo.fecha_entrega_fmt as fecha_entrega'),
+                DB::raw('vo.fecha_modificacion_fmt as fecha_modificacion'),
                 'vo.tecnico',
                 'vo.sucursal',
                 'inf.id as informe_id',
@@ -141,7 +146,19 @@ class BuscarOrdenRepository
 
         // ── Filtros adicionales ──────────────────────────────────────
         if ($dto->estado !== '') {
-            $query->whereRaw("vo.estado_orden COLLATE utf8mb4_0900_ai_ci = ?", [$dto->estado]);
+            $mapEquivalencias = [
+                'Recibido en Recepcion' => ['Recibido en Recepcion', 'INGRESO'],
+                'Entregado al Tecnico' => ['Entregado al Tecnico', 'Recibida'],
+                'Pendiente' => ['Pendiente', 'Abierta'],
+                'En reparacion' => ['En reparacion', 'En proceso'],
+                'Reparada' => ['Reparada', 'Finalizada'],
+                'Entregado en Recepcion para Entrega' => ['Entregado en Recepcion para Entrega', 'Lista para entrega'],
+                'Cerrado' => ['Cerrado', 'Entregada'],
+                'Nota de Credito' => ['Nota de Credito', 'Nota de credito'],
+            ];
+            $estados = $mapEquivalencias[$dto->estado] ?? [$dto->estado];
+            $placeholders = implode(',', array_fill(0, count($estados), '?'));
+            $query->whereRaw("vo.estado_orden COLLATE utf8mb4_0900_ai_ci IN ({$placeholders})", $estados);
         }
 
         if ($dto->tecnico_id > 0) {
@@ -199,11 +216,14 @@ class BuscarOrdenRepository
     public function obtenerEstados(): array
     {
         return [
+            'Recibido en Recepcion',
+            'Entregado al Tecnico',
             'Pendiente',
-            'En proceso',
-            'Finalizada',
-            'Entregada',
-            'Nota de credito',
+            'En reparacion',
+            'Reparada',
+            'Entregado en Recepcion para Entrega',
+            'Cerrado',
+            'Nota de Credito',
         ];
     }
 }

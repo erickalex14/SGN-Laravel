@@ -168,7 +168,7 @@ class CrearOrdenService
                     $orden->sucursal_id = $dto->sucursal_id;
                     $orden->ingresado_por = $dto->ingresado_por;
                     $orden->fecha_de_ingreso = $dto->fecha_ingreso;
-                    $orden->estado_orden = 'Pendiente';
+                    $orden->estado_orden = 'Recibido en Recepcion';
                     $orden->motivo_ingreso = $motivoIngreso;
                     $orden->nro_factura = $dto->nro_factura;
                     $orden->nro_factura_2 = $dto->nro_factura_2;
@@ -353,8 +353,8 @@ class CrearOrdenService
                         $orden->tecnicos()->sync([$primaryTecnicoId]);
                     }
 
-                    // Registrar en Inventario Físico ST si es Novisolutions y Stock
-                    if ((int)$orden->empresa_id === 1 && $subtipo === 'Stock') {
+                    // Registrar en Inventario Físico ST si es Novisolutions y Stock o Autoconsumo
+                    if ((int)$orden->empresa_id === 1 && in_array($subtipo, ['Stock', 'Autoconsumo'], true)) {
                         $prod = \App\Models\Inventory\ProductoInventario::whereRaw('UPPER(TRIM(codigo)) = ?', [strtoupper(trim($codigoProducto))])->first();
                         $nombreProducto = $prod ? $prod->descripcion : $codigoProducto;
 
@@ -365,7 +365,7 @@ class CrearOrdenService
                                 'codigo' => $codigoProducto,
                                 'serie' => strtoupper(trim($serie)),
                                 'nombre' => $nombreProducto,
-                                'estado' => 'Tienda',
+                                'estado' => 'En ST',
                             ]);
                         }
                     }

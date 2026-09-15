@@ -28,6 +28,7 @@ class InventarioFisicoController extends Controller
         }
 
         $totalProductos = (clone $countQuery)->count();
+        $totalEnSt = (clone $countQuery)->where('estado', 'En ST')->count();
         $totalTienda = (clone $countQuery)->where('estado', 'Tienda')->count();
         $totalIncinerox = (clone $countQuery)->where('estado', 'Incinerox')->count();
         $totalOutlet = (clone $countQuery)->where('estado', 'Outlet')->count();
@@ -64,6 +65,7 @@ class InventarioFisicoController extends Controller
         return view('operations.inventario_fisico.index', compact(
             'productos',
             'totalProductos',
+            'totalEnSt',
             'totalTienda',
             'totalIncinerox',
             'totalOutlet'
@@ -134,9 +136,17 @@ class InventarioFisicoController extends Controller
                     if ($prod) {
                         $estadoAnterior = $prod->estado;
                         $rawEstado = trim((string) $pData['estado']);
-                        $estadoNorm = ucfirst(strtolower($rawEstado));
-                        if (!in_array($estadoNorm, ['Tienda', 'Incinerox', 'Outlet'])) {
-                            $estadoNorm = $rawEstado;
+                        $lowerEstado = strtolower($rawEstado);
+                        if (in_array($lowerEstado, ['en st', 'st', 'en_st'])) {
+                            $estadoNorm = 'En ST';
+                        } elseif (in_array($lowerEstado, ['tienda', 'reparado', 'operativo'])) {
+                            $estadoNorm = 'Tienda';
+                        } elseif ($lowerEstado === 'outlet') {
+                            $estadoNorm = 'Outlet';
+                        } elseif (in_array($lowerEstado, ['incinerox', 'desguace', 'incineracion'])) {
+                            $estadoNorm = 'Incinerox';
+                        } else {
+                            $estadoNorm = ucfirst($lowerEstado);
                         }
 
                         $prod->estado = $estadoNorm;

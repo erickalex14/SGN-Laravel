@@ -132,6 +132,25 @@
 
 }
 
+.grid-cliente-top {
+    display: grid;
+    grid-template-columns: 160px 1.2fr 1.3fr 1.3fr;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+@media (max-width: 992px) {
+    .grid-cliente-top {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .grid-cliente-top {
+        grid-template-columns: 1fr;
+    }
+}
+
 .campo {
 
     display: flex;
@@ -370,6 +389,33 @@
 
 .tec-trigger-yo { font-size: 10px; color: #2563eb; font-weight: 700; margin-left: 4px; }
 
+/* Estilos para Sección de 6 Fotos Obligatorias y Factura */
+.fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 640px) { .fotos-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+.foto-slot { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 12px; text-align: center; background: #f8fafc; transition: all .2s; position: relative; cursor: pointer; min-height: 145px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.foto-slot:hover { border-color: #3b82f6; background: #eff6ff; }
+.foto-slot.has-image { border-style: solid; border-color: #10b981; background: #f0fdf4; padding: 6px; }
+.foto-slot input[type="file"] { display: none; }
+.foto-slot-preview { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; display: none; margin-bottom: 6px; }
+.foto-slot.has-image .foto-slot-preview { display: block; }
+.foto-slot-icon { font-size: 26px; color: #94a3b8; margin-bottom: 6px; transition: color .2s; }
+.foto-slot:hover .foto-slot-icon { color: #3b82f6; }
+.foto-slot.has-image .foto-slot-icon { display: none; }
+.foto-slot-label { font-size: 11.5px; font-weight: 700; color: #475569; }
+.foto-slot.has-image .foto-slot-label { color: #047857; font-size: 11px; }
+.foto-slot-hint { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+.foto-slot.has-image .foto-slot-hint { display: none; }
+.foto-slot-remove { position: absolute; top: 4px; right: 4px; background: rgba(220, 38, 38, 0.9); color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }
+.foto-slot.has-image .foto-slot-remove { display: flex; }
+
+.factura-upload-box { border: 2px dashed #93c5fd; background: #f0f7ff; border-radius: 10px; padding: 16px; text-align: center; cursor: pointer; transition: all .2s; position: relative; margin-top: 8px; }
+.factura-upload-box:hover { border-color: #2563eb; background: #e0f2fe; }
+.factura-upload-box.has-file { border-color: #10b981; background: #f0fdf4; border-style: solid; }
+.factura-upload-box input[type="file"] { display: none; }
+.factura-file-info { display: none; font-size: 12.5px; font-weight: 700; color: #065f46; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
+.factura-upload-box.has-file .factura-file-info { display: flex; }
+.factura-upload-box.has-file .factura-default-prompt { display: none; }
+
 @media (max-width: 768px) {
 
     .modulo { padding: 16px; }
@@ -451,13 +497,17 @@
                     <select id="motivo_ingreso" name="motivo_ingreso" required onchange="actualizarMotivo()">
 
                         <option value="">-- Seleccione --</option>
-
                         <option value="Servicio Cliente Externo">Servicio Cliente Externo</option>
-
                         <option value="Validacion de Garantia">Validacion de Garantia</option>
-
-                        <option value="Servicios a Empresas">Servicios a Empresas</option>
-
+                        @php
+                            $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+                            $sessionRol = mb_strtolower(trim((string) session('rol_nombre', '')));
+                            $esAdminParaEmpresa = session('es_superadmin') === true || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+                            $esRecepcionParaEmpresa = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true) || in_array($sessionRol, ['recepcion', 'recepcionista'], true);
+                        @endphp
+                        @if($esAdminParaEmpresa || $esRecepcionParaEmpresa)
+                            <option value="Servicios a Empresas">Servicios a Empresas</option>
+                        @endif
                     </select>
 
                 </div>
@@ -514,6 +564,7 @@
 
                             </label>
 
+                            @if($esAdminParaEmpresa)
                             <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
 
                                 <input type="radio" name="subtipo_empresa" value="Servicios" onchange="onSubtipoEmpresaChange(this.value)">
@@ -521,6 +572,7 @@
                                 Servicios
 
                             </label>
+                            @endif
 
                             <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
 
@@ -986,13 +1038,29 @@
             <div class="seccion-body">
                 <input type="hidden" id="cli_tipo" name="cli_tipo" value="natural">
 
-                <div class="grid-3" style="margin-bottom: 18px;">
+                <div class="grid-cliente-top">
 
                     <div class="campo">
 
-                        <label>C.I / RUC <span class="req">*</span></label>
+                        <label>Tipo Documento <span class="req">*</span></label>
 
-                        <input type="text" id="cli_identificacion" name="cli_identificacion" maxlength="20" required placeholder="Ingrese C.I / RUC">
+                        <select id="cli_tipo_documento" name="cli_tipo_documento" class="form-select" onchange="onTipoDocumentoChange()" style="font-weight: 600;">
+
+                            <option value="cedula" selected>Cédula</option>
+
+                            <option value="ruc">RUC</option>
+
+                            <option value="pasaporte">Pasaporte</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="campo">
+
+                        <label id="lbl_cli_identificacion">Cédula <span class="req">*</span></label>
+
+                        <input type="text" id="cli_identificacion" name="cli_identificacion" maxlength="10" required placeholder="10 dígitos numéricos" autocomplete="off">
 
                         <span id="cli-buscar-status" style="font-size: 11px; display: none; margin-top: 2px; font-weight: 600;"></span>
 
@@ -1000,13 +1068,13 @@
 
                     <div class="campo">
 
-                        <label>Nombre <span class="req">*</span></label>
+                        <label id="lbl_cli_nombres">Nombre <span class="req">*</span></label>
 
                         <input type="text" id="cli_nombres" name="cli_nombres" maxlength="100" required oninput="this.value=this.value.toUpperCase()">
 
                     </div>
 
-                    <div class="campo">
+                    <div class="campo" id="wrapper_cli_apellidos">
 
                         <label>Apellido <span class="req">*</span></label>
 
@@ -1058,7 +1126,7 @@
 
             <div class="seccion-body">
 
-                <div id="bloque-facturacion" class="grid-3 hidden" style="margin-bottom: 18px;">
+                <div id="bloque-facturacion" class="grid-3" style="margin-bottom: 18px;">
 
                     <div class="campo">
 
@@ -1159,6 +1227,34 @@
 
                     </div>
 
+                </div>
+
+                <!-- Archivo de Factura (Obligatorio únicamente en Validación de Garantía) -->
+                <div class="campo" id="campo-archivo-factura" style="margin-top: 16px;">
+                    <label style="font-weight: 700; color: #1e293b; display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="bi bi-file-earmark-pdf text-danger"></i> Archivo / Foto de la Factura <span class="req">*</span></span>
+                        <span style="font-size: 11px; font-weight: 500; color: #64748b;">(Solo Garantías - PDF o Imagen JPG/PNG)</span>
+                    </label>
+                    <div class="factura-upload-box" id="factura-upload-box" onclick="document.getElementById('archivo_factura').click()">
+                        <input type="file" name="archivo_factura" id="archivo_factura" accept="application/pdf,image/*" onchange="manejarArchivoFactura(this)">
+                        <div class="factura-default-prompt">
+                            <i class="bi bi-cloud-arrow-up-fill" style="font-size: 28px; color: #2563eb;"></i>
+                            <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 4px;">
+                                Haz clic aquí para subir o tomar foto de la factura
+                            </div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                Formatos admitidos: PDF, JPG, PNG, WEBP (Hasta 15MB)
+                            </div>
+                        </div>
+                        <div class="factura-file-info" id="factura-file-info">
+                            <i class="bi bi-check-circle-fill" style="font-size: 18px; color: #10b981;"></i>
+                            <span id="factura-file-name" style="word-break: break-all;"></span>
+                            <button type="button" onclick="event.stopPropagation(); limpiarArchivoFactura();" 
+                                    style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; cursor: pointer; margin-left: 6px;">
+                                <i class="bi bi-trash"></i> Quitar
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -1624,7 +1720,48 @@
 
         </div>
 
+        <!-- SECCIÓN: EVIDENCIA FOTOGRÁFICA DEL EQUIPO (6 FOTOS OBLIGATORIAS) -->
+        <div id="bloque-fotos-equipo" class="seccion-form hidden">
+            <div class="seccion-hdr" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <i class="bi bi-camera-fill text-primary"></i> 
+                    <b>Evidencia Fotográfica del Equipo (6 Fotos Obligatorias)</b> <span class="req">*</span>
+                </div>
+                <span id="fotos-counter-badge" style="font-size:12px; font-weight:700; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:3px 10px; border-radius:20px;">
+                    0 / 6 Fotos
+                </span>
+            </div>
+            <div class="seccion-body">
+                <p style="font-size:13px; color:#475569; margin:0 0 12px 0;">
+                    Es obligatorio capturar o subir exactamente <strong>6 fotos del estado físico del equipo</strong> (frontal, posterior, laterales, pantalla/teclado y etiqueta con número de serie).
+                </p>
 
+                <div class="fotos-grid">
+                    @for($i = 1; $i <= 6; $i++)
+                        @php
+                            $labels = [
+                                1 => 'Foto 1: Frontal',
+                                2 => 'Foto 2: Posterior',
+                                3 => 'Foto 3: Lateral Izq.',
+                                4 => 'Foto 4: Lateral Der.',
+                                5 => 'Foto 5: Pantalla / Teclado',
+                                6 => 'Foto 6: Etiqueta / Serie'
+                            ];
+                        @endphp
+                        <div class="foto-slot" id="foto-slot-{{ $i }}" onclick="triggerFotoInput({{ $i }})">
+                            <button type="button" class="foto-slot-remove" onclick="event.stopPropagation(); eliminarFotoSlot({{ $i }});" title="Eliminar foto">
+                                &times;
+                            </button>
+                            <input type="file" id="foto-input-{{ $i }}" accept="image/*" onchange="manejarFotoSlot({{ $i }}, this)">
+                            <img id="foto-preview-{{ $i }}" class="foto-slot-preview" alt="Preview {{ $i }}">
+                            <i class="bi bi-camera foto-slot-icon"></i>
+                            <div class="foto-slot-label">{{ $labels[$i] }}</div>
+                            <div class="foto-slot-hint">Clic para capturar / subir</div>
+                        </div>
+                    @endfor
+                </div>
+            </div>
+        </div>
 
         <div id="acciones-orden" class="botones hidden" style="display: flex; gap: 12px; justify-content: flex-end; width: 100%;">
 
@@ -1985,6 +2122,48 @@ function sincronizarTecnicoDesdeSelect() {
 
 let _rucModalShowedFor = '';
 
+function onTipoDocumentoChange(limpiar = false) {
+    const sel = document.getElementById('cli_tipo_documento');
+    const tipo = sel ? sel.value : 'cedula';
+    const inp = document.getElementById('cli_identificacion');
+    const lbl = document.getElementById('lbl_cli_identificacion');
+    const errEl = inp?.parentNode?.querySelector('.error-mensaje');
+
+    if (!inp) return;
+
+    inp.classList.remove('is-invalid');
+    if (errEl) {
+        errEl.style.display = 'none';
+        errEl.textContent = '';
+    }
+
+    if (limpiar) {
+        inp.value = '';
+    }
+
+    if (tipo === 'cedula') {
+        if (lbl) lbl.innerHTML = 'Cédula <span class="req">*</span>';
+        inp.placeholder = '10 dígitos numéricos';
+        inp.maxLength = 10;
+        inp.value = inp.value.replace(/\D/g, '').slice(0, 10);
+        setClienteTipoVista('natural');
+    } else if (tipo === 'ruc') {
+        if (lbl) lbl.innerHTML = 'RUC <span class="req">*</span>';
+        inp.placeholder = '13 dígitos numéricos';
+        inp.maxLength = 13;
+        inp.value = inp.value.replace(/\D/g, '').slice(0, 13);
+        if (inp.value.length === 13) {
+            verificarRucTipo(inp.value);
+        }
+    } else if (tipo === 'pasaporte') {
+        if (lbl) lbl.innerHTML = 'Pasaporte <span class="req">*</span>';
+        inp.placeholder = 'Cualquier pasaporte (letras / números)';
+        inp.maxLength = 30;
+        inp.value = inp.value.replace(/[^a-zA-Z0-9\-\.]/g, '').slice(0, 30).toUpperCase();
+        setClienteTipoVista('natural');
+    }
+}
+
 async function buscarClienteAjax() {
 
     const iden = (document.getElementById('cli_identificacion')?.value || '').trim();
@@ -2009,7 +2188,7 @@ async function buscarClienteAjax() {
 
     try {
 
-        const r = await fetch('{{ route("ordenes.buscar_cliente") }}?identificacion=' + iden);
+        const r = await fetch('{{ route("ordenes.buscar_cliente") }}?identificacion=' + encodeURIComponent(iden));
 
         const d = await r.json();
 
@@ -2027,6 +2206,18 @@ async function buscarClienteAjax() {
 
             document.getElementById('cli_direccion').value = d.cliente.direccion_clientes || '';
 
+            const selTipo = document.getElementById('cli_tipo_documento');
+            if (selTipo) {
+                if (/^\d{13}$/.test(iden)) {
+                    selTipo.value = 'ruc';
+                } else if (/^\d{10}$/.test(iden)) {
+                    selTipo.value = 'cedula';
+                } else {
+                    selTipo.value = 'pasaporte';
+                }
+                onTipoDocumentoChange(false);
+            }
+
             if (d.cliente.apellidos === '.') {
                 setClienteTipoVista('empresa', d.cliente.nombres);
             } else {
@@ -2043,7 +2234,12 @@ async function buscarClienteAjax() {
             }
 
         } else {
-            verificarRucTipo(iden);
+            const tipo = document.getElementById('cli_tipo_documento')?.value || 'cedula';
+            if (tipo === 'ruc') {
+                verificarRucTipo(iden);
+            } else {
+                setClienteTipoVista('natural');
+            }
 
             if (statusEl) {
 
@@ -2938,6 +3134,10 @@ function actualizarMotivo() {
 
 
 
+    const bloqueGarantiaFacturacion = document.getElementById('bloque-garantia-facturacion');
+
+    if (bloqueGarantiaFacturacion) bloqueGarantiaFacturacion.classList.toggle('hidden', !esGarantia || esEmpresa);
+
     if (bloqueFacturacion) bloqueFacturacion.classList.toggle('hidden', !esGarantia || esEmpresa);
 
     if (bloqueGarantia) bloqueGarantia.classList.toggle('hidden', !esGarantia || esEmpresa);
@@ -3061,11 +3261,10 @@ function actualizarMotivo() {
 
     }
 
-
-
     actualizarGarantiaTipo();
 
-
+    // Manejar visibilidad del bloque de 6 fotos obligatorias
+    actualizarVisibilidadFotos();
 
     _preordenIgnorada = false;
 
@@ -3247,7 +3446,7 @@ function onSubtipoEmpresaChange(valor) {
 
     }
 
-
+    actualizarVisibilidadFotos();
 
     verificarNovisolutions();
 
@@ -3276,6 +3475,135 @@ function agregarSerieEmpresa() {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════
+// GESTIÓN DE LAS 6 FOTOS OBLIGATORIAS Y FACTURA
+// ══════════════════════════════════════════════════════════════════════
+
+const _fotosArchivos = {
+    1: null,
+    2: null,
+    3: null,
+    4: null,
+    5: null,
+    6: null
+};
+
+function actualizarVisibilidadFotos() {
+    const motivo = document.getElementById('motivo_ingreso')?.value || '';
+    const bloqueFotos = document.getElementById('bloque-fotos-equipo');
+    if (!bloqueFotos) return;
+
+    if (motivo === 'Validacion de Garantia' || motivo === 'Servicio Cliente Externo') {
+        bloqueFotos.classList.remove('hidden');
+    } else if (motivo === 'Servicios a Empresas') {
+        const subtipo = document.querySelector('input[name="subtipo_empresa"]:checked')?.value;
+        if (subtipo === 'Stock' || subtipo === 'Autoconsumo') {
+            bloqueFotos.classList.remove('hidden');
+        } else {
+            bloqueFotos.classList.add('hidden');
+        }
+    } else {
+        bloqueFotos.classList.add('hidden');
+    }
+}
+
+function triggerFotoInput(index) {
+    const inp = document.getElementById('foto-input-' + index);
+    if (inp) inp.click();
+}
+
+function manejarFotoSlot(index, input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (!file.type.startsWith('image/')) {
+        mostrarMensaje(true, 'El archivo debe ser una imagen válida (JPG, PNG, WEBP).');
+        input.value = '';
+        return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+        mostrarMensaje(true, 'La foto no puede superar los 15MB.');
+        input.value = '';
+        return;
+    }
+
+    _fotosArchivos[index] = file;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('foto-preview-' + index);
+        const slot = document.getElementById('foto-slot-' + index);
+        if (preview && slot) {
+            preview.src = e.target.result;
+            slot.classList.add('has-image');
+        }
+        actualizarContadorFotos();
+    };
+    reader.readAsDataURL(file);
+}
+
+function eliminarFotoSlot(index) {
+    _fotosArchivos[index] = null;
+    const input = document.getElementById('foto-input-' + index);
+    const preview = document.getElementById('foto-preview-' + index);
+    const slot = document.getElementById('foto-slot-' + index);
+
+    if (input) input.value = '';
+    if (preview) preview.src = '';
+    if (slot) slot.classList.remove('has-image');
+
+    actualizarContadorFotos();
+}
+
+function actualizarContadorFotos() {
+    let count = 0;
+    for (let i = 1; i <= 6; i++) {
+        if (_fotosArchivos[i]) count++;
+    }
+    const badge = document.getElementById('fotos-counter-badge');
+    if (badge) {
+        badge.textContent = `${count} / 6 Fotos`;
+        if (count === 6) {
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#166534';
+            badge.style.borderColor = '#86efac';
+        } else {
+            badge.style.background = '#fee2e2';
+            badge.style.color = '#dc2626';
+            badge.style.borderColor = '#fca5a5';
+        }
+    }
+}
+
+function manejarArchivoFactura(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (file.size > 15 * 1024 * 1024) {
+        mostrarMensaje(true, 'El archivo de la factura no puede superar los 15MB.');
+        input.value = '';
+        return;
+    }
+
+    const box = document.getElementById('factura-upload-box');
+    const nameSpan = document.getElementById('factura-file-name');
+    if (box && nameSpan) {
+        nameSpan.textContent = file.name + ' (' + (file.size / (1024 * 1024)).toFixed(2) + ' MB)';
+        box.classList.add('has-file');
+    }
+}
+
+function limpiarArchivoFactura() {
+    const input = document.getElementById('archivo_factura');
+    const box = document.getElementById('factura-upload-box');
+    const nameSpan = document.getElementById('factura-file-name');
+
+    if (input) input.value = '';
+    if (nameSpan) nameSpan.textContent = '';
+    if (box) box.classList.remove('has-file');
+}
 
 let ultimoPrefijoPrompt = '';
 
@@ -4253,8 +4581,101 @@ async function guardarOrden() {
             modelInp.value = obtenerDescripcionProductoNuevo() || cod || 'GENERICO';
         }
 
+        if (!isEmpresa) {
+            const tipoDoc = document.getElementById('cli_tipo_documento')?.value || 'cedula';
+            const idenVal = (document.getElementById('cli_identificacion')?.value || '').trim();
+            if (!idenVal) {
+                mostrarMensaje(true, 'La identificación del cliente es requerida.');
+                document.getElementById('cli_identificacion')?.focus();
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                _guardandoOrden = false;
+                return;
+            }
+            if (tipoDoc === 'cedula') {
+                if (idenVal.length !== 10) {
+                    mostrarMensaje(true, 'La cédula debe tener exactamente 10 dígitos (ni más ni menos). Actualmente tiene ' + idenVal.length + ' dígitos.');
+                    document.getElementById('cli_identificacion')?.focus();
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                    _guardandoOrden = false;
+                    return;
+                }
+                if (!EcuadorianValidator.validarCedula(idenVal)) {
+                    mostrarMensaje(true, 'La cédula ingresada no es válida para Ecuador.');
+                    document.getElementById('cli_identificacion')?.focus();
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                    _guardandoOrden = false;
+                    return;
+                }
+            } else if (tipoDoc === 'ruc') {
+                if (idenVal.length !== 13) {
+                    mostrarMensaje(true, 'El RUC debe tener exactamente 13 dígitos (ni más ni menos). Actualmente tiene ' + idenVal.length + ' dígitos.');
+                    document.getElementById('cli_identificacion')?.focus();
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                    _guardandoOrden = false;
+                    return;
+                }
+                if (!EcuadorianValidator.validarRuc(idenVal)) {
+                    mostrarMensaje(true, 'El RUC ingresado no es válido para Ecuador.');
+                    document.getElementById('cli_identificacion')?.focus();
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                    _guardandoOrden = false;
+                    return;
+                }
+            } else if (tipoDoc === 'pasaporte') {
+                if (idenVal.length < 3) {
+                    mostrarMensaje(true, 'El pasaporte debe tener al menos 3 caracteres.');
+                    document.getElementById('cli_identificacion')?.focus();
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                    _guardandoOrden = false;
+                    return;
+                }
+            }
+        }
+
+        // ── VALIDACIÓN DE 6 FOTOS OBLIGATORIAS Y FACTURA ──
+        const requiereFotos = (motivo === 'Validacion de Garantia' || motivo === 'Servicio Cliente Externo') ||
+            (isEmpresa && (document.querySelector('input[name="subtipo_empresa"]:checked')?.value === 'Stock' || document.querySelector('input[name="subtipo_empresa"]:checked')?.value === 'Autoconsumo'));
+
+        if (requiereFotos) {
+            let fotosFaltantes = [];
+            for (let i = 1; i <= 6; i++) {
+                if (!_fotosArchivos[i]) {
+                    fotosFaltantes.push(i);
+                }
+            }
+            if (fotosFaltantes.length > 0) {
+                mostrarMensaje(true, `Es obligatorio tomar/subir las 6 fotos del equipo. Faltan ${fotosFaltantes.length} foto(s): Foto ${fotosFaltantes.join(', ')}.`);
+                const bloqueFotos = document.getElementById('bloque-fotos-equipo');
+                if (bloqueFotos) bloqueFotos.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                _guardandoOrden = false;
+                return;
+            }
+        }
+
+        if (motivo === 'Validacion de Garantia') {
+            const facturaInput = document.getElementById('archivo_factura');
+            if (!facturaInput || !facturaInput.files || !facturaInput.files[0]) {
+                mostrarMensaje(true, 'El archivo o foto de la factura es obligatorio para órdenes de Validación de Garantía.');
+                const campoFactura = document.getElementById('campo-archivo-factura');
+                if (campoFactura) campoFactura.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Crear Orden de Servicio'; }
+                _guardandoOrden = false;
+                return;
+            }
+        }
+
         const form = document.getElementById('form-orden');
         const fd = new FormData(form);
+
+        // Adjuntar las 6 fotos al FormData como fotos_equipo[]
+        if (requiereFotos) {
+            for (let i = 1; i <= 6; i++) {
+                if (_fotosArchivos[i]) {
+                    fd.append('fotos_equipo[]', _fotosArchivos[i]);
+                }
+            }
+        }
 
         // ── VALIDACIÓN DE ÓRDENES DUPLICADAS ──
         try {
@@ -4443,39 +4864,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // Configurar validaciones dinÃƒ¡micas
-
-    setupDynamicValidation(document.getElementById('cli_identificacion'), EcuadorianValidator.validarIdentificacion, (v) => {
-
-        if (v.length === 0) return 'La identificación es requerida.';
-
-        if (/[^a-zA-Z0-9]/.test(v)) return 'La identificación sólo debe contener letras y nÃƒºmeros.';
-
-        return 'Debe ser una cédula (10 dígitos), RUC (13 dígitos) de Ecuador, o un pasaporte vÃƒ¡lido (5 a 20 caracteres alfanuméricos).';
-
+    // Configurar validaciones dinámicas
+    setupDynamicValidation(document.getElementById('cli_identificacion'), (v) => {
+        const tipo = document.getElementById('cli_tipo_documento')?.value || 'cedula';
+        return EcuadorianValidator.validarIdentificacion(v, tipo);
+    }, (v) => {
+        const tipo = document.getElementById('cli_tipo_documento')?.value || 'cedula';
+        const val = (v || '').trim();
+        if (val.length === 0) return 'La identificación es requerida.';
+        if (tipo === 'cedula') {
+            if (/[^\d]/.test(val)) return 'La cédula sólo debe contener números.';
+            if (val.length !== 10) return 'La cédula debe tener exactamente 10 dígitos (actualmente ' + val.length + ').';
+            return 'La cédula ingresada no es válida para Ecuador.';
+        }
+        if (tipo === 'ruc') {
+            if (/[^\d]/.test(val)) return 'El RUC sólo debe contener números.';
+            if (val.length !== 13) return 'El RUC debe tener exactamente 13 dígitos (actualmente ' + val.length + ').';
+            return 'El RUC ingresado no es válido para Ecuador.';
+        }
+        if (tipo === 'pasaporte') {
+            if (val.length < 3) return 'El pasaporte debe tener al menos 3 caracteres.';
+            return 'El pasaporte contiene caracteres no válidos.';
+        }
+        return 'Identificación no válida.';
     });
-
-
 
     setupDynamicValidation(document.getElementById('cli_telefono'), EcuadorianValidator.validarTelefono, (v) => {
 
         if (v.length === 0) return 'El teléfono es requerido.';
 
-        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener nÃƒºmeros.';
+        if (/[^\d]/.test(v)) return 'El teléfono sólo debe contener números.';
 
         return 'El teléfono debe ser un celular de 10 dígitos (ej: 0987654321) o convencional de 9 dígitos (ej: 022345678) de Ecuador.';
 
     });
 
-
-
     setupDynamicValidation(document.getElementById('cli_correo'), EcuadorianValidator.validarEmail, (v) => {
 
-        return 'El correo electrónico no tiene un formato vÃƒ¡lido.';
+        return 'El correo electrónico no tiene un formato válido.';
 
     });
-
-
 
     const inpCi = document.getElementById('cli_identificacion');
 
@@ -4487,11 +4915,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         inpCi.addEventListener('input', () => {
 
+            const tipo = document.getElementById('cli_tipo_documento')?.value || 'cedula';
+
+            if (tipo === 'cedula') {
+                inpCi.value = inpCi.value.replace(/\D/g, '').slice(0, 10);
+            } else if (tipo === 'ruc') {
+                inpCi.value = inpCi.value.replace(/\D/g, '').slice(0, 13);
+            } else if (tipo === 'pasaporte') {
+                inpCi.value = inpCi.value.replace(/[^a-zA-Z0-9\-\.]/g, '').slice(0, 30).toUpperCase();
+            }
+
             _preordenIgnorada = false;
 
             verificarPreorden();
-
-
 
             const val = inpCi.value.trim();
 
@@ -4517,7 +4953,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 }
 
-            } else if (val.length === 10 || val.length === 13) {
+            } else if ((tipo === 'cedula' && val.length === 10) || (tipo === 'ruc' && val.length === 13) || (tipo === 'pasaporte' && val.length >= 4)) {
 
                 buscarClienteAjax();
 
@@ -4525,7 +4961,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         });
 
-        inpCi.addEventListener('blur', buscarClienteAjax);
+        inpCi.addEventListener('blur', () => {
+            const val = inpCi.value.trim();
+            if (val.length >= 3) {
+                buscarClienteAjax();
+            }
+        });
 
         inpCi.addEventListener('keydown', (e) => {
 

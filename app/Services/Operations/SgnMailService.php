@@ -54,6 +54,10 @@ class SgnMailService
     public static function enviarOrdenCreada($orden): void
     {
         try {
+            if (app()->environment('local') && env('MAIL_MAILER') !== 'log' && !env('ENABLE_LOCAL_SMTP', false)) {
+                Log::info('Local environment: skipping actual SMTP mail send for orden creada to prevent timeouts.', ['nro_orden' => $orden->nro_orden ?? '']);
+                return;
+            }
             $esEmpresa = $orden instanceof OrdenEmpresa;
             
             // Obtener sucursal
@@ -288,6 +292,14 @@ class SgnMailService
     public static function enviarOrdenEstadoCambiado($orden, string $estadoAnterior, string $estadoNuevo): void
     {
         try {
+            if (app()->environment('local') && env('MAIL_MAILER') !== 'log' && !env('ENABLE_LOCAL_SMTP', false)) {
+                Log::info('Local environment: skipping actual SMTP mail send for cambio estado to prevent timeouts.', [
+                    'nro_orden' => $orden->nro_orden ?? '',
+                    'estado_anterior' => $estadoAnterior,
+                    'estado_nuevo' => $estadoNuevo
+                ]);
+                return;
+            }
             $esEmpresa = $orden instanceof OrdenEmpresa;
             
             // Obtener sucursal

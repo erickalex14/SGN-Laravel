@@ -27,6 +27,10 @@ class VerificarPermisoLegacy
             return $next($request);
         }
 
+        if ($this->puedeAccederPresupuestos($request, $modulo, $accion)) {
+            return $next($request);
+        }
+
         $permisos = (array) session('permisos', []);
         $tienePermiso = $this->tienePermiso($permisos, $modulo, $accion);
 
@@ -148,6 +152,27 @@ class VerificarPermisoLegacy
         $ruta = (string) ($request->route()?->getName() ?? '');
 
         return in_array($ruta, $rutasTecnico, true) && $request->user() !== null;
+    }
+
+    private function puedeAccederPresupuestos(Request $request, string $modulo, string $accion): bool
+    {
+        if ($this->norm($modulo) !== 'presupuestos') {
+            return false;
+        }
+
+        $usuario = $request->user();
+        if (!$usuario) {
+            return false;
+        }
+
+        $grupo = $this->norm((string) session('grupo_nombre', $usuario->grupo?->nombre ?? ''));
+        $rol = $this->norm((string) session('rol_nombre', $usuario->rol?->rol ?? ''));
+
+        if (session('es_recepcion') === true || in_array($grupo, ['recepcion', 'recepción'], true) || in_array($rol, ['recepcion', 'recepcionista'], true)) {
+            return true;
+        }
+
+        return true; // Cualquier usuario operativo autenticado (técnicos, recepción, etc.) puede generar presupuestos
     }
 
     private function norm(string $value): string

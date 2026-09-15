@@ -204,6 +204,10 @@
         || in_array($grupoNombre, ['tecnico', 'tecnico master', 'técnico', 'técnico master'], true);
     $esSistemas = $grupoNombre === 'sistemas' || $sessionGrupo === 'sistemas';
 
+    $esRecepcion = session('es_recepcion') === true
+        || in_array($sessionGrupo, ['recepcion', 'recepción'], true)
+        || in_array($grupoNombre, ['recepcion', 'recepción'], true);
+
     $permAlias = [
         'grupos' => 'grupos_acceso',
         'productos' => 'inv_productos',
@@ -231,27 +235,29 @@
         return false;
     };
 
-    $hasOrdenes = $can('ordenes_crear', 'ver')
+    $hasOrdenes = ($can('ordenes_crear', 'ver') && !$esTecnico)
         || $can('ordenes_editar', 'ver')
         || $can('ordenes_buscar', 'ver')
         || $can('ordenes_mis', 'ver')
         || $can('ordenes_asignadas', 'ver')
+        || $can('ordenes_recepcion', 'ver')
+        || $esRecepcion
         || $can('preordenes', 'ver');
 
-    $hasDocTec = $can('informes', 'ver')
+    $hasDocTec = !$esRecepcion && ($can('informes', 'ver')
         || $can('informes', 'crear')
         || $can('presupuestos', 'ver')
         || $can('notas_credito_tecnico', 'ver')
         || $can('solicitar_repuesto', 'ver')
-        || auth()->check(); // Técnicos siempre tienen acceso a las rutas de informes
+        || auth()->check()); // Técnicos siempre tienen acceso a las rutas de informes
 
     // Cualquier usuario autenticado puede crear informes y ver los suyos propios
     // (el acceso real ya está filtrado por tecnico_id en el controller)
-    $puedeInformesTecnico = auth()->check();
+    $puedeInformesTecnico = !$esRecepcion && auth()->check();
 
-    $hasDocAdm = $can('reportes', 'ver')
+    $hasDocAdm = !$esRecepcion && ($can('reportes', 'ver')
         || $can('notas_credito', 'ver')
-        || $can('repuestos_admin', 'ver');
+        || $can('repuestos_admin', 'ver'));
 
     $esGeneradorTickets = (
         (int)($usuario?->grupo_id ?? 0) === 9
@@ -261,10 +267,10 @@
         || str_contains($sessionGrupo, 'solicitante')
     );
 
-    $hasInventario = !$esGeneradorTickets;
-    $hasControl = !$esGeneradorTickets;
-    $hasServicios = !$esGeneradorTickets && ($can('empresas', 'ver') || $can('cas', 'ver'));
-    $hasAccesoAdmin = !$esGeneradorTickets && ($can('usuarios', 'ver') || $can('grupos', 'ver'));
+    $hasInventario = !$esGeneradorTickets && !$esRecepcion;
+    $hasControl = !$esGeneradorTickets && !$esRecepcion;
+    $hasServicios = !$esGeneradorTickets && !$esRecepcion && ($can('empresas', 'ver') || $can('cas', 'ver'));
+    $hasAccesoAdmin = !$esGeneradorTickets && !$esRecepcion && ($can('usuarios', 'ver') || $can('grupos', 'ver'));
     $hasAcceso = !$esGeneradorTickets && ($can('mi_cuenta', 'ver') || $hasAccesoAdmin);
 
     if ($esGeneradorTickets) {
@@ -275,6 +281,15 @@
         $esAdminOAdminMaster = false;
         $esAdminMasterReal = false;
         $sa = false;
+    }
+    if ($esRecepcion) {
+        $hasDocTec = false;
+        $hasDocAdm = false;
+        $hasInventario = false;
+        $hasControl = false;
+        $hasServicios = false;
+        $esAdmin = false;
+        $esAdminOAdminMaster = false;
     }
 @endphp
 
@@ -289,10 +304,17 @@
         </div>
 
         @if (!$esGeneradorTickets)
-            <a data-tip="Dashboard" href="{{ route('dashboard') }}">
-                <i class="bi bi-speedometer2" style="flex-shrink:0;"></i>
-                <span class="nav-label" style="margin-left:10px;">Dashboard</span>
-            </a>
+            @if ($esRecepcion)
+                <a data-tip="Dashboard" href="{{ route('recepcion.index') }}">
+                    <i class="bi bi-speedometer2" style="flex-shrink:0;"></i>
+                    <span class="nav-label" style="margin-left:10px;">Dashboard</span>
+                </a>
+            @else
+                <a data-tip="Dashboard" href="{{ route('dashboard') }}">
+                    <i class="bi bi-speedometer2" style="flex-shrink:0;"></i>
+                    <span class="nav-label" style="margin-left:10px;">Dashboard</span>
+                </a>
+            @endif
         @endif
 
         @if ($hasOrdenes)
@@ -303,28 +325,40 @@
                     <i class="bi bi-chevron-down nav-arrow ms-auto"></i>
                 </a>
                 <div class="nav-submenu">
-                    @if ($can('ordenes_crear', 'ver'))
+                    @if ($can('ordenes_recepcion', 'ver') || session('es_recepcion') === true || $esAdminOAdminMaster)
+                        <a data-tip="Panel de Recepción" href="{{ route('recepcion.index') }}">
+                            <i class="bi bi-person-workspace" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Panel de Recepción</span>
+                        </a>
+                    @endif
+                    @if ($can('ordenes_crear', 'ver') && !$esTecnico)
                         <a data-tip="Crear Orden" href="{{ route('ordenes.crear') }}">
                             <i class="bi bi-plus-circle" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Crear Orden</span>
                         </a>
                     @endif
-                    @if ($can('ordenes_mis', 'ver'))
+                    @if (!$esRecepcion && $can('ordenes_mis', 'ver'))
                         <a data-tip="Mis Órdenes" href="{{ route('mis_ordenes.index') }}">
                             <i class="bi bi-person-check" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Mis Órdenes</span>
                         </a>
                     @endif
-                    @if ($can('ordenes_asignadas', 'ver'))
+                    @if (!$esRecepcion && $can('ordenes_asignadas', 'ver'))
                         <a data-tip="Órdenes Asignadas" href="{{ route('ordenes_asignadas.index') }}">
                             <i class="bi bi-list-check" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Órdenes Asignadas</span>
                         </a>
                     @endif
-                    @if ($can('ordenes_buscar', 'ver'))
+                    @if ($can('ordenes_buscar', 'ver') || $esRecepcion)
                         <a data-tip="Buscar Órdenes" href="{{ route('ordenes_buscar.index') }}">
                             <i class="bi bi-search" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Buscar Órdenes</span>
+                        </a>
+                    @endif
+                    @if ($can('presupuestos', 'ver') || $esRecepcion)
+                        <a data-tip="Cotizaciones / Proformas" href="{{ route('presupuestos.index') }}">
+                            <i class="bi bi-receipt-cutoff" style="flex-shrink:0;"></i>
+                            <span class="nav-label" style="margin-left:10px;">Cotizaciones / Proformas</span>
                         </a>
                     @endif
                     {{--
@@ -339,7 +373,7 @@
                         </a>
                     @endif
                     --}}
-                    @if ($can('preordenes', 'ver'))
+                    @if (!$esRecepcion && $can('preordenes', 'ver'))
                         <a data-tip="Preórdenes" href="{{ route('preordenes.index') }}">
                             <i class="bi bi-file-earmark-plus" style="flex-shrink:0;"></i>
                             <span class="nav-label" style="margin-left:10px;">Preórdenes</span>
@@ -347,6 +381,13 @@
                     @endif
                 </div>
             </div>
+        @endif
+
+        @if ($esRecepcion)
+            <a data-tip="Mis Actividades" href="{{ route('actividades.index') }}">
+                <i class="bi bi-journal-check" style="flex-shrink:0;"></i>
+                <span class="nav-label" style="margin-left:10px;">Mis Actividades</span>
+            </a>
         @endif
 
         @if ($hasDocTec || $hasDocAdm)
@@ -579,7 +620,7 @@
             </div>
         @endif
 
-        @if ($can('sucursales', 'ver') || $can('sucursales_cliente', 'ver'))
+        @if (!$esRecepcion && ($can('sucursales', 'ver') || $can('sucursales_cliente', 'ver')))
             <div class="nav-group">
                 <a class="nav-toggle" data-tip="Sucursales" onclick="navToggle(this)">
                     <i class="bi bi-geo-alt" style="flex-shrink:0;"></i>
@@ -628,6 +669,7 @@
         @endif
 
         {{-- MÓDULO DE TICKETS DE SOPORTE & SISTEMAS --}}
+        @if (!$esRecepcion)
         <div class="nav-group">
             <a class="nav-toggle" data-tip="Tickets" onclick="navToggle(this)">
                 <i class="bi bi-ticket-perforated" style="flex-shrink:0; color: #2563eb;"></i>
@@ -674,6 +716,7 @@
                 @endif
             </div>
         </div>
+        @endif
 
         @if ($hasAcceso)
             <div class="nav-group">
@@ -695,6 +738,7 @@
                             <span class="nav-label" style="margin-left:10px;">Mis Datos Personales</span>
                         </a>
                     @endif
+                    @if ($hasAccesoAdmin)
                     <div class="nav-subgroup">
                         <div class="nav-subtoggle" onclick="navSubToggle(this)">
                             <i class="bi bi-shield-lock" style="font-size:11px;"></i>
@@ -734,6 +778,7 @@
                             @endif
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         @endif
@@ -2293,5 +2338,6 @@
 </script>
 @endif
 @stack('js_adicional')
+@stack('scripts_adicionales')
 </body>
 </html>

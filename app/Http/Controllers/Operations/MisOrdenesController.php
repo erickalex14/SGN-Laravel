@@ -154,7 +154,12 @@ class MisOrdenesController extends Controller
                 return response()->json([
                     'ok' => true,
                     'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.',
-                    'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath
+                    'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath,
+                    'fecha_modificacion' => $ordenActualizada?->fecha_modificacion,
+                    'fecha_recibida_tecnico' => $ordenActualizada?->fecha_recibida_tecnico,
+                    'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
+                    'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
+                    'fecha_entrega' => $ordenActualizada?->fecha_entrega,
                 ]);
             }
 
@@ -185,7 +190,12 @@ class MisOrdenesController extends Controller
             return response()->json([
                 'ok'      => true,
                 'mensaje' => 'El estado de la orden ha sido actualizado correctamente.',
-                'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath
+                'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath,
+                'fecha_modificacion' => $ordenActualizada?->fecha_modificacion,
+                'fecha_recibida_tecnico' => $ordenActualizada?->fecha_recibida_tecnico,
+                'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
+                'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
+                'fecha_entrega' => $ordenActualizada?->fecha_entrega,
             ]);
         } catch (Exception $e) {
             return response()->json([

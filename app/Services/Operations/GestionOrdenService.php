@@ -54,10 +54,18 @@ class GestionOrdenService
             throw new Exception('La orden de empresa especificada no existe.');
         }
 
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $sessionRol = mb_strtolower(trim((string) session('rol_nombre', '')));
+        $esAdmin = $esAdmin || session('es_superadmin') === true || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        $esRecepcion = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true) || in_array($sessionRol, ['recepcion', 'recepcionista'], true);
+        $esRecepcionSucursal = $esRecepcion && ((int) session('sucursal_id', 0) === 0 || (int) $orden->sucursal_id === (int) session('sucursal_id') || $esAdmin);
+
         $esTecnicoAsignado = ((int) $orden->tecnico_id === $usuarioId)
             || ($orden->subtipo === 'Servicios' && $orden->tecnicos()->where('tecnico_id', $usuarioId)->exists());
 
-        if (!$esAdmin && !$esTecnicoAsignado) {
+        $esEmpresaPermitidaRecepcion = in_array($orden->subtipo, ['Stock', 'Autoconsumo'], true);
+
+        if (!$esAdmin && !$esTecnicoAsignado && !($esRecepcionSucursal && $esEmpresaPermitidaRecepcion)) {
             throw new Exception('Sin permiso sobre esta orden.');
         }
 
@@ -74,7 +82,7 @@ class GestionOrdenService
             $orden->foto_evidencia_entrega = trim($fotoEvidenciaEntrega);
         }
 
-        if (in_array(mb_strtolower($estadoNormalizado), ['entregada', 'entregado'], true)) {
+        if (in_array(mb_strtolower($estadoNormalizado), ['entregada', 'entregado', 'cerrado'], true)) {
             if (empty($orden->foto_evidencia_entrega) && empty($fotoEvidenciaEntrega)) {
                 throw new Exception('Debe adjuntar una foto de evidencia de entrega obligatoriamente para marcar la orden como Entregada.');
             }
@@ -90,18 +98,41 @@ class GestionOrdenService
             $orden->valor_hora = 52.0;
         }
 
-        // Cierre y entrega automática para empresas
-        if (in_array($estadoNormalizado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)) {
+        $now = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+        $orden->fecha_modificacion = $now;
+        $orden->modificado_por = $usuarioId;
+
+        // Ciclo de vida y marcas de tiempo para empresas
+        if (in_array($estadoNormalizado, ['Recibida', 'Entregado al Tecnico'], true)) {
+            if (!$orden->fecha_recibida_tecnico) {
+                $orden->fecha_recibida_tecnico = $now;
+            }
+        } elseif ($estadoNormalizado === 'Finalizada' || $estadoNormalizado === 'REPARADO' || $estadoNormalizado === 'Reparada') {
+            $orden->fecha_finalizacion = $now;
+            $orden->fecha_entrega = null;
+        } elseif (in_array($estadoNormalizado, ['Lista para entrega', 'Entregado en Recepcion para Entrega'], true)) {
+            $orden->fecha_lista_entrega = $now;
             if (!$orden->fecha_finalizacion) {
-                $orden->fecha_finalizacion = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+                $orden->fecha_finalizacion = $now;
             }
-            if ($estadoNormalizado === 'Entregada' || $estadoNormalizado === 'ENTREGADO') {
-                if (!$orden->fecha_entrega) {
-                    $orden->fecha_entrega = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
-                }
-            } else {
-                $orden->fecha_entrega = null;
+            $orden->fecha_entrega = null;
+        } elseif ($estadoNormalizado === 'Incinerox') {
+            $orden->fecha_finalizacion = $now;
+            $orden->fecha_entrega = null;
+            // Sincronizar inventario físico ST a Incinerox
+            \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $orden->id)
+                ->update(['estado' => 'Incinerox']);
+        } elseif (in_array($estadoNormalizado, ['Entregada', 'ENTREGADO'], true)) {
+            $orden->fecha_entrega = $now;
+            if (!$orden->fecha_lista_entrega) {
+                $orden->fecha_lista_entrega = $now;
             }
+            if (!$orden->fecha_finalizacion) {
+                $orden->fecha_finalizacion = $now;
+            }
+        } elseif (in_array($estadoNormalizado, ['Devuelto sin reparar', 'DEVUELTO SIN REPARAR', 'Nota de Credito'], true)) {
+            $orden->fecha_finalizacion = $now;
+            $orden->fecha_entrega = null;
         } else {
             $orden->fecha_finalizacion = null;
             $orden->fecha_entrega = null;
@@ -115,6 +146,7 @@ class GestionOrdenService
             'tipo_orden' => 'empresa',
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo' => $orden->estado,
+            'fecha_cambio' => $now,
             'horas_trabajadas' => $horasTrabajadas,
             'valor_hora' => $orden->valor_hora,
         ]);
@@ -153,7 +185,13 @@ class GestionOrdenService
             throw new Exception('La orden especificada no existe en el sistema.');
         }
 
-        if (!$esAdmin && (int) $orden->tecnico_id !== $usuarioModificacionId) {
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $esAdmin = $esAdmin || session('es_superadmin') === true || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        $esRecepcion = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true);
+        $esTecnicoAsignado = (int) $orden->tecnico_id === $usuarioModificacionId;
+        $esRecepcionSucursal = $esRecepcion && ((int) session('sucursal_id', 0) === 0 || (int) $orden->sucursal_id === (int) session('sucursal_id') || $esAdmin);
+
+        if (!$esAdmin && !$esTecnicoAsignado && !$esRecepcionSucursal && !$esRecepcion) {
             throw new Exception('Sin permiso sobre esta orden.');
         }
 
@@ -173,13 +211,17 @@ class GestionOrdenService
                 $orden->foto_evidencia_entrega = trim($dto->foto_evidencia_entrega);
             }
 
-            if (in_array(mb_strtolower($estadoNormalizado), ['entregada', 'entregado'], true)) {
+            if (in_array(mb_strtolower($estadoNormalizado), ['cerrado', 'entregada', 'entregado'], true)) {
                 if (empty($orden->foto_evidencia_entrega) && empty($dto->foto_evidencia_entrega)) {
-                    throw new Exception('Debe adjuntar una foto de evidencia de entrega obligatoriamente para marcar la orden como Entregada.');
+                    throw new Exception('Debe adjuntar una foto de evidencia de entrega obligatoriamente para marcar la orden como Cerrado.');
                 }
             }
 
-            if ($estadoNormalizado === 'Nota de Credito') {
+            if (in_array($estadoNormalizado, ['Entregado al Tecnico', 'Recibida'], true)) {
+                if (!$orden->fecha_recibida_tecnico) {
+                    $orden->fecha_recibida_tecnico = $orden->fecha_modificacion;
+                }
+            } elseif ($estadoNormalizado === 'Nota de Credito') {
                 $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
                 if ($esGarantia) {
                     $orden->fecha_finalizacion = $orden->transferencia_numero ? $orden->fecha_modificacion : null;
@@ -187,11 +229,26 @@ class GestionOrdenService
                     $orden->fecha_finalizacion = $orden->fecha_modificacion;
                 }
                 $orden->fecha_entrega = null;
-            } elseif ($estadoNormalizado === 'Finalizada') {
+            } elseif (in_array($estadoNormalizado, ['Reparada', 'Finalizada'], true)) {
                 $orden->fecha_finalizacion = $orden->fecha_modificacion;
                 $orden->fecha_entrega = null;
-            } elseif ($estadoNormalizado === 'Entregada') {
+            } elseif (in_array($estadoNormalizado, ['Entregado en Recepcion para Entrega', 'Lista para entrega'], true)) {
+                $orden->fecha_lista_entrega = $orden->fecha_modificacion;
+                if (!$orden->fecha_finalizacion) {
+                    $orden->fecha_finalizacion = $orden->fecha_modificacion;
+                }
+                $orden->fecha_entrega = null;
+            } elseif (in_array($estadoNormalizado, ['Cerrado', 'Entregada'], true)) {
                 $orden->fecha_entrega = $orden->fecha_modificacion;
+                if (!$orden->fecha_lista_entrega) {
+                    $orden->fecha_lista_entrega = $orden->fecha_modificacion;
+                }
+                if (!$orden->fecha_finalizacion) {
+                    $orden->fecha_finalizacion = $orden->fecha_modificacion;
+                }
+            } elseif (in_array($estadoNormalizado, ['Recibido en Recepcion', 'Pendiente', 'En reparacion'], true)) {
+                $orden->fecha_finalizacion = null;
+                $orden->fecha_entrega = null;
             } else {
                 $orden->fecha_finalizacion = null;
                 $orden->fecha_entrega = null;
@@ -223,6 +280,7 @@ class GestionOrdenService
             'tipo_orden' => 'personal',
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo' => $orden->estado_orden,
+            'fecha_cambio' => Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s'),
         ]);
 
         if ($estadoNormalizado === 'Nota de Credito') {
@@ -255,16 +313,36 @@ class GestionOrdenService
         $estado = trim($estado);
 
         $map = [
-            'INGRESO' => 'Pendiente',
-            'REVISIÓN' => 'En proceso',
-            'REVISION' => 'En proceso',
-            'ESPERA REPUESTO' => 'En proceso',
-            'REPARADO' => 'Finalizada',
-            'ENTREGADO' => 'Entregada',
-            'DEVUELTO SIN REPARAR' => 'Devuelto sin reparar'
+            'INGRESO'                                => 'Recibido en Recepcion',
+            'RECIBIDO EN RECEPCION'                  => 'Recibido en Recepcion',
+            'RECIBIDO EN RECEPCIÓN'                  => 'Recibido en Recepcion',
+            'RECIBIDA'                               => 'Entregado al Tecnico',
+            'ENTREGADO AL TECNICO'                   => 'Entregado al Tecnico',
+            'ENTREGADO AL TÉCNICO'                   => 'Entregado al Tecnico',
+            'PENDIENTE'                              => 'Pendiente',
+            'REVISIÓN'                               => 'En reparacion',
+            'REVISION'                               => 'En reparacion',
+            'EN PROCESO'                             => 'En reparacion',
+            'EN REPARACION'                          => 'En reparacion',
+            'EN REPARACIÓN'                          => 'En reparacion',
+            'ESPERA REPUESTO'                        => 'En reparacion',
+            'REPARADO'                               => 'Reparada',
+            'FINALIZADA'                             => 'Reparada',
+            'REPARADA'                               => 'Reparada',
+            'LISTA PARA ENTREGA'                     => 'Entregado en Recepcion para Entrega',
+            'LISTO PARA ENTREGA'                     => 'Entregado en Recepcion para Entrega',
+            'ENTREGADO EN RECEPCION PARA ENTREGA'    => 'Entregado en Recepcion para Entrega',
+            'ENTREGADO EN RECEPCIÓN PARA ENTREGA'    => 'Entregado en Recepcion para Entrega',
+            'ENTREGADA'                              => 'Cerrado',
+            'ENTREGADO'                              => 'Cerrado',
+            'CERRADO'                                => 'Cerrado',
+            'DEVUELTO SIN REPARAR'                   => 'Devuelto sin reparar',
+            'INCINEROX'                              => 'Incinerox',
+            'NOTA DE CREDITO'                        => 'Nota de Credito',
+            'NOTA DE CRÉDITO'                        => 'Nota de Credito',
         ];
 
-        return $map[$estado] ?? $estado;
+        return $map[mb_strtoupper($estado)] ?? ($map[$estado] ?? $estado);
     }
 
     /**
@@ -276,32 +354,58 @@ class GestionOrdenService
         $motivo = trim((string) $orden->motivo_ingreso);
         $estadoGarantia = trim((string) ($orden->estado_garantia ?? ''));
 
-        if (!in_array($nuevoEstado, ['Pendiente', 'En proceso', 'Finalizada', 'Entregada', 'Nota de Credito'], true)) {
-            throw new Exception('Estado no permitido.');
+        $estadosPermitidos = [
+            'Recibido en Recepcion',
+            'Entregado al Tecnico',
+            'Pendiente',
+            'En reparacion',
+            'Reparada',
+            'Entregado en Recepcion para Entrega',
+            'Cerrado',
+            'Nota de Credito',
+            // Compatibilidad retroactiva
+            'Recibida',
+            'En proceso',
+            'Finalizada',
+            'Lista para entrega',
+            'Entregada',
+            'Devuelto sin reparar'
+        ];
+
+        if (!in_array($nuevoEstado, $estadosPermitidos, true)) {
+            throw new Exception("Estado no permitido: {$nuevoEstado}.");
         }
 
-        if ($estadoActual === 'Entregada') {
-            throw new Exception('La orden ya fue entregada y no puede modificarse.');
+        if (in_array($estadoActual, ['Cerrado', 'Entregada'], true)) {
+            throw new Exception('La orden ya fue cerrada/entregada y no puede modificarse.');
         }
 
-        if ($estadoActual === 'Nota de Credito') {
-            throw new Exception('La orden ya tiene Nota de Credito y no puede modificarse.');
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $esAdmin = session('es_superadmin') === true || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        $esRecepcion = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true);
+
+        // Si la orden está en 'Recibido en Recepcion', debe confirmarse la entrega al técnico
+        if ($estadoActual === 'Recibido en Recepcion' && !in_array($nuevoEstado, ['Recibido en Recepcion', 'Entregado al Tecnico', 'Recibida'], true) && !$esAdmin) {
+            throw new Exception('Debes confirmar la recepción del equipo en taller ("Entregado al Tecnico") antes de avanzar.');
         }
 
-        if ($estadoActual === 'Finalizada' && !in_array($nuevoEstado, ['Entregada', 'Nota de Credito'], true)) {
-            throw new Exception('Una orden finalizada solo puede cambiar a Entregada o Nota de Credito.');
-        }
-
-        if ($nuevoEstado === 'Finalizada' && !$orden->informes()->exists()) {
-            throw new Exception('Debes registrar el informe tecnico antes de finalizar la orden.');
+        // Obligatoriedad de informe técnico para Reparada / Finalizada o Entregado en Recepcion para Entrega
+        if (in_array($nuevoEstado, ['Reparada', 'Finalizada', 'Entregado en Recepcion para Entrega', 'Lista para entrega'], true) && !$orden->informes()->exists()) {
+            throw new Exception('Debes registrar el informe técnico antes de finalizar la reparación o enviarla a entrega.');
         }
 
         if (
             $motivo === 'Validacion de Garantia'
-            && in_array($nuevoEstado, ['Finalizada', 'Entregada'], true)
+            && $estadoActual !== 'Nota de Credito'
+            && in_array($nuevoEstado, ['Reparada', 'Finalizada', 'Entregado en Recepcion para Entrega', 'Lista para entrega', 'Cerrado', 'Entregada'], true)
             && ($estadoGarantia === '' || $estadoGarantia === 'Pendiente')
         ) {
             throw new Exception('Define el estado de garantia antes de finalizar o entregar.');
+        }
+
+        // Solo Recepción o Admin pueden entregar al cliente y cerrar la orden
+        if (in_array($nuevoEstado, ['Cerrado', 'Entregada'], true) && !$esAdmin && !$esRecepcion) {
+            throw new Exception('Solo el personal de recepción o administración puede entregar la orden al cliente y cerrarla.');
         }
 
         if ($nuevoEstado !== 'Nota de Credito') {
@@ -331,7 +435,6 @@ class GestionOrdenService
         if (!$orden->informes()->exists()) {
             throw new Exception('Debe registrar un informe tecnico antes de solicitar la Nota de Credito.');
         }
-
     }
 
     /**
@@ -345,7 +448,23 @@ class GestionOrdenService
             return;
         }
 
-        if (!in_array($nuevoEstado, ['Pendiente', 'En proceso', 'Finalizada', 'Entregada'], true)) {
+        $estadosPermitidos = [
+            'Pendiente',
+            'Recibida',
+            'Recibido en Recepcion',
+            'Entregado al Tecnico',
+            'En proceso',
+            'Finalizada',
+            'Reparada',
+            'Lista para entrega',
+            'Entregado en Recepcion para Entrega',
+            'Entregada',
+            'Cerrado',
+            'Incinerox',
+            'Devuelto sin reparar'
+        ];
+
+        if (!in_array($nuevoEstado, $estadosPermitidos, true)) {
             throw new Exception('Estado no permitido para orden de empresa.');
         }
 
@@ -353,8 +472,14 @@ class GestionOrdenService
             throw new Exception('La orden ya fue entregada y no puede modificarse.');
         }
 
-        if ($estadoActual === 'Finalizada' && $nuevoEstado !== 'Entregada') {
-            throw new Exception('Una orden finalizada solo puede cambiar a Entregada.');
+        if ($estadoActual === 'Incinerox') {
+            throw new Exception('La orden ya fue enviada a Incinerox y no puede modificarse.');
+        }
+
+        if ($nuevoEstado === 'Incinerox') {
+            if (!$orden->tieneInforme()) {
+                throw new Exception('Debe registrar un informe técnico antes de enviar la orden a Incinerox.');
+            }
         }
     }
 

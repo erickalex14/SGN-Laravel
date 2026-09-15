@@ -141,7 +141,12 @@
 
             <div class="eo-meta-item"><label>Fecha Ingreso</label><span>{{ $fmt($orden->fecha_ingreso) }}</span></div>
             <div class="eo-meta-item"><label>Fecha Prometida</label><span>{{ $fmt($orden->fecha_prometido) }}</span></div>
+            <div class="eo-meta-item"><label>Fecha Finalización</label><span>{{ $fmt($orden->fecha_finalizacion) }}</span></div>
+            <div class="eo-meta-item"><label>Fecha Entrega</label><span>{{ $fmt($orden->fecha_entrega) }}</span></div>
+
             <div class="eo-meta-item"><label>Ingresado por</label><span>{{ $usuarioIngreso }}</span></div>
+            <div class="eo-meta-item"><label>Última Modificación</label><span>{{ $fmt($orden->fecha_modificacion) }}</span></div>
+            <div class="eo-meta-item"></div>
             <div class="eo-meta-item"></div>
         </div>
     </div>

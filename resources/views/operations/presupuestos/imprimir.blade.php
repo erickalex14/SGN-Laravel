@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Presupuesto {{ $orden->nro_orden }}</title>
+    <title>{{ !empty($esDirecta) ? 'Cotización / Proforma' : ('Presupuesto ' . ($orden->nro_orden ?? '')) }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 7.6pt; color: #000; background: #fff; }
@@ -50,46 +50,70 @@
     </div>
 
     <div class="doc-header">
-        <div class="nro">Presupuesto - {{ $orden->nro_orden }}</div>
+        <div class="nro">{{ !empty($esDirecta) ? 'Cotización / Proforma' : ('Presupuesto - ' . $orden->nro_orden) }}</div>
         <div class="meta">
             Fecha: {{ $fecha }}<br>
-            Tecnico: {{ $tecnicoSesion ?: ($orden->tecnico ?: '-') }}
+            Atendido por: {{ $tecnicoSesion ?: (!empty($orden->tecnico) ? $orden->tecnico : 'Atención al Cliente') }}
         </div>
     </div>
 
-    <div class="sec-title">Datos de la Orden</div>
-    <table class="data">
-        <tr>
-            <td width="30%"><span class="lbl">Nro. Orden</span>{{ $orden->nro_orden }}</td>
-            <td width="40%"><span class="lbl">Cliente</span>{{ $orden->cliente }}</td>
-            <td width="30%"><span class="lbl">Tecnico</span>{{ $tecnicoSesion ?: ($orden->tecnico ?: '-') }}</td>
-        </tr>
-        <tr>
-            <td colspan="3"><span class="lbl">Equipo</span>{{ trim(($orden->tipo ?? '') . ' ' . ($orden->marca ?? '') . ' ' . ($orden->modelo ?? '') . ' ' . (($orden->serie ?? '') ? ('S/N ' . $orden->serie) : '')) }}</td>
-        </tr>
-    </table>
+    @if(!empty($esDirecta))
+        <div class="sec-title">Datos del Cliente</div>
+        <table class="data">
+            <tr>
+                <td width="45%"><span class="lbl">Cliente / Razón Social</span>{{ $clienteDirecto['nombre'] ?? 'CONSUMIDOR FINAL' }}</td>
+                <td width="30%"><span class="lbl">C.I. / RUC</span>{{ !empty($clienteDirecto['identificacion']) ? $clienteDirecto['identificacion'] : '9999999999999' }}</td>
+                <td width="25%"><span class="lbl">Teléfono</span>{{ !empty($clienteDirecto['telefono']) ? $clienteDirecto['telefono'] : 'N/A' }}</td>
+            </tr>
+        </table>
+    @else
+        <div class="sec-title">Datos de la Orden</div>
+        <table class="data">
+            <tr>
+                <td width="30%"><span class="lbl">Nro. Orden</span>{{ $orden->nro_orden }}</td>
+                <td width="40%"><span class="lbl">Cliente</span>{{ $orden->cliente }}</td>
+                <td width="30%"><span class="lbl">Tecnico</span>{{ $tecnicoSesion ?: ($orden->tecnico ?: '-') }}</td>
+            </tr>
+            <tr>
+                <td colspan="3"><span class="lbl">Equipo</span>{{ trim(($orden->tipo ?? '') . ' ' . ($orden->marca ?? '') . ' ' . ($orden->modelo ?? '') . ' ' . (($orden->serie ?? '') ? ('S/N ' . $orden->serie) : '')) }}</td>
+            </tr>
+        </table>
+    @endif
 
-    <div class="sec-title">Detalle del Presupuesto</div>
+    <div class="sec-title">Detalle del Presupuesto / Artículos</div>
     <table class="data">
         <tr>
-            <th>Servicio / Reparacion</th>
-            <th class="txt-right">Sin IVA</th>
-            <th class="txt-right">Con IVA 15%</th>
+            <th>Descripción / Artículo</th>
+            @if(!empty($esDirecta))
+                <th class="txt-right" style="width: 50px;">Cant.</th>
+                <th class="txt-right" style="width: 80px;">P. Unit (Sin IVA)</th>
+            @endif
+            <th class="txt-right" style="width: 90px;">Sin IVA</th>
+            <th class="txt-right" style="width: 95px;">Con IVA 15%</th>
         </tr>
         @forelse($items as $item)
+            @php
+                $cant = !empty($item['cantidad']) ? (int)$item['cantidad'] : 1;
+                $pUnit = (float)($item['precio'] ?? 0);
+                $subLine = !empty($item['subtotal_linea']) ? (float)$item['subtotal_linea'] : ($pUnit * $cant);
+            @endphp
             <tr>
                 <td>
-                    {{ $item['nombre'] }}
+                    <strong>{{ $item['nombre'] }}</strong>
                     @if(!empty($item['desc']))
                         <div style="font-size: 6.3pt; color: #64748b;">{{ $item['desc'] }}</div>
                     @endif
                 </td>
-                <td class="txt-right">${{ number_format((float) $item['precio'], 2) }}</td>
-                <td class="txt-right">${{ number_format((float) $item['precio'] * 1.15, 2) }}</td>
+                @if(!empty($esDirecta))
+                    <td class="txt-right">{{ $cant }}</td>
+                    <td class="txt-right">${{ number_format($pUnit, 2) }}</td>
+                @endif
+                <td class="txt-right">${{ number_format($subLine, 2) }}</td>
+                <td class="txt-right">${{ number_format($subLine * 1.15, 2) }}</td>
             </tr>
         @empty
             <tr>
-                <td colspan="3" style="text-align: center; color: #64748b;">No hay items para este presupuesto.</td>
+                <td colspan="{{ !empty($esDirecta) ? 5 : 3 }}" style="text-align: center; color: #64748b;">No hay items para este presupuesto.</td>
             </tr>
         @endforelse
     </table>
