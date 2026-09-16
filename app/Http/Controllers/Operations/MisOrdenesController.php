@@ -89,13 +89,18 @@ class MisOrdenesController extends Controller
                 }
             }
 
+            $tituloServicio = $request->filled('titulo_servicio') ? trim((string) $request->input('titulo_servicio')) : null;
+            $valorManoObra = $request->filled('valor_mano_obra') ? (float) $request->input('valor_mano_obra') : null;
+
             $dto = new CambiarEstadoOrdenDTO(
                 $ordenId,
                 (string) $request->input('estado'),
                 $request->input('nc_asunto'),
                 $request->input('nc_detalles'),
                 $request->input('memo_entrega'),
-                $fotoEvidenciaPath
+                $fotoEvidenciaPath,
+                $tituloServicio,
+                $valorManoObra
             );
 
             $usuarioModificacionId = (int) session('tecnico_id', 0);
@@ -126,7 +131,9 @@ class MisOrdenesController extends Controller
                     $horasTrabajadas,
                     $valorHora,
                     $request->input('memo_entrega'),
-                    $fotoEvidenciaPath
+                    $fotoEvidenciaPath,
+                    $tituloServicio,
+                    $valorManoObra
                 );
 
                 if ($orden) {
@@ -160,6 +167,9 @@ class MisOrdenesController extends Controller
                     'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
                     'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
                     'fecha_entrega' => $ordenActualizada?->fecha_entrega,
+                    'titulo_servicio' => $ordenActualizada?->titulo_servicio,
+                    'valor_mano_obra' => (float) ($ordenActualizada?->valor_mano_obra ?? 0),
+                    'valor_repuestos' => (float) ($ordenActualizada?->valor_repuestos ?? 0),
                 ]);
             }
 
@@ -196,6 +206,9 @@ class MisOrdenesController extends Controller
                 'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
                 'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
                 'fecha_entrega' => $ordenActualizada?->fecha_entrega,
+                'titulo_servicio' => $ordenActualizada?->titulo_servicio,
+                'valor_mano_obra' => (float) ($ordenActualizada?->valor_mano_obra ?? 0),
+                'valor_repuestos' => (float) ($ordenActualizada?->valor_repuestos ?? 0),
             ]);
         } catch (Exception $e) {
             return response()->json([

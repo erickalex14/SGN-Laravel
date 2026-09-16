@@ -232,7 +232,7 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc', 'loteOrden.lote']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc', 'loteOrden.lote', 'ordenRepuestos.repuesto']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryPersonal->whereRaw('1 = 0');
@@ -343,10 +343,24 @@ class OrdenRepository
                 $clienteNombre = trim((string) (($orden->cliente->nombres ?? '') . ' ' . ($orden->cliente->apellidos ?? '')));
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
-                $subtotalAdicionales = $orden->preciosOrden->sum('precio');
-                $subtotalTotal = $subtotalAdicionales + 28.00;
-                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
-                $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia'
+                    || str_contains(mb_strtolower((string) $orden->motivo_ingreso), 'garant')
+                    || !empty($orden->garantia_tipo)
+                    || !empty($orden->estado_garantia);
+
+                $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
+                if ($totalRepuestos <= 0 && $orden->ordenRepuestos) {
+                    foreach ($orden->ordenRepuestos as $orp) {
+                        $cant = (int) ($orp->cantidad ?? 1);
+                        $costo = (float) ($orp->repuesto->costo ?? 0.0);
+                        $totalRepuestos += round($cant * $costo, 2);
+                    }
+                }
+                $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
+                $moCobrada = round($valMo * 0.50, 2);
+                $baseFija = 14.25;
+
+                $valorNovicompu = $esGarantia ? round($baseFija + $moCobrada + $totalRepuestos, 2) : 0.00;
                 $valorOtraEmpresa = 0.00;
 
                 $garantiaTipo = (function() use ($orden) {
@@ -451,7 +465,7 @@ class OrdenRepository
         }
 
         if ($incluirEmpresa) {
-            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal', 'cas', 'loteOrden.lote']);
+            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal', 'cas', 'loteOrden.lote', 'ordenRepuestos.repuesto']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryEmpresa->where('empresa_id', $filtro->empresa_id);
@@ -543,24 +557,45 @@ class OrdenRepository
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
                 $esNovisolutionsServicio = ($orden->subtipo === 'Servicios');
-                if ($esNovisolutionsServicio) {
-                    $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
-                    $horas = (float) ($orden->horas_trabajadas ?? 0);
-                    $valHora = (float) ($orden->valor_hora ?? 0);
-                    $subtotalTotal = $cantTecnicos * $horas * $valHora;
-                } else {
-                    $subtotalTotal = 28.00;
+                $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
+                $nombreEmpresaUpper = strtoupper(trim($nombreEmpresa));
+                $isNovisolutions = str_contains($nombreEmpresaUpper, 'NOVI') || str_contains($nombreEmpresaUpper, 'SOLUT') || (int)($orden->empresa_id ?? 0) === 1;
+                $isRbHealth = str_contains($nombreEmpresaUpper, 'RB') || str_contains($nombreEmpresaUpper, 'HEALTH');
+
+                // Repuestos usados
+                $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
+                if ($totalRepuestos <= 0 && $orden->ordenRepuestos) {
+                    foreach ($orden->ordenRepuestos as $orp) {
+                        $cant = (int) ($orp->cantidad ?? 1);
+                        $costo = (float) ($orp->repuesto->costo ?? 0.0);
+                        $totalRepuestos += round($cant * $costo, 2);
+                    }
                 }
 
-                $esNovisolutions = (strtoupper(trim($nombreEmpresa)) === 'NOVISOLUTONS CIA. LTDA.');
-                
+                $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
+                $moCobrada = round($valMo * 0.50, 2);
+
                 $valorNovicompu = 0.00;
                 $valorOtraEmpresa = 0.00;
 
-                if ($esNovisolutions) {
-                    $valorNovicompu = round($subtotalTotal, 2);
+                if ($isNovisolutions) {
+                    // Regla oficial Novisolutions: Base Fija $14.25 ($28.50 - 50%) + Mano de obra (-50%) + Repuestos (100%)
+                    $baseFija = 14.25;
+                    $valorNovicompu = round($baseFija + $moCobrada + $totalRepuestos, 2);
+                } elseif ($isRbHealth) {
+                    $horas = (float) ($orden->horas_trabajadas ?? 1.0);
+                    if ($horas <= 0) $horas = 1.0;
+                    $valorOtraEmpresa = round($horas * 50.0, 2);
                 } else {
-                    $valorOtraEmpresa = round($subtotalTotal, 2);
+                    $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
+                    $horas = (float) ($orden->horas_trabajadas ?? 0);
+                    $valHora = (float) ($orden->valor_hora ?? 0);
+                    if ($valHora > 0 && $horas > 0) {
+                        $valorOtraEmpresa = round($cantTecnicos * $horas * $valHora, 2);
+                    } else {
+                        $tarifa = (float) ($orden->presupuesto ?? $orden->total ?? 0.0);
+                        $valorOtraEmpresa = $tarifa > 0 ? round($tarifa, 2) : 0.00;
+                    }
                 }
 
                 $garantiaTipo = ($orden->cas_id && $orden->cas_id > 0) ? 'Externa' : (str_contains(mb_strtolower((string)$orden->subtipo), 'garantia') ? 'Interna' : '-');

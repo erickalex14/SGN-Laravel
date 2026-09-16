@@ -81,23 +81,54 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width: 12%;">Nro. Orden</th>
-                    <th style="width: 12%;">Subtipo</th>
-                    <th style="width: 25%;">Técnico(s)</th>
-                    <th style="width: 15%;">Horas Trab.</th>
-                    <th style="width: 18%;">Tarifa Aplicada</th>
-                    <th style="width: 18%; text-align: right;">Total ($)</th>
+                    <th style="width: 10%;">Nro. Orden</th>
+                    <th style="width: 11%;">Subtipo</th>
+                    <th style="width: 25%;">Servicio Realizado / Técnico</th>
+                    <th style="width: 14%; text-align: right;">Base Fija ($)</th>
+                    <th style="width: 14%; text-align: right;">Mano de Obra (-50%)</th>
+                    <th style="width: 14%; text-align: right;">Repuestos (100%)</th>
+                    <th style="width: 12%; text-align: right;">Subtotal ($)</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($items as $item)
+                    @php
+                        $valFijo = (float)($item->valor_fijo ?? 0);
+                        $valMo = (float)($item->valor_mano_obra ?? 0);
+                        $valMoCobrado = round($valMo * 0.50, 2);
+                        $valRep = (float)($item->valor_repuestos ?? 0);
+                        $valTot = (float)($item->valor_total ?? 0);
+                        $titServ = $item->titulo_servicio ?: ($item->subtipo ?: 'Servicio Técnico');
+                    @endphp
                     <tr>
                         <td><strong>{{ $item->nro_orden }}</strong></td>
                         <td>{{ $item->subtipo ?: 'Servicios' }}</td>
-                        <td>{{ $item->tecnico_nombre ?: 'Sin técnico' }}</td>
-                        <td>{{ number_format((float)$item->horas_trabajadas, 1) }} hrs</td>
-                        <td>${{ number_format((float)$item->tarifa_aplicada, 2) }}</td>
-                        <td style="text-align: right; font-weight: 700; color: #0f172a;">${{ number_format((float)$item->valor_total, 2) }}</td>
+                        <td>
+                            <div style="font-weight: 700; color: #0f172a;">{{ $titServ }}</div>
+                            <div style="font-size: 9.5px; color: #64748b;">
+                                {{ $item->tecnico_nombre ?: 'Sin técnico asignado' }}
+                                @if(!empty($item->repuestos_detalle))
+                                    · <span style="color: #166534;"><i class="bi bi-cpu"></i> {{ $item->repuestos_detalle }}</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td style="text-align: right;">${{ number_format($valFijo > 0 ? $valFijo : (float)$item->tarifa_aplicada, 2) }}</td>
+                        <td style="text-align: right; color: #2563eb;">
+                            @if($valMo > 0)
+                                +${{ number_format($valMoCobrado, 2) }}
+                                <div style="font-size: 8.5px; color: #64748b;">(Orig: ${{ number_format($valMo, 2) }})</div>
+                            @else
+                                $0.00
+                            @endif
+                        </td>
+                        <td style="text-align: right; color: #166534;">
+                            @if($valRep > 0)
+                                +${{ number_format($valRep, 2) }}
+                            @else
+                                $0.00
+                            @endif
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #0f172a;">${{ number_format($valTot, 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>

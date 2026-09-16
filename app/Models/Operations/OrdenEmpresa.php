@@ -47,7 +47,10 @@ class OrdenEmpresa extends Model
         'nro_factura',
         'fecha_facturacion',
         'nro_autorizacion_factura',
-        'valor_facturado'
+        'valor_facturado',
+        'valor_mano_obra',
+        'titulo_servicio',
+        'valor_repuestos'
     ];
 
     public function tecnicos()

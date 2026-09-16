@@ -1004,6 +1004,75 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     }
 
     let horasTrabajadas = null;
+    let tituloServicio = null;
+    let valorManoObra = null;
+
+    const esReparada = nuevoEstado === 'Reparada' || (tipoOrden === 'empresa' && nuevoEstado === 'Finalizada');
+    if (esReparada) {
+        const row = _moFindRow(ordenId, tipoOrden);
+        const repuestosUsados = Number(row?.valor_repuestos || 0);
+        const servicioPrevio = row?.titulo_servicio || '';
+        const manoObraPrevia = (row?.valor_mano_obra !== null && row?.valor_mano_obra !== undefined && Number(row.valor_mano_obra) > 0) ? Number(row.valor_mano_obra) : '';
+
+        const { value: datosServicio } = await Swal.fire({
+            title: '<i class="bi bi-tools text-primary me-2"></i>Detalles del Servicio Realizado',
+            html: `
+                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:14px;">
+                    Para marcar la orden <b>${_h(nroOrden)}</b> como reparada, registre el servicio realizado y el valor de la mano de obra:
+                </div>
+                <div style="text-align:left; margin-bottom:12px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Título del Servicio Realizado <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" id="swal-titulo-servicio" class="swal2-input" style="width:100%; height:40px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:6px 10px;"
+                           placeholder="Ej: Mantenimiento general, cambio de pantalla..." value="${_h(servicioPrevio)}">
+                </div>
+                <div style="text-align:left; margin-bottom:12px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Valor Mano de Obra ($) <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="swal-valor-mano-obra" class="swal2-input" style="width:100%; height:40px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:6px 10px;"
+                           placeholder="0.00" value="${manoObraPrevia}">
+                </div>
+                ${repuestosUsados > 0 ? `
+                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 12px; margin-top:8px; text-align:left; font-size:12px; color:#166534;">
+                        <i class="bi bi-cpu me-1"></i><strong>Repuestos asignados en taller:</strong> $${repuestosUsados.toFixed(2)} (cobrado al 100%)
+                    </div>
+                ` : ''}
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar y Marcar Reparada',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
+            focusConfirm: false,
+            preConfirm: () => {
+                const tit = document.getElementById('swal-titulo-servicio')?.value.trim();
+                const moStr = document.getElementById('swal-valor-mano-obra')?.value.trim();
+                const mo = parseFloat(moStr);
+                if (!tit) {
+                    Swal.showValidationMessage('Debe ingresar el título del servicio realizado.');
+                    return false;
+                }
+                if (isNaN(mo) || mo < 0) {
+                    Swal.showValidationMessage('Debe ingresar un valor de mano de obra válido mayor o igual a 0.');
+                    return false;
+                }
+                return { titulo_servicio: tit, valor_mano_obra: mo };
+            }
+        });
+
+        if (!datosServicio) {
+            const rowCancel = _moFindRow(ordenId, tipoOrden);
+            if (rowCancel) _moRefrescarModal(rowCancel);
+            return;
+        }
+
+        tituloServicio = datosServicio.titulo_servicio;
+        valorManoObra = datosServicio.valor_mano_obra;
+    }
+
     if (tipoOrden === 'empresa' && nuevoEstado === 'Finalizada') {
         const row = _moFindRow(ordenId, tipoOrden);
         if (row && row.cliente && row.cliente.trim().toUpperCase() === 'RB-HEALTH ECUADOR CIA LTDA') {
@@ -1174,6 +1243,12 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     if (horasTrabajadas !== null) {
         fd.append('horas_trabajadas', horasTrabajadas);
     }
+    if (tituloServicio !== null) {
+        fd.append('titulo_servicio', tituloServicio);
+    }
+    if (valorManoObra !== null) {
+        fd.append('valor_mano_obra', valorManoObra);
+    }
     if (memoEntrega !== null) {
         fd.append('memo_entrega', memoEntrega);
     }
@@ -1191,6 +1266,19 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.estado_orden = nuevoEstado;
+            if (d.titulo_servicio !== undefined) {
+                row.titulo_servicio = d.titulo_servicio;
+            } else if (tituloServicio !== null) {
+                row.titulo_servicio = tituloServicio;
+            }
+            if (d.valor_mano_obra !== undefined) {
+                row.valor_mano_obra = d.valor_mano_obra;
+            } else if (valorManoObra !== null) {
+                row.valor_mano_obra = valorManoObra;
+            }
+            if (d.valor_repuestos !== undefined) {
+                row.valor_repuestos = d.valor_repuestos;
+            }
             if (memoEntrega !== null) {
                 row.memo_entrega = memoEntrega;
             }

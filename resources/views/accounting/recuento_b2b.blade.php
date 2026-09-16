@@ -358,7 +358,7 @@
         </div>
     </div>
 
-    <!-- Barra de Filtros (Empresa, Sucursal y Buscador General) -->
+    <!-- Barra de Filtros (Empresa, Sucursal, Fechas y Buscador General) -->
     <form method="GET" action="{{ route('recuentob2b.index') }}" class="filter-bar">
         <input type="hidden" name="tab" id="filter-input-tab" value="{{ $tabActiva }}">
         
@@ -377,6 +377,18 @@
                     @endif
                 @endforeach
             </select>
+        </div>
+
+        <div class="filter-group">
+            <i class="bi bi-calendar-event" style="color: #2563eb; font-size: 1.1rem;"></i>
+            <label style="color: #0f172a; font-weight: 700;">Desde:</label>
+            <input type="date" name="fecha_desde" class="filter-select" style="min-width: 135px;" value="{{ $fechaDesde ?? '' }}" onchange="this.form.submit()">
+        </div>
+
+        <div class="filter-group">
+            <i class="bi bi-calendar-event-fill" style="color: #2563eb; font-size: 1.1rem;"></i>
+            <label style="color: #0f172a; font-weight: 700;">Hasta:</label>
+            <input type="date" name="fecha_hasta" class="filter-select" style="min-width: 135px;" value="{{ $fechaHasta ?? '' }}" onchange="this.form.submit()">
         </div>
 
         @if($esAdminMaster)
@@ -400,7 +412,7 @@
             </div>
         @endif
 
-        <div class="filter-group" style="flex: 1; min-width: 320px;">
+        <div class="filter-group" style="flex: 1; min-width: 260px;">
             <i class="bi bi-search" style="color: #2563eb; font-size: 1.1rem;"></i>
             <input type="search" name="buscar" id="input-buscar-b2b" class="filter-select" 
                 style="width: 100%; border-color: #93c5fd; background: #ffffff;" 
@@ -409,7 +421,7 @@
                 onkeyup="filtrarTablaEnVivo()" onsearch="filtrarTablaEnVivo()">
         </div>
 
-        @if($empresaFiltro !== '' || $sucursalFiltro !== '' || ($buscarFiltro ?? '') !== '')
+        @if($empresaFiltro !== '' || $sucursalFiltro !== '' || ($buscarFiltro ?? '') !== '' || ($fechaDesde ?? '') !== '' || ($fechaHasta ?? '') !== '')
             <a href="{{ route('recuentob2b.index') }}" style="color: #ef4444; font-weight: 600; text-decoration: underline; font-size: 0.85rem;">
                 Limpiar filtros
             </a>
@@ -789,11 +801,51 @@
         actualizarSeleccion();
     }
 
-    function toggleDetails(ordId) {
-        const row = document.getElementById('details-row-' + ordId);
-        if (row) {
-            row.style.display = (row.style.display === 'table-row') ? 'none' : 'table-row';
-        }
+    function toggleDetails(ordId, tipoOrden) {
+        tipoOrden = tipoOrden || 'empresa';
+        const chk = document.querySelector(`.chk-orden[data-id="${ordId}"][data-tipo-orden="${tipoOrden}"]`) || document.querySelector(`.chk-orden[data-id="${ordId}"]`);
+        if (!chk) return;
+        const d = chk.dataset;
+        const valFijo = parseFloat(d.valorFijo || 0).toFixed(2);
+        const valMoOrig = parseFloat(d.valorManoObra || 0).toFixed(2);
+        const valMoCobrado = (parseFloat(d.valorManoObra || 0) * 0.5).toFixed(2);
+        const valRep = parseFloat(d.valorRepuestos || 0).toFixed(2);
+        const valTotal = parseFloat(d.total || 0).toFixed(2);
+        const titServ = d.tituloServicio || 'Servicio técnico estándar';
+        const repDet = d.repuestosDetalle ? `<div style="margin-top:6px; font-size:0.8rem; color:#166534; background:#f0fdf4; padding:6px 10px; border-radius:6px; border:1px solid #bbf7d0;"><strong>Repuestos:</strong> ${d.repuestosDetalle}</div>` : '';
+
+        Swal.fire({
+            title: `<div style="font-size:1.15rem; font-weight:800; color:#0f172a;"><i class="bi bi-info-circle text-primary me-2"></i>Orden: ${d.nro}</div>`,
+            html: `
+                <div style="text-align: left; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                        <div><strong>Empresa:</strong> ${d.empresa}</div>
+                        ${d.clienteNombre && d.clienteNombre !== d.empresa ? `<div><strong>Cliente Final:</strong> ${d.clienteNombre} (ID: ${d.identificacion || 'N/A'})</div>` : ''}
+                        <div><strong>Equipo:</strong> ${d.equipo || 'N/A'}</div>
+                        <div><strong>Técnico:</strong> ${d.tecnico || 'N/A'} (${d.horas || 1} hrs · ${d.sucursal || 'N/A'})</div>
+                        <div><strong>Subtipo:</strong> <span class="badge badge-servicio">${d.subtipo || 'Servicio'}</span> | <strong>Estado:</strong> ${d.estado || 'Finalizada'}</div>
+                    </div>
+                    <div style="background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 12px;">
+                        <div style="font-weight:700; color:#1e40af; margin-bottom:4px;">Desglose de Liquidación:</div>
+                        <div>· Base Fija: <strong>$${valFijo}</strong></div>
+                        <div>· Título de Servicio: <strong>${titServ}</strong></div>
+                        <div>· Mano de Obra: $${valMoOrig} (Cobro -50%: <strong>$${valMoCobrado}</strong>)</div>
+                        <div>· Repuestos Usados (100%): <strong>$${valRep}</strong></div>
+                        ${repDet}
+                        <div style="margin-top:8px; font-size:1.05rem; font-weight:800; color:#059669; border-top:1px dashed #93c5fd; padding-top:6px;">
+                            Total Calculado: $${valTotal}
+                        </div>
+                    </div>
+                    <div style="font-size:0.825rem; color:#64748b; background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0;">
+                        <div><strong>Falla / Descripción:</strong> ${d.descripcion || '-'}</div>
+                        <div style="margin-top:2px;"><strong>Memo Entrega:</strong> ${d.memo || '-'}</div>
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#2563eb',
+            width: 550
+        });
     }
 
     function toggleSelectAllGrupo(master, tipoGrupo) {
@@ -837,6 +889,11 @@
                     horas: parseFloat(data.horas) || 1.0,
                     tecnicos_count: parseInt(data.tecnicos) || 1,
                     tarifa: parseFloat(data.tarifa) || 0.0,
+                    valor_fijo: parseFloat(data.valorFijo) || 0.0,
+                    valor_mano_obra: parseFloat(data.valorManoObra) || 0.0,
+                    valor_repuestos: parseFloat(data.valorRepuestos) || 0.0,
+                    titulo_servicio: data.tituloServicio || '',
+                    repuestos_detalle: data.repuestosDetalle || '',
                     valor_total: itemTotal,
                     estado: data.estado || '',
                     facturacion: data.facturacion || '',
@@ -891,13 +948,13 @@
 
             const cols = [
                 'Nro. Orden', 'Tipo Origen', 'Empresa Facturada', 'Cliente Final (Usuario de la Orden)', 'C.I. / RUC',
-                'Teléfono', 'Correo', 'Subtipo', 'Equipo / Marca / Serie', 'Descripción / Falla',
+                'Teléfono', 'Correo', 'Subtipo', 'Equipo / Marca / Serie', 'Servicio Realizado / Falla',
                 'Técnico(s) Asignados', 'Cant. Técnicos', 'Sucursal Origen', 'F. Ingreso', 'F. Entrega',
-                'Horas Trab.', 'Tarifa Aplicada ($)', 'Valor Cobro Novicompu ($)', 'Valor RB-Health / Otras ($)',
+                'Horas Trab.', 'Tarifa Base ($)', 'M.O. (-50%) ($)', 'Repuestos (100%) ($)', 'Subtotal Orden ($)',
                 'Estado Orden', 'Estado Facturación', 'Memo / Observaciones'
             ];
             const nc = cols.length;
-            const widths = [15, 14, 28, 30, 15, 14, 22, 16, 26, 30, 24, 12, 16, 14, 14, 12, 18, 22, 22, 16, 18, 30];
+            const widths = [15, 14, 28, 30, 15, 14, 22, 16, 26, 30, 24, 12, 16, 14, 14, 12, 16, 16, 16, 18, 16, 18, 30];
 
             const ws = wb.addWorksheet('Recuento B2B', {
                 views: [{ showGridLines: true }],
@@ -957,9 +1014,12 @@
 
             // Filas de Datos
             seleccionadas.forEach((r, idx) => {
-                const isRB = (r.empresa || '').toUpperCase().includes('RB');
-                const valNovicompu = !isRB ? r.valor_total : 0.00;
-                const valOtra = isRB ? r.valor_total : 0.00;
+                const valFijo = parseFloat(r.valor_fijo) || parseFloat(r.tarifa) || 0;
+                const valMoOrig = parseFloat(r.valor_mano_obra) || 0;
+                const valMoCob = Math.round((valMoOrig * 0.50) * 100) / 100;
+                const valRep = parseFloat(r.valor_repuestos) || 0;
+                const valTot = parseFloat(r.valor_total) || 0;
+                const desc = r.titulo_servicio || r.descripcion || '-';
 
                 const vals = [
                     r.nro_orden,
@@ -971,16 +1031,17 @@
                     r.cliente_correo || 'N/A',
                     r.subtipo || 'Servicios',
                     r.equipo || 'N/A',
-                    r.descripcion || '-',
+                    desc,
                     r.tecnico || 'N/A',
                     r.tecnicos_count || 1,
                     r.sucursal || 'N/A',
                     r.fecha_ingreso || '-',
                     r.fecha_entrega || '-',
                     r.horas || 1.0,
-                    r.tarifa || 0.0,
-                    valNovicompu,
-                    valOtra,
+                    valFijo,
+                    valMoCob,
+                    valRep,
+                    valTot,
                     r.estado || 'Finalizada',
                     r.facturacion || 'Pendiente',
                     r.memo || '-'
@@ -1003,13 +1064,13 @@
                     } else if (ci === 15) {
                         cell.numFormat = '0.0';
                         cell.alignment = al('right', 'middle');
-                    } else if (ci === 16 || ci === 17 || ci === 18) {
+                    } else if (ci === 16 || ci === 17 || ci === 18 || ci === 19) {
                         cell.numFormat = '$#,##0.00';
                         cell.alignment = al('right', 'middle');
-                        if ((ci === 17 && valNovicompu > 0) || (ci === 18 && valOtra > 0)) {
+                        if (ci === 19) {
                             cell.font = fn(true, 9, C.verde);
                         }
-                    } else if (ci === 19) {
+                    } else if (ci === 20) {
                         cell.font = fn(true, 8, C.verdeO);
                         cell.alignment = al('center', 'middle');
                     }
@@ -1229,6 +1290,180 @@
             }
         })
         .catch(err => Swal.fire('Error', 'Fallo de conexión al procesar.', 'error'));
+    }
+
+    function _h(str) {
+        if (!str && str !== 0) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    async function abrirModalEditarManoObra(ordenId, tipoOrden, nroOrden, moActual, servicioActual, repuestosVal, baseFija) {
+        repuestosVal = parseFloat(repuestosVal) || 0.0;
+        baseFija = parseFloat(baseFija) || 14.25;
+        moActual = parseFloat(moActual) || 0.0;
+        servicioActual = servicioActual || '';
+
+        const calcPreview = (valMo) => {
+            const moCobrada = Math.round((valMo * 0.50) * 100) / 100;
+            const subtotal = Math.round((baseFija + moCobrada + repuestosVal) * 100) / 100;
+            return { moCobrada, subtotal };
+        };
+
+        const initCalc = calcPreview(moActual);
+
+        const { value: formValues } = await Swal.fire({
+            title: `<i class="bi bi-tools text-primary me-2"></i>Mano de Obra - Orden #${_h(nroOrden)}`,
+            html: `
+                <div style="text-align: left; font-size: 0.85rem; color: #475569; margin-bottom: 12px;">
+                    Modifique el servicio realizado y el valor de mano de obra. Para Novisolutions, la mano de obra se aplica con un <strong>-50% de descuento</strong>.
+                </div>
+
+                <div style="text-align: left; margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: #0f172a; display: block; margin-bottom: 4px;">
+                        Título del Servicio / Trabajo Realizado <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" id="swal-mo-titulo" class="swal2-input" 
+                           style="width: 100%; height: 38px; margin: 0; box-sizing: border-box; font-size: 0.875rem;" 
+                           placeholder="Ej: Cambio de pantalla, mantenimiento preventivo..." 
+                           value="${_h(servicioActual)}">
+                </div>
+
+                <div style="text-align: left; margin-bottom: 12px;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: #0f172a; display: block; margin-bottom: 4px;">
+                        Valor Total Mano de Obra ($) <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="swal-mo-valor" class="swal2-input" 
+                           style="width: 100%; height: 38px; margin: 0; box-sizing: border-box; font-size: 0.875rem; font-weight: 700; color: #1e3a8a;" 
+                           placeholder="0.00" value="${moActual > 0 ? moActual.toFixed(2) : ''}"
+                           oninput="
+                               const v = parseFloat(this.value) || 0;
+                               const cMo = Math.round((v * 0.50) * 100) / 100;
+                               const sTot = Math.round((${baseFija} + cMo + ${repuestosVal}) * 100) / 100;
+                               document.getElementById('prev-mo-cobrada').innerText = '$' + cMo.toFixed(2);
+                               document.getElementById('prev-subtotal-nuevo').innerText = '$' + sTot.toFixed(2);
+                           ">
+                </div>
+
+                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; text-align: left; font-size: 0.825rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Tarifa Base Fija ($28.50 - 50%):</span>
+                        <strong>$${baseFija.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #2563eb;">
+                        <span>(+) Mano de Obra Cobrada (-50%):</span>
+                        <strong id="prev-mo-cobrada">$${initCalc.moCobrada.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #166534;">
+                        <span>(+) Repuestos Usados (100%):</span>
+                        <strong>$${repuestosVal.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1.5px solid #cbd5e1; padding-top: 6px; font-size: 0.95rem; font-weight: 800; color: #059669;">
+                        <span>Nuevo Subtotal Orden:</span>
+                        <span id="prev-subtotal-nuevo">$${initCalc.subtotal.toFixed(2)}</span>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-check2-circle me-1"></i>Guardar Mano de Obra',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            focusConfirm: false,
+            preConfirm: () => {
+                const tit = document.getElementById('swal-mo-titulo').value.trim();
+                const moStr = document.getElementById('swal-mo-valor').value.trim();
+                const moVal = parseFloat(moStr);
+
+                if (!tit) {
+                    Swal.showValidationMessage('Debe ingresar un título o descripción del servicio.');
+                    return false;
+                }
+                if (isNaN(moVal) || moVal < 0) {
+                    Swal.showValidationMessage('Debe ingresar un valor de mano de obra válido mayor o igual a 0.');
+                    return false;
+                }
+
+                return { titulo_servicio: tit, valor_mano_obra: moVal };
+            }
+        });
+
+        if (!formValues) return;
+
+        Swal.fire({
+            title: 'Actualizando Mano de Obra...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const resp = await fetch("{{ route('recuentob2b.actualizar_mano_obra') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    orden_id: ordenId,
+                    tipo_orden: tipoOrden,
+                    valor_mano_obra: formValues.valor_mano_obra,
+                    titulo_servicio: formValues.titulo_servicio
+                })
+            });
+
+            const res = await resp.json();
+            if (!res.ok) {
+                Swal.fire('Error', res.error || 'No se pudo actualizar la mano de obra.', 'error');
+                return;
+            }
+
+            // Actualizar la fila en el DOM dinámicamente sin necesidad de recargar la página entera
+            const chk = document.querySelector(`.chk-orden[data-id="${ordenId}"][data-tipo-orden="${tipoOrden}"]`);
+            if (chk) {
+                chk.dataset.valorManoObra = res.valor_mano_obra;
+                chk.dataset.tituloServicio = res.titulo_servicio;
+                chk.dataset.total = res.nuevo_total;
+            }
+
+            const dispMo = document.getElementById(`display-mo-${tipoOrden}-${ordenId}`);
+            if (dispMo) {
+                if (res.valor_mano_obra > 0) {
+                    dispMo.innerHTML = `<span style="font-weight: 700; color: #2563eb;">+$${res.valor_mano_obra_cobrado.toFixed(2)}</span>
+                                        <div style="font-size: 0.725rem; color: #64748b;">Orig: $${res.valor_mano_obra.toFixed(2)} (-50%)</div>`;
+                } else {
+                    dispMo.innerHTML = `<span style="color: #94a3b8; font-style: italic;">$0.00</span>`;
+                }
+            }
+
+            const dispTit = document.getElementById(`display-titulo-${tipoOrden}-${ordenId}`);
+            if (dispTit) {
+                dispTit.innerText = res.titulo_servicio || 'Sin título';
+                dispTit.title = res.titulo_servicio || '';
+            }
+
+            const dispTot = document.getElementById(`display-total-${tipoOrden}-${ordenId}`);
+            if (dispTot) {
+                dispTot.innerText = '$' + res.nuevo_total.toFixed(2);
+            }
+
+            // Si estaba seleccionada en el checkbox, actualizar totales
+            actualizarSeleccion();
+
+            Swal.fire({
+                title: 'Mano de Obra Guardada',
+                text: `Orden #${nroOrden} actualizada con éxito. Nuevo subtotal: $${res.nuevo_total.toFixed(2)}`,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+        } catch (e) {
+            Swal.fire('Error de Conexión', e.message || 'No se pudo conectar con el servidor.', 'error');
+        }
     }
 </script>
 @endsection

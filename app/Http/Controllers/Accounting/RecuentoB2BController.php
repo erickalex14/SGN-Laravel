@@ -36,9 +36,14 @@ class RecuentoB2BController extends Controller
             abort(403, 'Acceso denegado. No tienes permisos para acceder a Recuento B2B.');
         }
 
+        ini_set('memory_limit', '512M');
+        set_time_limit(120);
+
         $empresaFiltro = $request->query('empresa', '');
         $sucursalFiltro = $request->query('sucursal_id', '');
         $buscarFiltro = trim((string) $request->query('buscar', ''));
+        $fechaDesde = $request->query('fecha_desde', '');
+        $fechaHasta = $request->query('fecha_hasta', '');
 
         // Determinar sucursales permitidas según rol
         $sucursalesUserIds = session('sucursales_ids', []);
@@ -47,12 +52,19 @@ class RecuentoB2BController extends Controller
         }
 
         // --- 1. Obtener Órdenes de Empresa ---
-        $query = OrdenEmpresa::with(['empresa', 'equipo', 'tecnicos', 'ingresadoPor', 'sucursal'])
+        $query = OrdenEmpresa::with(['empresa', 'equipo', 'tecnicos', 'ingresadoPor', 'sucursal', 'ordenRepuestos.repuesto'])
             ->whereIn('estado', ['Finalizada', 'Entregada'])
             ->where(function($q) {
                 $q->whereNull('estado_facturacion')
                   ->orWhere('estado_facturacion', 'Pendiente');
             });
+
+        if ($fechaDesde !== '') {
+            $query->whereDate('fecha_ingreso', '>=', $fechaDesde);
+        }
+        if ($fechaHasta !== '') {
+            $query->whereDate('fecha_ingreso', '<=', $fechaHasta);
+        }
 
         if ($empresaFiltro !== '') {
             $query->whereHas('empresa', function($q) use ($empresaFiltro) {
@@ -124,26 +136,51 @@ class RecuentoB2BController extends Controller
             $cantidadTecnicos = $ord->tecnicos ? $ord->tecnicos->count() : 1;
             if ($cantidadTecnicos <= 0) $cantidadTecnicos = 1;
 
+            $isNovisolutions = str_contains($empresaNombre, 'NOVI') || str_contains($empresaNombre, 'SOLUT') || (int)($ord->empresa_id ?? 0) === 1;
+
+            // Extraer y calcular repuestos usados (cobrados al 100%)
+            $repuestosDetalleArr = [];
+            $totalRepuestosUsados = 0.0;
+            if ($ord->ordenRepuestos) {
+                foreach ($ord->ordenRepuestos as $orp) {
+                    $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
+                    $repCant = (int) ($orp->cantidad ?? 1);
+                    $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
+                    $repSubtotal = round($repCant * $repCosto, 2);
+                    $totalRepuestosUsados += $repSubtotal;
+                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                }
+            }
+            if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
+                $totalRepuestosUsados = (float)$ord->valor_repuestos;
+            }
+
+            $valorManoObra = (float) ($ord->valor_mano_obra ?? 0.0);
+            $tituloServicio = trim((string) ($ord->titulo_servicio ?? ''));
+
             $tarifa = 0.0;
+            $valorFijo = 0.0;
+            $valorManoObraCobrado = 0.0;
             $valorTotal = 0.0;
 
             if (str_contains($empresaNombre, 'RB') || str_contains($empresaNombre, 'HEALTH')) {
                 $tarifa = 50.0;
                 $valorTotal = $horas * $tarifa;
-            } elseif (str_contains($empresaNombre, 'NOVI') || str_contains($empresaNombre, 'SOLUT')) {
-                if ($subtipoNorm === 'Servicios') {
-                    $tarifa = 25.0;
-                    $valorTotal = $horas * $tarifa * $cantidadTecnicos;
-                } elseif ($subtipoNorm === 'Garantía') {
-                    $tarifa = (float) ($ord->valor_garantia ?? 19.32);
-                    $valorTotal = $tarifa > 0 ? $tarifa : 19.32;
-                } else {
-                    $tarifa = (float) ($ord->presupuesto ?? $ord->total ?? 35.0);
-                    $valorTotal = $tarifa > 0 ? $tarifa : 35.0;
-                }
+                $valorFijo = $valorTotal;
+            } elseif ($isNovisolutions) {
+                // REGLA OFICIAL NOVISOLUTIONS:
+                // Tarifa Base Fija: $28.50 - 50% = $14.25
+                // Mano de Obra: -50% (valor_mano_obra * 0.50)
+                // Repuestos Usados: 100% cobrado
+                // Subtotal Orden = 14.25 + (valor_mano_obra * 0.50) + repuestos_usados
+                $valorFijo = 14.25;
+                $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
+                $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+                $tarifa = $valorFijo;
             } else {
                 $tarifa = (float) ($ord->presupuesto ?? $ord->total ?? 50.0);
                 $valorTotal = $tarifa > 0 ? $tarifa : 50.0;
+                $valorFijo = $valorTotal;
             }
 
             $ord->tipo_orden_origen = 'empresa';
@@ -151,6 +188,13 @@ class RecuentoB2BController extends Controller
             $ord->tarifa_calculada = $tarifa;
             $ord->horas_calculadas = $horas;
             $ord->tecnicos_count = $cantidadTecnicos;
+            $ord->is_novisolutions = $isNovisolutions;
+            $ord->valor_fijo_calculado = $valorFijo;
+            $ord->valor_mano_obra_original = $valorManoObra;
+            $ord->valor_mano_obra_cobrado = $valorManoObraCobrado;
+            $ord->valor_repuestos_calculado = round($totalRepuestosUsados, 2);
+            $ord->repuestos_detalle_str = implode(', ', $repuestosDetalleArr);
+            $ord->titulo_servicio_mostrado = $tituloServicio;
             $ord->valor_total_calculado = round($valorTotal, 2);
 
             return $ord;
@@ -164,7 +208,7 @@ class RecuentoB2BController extends Controller
         $ordenesGarantiaProcesadas = collect();
 
         if ($empNovisolutions && ($empresaFiltro === '' || str_contains(strtoupper($empresaFiltro), 'NOVI') || str_contains(strtoupper($empresaFiltro), 'SOLUT'))) {
-            $queryGarantia = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'preciosOrden'])
+            $queryGarantia = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'preciosOrden', 'ordenRepuestos.repuesto'])
                 ->whereIn('estado_orden', ['Finalizada', 'Entregada'])
                 ->where(function($q) {
                     $q->whereNull('estado_facturacion')
@@ -175,6 +219,13 @@ class RecuentoB2BController extends Controller
                       ->orWhereNotNull('estado_garantia')->where('estado_garantia', '!=', '')
                       ->orWhere('motivo_ingreso', 'LIKE', '%garant%');
                 });
+
+            if ($fechaDesde !== '') {
+                $queryGarantia->whereDate('fecha_de_ingreso', '>=', $fechaDesde);
+            }
+            if ($fechaHasta !== '') {
+                $queryGarantia->whereDate('fecha_de_ingreso', '<=', $fechaHasta);
+            }
 
             if ($buscarFiltro !== '') {
                 $numDigits = preg_replace('/\D/', '', $buscarFiltro);
@@ -198,46 +249,76 @@ class RecuentoB2BController extends Controller
                           $t->where('nombre_tecnico', 'LIKE', '%' . $buscarFiltro . '%');
                       });
 
-                    if ($numUnpadded !== '') {
-                        $q->orWhere('nro_orden', 'LIKE', '%' . $numUnpadded . '%')
-                          ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%06d', (int)$numUnpadded) . '%')
-                          ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%05d', (int)$numUnpadded) . '%')
-                          ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%04d', (int)$numUnpadded) . '%');
-                    }
-                });
-            }
-
-            if ($esAdminMaster) {
-                if ($sucursalFiltro !== '') {
-                    $queryGarantia->where('sucursal_id', (int) $sucursalFiltro);
+                if ($numUnpadded !== '') {
+                    $q->orWhere('nro_orden', 'LIKE', '%' . $numUnpadded . '%')
+                      ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%06d', (int)$numUnpadded) . '%')
+                      ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%05d', (int)$numUnpadded) . '%')
+                      ->orWhere('nro_orden', 'LIKE', '%' . sprintf('%04d', (int)$numUnpadded) . '%');
                 }
-            } else {
-                if (!empty($sucursalesUserIds)) {
-                    $queryGarantia->whereIn('sucursal_id', $sucursalesUserIds);
-                }
-            }
-
-            $ordenesGarantia = $queryGarantia->orderByDesc('id')->get();
-
-            $ordenesGarantiaProcesadas = $ordenesGarantia->map(function ($ord) use ($empNovisolutions) {
-                // Fórmulas oficiales del reporte: ($subtotalAdicionales + 28.00) * 1.15 * 0.60
-                $subtotalAdicionales = $ord->preciosOrden ? (float) $ord->preciosOrden->sum('precio') : 0.00;
-                $subtotalTotal = $subtotalAdicionales + 28.00;
-                $valorCobroGarantia = round(($subtotalTotal * 1.15) * 0.60, 2); // Resulta $19.32 por defecto
-
-                $ord->empresa = $empNovisolutions;
-                $ord->tipo_orden_origen = 'personal';
-                $ord->subtipo = 'Garantía';
-                $ord->subtipo_normalizado = 'Garantía';
-                $ord->horas_calculadas = 1.0;
-                $ord->tecnicos_count = 1;
-                $ord->tarifa_calculada = $valorCobroGarantia;
-                $ord->valor_total_calculado = $valorCobroGarantia;
-                $ord->descripcion = $ord->motivo_ingreso ?? 'Garantía de producto Novicompu / Novisolutions';
-
-                return $ord;
             });
         }
+
+        if ($esAdminMaster) {
+            if ($sucursalFiltro !== '') {
+                $queryGarantia->where('sucursal_id', (int) $sucursalFiltro);
+            }
+        } else {
+            if (!empty($sucursalesUserIds)) {
+                $queryGarantia->whereIn('sucursal_id', $sucursalesUserIds);
+            }
+        }
+
+        $ordenesGarantia = $queryGarantia->orderByDesc('id')->get();
+
+        $ordenesGarantiaProcesadas = $ordenesGarantia->map(function ($ord) use ($empNovisolutions) {
+            // Extraer repuestos usados
+            $repuestosDetalleArr = [];
+            $totalRepuestosUsados = 0.0;
+            if ($ord->ordenRepuestos) {
+                foreach ($ord->ordenRepuestos as $orp) {
+                    $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
+                    $repCant = (int) ($orp->cantidad ?? 1);
+                    $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
+                    $repSubtotal = round($repCant * $repCosto, 2);
+                    $totalRepuestosUsados += $repSubtotal;
+                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                }
+            }
+            if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
+                $totalRepuestosUsados = (float)$ord->valor_repuestos;
+            }
+
+            $valorManoObra = (float) ($ord->valor_mano_obra ?? 0.0);
+            $tituloServicio = trim((string) ($ord->titulo_servicio ?? ''));
+
+            // Regla Novisolutions para Garantías / Personales:
+            // Base Fija: $28.50 - 50% = $14.25
+            // Mano de obra: - 50%
+            // Repuestos: 100%
+            $valorFijo = 14.25;
+            $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
+            $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+
+            $ord->empresa = $empNovisolutions;
+            $ord->tipo_orden_origen = 'personal';
+            $ord->subtipo = 'Garantía';
+            $ord->subtipo_normalizado = 'Garantía';
+            $ord->horas_calculadas = 1.0;
+            $ord->tecnicos_count = 1;
+            $ord->is_novisolutions = true;
+            $ord->tarifa_calculada = $valorFijo;
+            $ord->valor_fijo_calculado = $valorFijo;
+            $ord->valor_mano_obra_original = $valorManoObra;
+            $ord->valor_mano_obra_cobrado = $valorManoObraCobrado;
+            $ord->valor_repuestos_calculado = round($totalRepuestosUsados, 2);
+            $ord->repuestos_detalle_str = implode(', ', $repuestosDetalleArr);
+            $ord->titulo_servicio_mostrado = $tituloServicio;
+            $ord->valor_total_calculado = $valorTotal;
+            $ord->descripcion = $ord->motivo_ingreso ?? 'Garantía de producto Novicompu / Novisolutions';
+
+            return $ord;
+        });
+    }
 
         // Combinar ambas listas
         $ordenesProcesadas = $ordenesEmpresaProcesadas->concat($ordenesGarantiaProcesadas);
@@ -270,6 +351,8 @@ class RecuentoB2BController extends Controller
             'empresaFiltro' => $empresaFiltro,
             'sucursalFiltro' => $sucursalFiltro,
             'buscarFiltro' => $buscarFiltro,
+            'fechaDesde' => $fechaDesde,
+            'fechaHasta' => $fechaHasta,
             'tabActiva' => $tabActiva,
             'ordenes' => $ordenesProcesadas,
             'ordenesPorEmpresa' => $ordenesPorEmpresa,
@@ -281,6 +364,7 @@ class RecuentoB2BController extends Controller
 
     public function procesarCobro(Request $request)
     {
+        ini_set('memory_limit', '512M');
         $usuario = auth()->user();
         if (!$usuario) {
             return response()->json(['ok' => false, 'error' => 'No autenticado.']);
@@ -373,6 +457,11 @@ class RecuentoB2BController extends Controller
                 'cantidad_tecnicos' => (int) ($it['tecnicos_count'] ?? 1),
                 'horas_trabajadas' => (float) ($it['horas'] ?? 1.0),
                 'tarifa_aplicada' => (float) ($it['tarifa'] ?? 0.0),
+                'valor_fijo' => (float) ($it['valor_fijo'] ?? 0.0),
+                'valor_mano_obra' => (float) ($it['valor_mano_obra'] ?? 0.0),
+                'valor_repuestos' => (float) ($it['valor_repuestos'] ?? 0.0),
+                'titulo_servicio' => (string) ($it['titulo_servicio'] ?? ''),
+                'repuestos_detalle' => (string) ($it['repuestos_detalle'] ?? ''),
                 'valor_total' => (float) ($it['valor_total'] ?? 0.0),
                 'created_at' => now(),
             ]);
@@ -388,6 +477,114 @@ class RecuentoB2BController extends Controller
             'ok' => true, 
             'mensaje' => 'Recuento B2B registrado exitosamente.',
             'lote_id' => $loteId
+        ]);
+    }
+
+    /**
+     * Permite a Contabilidad/Admin registrar o modificar la Mano de Obra y Título de Servicio
+     * directamente desde el panel de Recuento B2B para órdenes finalizadas o cerradas.
+     */
+    public function actualizarManoObraOrden(Request $request)
+    {
+        $usuario = auth()->user();
+        if (!$usuario) {
+            return response()->json(['ok' => false, 'error' => 'No autenticado.'], 401);
+        }
+
+        $request->validate([
+            'orden_id' => 'required|integer',
+            'tipo_orden' => 'required|string|in:personal,empresa',
+            'valor_mano_obra' => 'required|numeric|min:0',
+            'titulo_servicio' => 'nullable|string|max:255'
+        ]);
+
+        $ordenId = (int) $request->input('orden_id');
+        $tipoOrden = strtolower(trim($request->input('tipo_orden')));
+        $valorManoObra = round((float) $request->input('valor_mano_obra'), 2);
+        $tituloServicio = trim((string) $request->input('titulo_servicio'));
+
+        $totalRepuestosUsados = 0.0;
+        $repuestosDetalleArr = [];
+
+        if ($tipoOrden === 'personal') {
+            $orden = Orden::with(['ordenRepuestos.repuesto'])->find($ordenId);
+            if (!$orden) {
+                return response()->json(['ok' => false, 'error' => 'Orden personal no encontrada.'], 404);
+            }
+
+            $orden->valor_mano_obra = $valorManoObra;
+            if ($tituloServicio !== '') {
+                $orden->titulo_servicio = $tituloServicio;
+            }
+
+            if ($orden->ordenRepuestos) {
+                foreach ($orden->ordenRepuestos as $orp) {
+                    $c = (float) ($orp->repuesto->costo ?? 0.0);
+                    $q = (int) ($orp->cantidad ?? 1);
+                    $totalRepuestosUsados += ($c * $q);
+                    $repuestosDetalleArr[] = "{$q}x " . ($orp->repuesto->nombre ?? 'Repuesto') . " ($" . number_format($c, 2) . ")";
+                }
+            }
+            if ($totalRepuestosUsados <= 0 && (float)($orden->valor_repuestos ?? 0) > 0) {
+                $totalRepuestosUsados = (float)$orden->valor_repuestos;
+            }
+            $orden->valor_repuestos = round($totalRepuestosUsados, 2);
+            $orden->save();
+
+            // Sincronizar con preciosorden si aplica
+            if ($valorManoObra > 0) {
+                \App\Models\Operations\PrecioOrden::updateOrCreate(
+                    [
+                        'orden_id' => $orden->id,
+                        'servicio' => $tituloServicio ?: 'Mano de Obra Técnica'
+                    ],
+                    [
+                        'precio' => $valorManoObra,
+                        'tipo' => 'adicional'
+                    ]
+                );
+            }
+        } else {
+            $orden = OrdenEmpresa::with(['empresa', 'ordenRepuestos.repuesto'])->find($ordenId);
+            if (!$orden) {
+                return response()->json(['ok' => false, 'error' => 'Orden de empresa no encontrada.'], 404);
+            }
+
+            $orden->valor_mano_obra = $valorManoObra;
+            if ($tituloServicio !== '') {
+                $orden->titulo_servicio = $tituloServicio;
+            }
+
+            if ($orden->ordenRepuestos) {
+                foreach ($orden->ordenRepuestos as $orp) {
+                    $c = (float) ($orp->repuesto->costo ?? 0.0);
+                    $q = (int) ($orp->cantidad ?? 1);
+                    $totalRepuestosUsados += ($c * $q);
+                    $repuestosDetalleArr[] = "{$q}x " . ($orp->repuesto->nombre ?? 'Repuesto') . " ($" . number_format($c, 2) . ")";
+                }
+            }
+            if ($totalRepuestosUsados <= 0 && (float)($orden->valor_repuestos ?? 0) > 0) {
+                $totalRepuestosUsados = (float)$orden->valor_repuestos;
+            }
+            $orden->valor_repuestos = round($totalRepuestosUsados, 2);
+            $orden->save();
+        }
+
+        // Recalcular subtotal con la fórmula oficial Novisolutions
+        $valorFijo = 14.25;
+        $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
+        $nuevoTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+
+        return response()->json([
+            'ok' => true,
+            'mensaje' => 'Mano de obra actualizada correctamente.',
+            'valor_mano_obra' => $valorManoObra,
+            'valor_mano_obra_cobrado' => $valorManoObraCobrado,
+            'valor_fijo' => $valorFijo,
+            'valor_repuestos' => round($totalRepuestosUsados, 2),
+            'repuestos_detalle' => implode(', ', $repuestosDetalleArr),
+            'titulo_servicio' => $tituloServicio ?: ($orden->titulo_servicio ?? 'Servicio Técnico'),
+            'nuevo_total' => $nuevoTotal
         ]);
     }
 
@@ -409,12 +606,30 @@ class RecuentoB2BController extends Controller
                 $ordId = (int) $it['id'];
 
                 if ($tipo === 'personal') {
-                    $ord = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'preciosOrden'])->find($ordId);
+                    $ord = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'preciosOrden', 'ordenRepuestos.repuesto'])->find($ordId);
                     if ($ord) {
                         $empNovisolutions = Empresa::where('nombre', 'LIKE', '%NOVI%')->orWhere('nombre', 'LIKE', '%SOLUT%')->first();
-                        $subtotalAdicionales = $ord->preciosOrden ? (float) $ord->preciosOrden->sum('precio') : 0.00;
-                        $subtotalTotal = $subtotalAdicionales + 28.00;
-                        $valorGarantia = round(($subtotalTotal * 1.15) * 0.60, 2);
+
+                        $repuestosDetalleArr = [];
+                        $totalRepuestosUsados = 0.0;
+                        if ($ord->ordenRepuestos) {
+                            foreach ($ord->ordenRepuestos as $orp) {
+                                $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
+                                $repCant = (int) ($orp->cantidad ?? 1);
+                                $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
+                                $repSubtotal = round($repCant * $repCosto, 2);
+                                $totalRepuestosUsados += $repSubtotal;
+                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                            }
+                        }
+                        if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
+                            $totalRepuestosUsados = (float)$ord->valor_repuestos;
+                        }
+
+                        $valorManoObra = (float) ($ord->valor_mano_obra ?? 0.0);
+                        $valorFijo = 14.25;
+                        $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
+                        $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
 
                         $ord->empresa_nombre = $empNovisolutions->nombre ?? 'NOVISOLUTONS CIA. LTDA.';
                         $ord->tipo_orden_origen = 'personal';
@@ -426,13 +641,17 @@ class RecuentoB2BController extends Controller
                         $ord->equipo_info = trim(($ord->equipo->tipo ?? '') . ' ' . ($ord->equipo->marca ?? '') . ' ' . ($ord->equipo->modelo ?? '')) . ' (S/N: ' . ($ord->equipo->serie ?? 'N/A') . ')';
                         $ord->tecnico_nombre = $ord->tecnico->nombre_tecnico ?? 'N/A';
                         $ord->sucursal_nombre = $ord->sucursal->ciudad ?? 'N/A';
-                        $ord->tarifa_calculada = $valorGarantia;
-                        $ord->valor_total_calculado = $valorGarantia;
-                        $ord->descripcion_servicio = $ord->motivo_ingreso ?? 'Garantía Novicompu';
+                        $ord->tarifa_calculada = $valorFijo;
+                        $ord->valor_fijo = $valorFijo;
+                        $ord->valor_mano_obra_cobrado = $valorManoObraCobrado;
+                        $ord->valor_repuestos = round($totalRepuestosUsados, 2);
+                        $ord->repuestos_detalle_str = implode(', ', $repuestosDetalleArr);
+                        $ord->valor_total_calculado = $valorTotal;
+                        $ord->descripcion_servicio = $ord->titulo_servicio ?: ($ord->motivo_ingreso ?? 'Garantía Novicompu');
                         $ordenesProcesadas->push($ord);
                     }
                 } else {
-                    $ord = OrdenEmpresa::with(['empresa', 'equipo', 'tecnicos', 'ingresadoPor', 'sucursal'])->find($ordId);
+                    $ord = OrdenEmpresa::with(['empresa', 'equipo', 'tecnicos', 'ingresadoPor', 'sucursal', 'ordenRepuestos.repuesto'])->find($ordId);
                     if ($ord) {
                         $empNombre = strtoupper(trim($ord->empresa->nombre ?? ''));
                         $subtipoRaw = trim($ord->subtipo ?? 'Servicios');
@@ -446,14 +665,41 @@ class RecuentoB2BController extends Controller
                         if ($horas <= 0) $horas = 1.0;
                         $cantidadTecnicos = $ord->tecnicos ? $ord->tecnicos->count() : 1;
 
+                        $isNovisolutions = str_contains($empNombre, 'NOVI') || str_contains($empNombre, 'SOLUT') || (int)($ord->empresa_id ?? 0) === 1;
+
+                        $repuestosDetalleArr = [];
+                        $totalRepuestosUsados = 0.0;
+                        if ($ord->ordenRepuestos) {
+                            foreach ($ord->ordenRepuestos as $orp) {
+                                $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
+                                $repCant = (int) ($orp->cantidad ?? 1);
+                                $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
+                                $repSubtotal = round($repCant * $repCosto, 2);
+                                $totalRepuestosUsados += $repSubtotal;
+                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                            }
+                        }
+                        if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
+                            $totalRepuestosUsados = (float)$ord->valor_repuestos;
+                        }
+
+                        $valorManoObra = (float) ($ord->valor_mano_obra ?? 0.0);
+
                         if (str_contains($empNombre, 'RB') || str_contains($empNombre, 'HEALTH')) {
-                            $tarifa = 50.0; $valorTotal = $horas * $tarifa;
-                        } elseif (str_contains($empNombre, 'NOVI') || str_contains($empNombre, 'SOLUT')) {
-                            if ($subtipoNorm === 'Servicios') { $tarifa = 25.0; $valorTotal = $horas * $tarifa * $cantidadTecnicos; }
-                            elseif ($subtipoNorm === 'Garantía') { $tarifa = 19.32; $valorTotal = 19.32; }
-                            else { $tarifa = (float) ($ord->presupuesto ?? 35.0); $valorTotal = $tarifa > 0 ? $tarifa : 35.0; }
+                            $tarifa = 50.0;
+                            $valorTotal = $horas * $tarifa;
+                            $valorFijo = $valorTotal;
+                            $valorManoObraCobrado = 0.0;
+                        } elseif ($isNovisolutions) {
+                            $valorFijo = 14.25;
+                            $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
+                            $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+                            $tarifa = $valorFijo;
                         } else {
-                            $tarifa = (float) ($ord->presupuesto ?? 50.0); $valorTotal = $tarifa > 0 ? $tarifa : 50.0;
+                            $tarifa = (float) ($ord->presupuesto ?? 50.0);
+                            $valorTotal = $tarifa > 0 ? $tarifa : 50.0;
+                            $valorFijo = $valorTotal;
+                            $valorManoObraCobrado = 0.0;
                         }
 
                         $ord->empresa_nombre = $ord->empresa->nombre ?? 'N/A';
@@ -467,8 +713,12 @@ class RecuentoB2BController extends Controller
                         $ord->tecnico_nombre = implode(', ', $ord->tecnicos->pluck('nombre_tecnico')->toArray());
                         $ord->sucursal_nombre = $ord->sucursal->ciudad ?? 'N/A';
                         $ord->tarifa_calculada = $tarifa;
+                        $ord->valor_fijo = $valorFijo;
+                        $ord->valor_mano_obra_cobrado = $valorManoObraCobrado;
+                        $ord->valor_repuestos = round($totalRepuestosUsados, 2);
+                        $ord->repuestos_detalle_str = implode(', ', $repuestosDetalleArr);
                         $ord->valor_total_calculado = round($valorTotal, 2);
-                        $ord->descripcion_servicio = $ord->descripcion ?? 'Servicio técnico B2B';
+                        $ord->descripcion_servicio = $ord->titulo_servicio ?: ($ord->descripcion ?? 'Servicio técnico B2B');
                         $ordenesProcesadas->push($ord);
                     }
                 }

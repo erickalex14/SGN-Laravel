@@ -47,7 +47,9 @@ class GestionOrdenService
         ?float $horasTrabajadas = null,
         ?float $valorHora = null,
         ?string $memoEntrega = null,
-        ?string $fotoEvidenciaEntrega = null
+        ?string $fotoEvidenciaEntrega = null,
+        ?string $tituloServicio = null,
+        ?float $valorManoObra = null
     ): void {
         $orden = $this->repository->obtenerOrdenEmpresaCompleta($ordenId);
         if (!$orden) {
@@ -97,6 +99,20 @@ class GestionOrdenService
         if ($orden->empresa && trim(strtoupper($orden->empresa->nombre)) === 'RB-HEALTH ECUADOR CIA LTDA') {
             $orden->valor_hora = 52.0;
         }
+
+        if ($tituloServicio !== null && trim($tituloServicio) !== '') {
+            $orden->titulo_servicio = trim($tituloServicio);
+        }
+        if ($valorManoObra !== null) {
+            $orden->valor_mano_obra = round($valorManoObra, 2);
+        }
+
+        // Calcular y sincronizar valor_repuestos desde orden_repuestos
+        $totalRep = DB::table('orden_repuestos as orp')
+            ->join('repuestos as r', 'orp.repuesto_id', '=', 'r.id')
+            ->where('orp.orden_empresa_id', $orden->id)
+            ->sum(DB::raw('orp.cantidad * r.costo'));
+        $orden->valor_repuestos = round((float) $totalRep, 2);
 
         $now = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
         $orden->fecha_modificacion = $now;
@@ -209,6 +225,35 @@ class GestionOrdenService
             }
             if ($dto->foto_evidencia_entrega !== null && trim($dto->foto_evidencia_entrega) !== '') {
                 $orden->foto_evidencia_entrega = trim($dto->foto_evidencia_entrega);
+            }
+
+            if ($dto->titulo_servicio !== null && trim($dto->titulo_servicio) !== '') {
+                $orden->titulo_servicio = trim($dto->titulo_servicio);
+            }
+            if ($dto->valor_mano_obra !== null) {
+                $orden->valor_mano_obra = round($dto->valor_mano_obra, 2);
+            }
+
+            // Calcular y sincronizar valor_repuestos desde orden_repuestos
+            $totalRep = DB::table('orden_repuestos as orp')
+                ->join('repuestos as r', 'orp.repuesto_id', '=', 'r.id')
+                ->where('orp.orden_id', $orden->id)
+                ->sum(DB::raw('orp.cantidad * r.costo'));
+            $orden->valor_repuestos = round((float) $totalRep, 2);
+
+            // Si hay mano de obra, registrar o actualizar en preciosorden
+            if ($dto->valor_mano_obra !== null && $dto->valor_mano_obra > 0) {
+                \App\Models\Operations\PrecioOrden::updateOrCreate(
+                    [
+                        'orden_id' => $orden->id,
+                        'servicio' => $dto->titulo_servicio ?: 'Mano de Obra Técnica'
+                    ],
+                    [
+                        'precio' => round($dto->valor_mano_obra, 2),
+                        'descripcion' => $dto->titulo_servicio ?: 'Servicio técnico realizado en taller',
+                        'creado_en' => Carbon::now('America/Guayaquil')
+                    ]
+                );
             }
 
             if (in_array(mb_strtolower($estadoNormalizado), ['cerrado', 'entregada', 'entregado'], true)) {

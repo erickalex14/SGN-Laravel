@@ -95,9 +95,10 @@
                 <th>F. Ingreso</th>
                 <th>F. Entrega</th>
                 <th class="num">Horas Trab.</th>
-                <th class="num">Tarifa Aplicada ($)</th>
-                <th class="num">Valor Novicompu ($)</th>
-                <th class="num">Valor RB-Health / Otras ($)</th>
+                <th class="num">Tarifa Base ($)</th>
+                <th class="num">Mano de Obra (-50%) ($)</th>
+                <th class="num">Repuestos (100%) ($)</th>
+                <th class="num">Subtotal Orden ($)</th>
                 <th>Estado Orden</th>
                 <th>Estado Facturación</th>
                 <th>Memo / Observaciones</th>
@@ -107,10 +108,10 @@
             @forelse($ordenes as $ord)
                 @php
                     $empNombre = $ord->empresa_nombre ?? $ord->empresa->nombre ?? 'N/A';
-                    $isRB = str_contains(strtoupper($empNombre), 'RB');
+                    $valFijo = (float) ($ord->valor_fijo ?? $ord->tarifa_calculada ?? 0);
+                    $valMoCobrado = (float) ($ord->valor_mano_obra_cobrado ?? 0);
+                    $valRep = (float) ($ord->valor_repuestos ?? 0);
                     $valTotal = (float) ($ord->valor_total_calculado ?? 0);
-                    $valNovicompu = !$isRB ? $valTotal : 0.00;
-                    $valOtra = $isRB ? $valTotal : 0.00;
 
                     $eq = $ord->equipo;
                     $eqNombre = 'N/A';
@@ -138,28 +139,27 @@
                     <td>{{ $ord->fecha_de_ingreso ?? '-' }}</td>
                     <td>{{ $ord->fecha_entrega ?? $ord->fecha_finalizacion ?? '-' }}</td>
                     <td class="num">{{ number_format((float)($ord->horas_calculadas ?? 1.0), 1) }}</td>
-                    <td class="num">${{ number_format((float)($ord->tarifa_calculada ?? 0), 2) }}</td>
-                    <td class="num" style="color: {{ $valNovicompu > 0 ? '#166534' : '#64748b' }};">
-                        ${{ number_format($valNovicompu, 2) }}
-                    </td>
-                    <td class="num" style="color: {{ $valOtra > 0 ? '#166534' : '#64748b' }};">
-                        ${{ number_format($valOtra, 2) }}
-                    </td>
+                    <td class="num">${{ number_format($valFijo, 2) }}</td>
+                    <td class="num" style="color: #2563eb;">+${{ number_format($valMoCobrado, 2) }}</td>
+                    <td class="num" style="color: #166534;">+${{ number_format($valRep, 2) }}</td>
+                    <td class="num" style="font-weight: bold; color: #059669;">${{ number_format($valTotal, 2) }}</td>
                     <td>{{ $ord->estado ?? $ord->estado_orden ?? 'Finalizada' }}</td>
                     <td>{{ $ord->estado_facturacion ?? 'Pendiente' }}</td>
                     <td>{{ $ord->memo_entrega ?? $ord->observaciones ?? $ord->observacion ?? '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="23" style="text-align: center; color: #94a3b8; padding: 20px;">No se seleccionaron órdenes para exportar.</td>
+                    <td colspan="24" style="text-align: center; color: #94a3b8; padding: 20px;">No se seleccionaron órdenes para exportar.</td>
                 </tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="18" style="text-align: right; font-weight: bold; padding: 10px;">TOTAL GENERAL RECUENTO B2B:</td>
-                <td class="total-cell">${{ number_format($ordenes->filter(fn($o) => !str_contains(strtoupper($o->empresa_nombre ?? ''), 'RB'))->sum('valor_total_calculado'), 2) }}</td>
-                <td class="total-cell">${{ number_format($ordenes->filter(fn($o) => str_contains(strtoupper($o->empresa_nombre ?? ''), 'RB'))->sum('valor_total_calculado'), 2) }}</td>
+                <td colspan="17" style="text-align: right; font-weight: bold; padding: 10px;">TOTAL GENERAL RECUENTO B2B:</td>
+                <td class="num" style="font-weight: bold;">${{ number_format($ordenes->sum(fn($o) => (float)($o->valor_fijo ?? $o->tarifa_calculada ?? 0)), 2) }}</td>
+                <td class="num" style="font-weight: bold; color: #2563eb;">${{ number_format($ordenes->sum(fn($o) => (float)($o->valor_mano_obra_cobrado ?? 0)), 2) }}</td>
+                <td class="num" style="font-weight: bold; color: #166534;">${{ number_format($ordenes->sum(fn($o) => (float)($o->valor_repuestos ?? 0)), 2) }}</td>
+                <td class="total-cell">${{ number_format($ordenes->sum('valor_total_calculado'), 2) }}</td>
                 <td colspan="3"></td>
             </tr>
         </tfoot>

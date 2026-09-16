@@ -2,7 +2,7 @@
     <table class="custom-table">
         <thead>
             <tr>
-                <th style="width: 40px;">
+                <th style="width: 36px;">
                     <input type="checkbox" onclick="toggleSelectAllGrupo(this, '{{ $tipoGrupo }}')">
                 </th>
                 <th>Nro. Orden</th>
@@ -10,9 +10,11 @@
                 <th>Subtipo</th>
                 <th>Equipo / Marca / Serie</th>
                 <th>Técnico(s) y Horas</th>
-                <th>Tarifa Aplicada</th>
-                <th>Valor Calculado</th>
-                <th style="text-align: center;">Detalles</th>
+                <th style="text-align: right;">Base Fija ($)</th>
+                <th style="text-align: right;">Mano de Obra (-50%)</th>
+                <th style="text-align: right;">Repuestos (100%)</th>
+                <th style="text-align: right;">Total Calculado</th>
+                <th style="text-align: center;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -20,6 +22,7 @@
                 @php
                     $empNombre = $ord->empresa->nombre ?? 'Empresa';
                     $isRB = str_contains(strtoupper($empNombre), 'RB');
+                    $isNovisolutions = !empty($ord->is_novisolutions);
                     $subtipoNorm = $ord->subtipo_normalizado ?? 'Servicios';
                     
                     $subtipoBadgeClass = 'badge-servicio';
@@ -62,12 +65,21 @@
                     } elseif (!empty($ord->tecnico->nombre_tecnico)) {
                         $tecnicosNombres = $ord->tecnico->nombre_tecnico;
                     }
+
+                    $tipoOrdenOrigen = $ord->tipo_orden_origen ?? 'empresa';
+                    $valFijo = (float)($ord->valor_fijo_calculado ?? 0);
+                    $valMoCobrado = (float)($ord->valor_mano_obra_cobrado ?? 0);
+                    $valMoOriginal = (float)($ord->valor_mano_obra_original ?? 0);
+                    $valRep = (float)($ord->valor_repuestos_calculado ?? 0);
+                    $valTotal = (float)($ord->valor_total_calculado ?? 0);
+                    $tituloServ = $ord->titulo_servicio_mostrado ?? ($ord->titulo_servicio ?? '');
+                    $repDetalle = $ord->repuestos_detalle_str ?? '';
                 @endphp
-                <tr>
+                <tr id="row-orden-{{ $tipoOrdenOrigen }}-{{ $ord->id }}">
                     <td>
                         <input type="checkbox" class="chk-orden" 
                             data-id="{{ $ord->id }}"
-                            data-tipo-orden="{{ $ord->tipo_orden_origen ?? 'empresa' }}"
+                            data-tipo-orden="{{ $tipoOrdenOrigen }}"
                             data-nro="{{ $ord->nro_orden }}"
                             data-empresa="{{ $empNombre }}"
                             data-cliente-nombre="{{ $cliNombre }}"
@@ -83,7 +95,12 @@
                             data-horas="{{ $ord->horas_calculadas }}"
                             data-tecnicos="{{ $ord->tecnicos_count }}"
                             data-tarifa="{{ $ord->tarifa_calculada }}"
-                            data-total="{{ $ord->valor_total_calculado }}"
+                            data-valor-fijo="{{ $valFijo }}"
+                            data-valor-mano-obra="{{ $valMoOriginal }}"
+                            data-valor-repuestos="{{ $valRep }}"
+                            data-titulo-servicio="{{ $tituloServ }}"
+                            data-repuestos-detalle="{{ $repDetalle }}"
+                            data-total="{{ $valTotal }}"
                             data-estado="{{ $ord->estado ?? $ord->estado_orden ?? 'Finalizada' }}"
                             data-facturacion="{{ $ord->estado_facturacion ?? 'Pendiente' }}"
                             data-descripcion="{{ $ord->descripcion ?? $ord->falla ?? $ord->motivo_ingreso ?? '-' }}"
@@ -115,52 +132,69 @@
                             {{ number_format($ord->horas_calculadas, 1) }} hrs · {{ $ord->sucursal->ciudad ?? 'N/A' }}
                         </div>
                     </td>
-                    <td>
-                        @if($isRB)
-                            $50.00 / hr
-                        @elseif($subtipoNorm === 'Servicios')
-                            $25.00 / hr / técnico
-                        @elseif($subtipoNorm === 'Garantía')
-                            Cobro Estándar Novicompu (${{ number_format($ord->tarifa_calculada, 2) }})
+                    <!-- BASE FIJA -->
+                    <td style="text-align: right;">
+                        @if($isNovisolutions)
+                            <strong style="color: #1e293b;">${{ number_format($valFijo, 2) }}</strong>
+                            <div style="font-size: 0.725rem; color: #64748b;">($28.50 - 50%)</div>
+                        @elseif($isRB)
+                            <strong style="color: #1e293b;">${{ number_format($valFijo, 2) }}</strong>
+                            <div style="font-size: 0.725rem; color: #64748b;">$50/hr</div>
                         @else
-                            Presupuesto / Valor Fijo
+                            <strong style="color: #1e293b;">${{ number_format($valFijo, 2) }}</strong>
+                            <div style="font-size: 0.725rem; color: #64748b;">Tarifa fija</div>
                         @endif
                     </td>
-                    <td>
-                        <strong style="color: #059669; font-size: 0.95rem;">${{ number_format($ord->valor_total_calculado, 2) }}</strong>
-                    </td>
-                    <td style="text-align: center;">
-                        <button type="button" class="btn-details" onclick="toggleDetails({{ $ord->id }})">
-                            <i class="bi bi-info-circle me-1"></i>Ver Detalles
-                        </button>
-                    </td>
-                </tr>
-                <tr class="details-row" id="details-row-{{ $ord->id }}">
-                    <td colspan="9">
-                        <div class="details-container">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                                <div>
-                                    <strong style="color: #0f172a;">Detalles de la Orden:</strong><br>
-                                    <span>Nro. Ticket / Código: {{ $ord->nro_orden }}</span><br>
-                                    <span>Cliente Final: <strong>{{ $cliNombre }}</strong> (CI: {{ $cliIdent }})</span><br>
-                                    <span>Estado: <strong>{{ $ord->estado ?? $ord->estado_orden }}</strong></span><br>
-                                    <span>Sucursal: <strong>{{ $ord->sucursal->ciudad ?? 'Quito' }}</strong></span>
-                                </div>
-                                <div>
-                                    <strong style="color: #0f172a;">Descripción del Servicio / Falla:</strong><br>
-                                    <span>{{ $ord->descripcion ?? $ord->falla ?? $ord->motivo_ingreso ?? 'Sin descripción registrada' }}</span>
-                                </div>
-                                <div>
-                                    <strong style="color: #0f172a;">Observaciones / Memo:</strong><br>
-                                    <span>{{ $ord->memo_entrega ?? $ord->observaciones ?? $ord->observacion ?? 'Sin observaciones adicionales' }}</span>
-                                </div>
-                            </div>
+                    <!-- MANO DE OBRA (-50%) -->
+                    <td style="text-align: right;">
+                        <div id="display-mo-{{ $tipoOrdenOrigen }}-{{ $ord->id }}">
+                            @if($valMoOriginal > 0)
+                                <span style="font-weight: 700; color: #2563eb;">+${{ number_format($valMoCobrado, 2) }}</span>
+                                <div style="font-size: 0.725rem; color: #64748b;">Orig: ${{ number_format($valMoOriginal, 2) }} (-50%)</div>
+                            @else
+                                <span style="color: #94a3b8; font-style: italic;">$0.00</span>
+                            @endif
                         </div>
+                        @if($tituloServ !== '')
+                            <div id="display-titulo-{{ $tipoOrdenOrigen }}-{{ $ord->id }}" style="font-size: 0.725rem; color: #0f172a; font-weight: 600; margin-top: 2px;" title="{{ $tituloServ }}">
+                                {{ \Illuminate\Support\Str::limit($tituloServ, 22) }}
+                            </div>
+                        @else
+                            <div id="display-titulo-{{ $tipoOrdenOrigen }}-{{ $ord->id }}" style="font-size: 0.725rem; color: #94a3b8; font-style: italic;">Sin título</div>
+                        @endif
+                    </td>
+                    <!-- REPUESTOS (100%) -->
+                    <td style="text-align: right;">
+                        @if($valRep > 0)
+                            <strong style="color: #166534;">+${{ number_format($valRep, 2) }}</strong>
+                            <div style="font-size: 0.725rem; color: #166534;" title="{{ $repDetalle }}">
+                                <i class="bi bi-cpu me-1"></i>100% cobrado
+                            </div>
+                        @else
+                            <span style="color: #94a3b8;">$0.00</span>
+                        @endif
+                    </td>
+                    <!-- TOTAL CALCULADO -->
+                    <td style="text-align: right;">
+                        <strong id="display-total-{{ $tipoOrdenOrigen }}-{{ $ord->id }}" style="color: #059669; font-size: 0.95rem;">
+                            ${{ number_format($valTotal, 2) }}
+                        </strong>
+                    </td>
+                    <!-- ACCIONES: EDITAR MANO DE OBRA & DETALLES -->
+                    <td style="text-align: center; white-space: nowrap;">
+                        <button type="button" class="btn-details" style="padding: 4px 8px; margin-right: 4px;" 
+                                onclick="abrirModalEditarManoObra({{ $ord->id }}, '{{ $tipoOrdenOrigen }}', '{{ addslashes($ord->nro_orden) }}', {{ $valMoOriginal }}, '{{ addslashes($tituloServ) }}', {{ $valRep }}, {{ $valFijo }})"
+                                title="Editar Mano de Obra y Servicio">
+                            <i class="bi bi-pencil-square text-primary"></i> M.O.
+                        </button>
+                        <button type="button" class="btn-details" style="padding: 4px 8px;" onclick="toggleDetails({{ $ord->id }}, '{{ $tipoOrdenOrigen }}')" title="Ver Detalles">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" style="text-align: center; color: #94a3b8; padding: 24px;">No hay órdenes registradas en esta sección.</td>
+                    <td colspan="11" style="text-align: center; color: #94a3b8; padding: 24px;">No hay órdenes registradas en esta sección.</td>
                 </tr>
             @endforelse
         </tbody>

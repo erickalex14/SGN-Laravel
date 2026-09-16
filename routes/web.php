@@ -496,6 +496,7 @@ Route::middleware('auth')->group(function () {
 
     // Recuento & Facturacion B2B
     Route::get('/contabilidad/recuento-b2b', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'index'])->name('recuentob2b.index');
+    Route::post('/contabilidad/recuento-b2b/actualizar-mano-obra', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'actualizarManoObraOrden'])->name('recuentob2b.actualizar_mano_obra');
     Route::post('/contabilidad/recuento-b2b/procesar', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'procesarCobro'])->name('recuentob2b.procesar');
     Route::post('/contabilidad/recuento-b2b/exportar-excel', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'exportarExcel'])->name('recuentob2b.exportar_excel');
     Route::get('/contabilidad/recuento-b2b/recibo-cliente/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboCliente'])->name('recuentob2b.recibo_cliente');
