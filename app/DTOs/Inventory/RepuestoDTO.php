@@ -14,6 +14,7 @@ readonly class RepuestoDTO
         public ?string $bodega,
         public ?string $descripcion,
         public ?string $marca_id, // Legacy lo define como varchar(36)
-        public ?string $tipo_dispositivo_id // Legacy lo define como varchar(36)
+        public ?string $tipo_dispositivo_id, // Legacy lo define como varchar(36)
+        public float $pvp = 0.0
     ) {}
 }

@@ -60,7 +60,8 @@ class RepuestoController extends Controller
                 $request->input('bodega'),
                 $request->input('descripcion'),
                 $request->input('marca_id'),
-                $request->input('tipo_dispositivo_id')
+                $request->input('tipo_dispositivo_id'),
+                (float) $request->input('pvp', 0.0)
             );
 
             $this->service->guardar($dto, $accion);

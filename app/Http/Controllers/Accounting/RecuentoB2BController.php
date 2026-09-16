@@ -145,10 +145,10 @@ class RecuentoB2BController extends Controller
                 foreach ($ord->ordenRepuestos as $orp) {
                     $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
                     $repCant = (int) ($orp->cantidad ?? 1);
-                    $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
-                    $repSubtotal = round($repCant * $repCosto, 2);
+                    $repPrecio = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                    $repSubtotal = round($repCant * $repPrecio, 2);
                     $totalRepuestosUsados += $repSubtotal;
-                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repPrecio, 2) . ")";
                 }
             }
             if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
@@ -289,10 +289,10 @@ class RecuentoB2BController extends Controller
                 foreach ($ord->ordenRepuestos as $orp) {
                     $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
                     $repCant = (int) ($orp->cantidad ?? 1);
-                    $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
-                    $repSubtotal = round($repCant * $repCosto, 2);
+                    $repPrecio = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                    $repSubtotal = round($repCant * $repPrecio, 2);
                     $totalRepuestosUsados += $repSubtotal;
-                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                    $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repPrecio, 2) . ")";
                 }
             }
             if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
@@ -530,7 +530,7 @@ class RecuentoB2BController extends Controller
 
             if ($orden->ordenRepuestos) {
                 foreach ($orden->ordenRepuestos as $orp) {
-                    $c = (float) ($orp->repuesto->costo ?? 0.0);
+                    $c = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
                     $q = (int) ($orp->cantidad ?? 1);
                     $totalRepuestosUsados += ($c * $q);
                     $repuestosDetalleArr[] = "{$q}x " . ($orp->repuesto->nombre ?? 'Repuesto') . " ($" . number_format($c, 2) . ")";
@@ -568,7 +568,7 @@ class RecuentoB2BController extends Controller
 
             if ($orden->ordenRepuestos) {
                 foreach ($orden->ordenRepuestos as $orp) {
-                    $c = (float) ($orp->repuesto->costo ?? 0.0);
+                    $c = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
                     $q = (int) ($orp->cantidad ?? 1);
                     $totalRepuestosUsados += ($c * $q);
                     $repuestosDetalleArr[] = "{$q}x " . ($orp->repuesto->nombre ?? 'Repuesto') . " ($" . number_format($c, 2) . ")";
@@ -646,10 +646,10 @@ class RecuentoB2BController extends Controller
                             foreach ($ord->ordenRepuestos as $orp) {
                                 $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
                                 $repCant = (int) ($orp->cantidad ?? 1);
-                                $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
-                                $repSubtotal = round($repCant * $repCosto, 2);
+                                $repPrecio = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                                $repSubtotal = round($repCant * $repPrecio, 2);
                                 $totalRepuestosUsados += $repSubtotal;
-                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repPrecio, 2) . ")";
                             }
                         }
                         if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {
@@ -703,10 +703,10 @@ class RecuentoB2BController extends Controller
                             foreach ($ord->ordenRepuestos as $orp) {
                                 $repNombre = $orp->repuesto->nombre ?? 'Repuesto';
                                 $repCant = (int) ($orp->cantidad ?? 1);
-                                $repCosto = (float) ($orp->repuesto->costo ?? 0.0);
-                                $repSubtotal = round($repCant * $repCosto, 2);
+                                $repPrecio = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                                $repSubtotal = round($repCant * $repPrecio, 2);
                                 $totalRepuestosUsados += $repSubtotal;
-                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repCosto, 2) . ")";
+                                $repuestosDetalleArr[] = "{$repCant}x {$repNombre} ($" . number_format($repPrecio, 2) . ")";
                             }
                         }
                         if ($totalRepuestosUsados <= 0 && (float)($ord->valor_repuestos ?? 0) > 0) {

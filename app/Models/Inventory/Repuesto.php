@@ -18,6 +18,7 @@ class Repuesto extends Model
         'nombre',
         'stock',
         'costo',
+        'pvp',
         'bodega',
         'descripcion',
         'marca_id',
@@ -31,5 +32,11 @@ class Repuesto extends Model
     public function getValorTotalAttribute(): float
     {
         return round(((float) $this->stock) * ((float) $this->costo), 2);
+    }
+
+    public function getPrecioVentaAttribute(): float
+    {
+        $pvp = (float) ($this->pvp ?? 0.0);
+        return $pvp > 0 ? $pvp : (float) ($this->costo ?? 0.0);
     }
 }

@@ -26,6 +26,7 @@ class GuardarRepuestoRequest extends FormRequest
             $reglas['nombre']              = ['required', 'string', 'max:255'];
             $reglas['stock']               = ['required', 'numeric', 'min:0'];
             $reglas['costo']               = ['required', 'numeric', 'min:0'];
+            $reglas['pvp']                 = ['nullable', 'numeric', 'min:0'];
             $reglas['bodega']              = ['nullable'];
             $reglas['descripcion']         = ['nullable'];
             $reglas['marca_id']            = ['nullable'];

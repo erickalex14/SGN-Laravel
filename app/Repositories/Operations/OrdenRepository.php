@@ -361,13 +361,15 @@ class OrdenRepository
                     || !empty($orden->garantia_tipo)
                     || !empty($orden->estado_garantia);
 
-                $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
-                if ($totalRepuestos <= 0 && $orden->ordenRepuestos) {
+                $totalRepuestos = 0.0;
+                if ($orden->ordenRepuestos && $orden->ordenRepuestos->isNotEmpty()) {
                     foreach ($orden->ordenRepuestos as $orp) {
                         $cant = (int) ($orp->cantidad ?? 1);
-                        $costo = (float) ($orp->repuesto->costo ?? 0.0);
-                        $totalRepuestos += round($cant * $costo, 2);
+                        $repPvp = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                        $totalRepuestos += round($cant * $repPvp, 2);
                     }
+                } else {
+                    $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
                 }
                 $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
                 $moCobrada = round($valMo * 0.50, 2);
@@ -583,13 +585,15 @@ class OrdenRepository
                 $isRbHealth = str_contains($nombreEmpresaUpper, 'RB') || str_contains($nombreEmpresaUpper, 'HEALTH') || (int)($orden->empresa_id ?? 0) === 2;
 
                 // Repuestos usados
-                $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
-                if ($totalRepuestos <= 0 && $orden->ordenRepuestos) {
+                $totalRepuestos = 0.0;
+                if ($orden->ordenRepuestos && $orden->ordenRepuestos->isNotEmpty()) {
                     foreach ($orden->ordenRepuestos as $orp) {
                         $cant = (int) ($orp->cantidad ?? 1);
-                        $costo = (float) ($orp->repuesto->costo ?? 0.0);
-                        $totalRepuestos += round($cant * $costo, 2);
+                        $repPvp = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                        $totalRepuestos += round($cant * $repPvp, 2);
                     }
+                } else {
+                    $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
                 }
 
                 $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
