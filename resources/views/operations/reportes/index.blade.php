@@ -941,7 +941,7 @@ function renderTabla() {
             ? '<span class="tipo-badge" style="background:#dcfce7;color:#15803d;font-weight:800;"><i class="bi bi-check2-all me-1"></i>Facturado</span>'
             : '<span class="tipo-badge" style="background:#fef9c3;color:#854d0e;"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>';
 
-        const facCol = r.nro_factura
+        const facCol = (r.nro_factura && String(r.nro_factura).trim() !== '')
             ? `<div style="font-family:monospace;font-weight:700;color:#0f172a;">${esc(r.nro_factura)}</div>${r.lote_facturacion_id ? `<div style="font-size:10px;color:#64748b;">(Lote #${esc(r.lote_facturacion_id)})</div>` : ''}`
             : '<span style="color:#cbd5e1;">—</span>';
 

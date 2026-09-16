@@ -163,13 +163,20 @@ class RecuentoB2BController extends Controller
             $valorManoObraCobrado = 0.0;
             $valorTotal = 0.0;
 
-            if (str_contains($empresaNombre, 'RB') || str_contains($empresaNombre, 'HEALTH')) {
-                $tarifa = 50.0;
-                $valorTotal = $horas * $tarifa;
-                $valorFijo = $valorTotal;
+            $valHora = (float) ($ord->valor_hora ?? 0.0);
+            $esServicio = ($subtipoNorm === 'Servicios') || ($valHora > 0 && (float)($ord->horas_trabajadas ?? 0) > 0);
+
+            if ($esServicio) {
+                if ($valHora <= 0) {
+                    $valHora = (str_contains($empresaNombre, 'RB') || str_contains($empresaNombre, 'HEALTH')) ? 52.0 : 50.0;
+                }
+                $tarifa = $valHora;
+                $valorFijo = round($cantidadTecnicos * $horas * $valHora, 2);
+                $valorManoObraCobrado = $valorManoObra;
+                $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
             } elseif ($isNovisolutions) {
-                // REGLA OFICIAL NOVISOLUTIONS:
-                // Tarifa Base Fija: $28.50 - 50% = $14.25
+                // REGLA OFICIAL NOVISOLUTIONS PARA STOCK / AUTOCONSUMO / GARANTIA:
+                // Tarifa Base Fija: $14.25
                 // Mano de Obra: -50% (valor_mano_obra * 0.50)
                 // Repuestos Usados: 100% cobrado
                 // Subtotal Orden = 14.25 + (valor_mano_obra * 0.50) + repuestos_usados
@@ -177,9 +184,13 @@ class RecuentoB2BController extends Controller
                 $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
                 $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
                 $tarifa = $valorFijo;
+            } elseif (str_contains($empresaNombre, 'RB') || str_contains($empresaNombre, 'HEALTH')) {
+                $tarifa = 52.0;
+                $valorTotal = round(($horas * $tarifa) + $totalRepuestosUsados, 2);
+                $valorFijo = $valorTotal;
             } else {
                 $tarifa = (float) ($ord->presupuesto ?? $ord->total ?? 50.0);
-                $valorTotal = $tarifa > 0 ? $tarifa : 50.0;
+                $valorTotal = round(($tarifa > 0 ? $tarifa : 50.0) + $totalRepuestosUsados, 2);
                 $valorFijo = $valorTotal;
             }
 
@@ -570,10 +581,29 @@ class RecuentoB2BController extends Controller
             $orden->save();
         }
 
-        // Recalcular subtotal con la fórmula oficial Novisolutions
+        // Recalcular subtotal según tipo y subtipo
         $valorFijo = 14.25;
         $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
-        $nuevoTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+
+        if ($tipoOrden === 'empresa') {
+            $subt = mb_strtolower(trim((string)($orden->subtipo ?? '')));
+            $valH = (float)($orden->valor_hora ?? 0.0);
+            $hrs = (float)($orden->horas_trabajadas ?? 1.0);
+            if ($hrs <= 0) $hrs = 1.0;
+            $cTec = $orden->tecnicos ? $orden->tecnicos->count() : 1;
+            if ($cTec <= 0) $cTec = 1;
+
+            if ($subt === 'servicios' || ($valH > 0 && (float)($orden->horas_trabajadas ?? 0) > 0)) {
+                if ($valH <= 0) $valH = 50.0;
+                $valorFijo = round($cTec * $hrs * $valH, 2);
+                $valorManoObraCobrado = $valorManoObra;
+                $nuevoTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+            } else {
+                $nuevoTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+            }
+        } else {
+            $nuevoTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
+        }
 
         return response()->json([
             'ok' => true,
@@ -685,19 +715,30 @@ class RecuentoB2BController extends Controller
 
                         $valorManoObra = (float) ($ord->valor_mano_obra ?? 0.0);
 
-                        if (str_contains($empNombre, 'RB') || str_contains($empNombre, 'HEALTH')) {
-                            $tarifa = 50.0;
-                            $valorTotal = $horas * $tarifa;
-                            $valorFijo = $valorTotal;
-                            $valorManoObraCobrado = 0.0;
+                        $valHora = (float) ($ord->valor_hora ?? 0.0);
+                        $esServicio = ($subtipoNorm === 'Servicios') || ($valHora > 0 && (float)($ord->horas_trabajadas ?? 0) > 0);
+
+                        if ($esServicio) {
+                            if ($valHora <= 0) {
+                                $valHora = (str_contains($empNombre, 'RB') || str_contains($empNombre, 'HEALTH')) ? 52.0 : 50.0;
+                            }
+                            $tarifa = $valHora;
+                            $valorFijo = round($cantidadTecnicos * $horas * $valHora, 2);
+                            $valorManoObraCobrado = $valorManoObra;
+                            $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
                         } elseif ($isNovisolutions) {
                             $valorFijo = 14.25;
                             $valorManoObraCobrado = round($valorManoObra * 0.50, 2);
                             $valorTotal = round($valorFijo + $valorManoObraCobrado + $totalRepuestosUsados, 2);
                             $tarifa = $valorFijo;
+                        } elseif (str_contains($empNombre, 'RB') || str_contains($empNombre, 'HEALTH')) {
+                            $tarifa = 52.0;
+                            $valorTotal = round(($horas * $tarifa) + $totalRepuestosUsados, 2);
+                            $valorFijo = $valorTotal;
+                            $valorManoObraCobrado = 0.0;
                         } else {
                             $tarifa = (float) ($ord->presupuesto ?? 50.0);
-                            $valorTotal = $tarifa > 0 ? $tarifa : 50.0;
+                            $valorTotal = round(($tarifa > 0 ? $tarifa : 50.0) + $totalRepuestosUsados, 2);
                             $valorFijo = $valorTotal;
                             $valorManoObraCobrado = 0.0;
                         }
