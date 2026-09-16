@@ -306,10 +306,11 @@
                 <th style="width: 8%;">Repuesto / Garantía</th>
                 <th style="width: 6.5%;">Estado</th>
                 <th style="width: 3%;">Días</th>
-                <th style="width: 6.5%;">Prometido / Entrega</th>
-                <th style="width: 4%;">Doc.</th>
-                <th style="width: 7%; text-align: right;">Cobro Novicompu</th>
-                <th style="width: 7%; text-align: right;">Cobro RB-HEALTH</th>
+                <th style="width: 4.5%;">F. Entrega</th>
+                <th style="width: 8.5%;">Facturación (Milenium)</th>
+                <th style="width: 3.5%;">Doc.</th>
+                <th style="width: 5.5%; text-align: right;">Cobro Novicompu</th>
+                <th style="width: 5.5%; text-align: right;">Cobro RB-HEALTH</th>
             </tr>
         </thead>
         <tbody>
@@ -373,8 +374,23 @@
                         {{ $r['dias_transcurridos'] }}d
                     </td>
                     <td style="white-space: nowrap; font-size: 6.2pt;">
-                        P: {{ $r['fecha_prometido'] ?: '—' }}<br>
-                        E: {{ $r['fecha_entrega'] ?: '—' }}
+                        {{ $r['fecha_entrega'] ?: '—' }}
+                    </td>
+                    <td style="font-size: 6.2pt; line-height: 1.2;">
+                        @if(($r['estado_facturacion'] ?? 'Pendiente') === 'Facturado')
+                            <span style="display: inline-block; padding: 1px 4px; border-radius: 3px; background: #dcfce7; color: #166534; font-weight: 800; font-size: 5.8pt;">FACTURADO</span>
+                            @if(!empty($r['nro_factura']))
+                                <div style="font-weight: 700; color: #0f172a; margin-top: 1px;">Fac: {{ $r['nro_factura'] }}</div>
+                            @endif
+                            @if(!empty($r['valor_facturado']))
+                                <div style="color: #166534; font-weight: 700;">Monto: ${{ number_format((float)$r['valor_facturado'], 2) }}</div>
+                            @endif
+                            @if(!empty($r['lote_facturacion_id']))
+                                <div style="color: #64748b; font-size: 5.5pt;">(Lote #{{ $r['lote_facturacion_id'] }})</div>
+                            @endif
+                        @else
+                            <span style="display: inline-block; padding: 1px 4px; border-radius: 3px; background: #fef9c3; color: #854d0e; font-weight: 700; font-size: 5.8pt;">PENDIENTE</span>
+                        @endif
                     </td>
                     <td style="text-align: center; font-size: 6.2pt;">
                         <a href="{{ $pdfOrdenUrl }}" target="_blank" class="link-act orden">Orden</a><br>

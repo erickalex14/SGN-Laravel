@@ -232,7 +232,7 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc', 'loteOrden.lote']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryPersonal->whereRaw('1 = 0');
@@ -315,6 +315,27 @@ class OrdenRepository
                 }
             }
 
+            if (!empty($filtro->estado_facturacion)) {
+                $ef = trim((string) $filtro->estado_facturacion);
+                if ($ef === 'Facturado') {
+                    $queryPersonal->where('estado_facturacion', 'Facturado');
+                } elseif ($ef === 'Pendiente') {
+                    $queryPersonal->where(function($q) {
+                        $q->whereNull('estado_facturacion')
+                          ->orWhere('estado_facturacion', 'Pendiente')
+                          ->orWhere('estado_facturacion', '');
+                    });
+                }
+            }
+
+            if (!empty($filtro->nro_factura)) {
+                $nf = trim((string) $filtro->nro_factura);
+                $queryPersonal->where(function($q) use ($nf) {
+                    $q->where('nro_factura', 'LIKE', "%{$nf}%")
+                      ->orWhere('nro_autorizacion_factura', 'LIKE', "%{$nf}%");
+                });
+            }
+
              $personales = $queryPersonal->get()->map(function (Orden $orden) use ($resolverSucursalCliente) {
                 $fechaIngreso = $orden->fecha_de_ingreso ?: null;
                 $fechaPrometida = $orden->fecha_prometido ?: null;
@@ -373,6 +394,12 @@ class OrdenRepository
                     })(),
                     'transferencia_plataforma' => $orden->transferencia_plataforma,
                     'transferencia_numero' => $orden->transferencia_numero,
+                    'estado_facturacion' => $orden->estado_facturacion ?: 'Pendiente',
+                    'nro_factura' => (string) ($orden->nro_factura ?? ''),
+                    'nro_autorizacion_factura' => (string) ($orden->nro_autorizacion_factura ?? ''),
+                    'valor_facturado' => $orden->valor_facturado !== null ? (float) $orden->valor_facturado : ($orden->loteOrden?->lote?->valor_facturado !== null ? (float) $orden->loteOrden->lote->valor_facturado : null),
+                    'lote_facturacion_id' => $orden->loteOrden?->facturacion_lote_id ?? null,
+                    'lote_nro_factura' => $orden->loteOrden?->lote?->nro_factura ?? null,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $clienteNombre,
@@ -424,7 +451,7 @@ class OrdenRepository
         }
 
         if ($incluirEmpresa) {
-            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal', 'cas']);
+            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal', 'cas', 'loteOrden.lote']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryEmpresa->where('empresa_id', $filtro->empresa_id);
@@ -488,6 +515,27 @@ class OrdenRepository
                 $queryEmpresa->whereRaw('1 = 0');
             }
 
+            if (!empty($filtro->estado_facturacion)) {
+                $ef = trim((string) $filtro->estado_facturacion);
+                if ($ef === 'Facturado') {
+                    $queryEmpresa->where('estado_facturacion', 'Facturado');
+                } elseif ($ef === 'Pendiente') {
+                    $queryEmpresa->where(function($q) {
+                        $q->whereNull('estado_facturacion')
+                          ->orWhere('estado_facturacion', 'Pendiente')
+                          ->orWhere('estado_facturacion', '');
+                    });
+                }
+            }
+
+            if (!empty($filtro->nro_factura)) {
+                $nf = trim((string) $filtro->nro_factura);
+                $queryEmpresa->where(function($q) use ($nf) {
+                    $q->where('nro_factura', 'LIKE', "%{$nf}%")
+                      ->orWhere('nro_autorizacion_factura', 'LIKE', "%{$nf}%");
+                });
+            }
+
             $empresas = $queryEmpresa->get()->map(function (OrdenEmpresa $orden) use ($resolverSucursalCliente) {
                 $nombreEmpresa = $orden->empresa?->nombre ?? 'EMPRESA';
                 $identificacionEmpresa = (string) ($orden->empresa?->ruc ?? $orden->empresa?->identificacion ?? '');
@@ -537,6 +585,12 @@ class OrdenRepository
                     'estado_orden' => $orden->estado,
                     'transferencia_plataforma' => null,
                     'transferencia_numero' => null,
+                    'estado_facturacion' => $orden->estado_facturacion ?: 'Pendiente',
+                    'nro_factura' => (string) ($orden->nro_factura ?? ''),
+                    'nro_autorizacion_factura' => (string) ($orden->nro_autorizacion_factura ?? ''),
+                    'valor_facturado' => $orden->valor_facturado !== null ? (float) $orden->valor_facturado : ($orden->loteOrden?->lote?->valor_facturado !== null ? (float) $orden->loteOrden->lote->valor_facturado : null),
+                    'lote_facturacion_id' => $orden->loteOrden?->facturacion_lote_id ?? null,
+                    'lote_nro_factura' => $orden->loteOrden?->lote?->nro_factura ?? null,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $nombreEmpresa,

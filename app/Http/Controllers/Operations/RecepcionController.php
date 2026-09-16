@@ -39,12 +39,6 @@ class RecepcionController extends Controller
             ? (int) $request->input('sucursal_id')
             : $sucursalSesion;
 
-        // Filtro de flujo: 'nuevo' (default), 'antiguo', o 'todos'
-        $flujo = $request->input('flujo', 'nuevo');
-        if (!in_array($flujo, ['nuevo', 'antiguo', 'todos'], true)) {
-            $flujo = 'nuevo';
-        }
-
         // Base scope para órdenes accesibles por Recepción:
         // Personales O (Empresas de subtipo Stock o Autoconsumo)
         $scopeRecepcion = function ($q) {
@@ -57,49 +51,18 @@ class RecepcionController extends Controller
             });
         };
 
-        // Helper closures para scope de flujo
-        $scopeNuevoFlujo = function ($q) {
-            $q->where(function ($sub) {
-                $sub->whereIn('vo.estado_orden', ['Recibido en Recepcion', 'Entregado al Tecnico', 'Entregado en Recepcion para Entrega'])
-                    ->orWhereNotNull('vo.fecha_recibida_tecnico')
-                    ->orWhereNotNull('vo.fecha_lista_entrega');
-            });
-        };
-
-        $scopeAntiguoFlujo = function ($q) {
-            $q->where(function ($sub) {
-                $sub->whereNotIn('vo.estado_orden', ['Recibido en Recepcion', 'Entregado al Tecnico', 'Entregado en Recepcion para Entrega'])
-                    ->whereNull('vo.fecha_recibida_tecnico')
-                    ->whereNull('vo.fecha_lista_entrega');
-            });
-        };
-
-        // Conteo para las pestañas (tab badges)
-        $tabBadgeQuery = DB::table('vista_ordenes as vo')->where($scopeRecepcion);
-        if ($sucursalSeleccionada > 0) {
-            $tabBadgeQuery->where('vo.sucursal_id', $sucursalSeleccionada);
-        }
-        $tabBadgeQuery->whereNotIn('vo.estado_orden', ['Cerrado', 'Entregada', 'Devuelto sin reparar']);
-
-        $totalNuevoFlujo = (clone $tabBadgeQuery)->where($scopeNuevoFlujo)->count();
-        $totalAntiguoFlujo = (clone $tabBadgeQuery)->where($scopeAntiguoFlujo)->count();
-
-        // Base query para métricas del flujo seleccionado
+        // Base query para métricas unificadas de Recepción
         $metricsQuery = DB::table('vista_ordenes as vo')->where($scopeRecepcion);
         if ($sucursalSeleccionada > 0) {
             $metricsQuery->where('vo.sucursal_id', $sucursalSeleccionada);
         }
-        if ($flujo === 'nuevo') {
-            $metricsQuery->where($scopeNuevoFlujo);
-        } elseif ($flujo === 'antiguo') {
-            $metricsQuery->where($scopeAntiguoFlujo);
-        }
 
         $hoy = Carbon::now('America/Guayaquil')->toDateString();
 
-        $cerradasCount = ($flujo === 'antiguo' || $flujo === 'todos')
-            ? (clone $metricsQuery)->whereIn('vo.estado_orden', ['Cerrado', 'Entregada'])->count()
-            : (clone $metricsQuery)->whereIn('vo.estado_orden', ['Cerrado', 'Entregada'])->whereDate('vo.fecha_entrega', $hoy)->count();
+        $cerradasCount = (clone $metricsQuery)
+            ->whereIn('vo.estado_orden', ['Cerrado', 'Entregada'])
+            ->whereDate('vo.fecha_entrega', $hoy)
+            ->count();
 
         $kpis = [
             'recibido_recepcion' => (clone $metricsQuery)->whereIn('vo.estado_orden', ['Recibido en Recepcion', 'INGRESO'])->count(),
@@ -142,11 +105,32 @@ class RecepcionController extends Controller
             $query->where('vo.sucursal_id', $sucursalSeleccionada);
         }
 
-        // Aplicar filtro de flujo
-        if ($flujo === 'nuevo') {
-            $query->where($scopeNuevoFlujo);
-        } elseif ($flujo === 'antiguo') {
-            $query->where($scopeAntiguoFlujo);
+        // Filtro por motivo de ingreso (Cliente Final, Garantía, Stock, Autoconsumo)
+        if ($request->filled('motivo') && $request->input('motivo') !== 'todos') {
+            $motivoFiltro = $request->input('motivo');
+            if ($motivoFiltro === 'cliente_final') {
+                $query->where('vo.tipo_orden', 'personal')
+                    ->where('vo.motivo_ingreso', 'Servicio Cliente Externo');
+            } elseif ($motivoFiltro === 'garantia') {
+                $query->where('vo.tipo_orden', 'personal')
+                    ->where('vo.motivo_ingreso', 'Validacion de Garantia');
+            } elseif ($motivoFiltro === 'stock') {
+                $query->where('vo.tipo_orden', 'empresa')
+                    ->where('vo.motivo_ingreso', 'Empresa · Stock');
+            } elseif ($motivoFiltro === 'autoconsumo') {
+                $query->where('vo.tipo_orden', 'empresa')
+                    ->where('vo.motivo_ingreso', 'Empresa · Autoconsumo');
+            }
+        }
+
+        // Filtro de fecha: fecha específica o rango de fechas
+        if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
+            $query->whereDate('vo.fecha_de_ingreso', '>=', $request->input('fecha_desde'))
+                ->whereDate('vo.fecha_de_ingreso', '<=', $request->input('fecha_hasta'));
+        } elseif ($request->filled('fecha_desde')) {
+            $query->whereDate('vo.fecha_de_ingreso', '=', $request->input('fecha_desde'));
+        } elseif ($request->filled('fecha_hasta')) {
+            $query->whereDate('vo.fecha_de_ingreso', '<=', $request->input('fecha_hasta'));
         }
 
         // Filtro por estado
@@ -287,10 +271,7 @@ class RecepcionController extends Controller
             'kpis',
             'sucursales',
             'sucursalSeleccionada',
-            'sa',
-            'flujo',
-            'totalNuevoFlujo',
-            'totalAntiguoFlujo'
+            'sa'
         ));
     }
 

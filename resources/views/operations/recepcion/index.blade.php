@@ -29,21 +29,17 @@
 .rec-kpi.info { border-color: #38bdf8; background: #f0f9ff; }
 .rec-kpi.info .rec-kpi-val { color: #0284c7; }
 
-/* WORKFLOW TABS */
-.rec-tabs { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0; }
-.rec-tab { padding: 10px 18px; font-size: 13.5px; font-weight: 700; color: #64748b; text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -2px; display: inline-flex; align-items: center; gap: 8px; transition: all .15s; }
-.rec-tab:hover { color: #1e293b; background: rgba(241,245,249,.6); border-top-left-radius: 8px; border-top-right-radius: 8px; }
-.rec-tab.active { color: #2563eb; border-bottom-color: #2563eb; background: rgba(37,99,235,.04); border-top-left-radius: 8px; border-top-right-radius: 8px; }
-.rec-tab-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 800; }
-.rec-tab.active .rec-tab-badge { background: #2563eb; color: #fff; }
-.rec-tab:not(.active) .rec-tab-badge { background: #e2e8f0; color: #475569; }
+
 
 /* TOOLBAR */
 .rec-toolbar { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.02); }
 .rec-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rec-select, .rec-input { padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; color: #0f172a; background: #fff; }
-.rec-input { min-width: 260px; }
-.rec-select:focus, .rec-input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+.rec-input-date { padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; color: #0f172a; background: #fff; }
+.rec-input { min-width: 200px; }
+.rec-select:focus, .rec-input:focus, .rec-input-date:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+.rec-filter-group { display: flex; align-items: center; gap: 6px; }
+.rec-filter-lbl { font-size: 12px; font-weight: 700; color: #475569; white-space: nowrap; }
 
 /* TABLE CARD */
 .rec-table-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.04); overflow: visible; }
@@ -175,40 +171,12 @@
             <div class="rec-kpi-val">{{ $kpis['notas_credito'] }}</div>
         </a>
         <a href="{{ route('recepcion.index', array_merge(request()->except(['estado', 'page']), ['estado' => 'Cerrado'])) }}"
-           class="rec-kpi success {{ request('estado') === 'Cerrado' ? 'activo' : '' }}">
+           class="rec-kpi success {{ request('estado') === 'Cerrado' ? 'activo' : '' }}"
+           title="Órdenes entregadas hoy (Total histórico: {{ $kpis['cerradas_total'] }})">
             <div class="rec-kpi-lbl">
-                <i class="bi bi-check-circle-fill"></i>
-                @if($flujo === 'antiguo')
-                    Cerradas (Histórico)
-                @elseif($flujo === 'todos')
-                    Total Cerradas
-                @else
-                    Cerradas Hoy
-                @endif
+                <i class="bi bi-check-circle-fill"></i> Cerradas Hoy
             </div>
             <div class="rec-kpi-val">{{ $kpis['cerradas_hoy'] }}</div>
-        </a>
-    </div>
-
-    <!-- Pestañas de Navegación de Flujos -->
-    <div class="rec-tabs">
-        <a href="{{ route('recepcion.index', array_merge(request()->except(['flujo', 'page']), ['flujo' => 'nuevo'])) }}"
-           class="rec-tab {{ $flujo === 'nuevo' ? 'active' : '' }}">
-            <i class="bi bi-stopwatch"></i>
-            <span>Nuevo Flujo (Recepción / Timers)</span>
-            <span class="rec-tab-badge">{{ $totalNuevoFlujo }}</span>
-        </a>
-        <a href="{{ route('recepcion.index', array_merge(request()->except(['flujo', 'page']), ['flujo' => 'antiguo'])) }}"
-           class="rec-tab {{ $flujo === 'antiguo' ? 'active' : '' }}">
-            <i class="bi bi-archive-fill"></i>
-            <span>Órdenes Flujo Anterior</span>
-            <span class="rec-tab-badge">{{ $totalAntiguoFlujo }}</span>
-        </a>
-        <a href="{{ route('recepcion.index', array_merge(request()->except(['flujo', 'page']), ['flujo' => 'todos'])) }}"
-           class="rec-tab {{ $flujo === 'todos' ? 'active' : '' }}">
-            <i class="bi bi-layers-fill"></i>
-            <span>Todas</span>
-            <span class="rec-tab-badge">{{ $totalNuevoFlujo + $totalAntiguoFlujo }}</span>
         </a>
     </div>
 
@@ -218,9 +186,7 @@
             @if($sa && $sucursalSeleccionada > 0)
                 <input type="hidden" name="sucursal_id" value="{{ $sucursalSeleccionada }}">
             @endif
-            @if(request('flujo'))
-                <input type="hidden" name="flujo" value="{{ request('flujo') }}">
-            @endif
+
             <select name="estado" class="rec-select" onchange="this.form.submit()">
                 <option value="todos" {{ request('estado') === 'todos' ? 'selected' : '' }}>-- Todos los estados --</option>
                 <option value="Recibido en Recepcion" {{ request('estado') === 'Recibido en Recepcion' ? 'selected' : '' }}>Recibido en Recepción</option>
@@ -231,15 +197,33 @@
                 <option value="Cerrado" {{ request('estado') === 'Cerrado' ? 'selected' : '' }}>Cerrado (Entregada)</option>
             </select>
 
+            <select name="motivo" class="rec-select" onchange="this.form.submit()">
+                <option value="">-- Motivo de Ingreso: Todos --</option>
+                <option value="cliente_final" {{ request('motivo') === 'cliente_final' ? 'selected' : '' }}>Cliente Final</option>
+                <option value="garantia" {{ request('motivo') === 'garantia' ? 'selected' : '' }}>Garantía</option>
+                <option value="stock" {{ request('motivo') === 'stock' ? 'selected' : '' }}>Stock</option>
+                <option value="autoconsumo" {{ request('motivo') === 'autoconsumo' ? 'selected' : '' }}>Autoconsumo</option>
+            </select>
+
+            <div class="rec-filter-group">
+                <span class="rec-filter-lbl"><i class="bi bi-calendar-event"></i> Desde:</span>
+                <input type="date" name="fecha_desde" class="rec-input-date" value="{{ request('fecha_desde') }}" title="Fecha específica o inicio del rango">
+            </div>
+
+            <div class="rec-filter-group">
+                <span class="rec-filter-lbl">Hasta:</span>
+                <input type="date" name="fecha_hasta" class="rec-input-date" value="{{ request('fecha_hasta') }}" title="Fin del rango (opcional)">
+            </div>
+
             <input type="text" name="buscar" class="rec-input" placeholder="Buscar por # orden, cliente, serie..."
                    value="{{ request('buscar') }}">
 
-            <button type="submit" class="btn-ver" style="padding:8px 14px;">
+            <button type="submit" class="btn-ver" style="padding:8px 14px; background:#2563eb; color:#fff; border-color:#2563eb; font-weight:700;">
                 <i class="bi bi-search"></i> Filtrar
             </button>
-            @if(request()->hasAny(['estado', 'buscar']))
-                <a href="{{ route('recepcion.index', array_merge($sa && $sucursalSeleccionada > 0 ? ['sucursal_id' => $sucursalSeleccionada] : [], request('flujo') ? ['flujo' => request('flujo')] : [])) }}" class="btn-ver">
-                    Limpiar
+            @if(request()->hasAny(['estado', 'motivo', 'fecha_desde', 'fecha_hasta', 'buscar']))
+                <a href="{{ route('recepcion.index', $sa && $sucursalSeleccionada > 0 ? ['sucursal_id' => $sucursalSeleccionada] : []) }}" class="btn-ver" title="Limpiar todos los filtros">
+                    <i class="bi bi-x-circle"></i> Limpiar
                 </a>
             @endif
         </form>
@@ -276,17 +260,41 @@
                         @endphp
                         <tr class="{{ $esParaEntrega ? 'fila-lista-entrega' : ($esReparada ? 'fila-finalizada' : '') }}" id="fila-orden-{{ $ord->id }}">
                             <td>
-                                <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                                <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
                                     <a href="javascript:void(0)" onclick="verDetalle({{ $ord->id }}, '{{ $ord->tipo_orden }}')" style="font-family:monospace; font-weight:800; color:#2563eb; font-size:13.5px; text-decoration:none;">
                                         {{ $ord->nro_orden }}
                                     </a>
                                     @if($ord->tipo_orden === 'empresa')
-                                        <span style="font-size:10px; font-weight:800; padding:1px 5px; border-radius:4px; background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;" title="Orden Corporativa">
-                                            {{ str_replace('Empresa · ', '', $ord->motivo_ingreso) }}
-                                        </span>
+                                        @if(str_contains($ord->motivo_ingreso, 'Stock'))
+                                            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;" title="Motivo: Stock">
+                                                Stock
+                                            </span>
+                                        @elseif(str_contains($ord->motivo_ingreso, 'Autoconsumo'))
+                                            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4;" title="Motivo: Autoconsumo">
+                                                Autoconsumo
+                                            </span>
+                                        @else
+                                            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:#e2e8f0; color:#334155; border:1px solid #cbd5e1;">
+                                                {{ str_replace('Empresa · ', '', $ord->motivo_ingreso) }}
+                                            </span>
+                                        @endif
+                                    @else
+                                        @if($ord->motivo_ingreso === 'Servicio Cliente Externo')
+                                            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;" title="Motivo: Cliente Final">
+                                                Cliente Final
+                                            </span>
+                                        @elseif($ord->motivo_ingreso === 'Validacion de Garantia')
+                                            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;" title="Motivo: Garantía">
+                                                Garantía
+                                            </span>
+                                        @endif
                                     @endif
                                 </div>
-                                <div style="font-size:11px; color:#94a3b8; margin-top:2px;" title="Ingresado por {{ $ord->usuarioIngreso?->nombre_tecnico ?? ($ord->usuarioIngreso?->usuario ?? 'Recepción') }}">
+                                <div style="font-size:11px; color:#64748b; margin-top:3px; display:flex; align-items:center; gap:4px;" title="Fecha de Ingreso">
+                                    <i class="bi bi-calendar3" style="font-size:10px;"></i>
+                                    <span>{{ $ord->fecha_de_ingreso ? date('d/m/Y H:i', strtotime($ord->fecha_de_ingreso)) : '-' }}</span>
+                                </div>
+                                <div style="font-size:10.5px; color:#94a3b8; margin-top:1px;" title="Ingresado por {{ $ord->usuarioIngreso?->nombre_tecnico ?? ($ord->usuarioIngreso?->usuario ?? 'Recepción') }}">
                                     Por: <b>{{ Str::limit($ord->usuarioIngreso?->nombre_tecnico ?? ($ord->usuarioIngreso?->usuario ?? 'Recepción'), 14) }}</b>
                                 </div>
                             </td>
@@ -367,12 +375,12 @@
                                 @endif
                             </td>
                             <td class="col-acciones" style="text-align:right; white-space:nowrap;">
-                                @if($ord->es_nuevo_flujo && ($esReparada || (in_array($ord->estado_orden, ['Entregado en Recepcion para Entrega', 'Lista para entrega'], true) && !$ord->fecha_lista_entrega)))
+                                @if($esReparada || (in_array($ord->estado_orden, ['Entregado en Recepcion para Entrega', 'Lista para entrega'], true) && !$ord->fecha_lista_entrega))
                                     <button type="button" class="btn-recibir" onclick="recibirDeTecnico({{ $ord->id }}, '{{ $ord->nro_orden }}', '{{ $ord->tipo_orden }}')" title="Confirmar recepción física de equipo reparado">
                                         <i class="bi bi-inbox-fill"></i> Recibido
                                     </button>
                                 @endif
-                                @if($esParaEntrega || (!$ord->es_nuevo_flujo && in_array($ord->estado_orden, ['Finalizada', 'Lista para entrega'], true)))
+                                @if($esParaEntrega || in_array($ord->estado_orden, ['Finalizada', 'Lista para entrega'], true))
                                     <button type="button" class="btn-entregar" onclick="abrirModalEntrega({{ $ord->id }}, '{{ $ord->nro_orden }}', '{{ addslashes($ord->cliente?->nombres . ' ' . $ord->cliente?->apellidos) }}', false, '{{ $ord->tipo_orden }}')" title="Entregar y cerrar orden">
                                         <i class="bi bi-box-arrow-up-right"></i> Entregar
                                     </button>

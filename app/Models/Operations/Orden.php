@@ -60,7 +60,9 @@ class Orden extends Model
         'transferencia_numero',
         'memo_entrega',
         'foto_evidencia_entrega',
-        'estado_facturacion'
+        'estado_facturacion',
+        'nro_autorizacion_factura',
+        'valor_facturado'
     ];
 
     public function cliente()
@@ -141,6 +143,12 @@ class Orden extends Model
     public function adjuntos()
     {
         return $this->hasMany(OrdenAdjunto::class, 'orden_id', 'id');
+    }
+
+    public function loteOrden()
+    {
+        return $this->hasOne(\App\Models\Accounting\FacturacionLoteOrden::class, 'orden_id', 'id')
+            ->where('tipo_orden', 'personal');
     }
 
     public function getNcEstadoAttribute()

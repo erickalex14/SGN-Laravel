@@ -509,6 +509,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/contabilidad/facturas/{invoiceId}/xml', [\App\Http\Controllers\Accounting\FacturaController::class, 'xml'])->name('facturas.xml');
     Route::get('/contabilidad/facturas/{invoiceId}/ride', [\App\Http\Controllers\Accounting\FacturaController::class, 'ride'])->name('facturas.ride');
 
+    // Facturación por Lotes (Milenium - Sistema Externo)
+    Route::get('/contabilidad/facturacion-lotes', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'index'])->name('facturacion_lotes.index');
+    Route::get('/contabilidad/facturacion-lotes/historial', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'historial'])->name('facturacion_lotes.historial');
+    Route::post('/contabilidad/facturacion-lotes/guardar', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'guardar'])->name('facturacion_lotes.guardar');
+    Route::get('/contabilidad/facturacion-lotes/{id}/detalle', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'detalle'])->name('facturacion_lotes.detalle');
+    Route::delete('/contabilidad/facturacion-lotes/orden/{id}', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'desvincularOrden'])->name('facturacion_lotes.desvincular');
+
     // Reportería & Auditoría de Contabilidad (Páginas separadas por módulo)
     Route::get('/contabilidad/reportes', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'index'])->name('contabilidad.reportes');
     Route::get('/contabilidad/reportes/kpis', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'kpis'])->name('contabilidad.reportes.kpis');

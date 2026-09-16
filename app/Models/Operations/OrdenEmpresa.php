@@ -43,7 +43,11 @@ class OrdenEmpresa extends Model
         'repuesto_inventario_id',
         'memo_entrega',
         'foto_evidencia_entrega',
-        'estado_facturacion'
+        'estado_facturacion',
+        'nro_factura',
+        'fecha_facturacion',
+        'nro_autorizacion_factura',
+        'valor_facturado'
     ];
 
     public function tecnicos()
@@ -122,6 +126,12 @@ class OrdenEmpresa extends Model
         return Informe::where('orden_id', -1 * (int)$this->id)
             ->orWhere('orden_id', (int)$this->id)
             ->exists();
+    }
+
+    public function loteOrden()
+    {
+        return $this->hasOne(\App\Models\Accounting\FacturacionLoteOrden::class, 'orden_id', 'id')
+            ->where('tipo_orden', 'empresa');
     }
 
     public function adjuntos()

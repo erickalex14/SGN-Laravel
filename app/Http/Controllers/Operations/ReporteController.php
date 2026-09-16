@@ -159,7 +159,9 @@ class ReporteController extends Controller
                 $request->input('sucursal_id') ? (int) $request->input('sucursal_id') : null,
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
                 $request->input('empresa_id') ? (int) $request->input('empresa_id') : null,
-                $request->input('garantia_tipo')
+                $request->input('garantia_tipo'),
+                $request->input('estado_facturacion'),
+                $request->input('nro_factura')
             );
 
             $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
@@ -416,7 +418,10 @@ class ReporteController extends Controller
             $request->input('tecnico_id') ? (int) $request->input('tecnico_id') : null,
             $request->input('sucursal_id') ? (int) $request->input('sucursal_id') : null,
             $request->input('cas_id') ? (int) $request->input('cas_id') : null,
-            $request->input('empresa_id') ? (int) $request->input('empresa_id') : null
+            $request->input('empresa_id') ? (int) $request->input('empresa_id') : null,
+            $request->input('garantia_tipo'),
+            $request->input('estado_facturacion'),
+            $request->input('nro_factura')
         );
 
         $rol = mb_strtolower(trim((string) session('grupo_nombre', '')));
@@ -602,6 +607,12 @@ class ReporteController extends Controller
         }
         if ($request->input('buscar')) {
             $filtrosTxt[] = 'Búsqueda: "' . $request->input('buscar') . '"';
+        }
+        if ($request->input('estado_facturacion')) {
+            $filtrosTxt[] = 'Facturación: ' . $request->input('estado_facturacion');
+        }
+        if ($request->input('nro_factura')) {
+            $filtrosTxt[] = 'Nro. Factura: ' . $request->input('nro_factura');
         }
         return $filtrosTxt;
     }

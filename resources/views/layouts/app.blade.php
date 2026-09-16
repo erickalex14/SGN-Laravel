@@ -589,6 +589,12 @@
                                     <span class="nav-label" style="margin-left:10px;">Recuento B2B</span>
                                 </a>
                             @endif
+                            @if ($sa || $esAdminMasterReal || $can('caja_general', 'ver') || $can('recuento_b2b', 'ver') || $can('reportes', 'ver'))
+                                <a data-tip="Facturación por Lote (Milenium)" href="{{ route('facturacion_lotes.index') }}">
+                                    <i class="bi bi-collection-check" style="flex-shrink:0; color: #10b981;"></i>
+                                    <span class="nav-label" style="margin-left:10px;">Facturación Lotes (Milenium)</span>
+                                </a>
+                            @endif
                             @if (config('facturacion.enabled', false) && ($sa || $esAdminMasterReal || $can('caja_general', 'ver') || $can('recuento_b2b', 'ver')))
                                 <a data-tip="Facturas electrónicas" href="{{ route('facturas.index') }}">
                                     <i class="bi bi-file-earmark-check" style="flex-shrink:0; color: #2563eb;"></i>

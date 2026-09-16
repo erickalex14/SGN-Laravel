@@ -29,7 +29,9 @@ class FiltrarReporteRequest extends FormRequest
             'sucursal_id'  => ['nullable', 'integer', 'exists:sucursales,id'],
             'cas_id'       => ['nullable', 'integer', 'exists:cas,id'],
             'empresa_id'   => ['nullable', 'integer', 'exists:empresas,id'],
-            'garantia_tipo'=> ['nullable', 'string', 'max:50']
+            'garantia_tipo'=> ['nullable', 'string', 'max:50'],
+            'estado_facturacion' => ['nullable', 'string', 'max:50'],
+            'nro_factura'  => ['nullable', 'string', 'max:50']
         ];
     }
 

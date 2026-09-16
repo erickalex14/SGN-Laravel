@@ -366,6 +366,20 @@
                 </div>
 
                 <div class="rep-campo">
+                    <label>Estado Facturación</label>
+                    <select name="estado_facturacion" id="f-estado-facturacion">
+                        <option value="">Todos</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Facturado">Facturado</option>
+                    </select>
+                </div>
+
+                <div class="rep-campo">
+                    <label>Nro. Factura Milenium</label>
+                    <input type="text" name="nro_factura" id="f-nro-factura" placeholder="Ej: 026-001..." autocomplete="off">
+                </div>
+
+                <div class="rep-campo">
                     <label>Fecha desde</label>
                     <input type="date" name="fecha_inicio" id="f-desde">
                 </div>
@@ -490,35 +504,36 @@
                         <th onclick="sortTabla(1,'fecha_de_ingreso')">F. Ingreso</th>
                         <th onclick="sortTabla(2,'cliente_nombre')">Cliente</th>
                         <th onclick="sortTabla(3,'identificacion')">C.I./RUC</th>
-                        <th onclick="sortTabla(4,'cliente_telefono')">Teléfono</th>
-                        <th onclick="sortTabla(5,'equipo_nombre')">Equipo</th>
-                        <th onclick="sortTabla(6,'serie')">Serie</th>
-                        <th onclick="sortTabla(7,'marca')">Marca</th>
-                        <th onclick="sortTabla(8,'tipo_equipo')">Tipo</th>
-                        <th onclick="sortTabla(9,'motivo_ingreso')">Motivo</th>
-                        <th onclick="sortTabla(10,'falla_reportada')">Falla Reportada</th>
-                        <th onclick="sortTabla(11,'observacion')">Observación</th>
-                        <th onclick="sortTabla(12,'tecnico_lider')">Téc. Líder</th>
-                        <th onclick="sortTabla(13,'tecnicos_asignados')">Técnicos Asignados</th>
-                        <th onclick="sortTabla(14,'horas_trabajadas')">Horas Trab.</th>
-                        <th onclick="sortTabla(15,'tecnico_nombre')">Técnico</th>
-                        <th onclick="sortTabla(16,'sucursal_nombre')">Sucursal</th>
-                        <th onclick="sortTabla(17,'sucursal_cliente')">Sucursal Cliente</th>
-                        <th onclick="sortTabla(18,'cas_nombre')">CAS</th>
-                        <th onclick="sortTabla(19,'tipo_orden')">Tipo orden</th>
-                        <th onclick="sortTabla(20,'estado_repuesto')">Repuesto</th>
-                        <th onclick="sortTabla(21,'estado_garantia')">Estado Garantía</th>
-                        <th onclick="sortTabla(22,'garantia_tipo')">Tipo Garantía</th>
-                        <th onclick="sortTabla(23,'garantia_destino_cas')">CAS Destino</th>
-                        <th onclick="sortTabla(24,'estado_orden')">Estado</th>
-                        <th onclick="sortTabla(25,'transferencia_numero')">Transf. Inventario</th>
-                        <th onclick="sortTabla(26,'dias_transcurridos')">Días</th>
-                        <th onclick="sortTabla(27,'fecha_prometido')">F. Prometido</th>
-                        <th onclick="sortTabla(28,'fecha_entrega')">F. Entrega</th>
+                        <th onclick="sortTabla(4,'equipo_nombre')">Equipo</th>
+                        <th onclick="sortTabla(5,'serie')">Serie</th>
+                        <th onclick="sortTabla(6,'marca')">Marca</th>
+                        <th onclick="sortTabla(7,'tipo_equipo')">Tipo</th>
+                        <th onclick="sortTabla(8,'motivo_ingreso')">Motivo</th>
+                        <th onclick="sortTabla(9,'falla_reportada')">Falla Reportada</th>
+                        <th onclick="sortTabla(10,'observacion')">Observación</th>
+                        <th onclick="sortTabla(11,'tecnico_lider')">Téc. Líder</th>
+                        <th onclick="sortTabla(12,'tecnicos_asignados')">Técnicos Asignados</th>
+                        <th onclick="sortTabla(13,'horas_trabajadas')">Horas Trab.</th>
+                        <th onclick="sortTabla(14,'tecnico_nombre')">Técnico</th>
+                        <th onclick="sortTabla(15,'sucursal_nombre')">Sucursal</th>
+                        <th onclick="sortTabla(16,'sucursal_cliente')">Sucursal Cliente</th>
+                        <th onclick="sortTabla(17,'cas_nombre')">CAS</th>
+                        <th onclick="sortTabla(18,'tipo_orden')">Tipo orden</th>
+                        <th onclick="sortTabla(19,'estado_repuesto')">Repuesto</th>
+                        <th onclick="sortTabla(20,'estado_garantia')">Estado Garantía</th>
+                        <th onclick="sortTabla(21,'garantia_tipo')">Tipo Garantía</th>
+                        <th onclick="sortTabla(22,'garantia_destino_cas')">CAS Destino</th>
+                        <th onclick="sortTabla(23,'estado_orden')">Estado</th>
+                        <th onclick="sortTabla(24,'estado_facturacion')">Estado Facturación</th>
+                        <th onclick="sortTabla(25,'nro_factura')">Factura Milenium</th>
+                        <th onclick="sortTabla(26,'valor_facturado')">Monto Facturado</th>
+                        <th onclick="sortTabla(27,'transferencia_numero')">Transf. Inventario</th>
+                        <th onclick="sortTabla(28,'dias_transcurridos')">Días</th>
+                        <th onclick="sortTabla(29,'fecha_entrega')">F. Entrega</th>
                         <th>PDF Orden</th>
                         <th>PDF Informe</th>
-                        <th onclick="sortTabla(31,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
-                        <th onclick="sortTabla(32,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
+                        <th onclick="sortTabla(32,'valor_novicompu')" style="text-align:right;width:110px;">Cobro Novicompu</th>
+                        <th onclick="sortTabla(33,'valor_otra_empresa')" style="text-align:right;width:110px;">Cobro RB-HEALTH</th>
                     </tr></thead>
                     <tbody id="rep-tbody"></tbody>
                 </table>
@@ -637,6 +652,12 @@ function normalizeRow(raw) {
         valor_otra_empresa: raw.valor_otra_empresa ?? 0.00,
         transferencia_plataforma: raw.transferencia_plataforma || '',
         transferencia_numero: raw.transferencia_numero || '',
+        estado_facturacion: raw.estado_facturacion || 'Pendiente',
+        nro_factura       : raw.nro_factura || '',
+        nro_autorizacion_factura: raw.nro_autorizacion_factura || '',
+        valor_facturado   : raw.valor_facturado !== null && raw.valor_facturado !== undefined ? raw.valor_facturado : null,
+        lote_facturacion_id: raw.lote_facturacion_id || null,
+        lote_nro_factura  : raw.lote_nro_factura || null,
     };
 }
 
@@ -654,6 +675,8 @@ const FILTROS = [
     { id:'f-repuesto',  label:'Repuesto',    sel:true  },
     { id:'f-garantia',  label:'Garantía',    sel:true  },
     { id:'f-garantia-tipo', label:'Tipo Garantía', sel:true },
+    { id:'f-estado-facturacion', label:'Facturación', sel:true },
+    { id:'f-nro-factura', label:'Nro. Factura', sel:false },
     { id:'f-desde',     label:'Desde',       sel:false },
     { id:'f-hasta',     label:'Hasta',       sel:false },
 ];
@@ -913,12 +936,24 @@ function renderTabla() {
         const casCol = `<td style="font-size:11px;">${esc(r.cas_nombre)}</td>`;
         const valNovicompu = (r.valor_novicompu !== undefined && r.valor_novicompu !== null) ? Number(r.valor_novicompu).toFixed(2) : '0.00';
         const valOtraEmpresa = (r.valor_otra_empresa !== undefined && r.valor_otra_empresa !== null) ? Number(r.valor_otra_empresa).toFixed(2) : '0.00';
+        
+        const badgeFacturacion = r.estado_facturacion === 'Facturado'
+            ? '<span class="tipo-badge" style="background:#dcfce7;color:#15803d;font-weight:800;"><i class="bi bi-check2-all me-1"></i>Facturado</span>'
+            : '<span class="tipo-badge" style="background:#fef9c3;color:#854d0e;"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>';
+
+        const facCol = r.nro_factura
+            ? `<div style="font-family:monospace;font-weight:700;color:#0f172a;">${esc(r.nro_factura)}</div>${r.lote_facturacion_id ? `<div style="font-size:10px;color:#64748b;">(Lote #${esc(r.lote_facturacion_id)})</div>` : ''}`
+            : '<span style="color:#cbd5e1;">—</span>';
+
+        const montoFacCol = (r.valor_facturado !== null && r.valor_facturado !== undefined && r.valor_facturado !== '')
+            ? `<span style="font-weight:800;color:#166534;font-family:monospace;">$${Number(r.valor_facturado).toFixed(2)}</span>`
+            : '<span style="color:#cbd5e1;">—</span>';
+
         return `<tr data-row="reporte" ${vR}>
             <td class="rep-nro">${esc(r.nro_orden)}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_de_ingreso)}</td>
             <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;">${esc(r.cliente_nombre)}</td>
             <td style="font-size:11px;color:#64748b;">${esc(r.identificacion)}</td>
-            <td style="font-size:11px;color:#64748b;">${esc(r.cliente_telefono)}</td>
             <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${esc(r.equipo_nombre)}</td>
             <td style="font-size:10px;max-width:90px;overflow:hidden;text-overflow:ellipsis;">${esc(r.serie)}</td>
             <td>${esc(r.marca)}</td>
@@ -939,9 +974,11 @@ function renderTabla() {
             <td style="font-size:11px;">${r.garantia_tipo === 'Externa' ? '<span class="tipo-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;"><i class="bi bi-box-arrow-up-right me-1"></i>Externa</span>' : (r.garantia_tipo === 'Interna' ? '<span class="tipo-badge" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;"><i class="bi bi-house-door me-1"></i>Interna</span>' : '<span style="color:#94a3b8;">—</span>')}</td>
             <td style="font-size:11px;font-weight:${r.garantia_tipo === 'Externa' ? '700' : '400'};color:${r.garantia_tipo === 'Externa' ? '#1e40af' : '#64748b'};">${esc(r.garantia_destino_cas)}</td>
             <td><span class="estado-badge" style="background:${ec.bg};color:${ec.fg};">${esc(r.estado_orden)}</span></td>
+            <td>${badgeFacturacion}</td>
+            <td>${facCol}</td>
+            <td style="text-align:right;">${montoFacCol}</td>
             <td>${r.transferencia_numero ? `<span style="font-size:10.5px; font-weight:600; color:#374151;">${esc(r.transferencia_plataforma)}: ${esc(r.transferencia_numero)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
             <td style="text-align:center;font-weight:700;color:${dC};">${r.dias_transcurridos}d</td>
-            <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_prometido || '—')}</td>
             <td style="font-size:11px;white-space:nowrap;">${esc(r.fecha_entrega || '—')}</td>
             ${pdfOrdenCol}
             ${pdfInformeCol}
@@ -1052,12 +1089,13 @@ function exportarCSV() {
     if (!_filtered.length) { alert('No hay datos para exportar.'); return; }
     const BOM = '\uFEFF'; // UTF-8 BOM para Excel
     const headers = [
-        'Nro. Orden','Fecha Ingreso','Tipo Orden','Subtipo Empresa','Cliente','C.I./RUC','Teléfono','Correo',
+        'Nro. Orden','Fecha Ingreso','Tipo Orden','Subtipo Empresa','Cliente','C.I./RUC',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
+        'Estado Facturación','Nro. Factura Milenium','Nro. Autorización SRI','Monto Facturado','Lote Facturación',
         'Plataforma Transferencia Inventario', 'Número Transferencia Inventario',
-        'Técnico','Sucursal','Sucursal Cliente','CAS','F. Prometido','F. Entrega','Vencida',
+        'Técnico','Sucursal','Sucursal Cliente','CAS','F. Entrega','Vencida',
         'Valor Cobro Novicompu', 'Valor Cobro RB-HEALTH', 'URL PDF Orden', 'URL PDF Informe'
     ];
     const rows = _filtered.map(r => {
@@ -1068,16 +1106,25 @@ function exportarCSV() {
         const pdfInformeUrl = r.informe_id 
             ? `{{ url('/') }}/operaciones/informes/${r.informe_id}/imprimir` 
             : '';
+        const montoFac = (r.valor_facturado !== null && r.valor_facturado !== undefined && r.valor_facturado !== '')
+            ? Number(r.valor_facturado).toFixed(2)
+            : '';
+        const loteTxt = r.lote_facturacion_id ? `Lote #${r.lote_facturacion_id}` : '';
         return [
             r.nro_orden, r.fecha_de_ingreso, r.tipo_orden, r.subtipo, r.cliente_nombre, r.identificacion,
-            r.cliente_telefono, r.cliente_correo, r.equipo_nombre, r.serie, r.marca,
+            r.equipo_nombre, r.serie, r.marca,
             r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia, r.garantia_tipo || '-', r.garantia_destino_cas || '-',
             r.estado_orden,
+            r.estado_facturacion || 'Pendiente',
+            r.nro_factura || '',
+            r.nro_autorizacion_factura || '',
+            montoFac,
+            loteTxt,
             r.transferencia_plataforma || '', r.transferencia_numero || '',
             r.tecnico_nombre, r.sucursal_nombre, r.sucursal_cliente || '', r.cas_nombre,
-            r.fecha_prometido || '', r.fecha_entrega || '',
+            r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
             r.valor_novicompu,
             r.valor_otra_empresa,
@@ -1170,11 +1217,12 @@ async function exportarXLSX() {
 
     /* ══════ HOJA 1: DETALLE ══════ */
     const cols1 = [
-        'Nro. Orden','F. Ingreso','F. Prometido','F. Entrega','Vencida',
-        'Cliente','C.I./RUC','Teléfono','Correo','Dirección',
+        'Nro. Orden','F. Ingreso','F. Entrega','Vencida',
+        'Cliente','C.I./RUC',
         'Equipo','Serie','Marca','Tipo Equipo','Motivo Ingreso',
         'Falla Reportada', 'Observación', 'Técnico Líder', 'Técnicos Asignados', 'Cant. Técnicos', 'Horas Trabajadas',
         'Estado Repuesto','Estado Garantía','Tipo Garantía','CAS Destino (Garantía Externa)','Estado Orden',
+        'Estado Facturación','Nro. Factura Milenium','Nro. Autorización SRI','Monto Facturado','Lote Facturación',
         'Plataforma Transf. Inventario', 'Número Transf. Inventario',
         'Técnico','Ingresado por',
         'Sucursal',
@@ -1188,7 +1236,7 @@ async function exportarXLSX() {
         'Link PDF Informe'
     ];
     const nc = cols1.length;
-    const widths1 = [14,18,14,14,8,28,14,14,22,28,18,18,16,16,22,28,28,22,28,12,14,18,16,16,26,18,22,22,22,20,16,22,16,12,16,22,22,18,18];
+    const widths1 = [14,18,14,8,28,14,18,18,16,16,22,28,28,22,28,12,14,18,16,16,26,18,18,22,26,16,16,22,22,22,20,16,22,16,12,16,22,22,18,18];
 
     const ws1 = wb.addWorksheet('Órdenes', {
         views: [{ showGridLines: true }],
@@ -1295,13 +1343,22 @@ async function exportarXLSX() {
             ? `{{ url('/') }}/operaciones/informes/${r.informe_id}/imprimir` 
             : null;
 
+        const montoFac = (r.valor_facturado !== null && r.valor_facturado !== undefined && r.valor_facturado !== '')
+            ? Number(r.valor_facturado)
+            : null;
+
         const vals = [
-            r.nro_orden, r.fecha_de_ingreso, r.fecha_prometido || '', r.fecha_entrega || '',
+            r.nro_orden, r.fecha_de_ingreso, r.fecha_entrega || '',
             r.vencida ? 'Sí' : 'No',
-            r.cliente_nombre, r.identificacion, r.cliente_telefono, r.cliente_correo, r.cliente_direccion,
+            r.cliente_nombre, r.identificacion,
             r.equipo_nombre, r.serie, r.marca, r.tipo_equipo, r.motivo_ingreso,
             r.falla_reportada, r.observacion, r.tecnico_lider, r.tecnicos_asignados, r.cantidad_tecnicos ?? 1, r.horas_trabajadas || '',
             r.estado_repuesto, r.estado_garantia || '', r.garantia_tipo || '-', r.garantia_destino_cas || '-', r.estado_orden,
+            r.estado_facturacion || 'Pendiente',
+            r.nro_factura || '',
+            r.nro_autorizacion_factura || '',
+            montoFac,
+            r.lote_facturacion_id ? `Lote #${r.lote_facturacion_id}` : '',
             r.transferencia_plataforma || '', r.transferencia_numero || '',
             r.tecnico_nombre, '',
             r.sucursal_nombre,
@@ -1316,26 +1373,44 @@ async function exportarXLSX() {
         ];
         const dr = ws1.addRow(vals); dr.height = 14;
         const bgBase = idx % 2 === 0 ? C.blanco : C.gris;
-        const estadoIdx = 26;
+        const estadoIdx = 22; // 1-based index de Estado Orden
+        const estadoFacIdx = 23; // 1-based index de Estado Facturación
         vals.forEach((v, ci) => {
             const cell = dr.getCell(ci + 1); cell.border = bd(); cell.font = fn(false, 9); cell.alignment = al('left','middle');
             if (ci === 0) { cell.font = fn(true, 9, C.azul, { name:'Courier New' }); cell.fill = fl(bgBase); cell.alignment = al('center','middle'); }
             else if (ci + 1 === estadoIdx) { const ec2 = EC[v] || { bg:C.gris, fg:C.grisOsc }; cell.fill = fl(ec2.bg); cell.font = fn(true, 8, ec2.fg); cell.alignment = al('center','middle'); }
-            else if (ci === 23) { // Tipo Garantía
+            else if (ci + 1 === estadoFacIdx) {
+                if (v === 'Facturado') {
+                    cell.fill = fl(C.verdeL); cell.font = fn(true, 8, C.verde); cell.alignment = al('center','middle');
+                } else {
+                    cell.fill = fl(C.ambarL); cell.font = fn(true, 8, C.ambar); cell.alignment = al('center','middle');
+                }
+            }
+            else if (ci === 19) { // Tipo Garantía
                 cell.fill = fl(bgBase);
                 if (v === 'Externa') { cell.font = fn(true, 9, 'B45309'); cell.alignment = al('center','middle'); }
                 else if (v === 'Interna') { cell.font = fn(true, 9, '15803D'); cell.alignment = al('center','middle'); }
                 else { cell.alignment = al('center','middle'); }
             }
-            else if (ci === 24) { // CAS Destino
+            else if (ci === 20) { // CAS Destino
                 cell.fill = fl(bgBase);
                 if (v !== '-') { cell.font = fn(true, 9, C.azul); }
             }
-            else if (ci === 35 || ci === 36) { 
+            else if (ci === 25) { // Monto Facturado
+                cell.fill = fl(bgBase);
+                if (v !== null && v !== '') {
+                    cell.numFormat = '$#,##0.00';
+                    cell.font = fn(true, 9, C.verde);
+                    cell.alignment = al('right', 'middle');
+                } else {
+                    cell.alignment = al('center', 'middle');
+                }
+            }
+            else if (ci === 36 || ci === 37) { // Valor Cobro Novicompu / RB-HEALTH
                 cell.numFormat = '$#,##0.00';
                 cell.alignment = al('right', 'middle');
                 cell.fill = fl(bgBase);
-                const val = ci === 35 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
+                const val = ci === 36 ? Number(r.valor_novicompu) : Number(r.valor_otra_empresa);
                 if (val > 0) {
                     cell.font = fn(true, 9, C.verde);
                 }

@@ -18,6 +18,8 @@ readonly class ReporteFiltroDTO
         public ?int $sucursal_id = null,
         public ?int $cas_id = null,
         public ?int $empresa_id = null,
-        public ?string $garantia_tipo = null
+        public ?string $garantia_tipo = null,
+        public ?string $estado_facturacion = null,
+        public ?string $nro_factura = null
     ) {}
 }
