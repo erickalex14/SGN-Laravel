@@ -150,6 +150,7 @@ class EdicionOrdenController extends Controller
                 // Nuevos campos de orden
                 $request->input('motivo_ingreso'),
                 $request->input('garantia_tipo'),
+                $request->input('empresa_garantia'),
                 $request->input('observacion_orden'),
                 $request->input('transferencia_plataforma'),
                 $request->input('transferencia_numero')

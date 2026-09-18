@@ -47,11 +47,15 @@
     transition: box-shadow .18s, border-color .18s, transform .18s; display: flex; flex-direction: column;
 }
 .orden-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.09); border-color: #93c5fd; transform: translateY(-2px); }
-.orden-card[data-estado="Pendiente"] { border-top: 3px solid #f59e0b; }
-.orden-card[data-estado="En proceso"] { border-top: 3px solid #3b82f6; }
-.orden-card[data-estado="Finalizada"] { border-top: 3px solid #10b981; }
-.orden-card[data-estado="Entregada"] { border-top: 3px solid #0d9488; }
+.orden-card[data-estado="Recibido en Recepcion"], .orden-card[data-estado="INGRESO"] { border-top: 3px solid #64748b; }
+.orden-card[data-estado="Entregado al Tecnico"], .orden-card[data-estado="Recibida"] { border-top: 3px solid #0284c7; }
+.orden-card[data-estado="Pendiente"], .orden-card[data-estado="Abierta"] { border-top: 3px solid #f59e0b; }
+.orden-card[data-estado="En reparacion"], .orden-card[data-estado="En proceso"] { border-top: 3px solid #3b82f6; }
+.orden-card[data-estado="Reparada"], .orden-card[data-estado="Finalizada"] { border-top: 3px solid #10b981; }
+.orden-card[data-estado="Entregado en Recepcion para Entrega"], .orden-card[data-estado="Lista para entrega"] { border-top: 3px solid #d97706; }
+.orden-card[data-estado="Cerrado"], .orden-card[data-estado="Entregada"] { border-top: 3px solid #0d9488; }
 .orden-card[data-estado="Nota de Credito"] { border-top: 3px solid #db2777; }
+.orden-card[data-estado="Incinerox"] { border-top: 3px solid #dc2626; }
 .card-top { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px 7px; cursor: pointer; }
 .card-nro { font-family: 'Courier New', monospace; font-weight: 800; font-size: 13.5px; color: var(--mo-blue); letter-spacing: .02em; }
 .card-cliente { padding: 0 14px 3px; font-size: 13.5px; font-weight: 700; color: var(--mo-slate); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -208,9 +212,15 @@
             'estado_orden' => (string) ($esEmpresa ? ($ord->estado ?? '') : ($ord->estado_orden ?? '')),
             'estado_repuesto' => (string) ($ord->estado_repuesto ?: 'No requerido'),
             'fecha_de_ingreso' => (string) ($esEmpresa ? ($ord->fecha_ingreso ?? '') : ($ord->fecha_de_ingreso ?? '')),
-            'fecha_entrega' => (string) ($esEmpresa ? '' : ($ord->fecha_entrega ?? '')),
+            'fecha_recibida_tecnico' => (string) ($ord->fecha_recibida_tecnico ?? ''),
+            'fecha_prometido' => (string) ($ord->fecha_prometido ?? ''),
+            'fecha_finalizacion' => (string) ($ord->fecha_finalizacion ?? ''),
+            'fecha_lista_entrega' => (string) ($ord->fecha_lista_entrega ?? ''),
+            'fecha_entrega' => (string) ($ord->fecha_entrega ?? ''),
+            'fecha_modificacion' => (string) ($ord->fecha_modificacion ?? ''),
             'motivo_ingreso' => (string) ($esEmpresa ? ('Empresa - ' . ($ord->subtipo ?? '')) : ($ord->motivo_ingreso ?? '')),
             'estado_garantia' => (string) ($esEmpresa ? '' : ($ord->estado_garantia ?? 'Pendiente')),
+            'empresa_garantia' => (string) ($esEmpresa ? '' : ($ord->empresa_garantia ?? 'NOVISOLUTIONS')),
             'cliente' => $esEmpresa
                 ? (string) ($ord->empresa->nombre ?? '')
                 : trim(((string) ($ord->cliente->nombres ?? '')) . ' ' . ((string) ($ord->cliente->apellidos ?? ''))),
@@ -236,10 +246,12 @@
             'repuesto_inventario_id' => (int) ($ord->repuesto_inventario_id ?? 0),
             'repuesto_codigo' => (string) ($ord->repuestoInventario->codigo ?? ''),
             'repuesto_nombre' => (string) ($ord->repuestoInventario->nombre ?? $ord->repuestoInventario->descripcion ?? ''),
+            'memo_entrega' => (string) ($ord->memo_entrega ?? ''),
+            'foto_evidencia_entrega' => (string) ($ord->foto_evidencia_entrega ?? ''),
             'tipo_orden' => $esEmpresa ? 'empresa' : 'personal',
             'empresa_id' => $esEmpresa ? (int) $ord->empresa_id : null,
             'subtipo' => $esEmpresa ? (string) $ord->subtipo : null,
-            'productos_inventario_st' => ($esEmpresa && (int)$ord->empresa_id === 1 && $ord->subtipo === 'Stock')
+            'productos_inventario_st' => ($esEmpresa && (int)$ord->empresa_id === 1 && in_array($ord->subtipo, ['Stock', 'Autoconsumo'], true))
                 ? \App\Models\Inventory\ProductoInventarioFisicoSt::where('orden_empresa_id', $ord->id)->get()->map(function($p) {
                     return [
                         'id' => (int) $p->id,
@@ -262,7 +274,10 @@
                 'codigo' => (string) ($or->repuesto->codigo ?? ''),
                 'nombre' => (string) ($or->repuesto->nombre ?? $or->repuesto->descripcion ?? ''),
                 'cantidad' => (int) $or->cantidad,
+                'costo_unitario' => (float) ($or->repuesto->costo ?? 0),
+                'costo_total' => (float) (($or->repuesto->costo ?? 0) * $or->cantidad),
             ])->values(),
+            'total_costo_repuestos' => (float) collect($ord->ordenRepuestos ?? [])->sum(fn($or) => ($or->repuesto->costo ?? 0) * $or->cantidad),
             'llamadas' => collect($ord->llamadas ?? [])->map(fn($ll) => [
                 'id' => (int) $ll->id,
                 'fecha_hora' => $ll->fecha_hora ? $ll->fecha_hora->format('d/m/Y H:i') : '',
@@ -275,11 +290,14 @@
     })->values();
 
     $cntTotal = $rows->count();
+    $cntRecibidoRecepcion = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Recibido en Recepcion', 'INGRESO'], true))->count();
+    $cntEntregadoTecnico = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Entregado al Tecnico', 'Recibida'], true))->count();
     $cntPendiente = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Pendiente', 'Abierta'], true))->count();
-    $cntProceso = $rows->filter(fn($o) => $o['estado_orden'] === 'En proceso')->count();
-    $cntFinal = $rows->filter(fn($o) => $o['estado_orden'] === 'Finalizada')->count();
+    $cntReparacion = $rows->filter(fn($o) => in_array($o['estado_orden'], ['En reparacion', 'En proceso'], true))->count();
+    $cntReparada = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Reparada', 'Finalizada'], true))->count();
+    $cntParaEntrega = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Entregado en Recepcion para Entrega', 'Lista para entrega'], true))->count();
     $cntNc = $rows->filter(fn($o) => $o['estado_orden'] === 'Nota de Credito')->count();
-    $cntEnt = $rows->filter(fn($o) => $o['estado_orden'] === 'Entregada')->count();
+    $cntCerrado = $rows->filter(fn($o) => in_array($o['estado_orden'], ['Cerrado', 'Entregada'], true))->count();
 
 @endphp
 
@@ -291,20 +309,29 @@
     </div>
 
     <div class="mo-kpis">
+        <div class="mo-kpi-card" style="border-top:3px solid #64748b;" onclick="filtrarOrdenes('Recibido en Recepcion')" id="mo-kpi-recibido-recepcion">
+            <div class="mo-kpi-num">{{ $cntRecibidoRecepcion }}</div><div class="mo-kpi-lbl">En Recepción</div>
+        </div>
+        <div class="mo-kpi-card" style="border-top:3px solid #0284c7;" onclick="filtrarOrdenes('Entregado al Tecnico')" id="mo-kpi-recibida">
+            <div class="mo-kpi-num">{{ $cntEntregadoTecnico }}</div><div class="mo-kpi-lbl">Recibidas</div>
+        </div>
         <div class="mo-kpi-card mo-kpi-pendiente" onclick="filtrarOrdenes('Pendiente')" id="mo-kpi-pendiente">
-            <div class="mo-kpi-num">{{ $cntPendiente }}</div><div class="mo-kpi-lbl">Pendiente</div>
+            <div class="mo-kpi-num">{{ $cntPendiente }}</div><div class="mo-kpi-lbl">Pendientes</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-en-proceso" onclick="filtrarOrdenes('En proceso')" id="mo-kpi-enproceso">
-            <div class="mo-kpi-num">{{ $cntProceso }}</div><div class="mo-kpi-lbl">En Proceso</div>
+        <div class="mo-kpi-card mo-kpi-en-proceso" onclick="filtrarOrdenes('En reparacion')" id="mo-kpi-enproceso">
+            <div class="mo-kpi-num">{{ $cntReparacion }}</div><div class="mo-kpi-lbl">En Reparación</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-finalizada" onclick="filtrarOrdenes('Finalizada')" id="mo-kpi-finalizada">
-            <div class="mo-kpi-num">{{ $cntFinal }}</div><div class="mo-kpi-lbl">Finalizada</div>
+        <div class="mo-kpi-card mo-kpi-finalizada" onclick="filtrarOrdenes('Reparada')" id="mo-kpi-finalizada">
+            <div class="mo-kpi-num">{{ $cntReparada }}</div><div class="mo-kpi-lbl">Reparadas</div>
+        </div>
+        <div class="mo-kpi-card" style="border-top:3px solid #d97706;" onclick="filtrarOrdenes('Entregado en Recepcion para Entrega')" id="mo-kpi-listaentrega">
+            <div class="mo-kpi-num">{{ $cntParaEntrega }}</div><div class="mo-kpi-lbl">Para Entrega</div>
         </div>
         <div class="mo-kpi-card mo-kpi-nota-cred" onclick="filtrarOrdenes('Nota de Credito')" id="mo-kpi-notacred">
-            <div class="mo-kpi-num">{{ $cntNc }}</div><div class="mo-kpi-lbl">Nota de Credito</div>
+            <div class="mo-kpi-num">{{ $cntNc }}</div><div class="mo-kpi-lbl">Nota de Crédito</div>
         </div>
-        <div class="mo-kpi-card mo-kpi-entregada" onclick="filtrarOrdenes('Entregada')" id="mo-kpi-entregada">
-            <div class="mo-kpi-num">{{ $cntEnt }}</div><div class="mo-kpi-lbl">Entregada</div>
+        <div class="mo-kpi-card mo-kpi-entregada" onclick="filtrarOrdenes('Cerrado')" id="mo-kpi-entregada">
+            <div class="mo-kpi-num">{{ $cntCerrado }}</div><div class="mo-kpi-lbl">Cerradas</div>
         </div>
         <div class="mo-kpi-card" onclick="filtrarOrdenes('')" id="mo-kpi-todos">
             <div class="mo-kpi-num">{{ $cntTotal }}</div><div class="mo-kpi-lbl">Total</div>
@@ -322,18 +349,24 @@
                 @php
                     $e = $o['estado_orden'];
                     $estadoBg = match($e) {
+                        'Recibido en Recepcion', 'INGRESO' => '#f1f5f9',
+                        'Entregado al Tecnico', 'Recibida' => '#e0f2fe',
                         'Pendiente', 'Abierta' => '#fef9c3',
-                        'En proceso' => '#dbeafe',
-                        'Finalizada' => '#dcfce7',
-                        'Entregada' => '#f0fdf4',
+                        'En reparacion', 'En proceso' => '#dbeafe',
+                        'Reparada', 'Finalizada' => '#dcfce7',
+                        'Entregado en Recepcion para Entrega', 'Lista para entrega' => '#fef3c7',
+                        'Cerrado', 'Entregada' => '#ecfdf5',
                         'Nota de Credito' => '#fce7f3',
                         default => '#f1f5f9',
                     };
                     $estadoColor = match($e) {
+                        'Recibido en Recepcion', 'INGRESO' => '#475569',
+                        'Entregado al Tecnico', 'Recibida' => '#0369a1',
                         'Pendiente', 'Abierta' => '#854d0e',
-                        'En proceso' => '#1e40af',
-                        'Finalizada' => '#166534',
-                        'Entregada' => '#15803d',
+                        'En reparacion', 'En proceso' => '#1e40af',
+                        'Reparada', 'Finalizada' => '#166534',
+                        'Entregado en Recepcion para Entrega', 'Lista para entrega' => '#92400e',
+                        'Cerrado', 'Entregada' => '#047857',
                         'Nota de Credito' => '#9d174d',
                         default => '#475569',
                     };
@@ -352,6 +385,7 @@
                         'Sin stock', 'Sin Stock' => '#991b1b',
                         default => '#475569',
                     };
+                    $esRecibidoRecepcion = in_array($o['estado_orden'], ['Recibido en Recepcion', 'INGRESO'], true);
                 @endphp
                 <div class="orden-card" data-estado="{{ $o['estado_orden'] }}" id="card-{{ $o['tipo_orden'] }}-{{ $o['id'] }}" data-orden='@json($o)'>
                     <div class="card-top" onclick="verDetalleOrden(this.parentElement)">
@@ -377,6 +411,11 @@
                     </div>
 
                     <div class="card-actions">
+                        @if($esRecibidoRecepcion)
+                            <button class="btn-accion" style="background:#0284c7;color:#fff;font-weight:700;" onclick="confirmarRecibidoTecnico({{ $o['id'] }}, '{{ $o['nro_orden'] }}', '{{ $o['tipo_orden'] }}')">
+                                <i class="bi bi-box-arrow-in-down-left"></i> Confirmar Recepción
+                            </button>
+                        @endif
                         <button class="btn-accion btn-detalle-orden" onclick="verDetalleOrden(this.closest('[data-orden]'))">
                             <i class="bi bi-sliders"></i> {{ $o['tipo_orden'] === 'empresa' ? 'Detalle' : 'Gestionar' }}
                         </button>
@@ -412,26 +451,30 @@
 </div>
 </section>
 
-<div id="modal-detalle" class="modal-overlay" style="display:none;" onclick="cerrarDetalle(event)">
+<div id="modal-detalle" class="modal-overlay" style="display:none;">
     <div class="modal-box">
         <button class="modal-close" onclick="cerrarModal()">&#10005;</button>
         <div id="modal-contenido"></div>
     </div>
 </div>
 
-<div id="modal-creds" onclick="if(event.target===this)cerrarCreds()">
-    <div class="creds-box">
+<div id="modal-creds">
+    <div class="creds-box" style="position:relative;">
+        <button type="button" class="modal-close" onclick="cerrarCreds()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;" title="Cerrar">&#10005;</button>
         <h4><i class="bi bi-key me-2" style="color:#2563eb;"></i>Credenciales del Equipo</h4>
         <div id="creds-lista"></div>
         <button class="btn-cerrar-creds" onclick="cerrarCreds()">Cerrar</button>
     </div>
 </div>
 
-<div id="modal-nota-credito" onclick="if(event.target===this)cerrarModalNC()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+<div id="modal-nota-credito">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-receipt-cutoff" style="font-size:22px;color:#9d174d;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#7f1d1d;">Solicitud Nota de Credito</h4>
+            </div>
+            <button type="button" onclick="cerrarModalNC()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="nc-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#f59e0b;font-weight:600;"><i class="bi bi-info-circle me-1"></i>La solicitud debe ser aprobada para poder imprimir.</p>
@@ -466,11 +509,14 @@
     </div>
 </div>
 
-<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarModalSR()">
-    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
-            <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+<div id="modal-solicitud-repuesto" class="modal-overlay" style="display:none;">
+    <div style="background:#fff;border-radius:14px;padding:28px 30px;max-width:480px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto;box-sizing:border-box;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="bi bi-tools" style="font-size:22px;color:#2563eb;"></i>
+                <h4 style="margin:0;font-size:17px;font-weight:800;color:#1e3a8a;">Solicitud de Repuesto</h4>
+            </div>
+            <button type="button" onclick="cerrarModalSR()" style="background:none;border:none;font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:6px;margin-left:auto;" title="Cerrar">&#10005;</button>
         </div>
         <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Orden: <b id="sr-nro-orden-lbl"></b></p>
         <p style="margin:0 0 20px;font-size:11.5px;color:#64748b;line-height:1.4;"><i class="bi bi-info-circle me-1"></i>Ingresa los detalles del repuesto requerido. Se creará un ticket en bodega y el estado de la orden pasará a <b>Requerido</b>.</p>
@@ -523,7 +569,7 @@
     </div>
 </div>
 
-<div id="modal-alert" class="modal-overlay" style="display:none;" onclick="if(event.target===this)cerrarAlerta(false)">
+<div id="modal-alert" class="modal-overlay" style="display:none;">
     <div style="background:#fff;border-radius:18px;padding:32px 30px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center;animation:modalIn .2s ease;position:relative;">
         <div id="alert-icon-container" style="border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border: 1.5px solid #fca5a5;background:#fef2f2;">
             <!-- Icono dinámico -->
@@ -561,6 +607,8 @@ const _moUrlReasignar = @json(route('mis_ordenes.reasignar'));
 const _moTecnicos = @json($tecnicos);
 const _moUrlRegistrarLlamada = @json(route('ordenes.llamadas.registrar'));
 const _moUrlEnviarEmail = @json(route('mis_ordenes.enviar_email'));
+const _moUrlInvFisicoGuardar = @json(route('inventario_fisico.guardar'));
+const _moUrlInvFisicoObtener = @json(url('/operaciones/ordenes-empresa/inventario-fisico'));
 
 let _ncOrdenId = 0;
 const _repTimers = {};
@@ -643,17 +691,51 @@ function _h(v) {
     return String(v ?? '').replace(/[&<>"']/g, (s) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[s]));
 }
 
-function _badgeEstadoHtml(estado) {
+function _fmtDateTime(v) {
+    if (!v) return '-';
+    try {
+        const parts = String(v).trim().split(/[\sT]+/);
+        if (!parts[0]) return '-';
+        const dParts = parts[0].split('-');
+        if (dParts.length === 3) {
+            const dateStr = `${dParts[2]}/${dParts[1]}/${dParts[0]}`;
+            if (parts[1]) {
+                const tParts = parts[1].split(':');
+                return `${dateStr} ${tParts[0]}:${tParts[1]}`;
+            }
+            return dateStr;
+        }
+        return v;
+    } catch {
+        return v;
+    }
+}
+
+function _moEstadoColors(estado) {
     const map = {
+        'Recibido en Recepcion': ['#f1f5f9', '#475569'],
+        'INGRESO': ['#f1f5f9', '#475569'],
+        'Entregado al Tecnico': ['#e0f2fe', '#0369a1'],
+        'Recibida': ['#e0f2fe', '#0369a1'],
         'Pendiente': ['#fef9c3', '#854d0e'],
         'Abierta': ['#fef9c3', '#854d0e'],
+        'En reparacion': ['#dbeafe', '#1e40af'],
         'En proceso': ['#dbeafe', '#1e40af'],
+        'Reparada': ['#dcfce7', '#166534'],
         'Finalizada': ['#dcfce7', '#166534'],
+        'Entregado en Recepcion para Entrega': ['#fef3c7', '#92400e'],
+        'Lista para entrega': ['#fef3c7', '#92400e'],
+        'Cerrado': ['#ecfdf5', '#047857'],
         'Entregada': ['#f0fdf4', '#15803d'],
         'Nota de Credito': ['#fce7f3', '#9d174d'],
+        'Incinerox': ['#fee2e2', '#991b1b'],
     };
-    const pair = map[estado] || ['#f1f5f9', '#475569'];
-    return `<span style="background:${pair[0]};color:${pair[1]};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${_h(estado)}</span>`;
+    return map[estado] || ['#f1f5f9', '#475569'];
+}
+
+function _badgeEstadoHtml(estado) {
+    const [bg, color] = _moEstadoColors(estado);
+    return `<span style="background:${bg};color:${color};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${_h(estado)}</span>`;
 }
 
 function _badgeRepuestoHtml(estado) {
@@ -680,18 +762,6 @@ function _moCardId(row) {
     return 'card-' + (row.tipo_orden || 'personal') + '-' + Number(row.id || 0);
 }
 
-function _moEstadoColors(estado) {
-    const map = {
-        'Pendiente': ['#fef9c3', '#854d0e'],
-        'Abierta': ['#fef9c3', '#854d0e'],
-        'En proceso': ['#dbeafe', '#1e40af'],
-        'Finalizada': ['#dcfce7', '#166534'],
-        'Entregada': ['#f0fdf4', '#15803d'],
-        'Nota de Credito': ['#fce7f3', '#9d174d'],
-    };
-    return map[estado] || ['#f1f5f9', '#475569'];
-}
-
 function _moRepuestoColors(estado) {
     const map = {
         'No requerido': ['#f1f5f9', '#475569'],
@@ -712,9 +782,25 @@ function _moOption(value, label, actual) {
 }
 
 function _estadoOrdenOptions(actual, esEmpresa = false) {
-    const estados = esEmpresa
-        ? ['Pendiente', 'En proceso', 'Finalizada', 'Entregada']
-        : ['Pendiente', 'En proceso', 'Finalizada', 'Entregada', 'Nota de Credito'];
+    const sessionGrupo = '{{ mb_strtolower(trim((string) session("grupo_nombre", ""))) }}';
+    const esAdmin = {{ (session('es_superadmin') || in_array(mb_strtolower(trim((string) session('grupo_nombre', ''))), ['admin', 'administrador', 'admin master', 'administrador master'])) ? 'true' : 'false' }};
+    
+    let estados;
+    if (esEmpresa) {
+        estados = ['Pendiente', 'Recibida', 'En proceso', 'Finalizada', 'Lista para entrega', 'Incinerox'];
+        if (esAdmin) estados.push('Entregada');
+    } else {
+        estados = [
+            'Recibido en Recepcion',
+            'Entregado al Tecnico',
+            'Pendiente',
+            'En reparacion',
+            'Reparada',
+            'Entregado en Recepcion para Entrega',
+            'Nota de Credito'
+        ];
+        if (esAdmin) estados.push('Cerrado');
+    }
     const normalizado = actual === 'Abierta' ? 'Pendiente' : actual;
     const lista = estados.includes(normalizado) ? estados : [normalizado, ...estados].filter(Boolean);
     return lista.map((estado) => _moOption(estado, estado === normalizado ? `Actual: ${estado}` : estado, normalizado)).join('');
@@ -755,17 +841,24 @@ function _moRefrescarModal(row) {
 
 function _moActualizarKpis() {
     const total = _moRows.length;
+    const recibidoRecepcion = _moRows.filter((o) => ['Recibido en Recepcion', 'INGRESO'].includes(o.estado_orden)).length;
+    const entregadoTecnico = _moRows.filter((o) => ['Entregado al Tecnico', 'Recibida'].includes(o.estado_orden)).length;
     const pendientes = _moRows.filter((o) => ['Pendiente', 'Abierta'].includes(o.estado_orden)).length;
-    const proceso = _moRows.filter((o) => o.estado_orden === 'En proceso').length;
-    const finalizadas = _moRows.filter((o) => o.estado_orden === 'Finalizada').length;
+    const reparacion = _moRows.filter((o) => ['En reparacion', 'En proceso'].includes(o.estado_orden)).length;
+    const reparadas = _moRows.filter((o) => ['Reparada', 'Finalizada'].includes(o.estado_orden)).length;
+    const paraEntrega = _moRows.filter((o) => ['Entregado en Recepcion para Entrega', 'Lista para entrega'].includes(o.estado_orden)).length;
     const notas = _moRows.filter((o) => o.estado_orden === 'Nota de Credito').length;
-    const entregadas = _moRows.filter((o) => o.estado_orden === 'Entregada').length;
+    const cerradas = _moRows.filter((o) => ['Cerrado', 'Entregada'].includes(o.estado_orden)).length;
+    
     const valores = {
+        'mo-kpi-recibido-recepcion': recibidoRecepcion,
+        'mo-kpi-recibida': entregadoTecnico,
         'mo-kpi-pendiente': pendientes,
-        'mo-kpi-enproceso': proceso,
-        'mo-kpi-finalizada': finalizadas,
+        'mo-kpi-enproceso': reparacion,
+        'mo-kpi-finalizada': reparadas,
+        'mo-kpi-listaentrega': paraEntrega,
         'mo-kpi-notacred': notas,
-        'mo-kpi-entregada': entregadas,
+        'mo-kpi-entregada': cerradas,
         'mo-kpi-todos': total,
     };
     Object.entries(valores).forEach(([id, valor]) => {
@@ -781,7 +874,7 @@ function _moAplicarCambioLocal(row) {
     _moRefrescarModal(row);
 }
 
-let _moFiltroActual = 'Pendiente';
+let _moFiltroActual = '';
 
 function filtrarOrdenes(estado) {
     _moFiltroActual = estado;
@@ -790,10 +883,30 @@ function filtrarOrdenes(estado) {
     cards.forEach((card) => {
         const est = card.getAttribute('data-estado') || '';
         const estNorm = est === 'Abierta' ? 'Pendiente' : est;
-        const show = !estado || estNorm === estado;
+        
+        let show = false;
+        if (!estado) {
+            show = true;
+        } else if (estNorm === estado) {
+            show = true;
+        } else if (estado === 'Recibido en Recepcion' && est === 'INGRESO') {
+            show = true;
+        } else if (estado === 'Entregado al Tecnico' && est === 'Recibida') {
+            show = true;
+        } else if (estado === 'En reparacion' && est === 'En proceso') {
+            show = true;
+        } else if (estado === 'Reparada' && est === 'Finalizada') {
+            show = true;
+        } else if (estado === 'Entregado en Recepcion para Entrega' && est === 'Lista para entrega') {
+            show = true;
+        } else if (estado === 'Cerrado' && est === 'Entregada') {
+            show = true;
+        }
+
         card.style.display = show ? '' : 'none';
         if (show) visibles++;
     });
+
     const cnt = document.getElementById('panel-count-visible');
     if (cnt) cnt.textContent = visibles;
     const empty = document.getElementById('empty-filtro');
@@ -803,13 +916,84 @@ function filtrarOrdenes(estado) {
         grid.style.display = visibles === 0 ? 'none' : '';
     }
 
-    ['todos','pendiente','enproceso','finalizada','notacred','entregada'].forEach((k) => {
+    [
+        'recibido-recepcion',
+        'recibida',
+        'pendiente',
+        'enproceso',
+        'finalizada',
+        'listaentrega',
+        'notacred',
+        'entregada',
+        'todos'
+    ].forEach((k) => {
         const el = document.getElementById('mo-kpi-' + k);
         if (el) el.classList.remove('activo');
     });
-    const mapa = { '': 'todos', 'Pendiente': 'pendiente', 'En proceso': 'enproceso', 'Finalizada': 'finalizada', 'Nota de Credito': 'notacred', 'Entregada': 'entregada' };
+
+    const mapa = {
+        '': 'todos',
+        'Recibido en Recepcion': 'recibido-recepcion',
+        'Entregado al Tecnico': 'recibida',
+        'Pendiente': 'pendiente',
+        'En reparacion': 'enproceso',
+        'Reparada': 'finalizada',
+        'Entregado en Recepcion para Entrega': 'listaentrega',
+        'Nota de Credito': 'notacred',
+        'Cerrado': 'entregada',
+        'Recibida': 'recibida',
+        'En proceso': 'enproceso',
+        'Finalizada': 'finalizada',
+        'Lista para entrega': 'listaentrega',
+        'Entregada': 'entregada'
+    };
     const active = document.getElementById('mo-kpi-' + (mapa[estado] || 'todos'));
     if (active) active.classList.add('activo');
+}
+
+async function confirmarRecibidoTecnico(ordenId, nroOrden, tipoOrden = 'personal') {
+    const verificado = await mostrarAlertaEstetica(
+        `¿Confirmas que recibiste físicamente el equipo de la orden <b>${_h(nroOrden)}</b>?<br><br><small style="color:#64748b;">A partir de este momento comenzará a correr el tiempo de reparación del equipo en taller.</small>`,
+        'confirm',
+        'Confirmar Recepción de Equipo'
+    );
+    if (!verificado) return;
+
+    Swal.fire({
+        title: 'Confirmando recepción...',
+        text: 'Iniciando contador de reparación',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    const fd = new FormData();
+    fd.append('_token', _moCsrf);
+    fd.append('id', ordenId);
+    fd.append('estado', 'Entregado al Tecnico');
+    fd.append('tipo_orden', tipoOrden);
+
+    try {
+        const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
+        const d = await r.json();
+        Swal.close();
+
+        if (!d.ok) {
+            await mostrarAlertaEstetica(d.error || 'No se pudo confirmar la recepción.', 'error', 'Error');
+            return;
+        }
+
+        await Swal.fire({
+            title: '¡Equipo Recibido!',
+            text: `La orden ${nroOrden} ha sido marcada como recibida en taller. El tiempo de reparación ha comenzado a registrarse.`,
+            icon: 'success',
+            confirmButtonColor: '#0284c7'
+        });
+
+        window.location.reload();
+    } catch (e) {
+        Swal.close();
+        await mostrarAlertaEstetica('Error de conexión con el servidor: ' + e.message, 'error', 'Error de Conexión');
+    }
 }
 
 async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'personal') {
@@ -820,6 +1004,75 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     }
 
     let horasTrabajadas = null;
+    let tituloServicio = null;
+    let valorManoObra = null;
+
+    const esReparada = nuevoEstado === 'Reparada' || (tipoOrden === 'empresa' && nuevoEstado === 'Finalizada');
+    if (esReparada) {
+        const row = _moFindRow(ordenId, tipoOrden);
+        const repuestosUsados = Number(row?.valor_repuestos || 0);
+        const servicioPrevio = row?.titulo_servicio || '';
+        const manoObraPrevia = (row?.valor_mano_obra !== null && row?.valor_mano_obra !== undefined && Number(row.valor_mano_obra) > 0) ? Number(row.valor_mano_obra) : '';
+
+        const { value: datosServicio } = await Swal.fire({
+            title: '<i class="bi bi-tools text-primary me-2"></i>Detalles del Servicio Realizado',
+            html: `
+                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:14px;">
+                    Para marcar la orden <b>${_h(nroOrden)}</b> como reparada, registre el servicio realizado y el valor de la mano de obra:
+                </div>
+                <div style="text-align:left; margin-bottom:12px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Título del Servicio Realizado <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="text" id="swal-titulo-servicio" class="swal2-input" style="width:100%; height:40px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:6px 10px;"
+                           placeholder="Ej: Mantenimiento general, cambio de pantalla..." value="${_h(servicioPrevio)}">
+                </div>
+                <div style="text-align:left; margin-bottom:12px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Valor Mano de Obra ($) <span style="color:#ef4444;">*</span>
+                    </label>
+                    <input type="number" step="0.01" min="0" id="swal-valor-mano-obra" class="swal2-input" style="width:100%; height:40px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:6px 10px;"
+                           placeholder="0.00" value="${manoObraPrevia}">
+                </div>
+                ${repuestosUsados > 0 ? `
+                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 12px; margin-top:8px; text-align:left; font-size:12px; color:#166534;">
+                        <i class="bi bi-cpu me-1"></i><strong>Repuestos asignados en taller:</strong> $${repuestosUsados.toFixed(2)} (cobrado al 100%)
+                    </div>
+                ` : ''}
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar y Marcar Reparada',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
+            focusConfirm: false,
+            preConfirm: () => {
+                const tit = document.getElementById('swal-titulo-servicio')?.value.trim();
+                const moStr = document.getElementById('swal-valor-mano-obra')?.value.trim();
+                const mo = parseFloat(moStr);
+                if (!tit) {
+                    Swal.showValidationMessage('Debe ingresar el título del servicio realizado.');
+                    return false;
+                }
+                if (isNaN(mo) || mo < 0) {
+                    Swal.showValidationMessage('Debe ingresar un valor de mano de obra válido mayor o igual a 0.');
+                    return false;
+                }
+                return { titulo_servicio: tit, valor_mano_obra: mo };
+            }
+        });
+
+        if (!datosServicio) {
+            const rowCancel = _moFindRow(ordenId, tipoOrden);
+            if (rowCancel) _moRefrescarModal(rowCancel);
+            return;
+        }
+
+        tituloServicio = datosServicio.titulo_servicio;
+        valorManoObra = datosServicio.valor_mano_obra;
+    }
+
     if (tipoOrden === 'empresa' && nuevoEstado === 'Finalizada') {
         const row = _moFindRow(ordenId, tipoOrden);
         if (row && row.cliente && row.cliente.trim().toUpperCase() === 'RB-HEALTH ECUADOR CIA LTDA') {
@@ -854,6 +1107,127 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         }
     }
 
+    let memoEntrega = null;
+    let fotoEvidenciaFile = null;
+    if (['entregada', 'entregado'].includes(String(nuevoEstado || '').toLowerCase())) {
+        const row = _moFindRow(ordenId, tipoOrden);
+        const memoPrevio = row?.memo_entrega || '';
+        const fotoPrevia = row?.foto_evidencia_entrega || '';
+
+        const { value: entregaData } = await Swal.fire({
+            title: 'Requisitos de Entrega de Orden',
+            html: `
+                <div style="text-align:left; font-size:13px; color:#475569; margin-bottom:12px;">
+                    Para entregar la orden <b>${_h(nroOrden)}</b> debe ingresar el memo de entrega y adjuntar la foto de evidencia.
+                </div>
+                <div style="text-align:left; margin-bottom:14px;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Memo de Entrega <span style="color:#ef4444;">*</span>
+                    </label>
+                    <textarea id="swal-memo-entrega" class="swal2-textarea" style="width:100%; height:85px; margin:0; box-sizing:border-box; font-size:13px; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 10px; resize:vertical;" placeholder="Ej: Entregado al cliente titular con accesorios completos y comprobante firmado...">${_h(memoPrevio)}</textarea>
+                </div>
+                <div style="text-align:left;">
+                    <label style="font-weight:700; font-size:12px; color:#1e293b; display:block; margin-bottom:4px;">
+                        Foto de Evidencia de Entrega <span style="color:#ef4444;">*</span>
+                    </label>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="file" id="swal-foto-evidencia" accept="image/*" style="width:100%; font-size:12.5px; padding:9px 12px; border:1.5px dashed #059669; border-radius:9px; background:#f0fdf4; cursor:pointer;" onchange="previewFotoEvidenciaSwal(this)">
+                        <div style="font-size:11px; color:#64748b;">
+                            <i class="bi bi-phone me-1 text-success"></i>Desde el celular puedes elegir <strong>Tomar Foto</strong> con la cámara o <strong>Seleccionar de la Galería</strong>.
+                        </div>
+                    </div>
+                    ${fotoPrevia ? `
+                        <div style="margin-top:8px; font-size:11.5px; color:#059669;">
+                            <i class="bi bi-check-circle-fill me-1"></i>Ya existe una foto previa registrada. (Puedes seleccionar una nueva para reemplazarla)
+                        </div>
+                    ` : ''}
+                    <div id="swal-foto-preview-container" style="display:none; margin-top:10px; text-align:center;">
+                        <img id="swal-foto-preview" style="max-width:100%; max-height:160px; border-radius:8px; border:2px solid #059669; object-fit:cover;">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar y Entregar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
+            focusConfirm: false,
+            didOpen: () => {
+                window._swalFotoComprimida = null;
+                window.previewFotoEvidenciaSwal = function(input) {
+                    const container = document.getElementById('swal-foto-preview-container');
+                    const img = document.getElementById('swal-foto-preview');
+                    if (input.files && input.files[0]) {
+                        const file = input.files[0];
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            img.src = e.target.result;
+                            container.style.display = 'block';
+
+                            // Auto-comprimir en cliente si la imagen es grande (Canvas)
+                            const tempImg = new Image();
+                            tempImg.onload = function() {
+                                const maxDim = 1600;
+                                let w = tempImg.width;
+                                let h = tempImg.height;
+                                if (w > maxDim || h > maxDim) {
+                                    if (w > h) {
+                                        h = Math.round((h * maxDim) / w);
+                                        w = maxDim;
+                                    } else {
+                                        w = Math.round((w * maxDim) / h);
+                                        h = maxDim;
+                                    }
+                                }
+                                const canvas = document.createElement('canvas');
+                                canvas.width = w;
+                                canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(tempImg, 0, 0, w, h);
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        window._swalFotoComprimida = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+                                    }
+                                }, 'image/jpeg', 0.88);
+                            };
+                            tempImg.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        container.style.display = 'none';
+                        window._swalFotoComprimida = null;
+                    }
+                };
+            },
+            preConfirm: () => {
+                const memoEl = document.getElementById('swal-memo-entrega');
+                const fotoEl = document.getElementById('swal-foto-evidencia');
+                const memo = memoEl ? memoEl.value.trim() : '';
+                const fotoFile = window._swalFotoComprimida || (fotoEl && fotoEl.files ? fotoEl.files[0] : null);
+
+                if (!memo) {
+                    Swal.showValidationMessage('Debe ingresar un memo de entrega obligatorio.');
+                    return false;
+                }
+                if (!fotoFile && !fotoPrevia) {
+                    Swal.showValidationMessage('Debe tomar o adjuntar una foto de evidencia de entrega obligatoriamente.');
+                    return false;
+                }
+                return { memo, fotoFile };
+            }
+        });
+
+        if (!entregaData) {
+            const rowCancel = _moFindRow(ordenId, tipoOrden);
+            if (rowCancel) _moRefrescarModal(rowCancel);
+            return;
+        }
+
+        memoEntrega = entregaData.memo;
+        fotoEvidenciaFile = entregaData.fotoFile;
+    }
+
     const verificado = await mostrarAlertaEstetica(`¿Confirma la actualización de la orden <b>${_h(nroOrden)}</b> a estado: <b>${_h(nuevoEstado)}</b>?`, 'confirm', 'Confirmar Cambio de Estado');
     if (!verificado) {
         const rowCancel = _moFindRow(ordenId, tipoOrden);
@@ -869,6 +1243,18 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
     if (horasTrabajadas !== null) {
         fd.append('horas_trabajadas', horasTrabajadas);
     }
+    if (tituloServicio !== null) {
+        fd.append('titulo_servicio', tituloServicio);
+    }
+    if (valorManoObra !== null) {
+        fd.append('valor_mano_obra', valorManoObra);
+    }
+    if (memoEntrega !== null) {
+        fd.append('memo_entrega', memoEntrega);
+    }
+    if (fotoEvidenciaFile !== null) {
+        fd.append('foto_evidencia', fotoEvidenciaFile);
+    }
 
     try {
         const r = await fetch(_moUrlEstado, { method: 'POST', body: fd });
@@ -880,6 +1266,40 @@ async function cambiarEstado(ordenId, nuevoEstado, nroOrden, tipoOrden = 'person
         const row = _moFindRow(ordenId, tipoOrden);
         if (row) {
             row.estado_orden = nuevoEstado;
+            if (d.titulo_servicio !== undefined) {
+                row.titulo_servicio = d.titulo_servicio;
+            } else if (tituloServicio !== null) {
+                row.titulo_servicio = tituloServicio;
+            }
+            if (d.valor_mano_obra !== undefined) {
+                row.valor_mano_obra = d.valor_mano_obra;
+            } else if (valorManoObra !== null) {
+                row.valor_mano_obra = valorManoObra;
+            }
+            if (d.valor_repuestos !== undefined) {
+                row.valor_repuestos = d.valor_repuestos;
+            }
+            if (memoEntrega !== null) {
+                row.memo_entrega = memoEntrega;
+            }
+            if (d.foto_evidencia_entrega) {
+                row.foto_evidencia_entrega = d.foto_evidencia_entrega;
+            }
+            if (d.fecha_modificacion) {
+                row.fecha_modificacion = d.fecha_modificacion;
+            }
+            if (d.fecha_recibida_tecnico !== undefined) {
+                row.fecha_recibida_tecnico = d.fecha_recibida_tecnico;
+            }
+            if (d.fecha_finalizacion !== undefined) {
+                row.fecha_finalizacion = d.fecha_finalizacion;
+            }
+            if (d.fecha_lista_entrega !== undefined) {
+                row.fecha_lista_entrega = d.fecha_lista_entrega;
+            }
+            if (d.fecha_entrega !== undefined) {
+                row.fecha_entrega = d.fecha_entrega;
+            }
             if (nuevoEstado === 'Nota de Credito') {
                 row.nc_estado = row.nc_estado || 'Pendiente';
             }
@@ -1081,17 +1501,28 @@ function renderRepuestosMisOrdenes(ordenId, repuestos) {
         return;
     }
 
-    box.innerHTML = repuestos.map((r) => `
-        <div class="rep-item" onclick="seleccionarRepuestoMisOrdenes(
-            ${Number(ordenId)},
-            ${Number(r.id || 0)},
-            '${String(r.codigo || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',
-            '${String(r.nombre || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
-        )">
+    box.innerHTML = '';
+    repuestos.forEach((r) => {
+        const item = document.createElement('div');
+        item.className = 'rep-item';
+        item.style.cssText = 'cursor:pointer; user-select:none;';
+        item.innerHTML = `
             <span><code style="font-size:11.5px;color:#b45309;font-weight:800;">${_h(r.codigo || '-')}</code> ${_h(r.nombre || '-')}</span>
             <span style="background:#dcfce7;color:#166534;font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;">Stock ${Number(r.stock || 0)}</span>
-        </div>
-    `).join('');
+        `;
+        
+        item._repuestoData = r;
+
+        const doSelect = (e) => {
+            if (e) e.preventDefault();
+            seleccionarRepuestoMisOrdenes(ordenId, r.id, r.codigo, r.nombre);
+        };
+
+        item.onmousedown = doSelect;
+        item.onclick = doSelect;
+
+        box.appendChild(item);
+    });
     box.style.display = 'block';
 }
 
@@ -1139,7 +1570,15 @@ function onInputBuscarRepuestoMisOrdenes(ordenId, q) {
 }
 
 async function asignarRepuesto(ordenId, tipoOrden = 'personal') {
-    const sel = document.getElementById('rep-inv-' + ordenId);
+    let sel = document.getElementById('rep-inv-' + ordenId);
+    if (!sel || !sel.value) {
+        const firstItem = document.querySelector('#rep-inv-resultados-' + ordenId + ' .rep-item');
+        if (firstItem && firstItem._repuestoData) {
+            const r = firstItem._repuestoData;
+            seleccionarRepuestoMisOrdenes(ordenId, r.id, r.codigo, r.nombre);
+            sel = document.getElementById('rep-inv-' + ordenId);
+        }
+    }
     if (!sel || !sel.value) {
         await mostrarAlertaEstetica('Por favor, <b>seleccione un repuesto</b> del listado de búsqueda antes de continuar.', 'warning', 'Selección Requerida');
         return;
@@ -1499,6 +1938,29 @@ function verDetalleOrden(cardEl) {
                     ` : ''}
                     <div class="det-campo det-full"><label>Falla</label><span>${_h(o.falla || '-')}</span></div>
                     <div class="det-campo det-full"><label>Observacion</label><span>${_h(o.observacion || '-')}</span></div>
+                    <div class="det-campo"><label>Fecha Ingreso</label><span>${_fmtDateTime(o.fecha_de_ingreso)}</span></div>
+                    <div class="det-campo"><label>Recibida Técnico</label><span>${_fmtDateTime(o.fecha_recibida_tecnico)}</span></div>
+                    <div class="det-campo"><label>Fecha Prometida</label><span>${o.fecha_prometido ? _fmtDateTime(o.fecha_prometido).split(' ')[0] : '-'}</span></div>
+                    <div class="det-campo"><label>Últ. Modificación</label><span>${_fmtDateTime(o.fecha_modificacion)}</span></div>
+                    <div class="det-campo"><label>Fecha Finalización</label><span>${_fmtDateTime(o.fecha_finalizacion)}</span></div>
+                    <div class="det-campo"><label>Lista para Entrega</label><span>${_fmtDateTime(o.fecha_lista_entrega)}</span></div>
+                    <div class="det-campo"><label>Fecha Entrega</label><span>${_fmtDateTime(o.fecha_entrega)}</span></div>
+                    ${(o.memo_entrega || o.foto_evidencia_entrega) ? `
+                    <div class="det-campo det-full" style="grid-column: 1 / -1; margin-top: 8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
+                        <label style="color:#166534; font-weight:700; font-size:12.5px; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <i class="bi bi-patch-check-fill" style="color:#16a34a; font-size:16px;"></i>Evidencia de Entrega
+                        </label>
+                        ${o.memo_entrega ? `<div style="font-size:12px; color:#14532d; margin-bottom:6px;"><b>Memo:</b> ${_h(o.memo_entrega)}</div>` : ''}
+                        ${o.foto_evidencia_entrega ? `
+                            <div style="margin-top:6px;">
+                                <span style="font-size:11px; font-weight:700; color:#166534; display:block; margin-bottom:4px;"><i class="bi bi-camera me-1"></i>Foto Adjunta:</span>
+                                <a href="${_h(o.foto_evidencia_entrega)}" target="_blank" title="Clic para abrir imagen en tamaño completo">
+                                    <img src="${_h(o.foto_evidencia_entrega)}" style="max-width:100%; max-height:220px; border-radius:8px; border:2px solid #86efac; object-fit:cover; cursor:pointer;" alt="Foto Evidencia Entrega">
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
@@ -1553,14 +2015,15 @@ function verDetalleOrden(cardEl) {
                     <span class="gestion-feedback">&#8635;</span>
                 </div>
 
-                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && o.subtipo === 'Stock' && o.productos_inventario_st ? o.productos_inventario_st.map(p => `
+                ${o.tipo_orden === 'empresa' && o.empresa_id === 1 && (o.subtipo === 'Stock' || o.subtipo === 'Autoconsumo') && o.productos_inventario_st ? o.productos_inventario_st.map(p => `
                 <div class="gestion-row">
                     <span class="gestion-icon"><i class="bi bi-box-seam" style="color: #0f766e;"></i></span>
                     <span class="gestion-label" style="color: #0f766e; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;" title="${_h(p.nombre)}">ST: ${_h(p.serie)}</span>
                     <select class="gestion-select" onchange="cambiarEstadoFisicoDirecto(${Number(o.id)}, ${p.id}, this.value)" style="border-color:#0f766e;">
-                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo)</option>
-                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Incinerar)</option>
+                        <option value="En ST" ${p.estado === 'En ST' ? 'selected' : ''}>En ST (Ingresado)</option>
+                        <option value="Tienda" ${p.estado === 'Tienda' ? 'selected' : ''}>Tienda (Operativo / Reparado)</option>
                         <option value="Outlet" ${p.estado === 'Outlet' ? 'selected' : ''}>Outlet (Con Detalle)</option>
+                        <option value="Incinerox" ${p.estado === 'Incinerox' ? 'selected' : ''}>Incinerox (Desguace / Incinerar)</option>
                     </select>
                     <span class="gestion-feedback" id="feedback-fisico-${p.id}">&#8635;</span>
                 </div>
@@ -1611,7 +2074,7 @@ function verDetalleOrden(cardEl) {
                         `}
                     </div>
 
-                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                    <div style="position:relative; border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
                         <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
                             <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
                         </span>
@@ -1754,7 +2217,7 @@ function verDetalleOrden(cardEl) {
                         `}
                     </div>
 
-                    <div style="border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
+                    <div style="position:relative; border-top:1px dashed var(--mo-border); margin:12px 0 8px; padding-top:10px;">
                         <span style="font-size:11px; font-weight:700; color:var(--mo-muted); text-transform:uppercase; display:block; margin-bottom:6px;">
                             <i class="bi bi-search me-1"></i>Asignar Nuevo Repuesto:
                         </span>
@@ -1855,7 +2318,7 @@ function cerrarModal() {
     if (m) m.style.display = 'none';
 }
 function cerrarDetalle(e) {
-    if (e.target && e.target.id === 'modal-detalle') cerrarModal();
+    // Backdrop click disabled - use close button
 }
 
 function mostrarCredenciales(e, ordenId) {
@@ -1947,6 +2410,7 @@ async function registrarLlamadaCliente(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#7c3aed',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
     });
 
     if (observacion === undefined) return;
@@ -2035,6 +2499,7 @@ async function abrirModalEnviarEmail(ordenId, tipoOrden) {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#64748b',
+        allowOutsideClick: false,
         preConfirm: () => {
             const asunto = document.getElementById('swal-email-asunto').value.trim();
             const mensaje = document.getElementById('swal-email-mensaje').value.trim();
@@ -2255,7 +2720,7 @@ async function abrirModalInventarioFisico(ordenId) {
     });
 
     try {
-        const response = await fetch(`/operaciones/ordenes-empresa/inventario-fisico/${ordenId}`);
+        const response = await fetch(`${_moUrlInvFisicoObtener}/${ordenId}`);
         const data = await response.json();
         Swal.close();
 
@@ -2314,13 +2779,16 @@ async function abrirModalInventarioFisico(ordenId) {
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0f766e',
             cancelButtonColor: '#64748b',
+            allowOutsideClick: false,
             preConfirm: () => {
                 const productos = [];
                 const rows = document.querySelectorAll('.prod-inv-row');
                 rows.forEach(row => {
                     const id = row.getAttribute('data-id');
-                    const estado = row.querySelector('.select-estado-fisico').value;
-                    const detalle_outlet = row.nextElementSibling.querySelector('.input-detalle-outlet').value;
+                    const estadoEl = row.querySelector('.select-estado-fisico');
+                    const estado = estadoEl ? estadoEl.value : 'Tienda';
+                    const inputDet = row.nextElementSibling ? row.nextElementSibling.querySelector('.input-detalle-outlet') : null;
+                    const detalle_outlet = inputDet ? inputDet.value.trim() : '';
                     productos.push({ id: parseInt(id), estado, detalle_outlet });
                 });
                 return productos;
@@ -2333,11 +2801,11 @@ async function abrirModalInventarioFisico(ordenId) {
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                const saveRes = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+                const saveRes = await fetch(_moUrlInvFisicoGuardar, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': _moCsrf
+                        'X-CSRF-TOKEN': _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
                     body: JSON.stringify({
                         orden_empresa_id: ordenId,
@@ -2345,30 +2813,34 @@ async function abrirModalInventarioFisico(ordenId) {
                     })
                 });
 
-                const saveResult = await saveRes.json();
+                const saveResult = await saveRes.json().catch(() => null);
                 Swal.close();
 
-                if (saveResult.ok) {
+                if (saveRes.ok && saveResult && saveResult.ok) {
                     Swal.fire('¡Guardado!', saveResult.mensaje || 'Estados físicos actualizados.', 'success');
                 } else {
-                    Swal.fire('Error', saveResult.error || 'No se pudo guardar la información.', 'error');
+                    const errText = (saveResult && (saveResult.error || saveResult.mensaje)) ? (saveResult.error || saveResult.mensaje) : `Error en servidor (${saveRes.status})`;
+                    Swal.fire('Error', errText, 'error');
                 }
             }
         });
 
     } catch (e) {
         Swal.close();
-        Swal.fire('Error', 'No se pudo conectar con el servidor para obtener los datos.', 'error');
+        Swal.fire('Error', 'No se pudo conectar con el servidor: ' + e.message, 'error');
     }
 }
 
 function toggleDetalleOutletRow(id, valor) {
     const row = document.getElementById(`row-detalle-${id}`);
-    if (valor === 'Outlet') {
-        row.style.display = 'table-row';
-    } else {
-        row.style.display = 'none';
-        document.getElementById(`detalle-${id}`).value = '';
+    if (row) {
+        if (valor === 'Outlet') {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+            const detInp = document.getElementById(`detalle-${id}`);
+            if (detInp) detInp.value = '';
+        }
     }
 }
 
@@ -2385,12 +2857,16 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
         }
     }
 
+    const inputDet = document.getElementById('input-detalle-' + productoId);
+    const detalleVal = (nuevoEstado === 'Outlet' && inputDet) ? inputDet.value.trim() : null;
+    const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': _moCsrf
+                'X-CSRF-TOKEN': csrfToken
             },
             body: JSON.stringify({
                 orden_empresa_id: ordenId,
@@ -2398,15 +2874,16 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
                     {
                         id: productoId,
                         estado: nuevoEstado,
-                        detalle_outlet: nuevoEstado === 'Outlet' ? document.getElementById('input-detalle-' + productoId).value.trim() : null
+                        detalle_outlet: detalleVal
                     }
                 ]
             })
         });
 
-        const res = await response.json();
-        if (!res.ok) {
-            await mostrarAlertaEstetica(res.error || 'No se pudo actualizar el estado.', 'error', 'Error');
+        const res = await response.json().catch(() => null);
+        if (!response.ok || !res || !res.ok) {
+            const errText = (res && (res.error || res.mensaje)) ? (res.error || res.mensaje) : `Error en el servidor (${response.status})`;
+            await mostrarAlertaEstetica(errText, 'error', 'Error');
             return;
         }
 
@@ -2417,7 +2894,6 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
                 p.estado = nuevoEstado;
                 if (nuevoEstado !== 'Outlet') {
                     p.detalle_outlet = '';
-                    const inputDet = document.getElementById('input-detalle-' + productoId);
                     if (inputDet) inputDet.value = '';
                 }
             }
@@ -2428,7 +2904,7 @@ async function cambiarEstadoFisicoDirecto(ordenId, productoId, nuevoEstado) {
         }
         await mostrarAlertaEstetica('Estado físico actualizado correctamente.', 'success', 'Completado');
     } catch (e) {
-        await mostrarAlertaEstetica('Error al comunicarse con el servidor.', 'error', 'Error');
+        await mostrarAlertaEstetica('Error al comunicarse con el servidor: ' + e.message, 'error', 'Error');
     } finally {
         if (feedback) feedback.classList.remove('loading');
     }
@@ -2438,14 +2914,16 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
     const feedback = document.getElementById('feedback-fisico-' + productoId);
     if (feedback) feedback.classList.add('loading');
 
-    const detalle = document.getElementById('input-detalle-' + productoId).value.trim();
+    const inputDet = document.getElementById('input-detalle-' + productoId);
+    const detalle = inputDet ? inputDet.value.trim() : '';
+    const csrfToken = _moCsrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     try {
-        const response = await fetch('/operaciones/ordenes-empresa/inventario-fisico/guardar', {
+        const response = await fetch(_moUrlInvFisicoGuardar, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': _moCsrf
+                'X-CSRF-TOKEN': csrfToken
             },
             body: JSON.stringify({
                 orden_empresa_id: ordenId,
@@ -2459,9 +2937,10 @@ async function guardarDetalleOutletDirecto(ordenId, productoId) {
             })
         });
 
-        const res = await response.json();
-        if (!res.ok) {
-            await mostrarAlertaEstetica(res.error || 'No se pudo guardar el detalle.', 'error', 'Error');
+        const res = await response.json().catch(() => null);
+        if (!response.ok || !res || !res.ok) {
+            const errText = (res && (res.error || res.mensaje)) ? (res.error || res.mensaje) : `Error en el servidor (${response.status})`;
+            await mostrarAlertaEstetica(errText, 'error', 'Error');
             return;
         }
 

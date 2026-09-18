@@ -201,7 +201,9 @@
             'informes','presupuestos','solicitar_nc','solicitar_repuesto',
             'reportes','notas_credito','repuestos_admin',
             'inv_productos','inv_marcas','inv_repuestos',
-            'precios','sucursales','sucursales_novicompu',
+            'precios','caja_general','caja_chica','recuento_b2b',
+            'nomina_mis_datos','nomina_admin','solicitudes_vacaciones',
+            'sucursales','sucursales_novicompu',
             'empresas','cas','mi_cuenta','usuarios','grupos_acceso'
         ];
         const acciones = ['ver', 'crear', 'editar', 'eliminar'];

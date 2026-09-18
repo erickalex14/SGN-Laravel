@@ -1,4 +1,25 @@
 @php
+    $getCategoria = function($est) {
+        if (!$est) return 'Pendiente';
+        $s = trim((string) $est);
+        if ($s === 'Nota de Credito' || str_starts_with($s, 'NC') || str_contains(mb_strtolower($s), 'nota de cred')) {
+            return 'Nota de Credito';
+        }
+        if ($s === 'Pendiente' || $s === 'Abierta') {
+            return 'Pendiente';
+        }
+        if ($s === 'En proceso' || $s === 'En Proceso') {
+            return 'En proceso';
+        }
+        if ($s === 'Finalizada' || $s === 'FINALIZADA' || $s === 'REPARADO') {
+            return 'Finalizada';
+        }
+        if ($s === 'Entregada' || $s === 'ENTREGADA' || $s === 'ENTREGADO') {
+            return 'Entregada';
+        }
+        return $s;
+    };
+
     $total = $resultados->count();
     $cnt = [
         'Pendiente' => 0,
@@ -8,9 +29,11 @@
         'Nota de Credito' => 0
     ];
     foreach ($resultados as $r) {
-        $est = $r['estado_orden'] ?? 'Pendiente';
+        $est = $getCategoria($r['estado_orden'] ?? 'Pendiente');
         if (isset($cnt[$est])) {
             $cnt[$est]++;
+        } else {
+            $cnt['Pendiente']++;
         }
     }
     $tasa = $total > 0 ? round(($cnt['Entregada'] / $total) * 100) : 0;
@@ -283,10 +306,11 @@
                 <th style="width: 8%;">Repuesto / Garantía</th>
                 <th style="width: 6.5%;">Estado</th>
                 <th style="width: 3%;">Días</th>
-                <th style="width: 6.5%;">Prometido / Entrega</th>
-                <th style="width: 4%;">Doc.</th>
-                <th style="width: 7%; text-align: right;">Cobro Novicompu</th>
-                <th style="width: 7%; text-align: right;">Cobro RB-HEALTH</th>
+                <th style="width: 4.5%;">F. Entrega</th>
+                <th style="width: 8.5%;">Facturación (Milenium)</th>
+                <th style="width: 3.5%;">Doc.</th>
+                <th style="width: 5.5%; text-align: right;">Cobro Novicompu</th>
+                <th style="width: 5.5%; text-align: right;">Cobro RB-HEALTH</th>
             </tr>
         </thead>
         <tbody>
@@ -328,8 +352,14 @@
                     </td>
                     <td>
                         Rep: {{ $r['estado_repuesto'] }}
-                        @if(!empty($r['estado_garantia']))
-                            <br><span style="color:#64748b; font-size:6.2pt;">Gar: {{ $r['estado_garantia'] }}</span>
+                        @if(!empty($r['estado_garantia']) && $r['estado_garantia'] !== '-')
+                            <br><span style="color:#64748b; font-size:6.2pt;">Est. Gar: {{ $r['estado_garantia'] }}</span>
+                        @endif
+                        @if(!empty($r['garantia_tipo']) && $r['garantia_tipo'] !== '-')
+                            <br><span style="color:{{ $r['garantia_tipo'] === 'Externa' ? '#92400e' : '#166534' }}; font-size:6.2pt; font-weight:bold;">Tipo: {{ $r['garantia_tipo'] }}</span>
+                        @endif
+                        @if(!empty($r['garantia_destino_cas']) && $r['garantia_destino_cas'] !== '-')
+                            <br><span style="color:#1e40af; font-size:6.2pt; font-weight:bold;">Dest. CAS: {{ $r['garantia_destino_cas'] }}</span>
                         @endif
                     </td>
                     <td>
@@ -344,8 +374,23 @@
                         {{ $r['dias_transcurridos'] }}d
                     </td>
                     <td style="white-space: nowrap; font-size: 6.2pt;">
-                        P: {{ $r['fecha_prometido'] ?: '—' }}<br>
-                        E: {{ $r['fecha_entrega'] ?: '—' }}
+                        {{ $r['fecha_entrega'] ?: '—' }}
+                    </td>
+                    <td style="font-size: 6.2pt; line-height: 1.2;">
+                        @if(($r['estado_facturacion'] ?? 'Pendiente') === 'Facturado')
+                            <span style="display: inline-block; padding: 1px 4px; border-radius: 3px; background: #dcfce7; color: #166534; font-weight: 800; font-size: 5.8pt;">FACTURADO</span>
+                            @if(!empty($r['nro_factura']))
+                                <div style="font-weight: 700; color: #0f172a; margin-top: 1px;">Fac: {{ $r['nro_factura'] }}</div>
+                            @endif
+                            @if(!empty($r['valor_facturado']))
+                                <div style="color: #166534; font-weight: 700;">Monto: ${{ number_format((float)$r['valor_facturado'], 2) }}</div>
+                            @endif
+                            @if(!empty($r['lote_facturacion_id']))
+                                <div style="color: #64748b; font-size: 5.5pt;">(Lote #{{ $r['lote_facturacion_id'] }})</div>
+                            @endif
+                        @else
+                            <span style="display: inline-block; padding: 1px 4px; border-radius: 3px; background: #fef9c3; color: #854d0e; font-weight: 700; font-size: 5.8pt;">PENDIENTE</span>
+                        @endif
                     </td>
                     <td style="text-align: center; font-size: 6.2pt;">
                         <a href="{{ $pdfOrdenUrl }}" target="_blank" class="link-act orden">Orden</a><br>

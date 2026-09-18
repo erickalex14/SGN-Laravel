@@ -6,6 +6,7 @@ use App\DTOs\Operations\CrearOrdenDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operations\GuardarOrdenRequest;
 use App\Models\Directory\SucursalCliente;
+use App\Models\Operations\OrdenAdjunto;
 use App\Repositories\Directory\CasRepository;
 use App\Repositories\Directory\ClienteRepository;
 use App\Repositories\Directory\EmpresaRepository;
@@ -80,6 +81,18 @@ class OrdenController extends Controller
 
     public function create(): View
     {
+        $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+        $usuario = auth()->user();
+        $rolNombre = $usuario?->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+        $esSuperAdmin = session('es_superadmin') === true;
+        $esAdmin = $esSuperAdmin || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+            || in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+        $esRecepcion = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true);
+
+        if (!$esAdmin && !$esRecepcion) {
+            abort(403, 'Los técnicos no tienen permiso para ingresar órdenes. Esta función es exclusiva de Recepción y Administración.');
+        }
+
         $verTodosTecnicos = $this->puedeVerTodosTecnicos();
         $sucursalSesion = (int) session('sucursal_id');
 
@@ -112,11 +125,33 @@ class OrdenController extends Controller
     public function store(GuardarOrdenRequest $request): JsonResponse
     {
         try {
-            $fechaIngreso = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
+            $sessionGrupo = mb_strtolower(trim((string) session('grupo_nombre', '')));
+            $usuario = auth()->user();
+            $rolNombre = $usuario?->rol ? mb_strtolower(trim((string) $usuario->rol->rol)) : '';
+            $esSuperAdmin = session('es_superadmin') === true;
+            $esAdmin = $esSuperAdmin || in_array($sessionGrupo, ['admin', 'administrador', 'admin master', 'administrador master'], true)
+                || in_array($rolNombre, ['admin', 'administrador', 'admin master', 'administrador master'], true);
+            $esRecepcion = session('es_recepcion') === true || in_array($sessionGrupo, ['recepcion', 'recepción'], true);
+
+            if (!$esAdmin && !$esRecepcion) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'No tienes permiso para ingresar órdenes. Esta función es exclusiva de Recepción y Administración.'
+                ], 403);
+            }
 
             $isEmpresa = $request->input('motivo_ingreso') === 'Servicios a Empresas';
             $subtipo = $request->input('subtipo_empresa');
             $esServicioEmpresa = $isEmpresa && $subtipo === 'Servicios';
+
+            if ($esServicioEmpresa && !$esAdmin) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Las órdenes de servicios corporativos a empresas solo pueden ser creadas por Administración.'
+                ], 403);
+            }
+
+            $fechaIngreso = Carbon::now('America/Guayaquil')->format('Y-m-d H:i:s');
 
             if ($esServicioEmpresa) {
                 $tecnicosAsignados = $request->input('tecnicos_asignados', []);
@@ -155,6 +190,8 @@ class OrdenController extends Controller
                         'estado_garantia' => 'sn'
                     ]
                 );
+
+                $this->guardarAdjuntosOrden($request, $orden->id, 'empresa');
 
                 return response()->json([
                     'ok' => true,
@@ -236,6 +273,7 @@ class OrdenController extends Controller
                 $nroSucursalCliente,
                 $request->input('estado_repuesto'),
                 $request->input('garantia_tipo'),
+            $request->input('empresa_garantia', 'NOVISOLUTIONS'),
                 $request->input('cas_id') ? (int) $request->input('cas_id') : null,
                 $request->input('repuesto_inventario_id') ? (int) $request->input('repuesto_inventario_id') : null,
                 $request->input('repuestos_seleccionados', [])
@@ -260,6 +298,8 @@ class OrdenController extends Controller
                     'estado_garantia' => $orden->estado_garantia ?? 'sn'
                 ]
             );
+
+            $this->guardarAdjuntosOrden($request, $orden->id, 'personal');
 
             return response()->json([
                 'ok' => true,
@@ -733,5 +773,59 @@ class OrdenController extends Controller
             'ok' => true,
             'historial' => $historialIngresos
         ]);
+    }
+
+    /**
+     * Guarda las 6 fotos obligatorias del equipo y la factura (si aplica) en disco y en la BD.
+     */
+    private function guardarAdjuntosOrden(GuardarOrdenRequest $request, int $ordenId, string $tipoOrden = 'personal'): void
+    {
+        // 1. Guardar las fotos del equipo
+        if ($request->hasFile('fotos_equipo')) {
+            $fotos = $request->file('fotos_equipo');
+            if (is_array($fotos)) {
+                $idx = 1;
+                foreach ($fotos as $foto) {
+                    if ($foto && $foto->isValid()) {
+                        $extension = strtolower($foto->getClientOriginalExtension() ?: 'jpg');
+                        $filename = 'equipo_' . $tipoOrden . '_' . $ordenId . '_foto' . $idx . '_' . time() . '_' . uniqid() . '.' . $extension;
+                        $path = $foto->storeAs('ordenes_fotos', $filename, 'public');
+
+                        OrdenAdjunto::create([
+                            'orden_id' => $tipoOrden === 'personal' ? $ordenId : null,
+                            'orden_empresa_id' => $tipoOrden === 'empresa' ? $ordenId : null,
+                            'tipo_orden' => $tipoOrden,
+                            'tipo_adjunto' => 'foto_' . $idx,
+                            'archivo_path' => '/storage/' . $path,
+                            'nombre_original' => $foto->getClientOriginalName(),
+                            'mime_type' => $foto->getClientMimeType(),
+                            'tamanio_bytes' => $foto->getSize(),
+                        ]);
+                        $idx++;
+                    }
+                }
+            }
+        }
+
+        // 2. Guardar archivo de factura (si fue adjuntado)
+        if ($request->hasFile('archivo_factura')) {
+            $factura = $request->file('archivo_factura');
+            if ($factura && $factura->isValid()) {
+                $extension = strtolower($factura->getClientOriginalExtension() ?: 'pdf');
+                $filename = 'factura_' . $tipoOrden . '_' . $ordenId . '_' . time() . '_' . uniqid() . '.' . $extension;
+                $path = $factura->storeAs('ordenes_facturas', $filename, 'public');
+
+                OrdenAdjunto::create([
+                    'orden_id' => $tipoOrden === 'personal' ? $ordenId : null,
+                    'orden_empresa_id' => $tipoOrden === 'empresa' ? $ordenId : null,
+                    'tipo_orden' => $tipoOrden,
+                    'tipo_adjunto' => 'factura',
+                    'archivo_path' => '/storage/' . $path,
+                    'nombre_original' => $factura->getClientOriginalName(),
+                    'mime_type' => $factura->getClientMimeType(),
+                    'tamanio_bytes' => $factura->getSize(),
+                ]);
+            }
+        }
     }
 }

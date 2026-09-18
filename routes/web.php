@@ -23,6 +23,7 @@ use App\Http\Controllers\Operations\InformeController;
 use App\Http\Controllers\Operations\MisOrdenesController;
 use App\Http\Controllers\Operations\NotaCreditoController;
 use App\Http\Controllers\Operations\OrdenController;
+use App\Http\Controllers\Operations\RecepcionController;
 use App\Http\Controllers\Operations\OrdenesAsignadasController;
 use App\Http\Controllers\Operations\PreordenController;
 use App\Http\Controllers\Operations\PresupuestoController;
@@ -86,7 +87,9 @@ Route::middleware('auth')->group(function () {
     // Inventario Físico en Servicio Técnico (ST)
     Route::get('/operaciones/inventario-fisico', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'index'])->name('inventario_fisico.index');
     Route::get('/operaciones/ordenes-empresa/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
+    Route::get('/operaciones/ordenes/inventario-fisico/{ordenId}', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'obtenerPorOrden']);
     Route::post('/operaciones/ordenes-empresa/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados'])->name('inventario_fisico.guardar');
+    Route::post('/operaciones/ordenes/inventario-fisico/guardar', [\App\Http\Controllers\Operations\InventarioFisicoController::class, 'guardarEstados']);
 
     // -------------------------------------------------------
     // ------------------EMPRESAS-----------------------------
@@ -246,10 +249,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventario/repuestos/listar', [RepuestoController::class, 'listar'])->name('repuestos.listar');
         Route::get('/inventario/repuestos/auditoria', [RepuestoController::class, 'auditoria'])->name('repuestos.auditoria');
         Route::get('/inventario/repuestos/imprimir-reporte', [RepuestoController::class, 'imprimirReporte'])->name('repuestos.imprimir_reporte');
-    });
-
-    // Guardar / Modificar / Eliminar repuestos
-    Route::middleware(['permiso:inv_repuestos,crear'])->group(function () {
         Route::post('/inventario/repuestos', [RepuestoController::class, 'procesar'])->name('repuestos.guardar');
     });
 
@@ -306,6 +305,14 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['permiso:ordenes_buscar,ver'])->group(function () {
         Route::get('/operaciones/ordenes/buscar', [BuscarOrdenController::class, 'index'])->name('ordenes_buscar.index');
         Route::get('/operaciones/ordenes/buscar/listar', [BuscarOrdenController::class, 'listar'])->name('ordenes_buscar.listar');
+    });
+
+    // Modulo de Recepcion
+    Route::middleware(['permiso:ordenes_recepcion,ver'])->group(function () {
+        Route::get('/operaciones/recepcion', [RecepcionController::class, 'index'])->name('recepcion.index');
+        Route::post('/operaciones/recepcion/recibir-tecnico', [RecepcionController::class, 'recibirEnRecepcion'])->name('recepcion.recibir');
+        Route::post('/operaciones/recepcion/entregar', [RecepcionController::class, 'entregarOrden'])->name('recepcion.entregar');
+        Route::get('/operaciones/recepcion/detalle/{id}', [RecepcionController::class, 'obtenerDetalle'])->name('recepcion.detalle');
     });
 
     // Modulo de Edicion de Ordenes
@@ -371,6 +378,9 @@ Route::middleware('auth')->group(function () {
     // -------------------------------------------------------
     Route::middleware(['permiso:presupuestos,ver'])->group(function () {
         Route::get('/operaciones/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
+        Route::get('/operaciones/presupuestos/buscar-ordenes', [PresupuestoController::class, 'buscarOrdenes'])->name('presupuestos.buscar_ordenes');
+        Route::get('/operaciones/presupuestos/buscar-articulos', [PresupuestoController::class, 'buscarArticulos'])->name('presupuestos.buscar_articulos');
+        Route::get('/operaciones/presupuestos/imprimir-directa', [PresupuestoController::class, 'imprimirDirecta'])->name('presupuestos.imprimir_directa');
         Route::get('/operaciones/presupuestos/{id}/imprimir', [PresupuestoController::class, 'imprimir'])->name('presupuestos.imprimir');
     });
 
@@ -438,11 +448,7 @@ Route::middleware('auth')->group(function () {
     // Requiere permiso del modulo repuestos_admin (la gestion de bodega original)
     Route::middleware(['permiso:repuestos_admin,ver'])->group(function () {
         Route::get('/operaciones/listas-compra', [ListaCompraController::class, 'index'])->name('listas_compra.index');
-    });
-
-    Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
-
-    Route::middleware(['permiso:repuestos_admin,crear'])->group(function () {
+        Route::get('/operaciones/listas-compra/{id}/imprimir', [ListaCompraController::class, 'imprimir'])->name('listas_compra.imprimir');
         Route::post('/operaciones/listas-compra/generar', [ListaCompraController::class, 'store'])->name('listas_compra.store');
     });
 
@@ -480,11 +486,132 @@ Route::middleware('auth')->group(function () {
     // Caja General & Arqueos Diarios
     Route::get('/contabilidad/caja-general', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'index'])->name('cajageneral.index');
     Route::get('/contabilidad/caja-general/buscar-orden', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'buscarOrden'])->name('cajageneral.buscar_orden');
+    Route::get('/contabilidad/caja-general/buscar-producto', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'buscarProducto'])->name('cajageneral.buscar_producto');
     Route::post('/contabilidad/caja-general/cobro', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarCobro'])->name('cajageneral.guardar_cobro');
     Route::post('/contabilidad/caja-general/arqueo', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'guardarArqueo'])->name('cajageneral.guardar_arqueo');
     Route::post('/contabilidad/caja-general/deposito', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirDeposito'])->name('cajageneral.subir_deposito');
+    Route::get('/contabilidad/caja-general/arqueo/{id}/imprimir', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'imprimirArqueo'])->name('cajageneral.imprimir_arqueo');
+    Route::get('/contabilidad/caja-general/recibo/{id}', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'imprimirRecibo'])->name('cajageneral.imprimir_recibo');
+    Route::post('/contabilidad/caja-general/cobro/{id}/subir-comprobante', [\App\Http\Controllers\Accounting\CajaGeneralController::class, 'subirComprobanteCobro'])->name('cajageneral.subir_comprobante_cobro');
 
     // Recuento & Facturacion B2B
     Route::get('/contabilidad/recuento-b2b', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'index'])->name('recuentob2b.index');
+    Route::post('/contabilidad/recuento-b2b/actualizar-mano-obra', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'actualizarManoObraOrden'])->name('recuentob2b.actualizar_mano_obra');
     Route::post('/contabilidad/recuento-b2b/procesar', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'procesarCobro'])->name('recuentob2b.procesar');
+    Route::post('/contabilidad/recuento-b2b/exportar-excel', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'exportarExcel'])->name('recuentob2b.exportar_excel');
+    Route::get('/contabilidad/recuento-b2b/recibo-cliente/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboCliente'])->name('recuentob2b.recibo_cliente');
+    Route::get('/contabilidad/recuento-b2b/recibo-interno/{id}', [\App\Http\Controllers\Accounting\RecuentoB2BController::class, 'reciboInterno'])->name('recuentob2b.recibo_interno');
+
+    // Facturación electrónica manual (API local, ambiente SRI de pruebas)
+    Route::get('/contabilidad/facturas', [\App\Http\Controllers\Accounting\FacturaController::class, 'index'])->name('facturas.index');
+    Route::get('/contabilidad/facturas/{invoiceId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'show'])->name('facturas.show');
+    Route::post('/contabilidad/facturas/caja-general/{collectionId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueCash'])->name('facturas.issue_cash');
+    Route::post('/contabilidad/facturas/recuento-b2b/{batchId}', [\App\Http\Controllers\Accounting\FacturaController::class, 'issueB2b'])->name('facturas.issue_b2b');
+    Route::get('/contabilidad/facturas/{invoiceId}/xml', [\App\Http\Controllers\Accounting\FacturaController::class, 'xml'])->name('facturas.xml');
+    Route::get('/contabilidad/facturas/{invoiceId}/ride', [\App\Http\Controllers\Accounting\FacturaController::class, 'ride'])->name('facturas.ride');
+
+    // Facturación por Lotes (Milenium - Sistema Externo)
+    Route::get('/contabilidad/facturacion-lotes', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'index'])->name('facturacion_lotes.index');
+    Route::get('/contabilidad/facturacion-lotes/historial', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'historial'])->name('facturacion_lotes.historial');
+    Route::post('/contabilidad/facturacion-lotes/guardar', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'guardar'])->name('facturacion_lotes.guardar');
+    Route::get('/contabilidad/facturacion-lotes/{id}/detalle', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'detalle'])->name('facturacion_lotes.detalle');
+    Route::delete('/contabilidad/facturacion-lotes/orden/{id}', [\App\Http\Controllers\Accounting\FacturacionLoteController::class, 'desvincularOrden'])->name('facturacion_lotes.desvincular');
+
+    // Reportería & Auditoría de Contabilidad (Páginas separadas por módulo)
+    Route::get('/contabilidad/reportes', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'index'])->name('contabilidad.reportes');
+    Route::get('/contabilidad/reportes/kpis', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'kpis'])->name('contabilidad.reportes.kpis');
+    Route::get('/contabilidad/reportes/caja-general', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'cajaGeneral'])->name('contabilidad.reportes.caja_general');
+    Route::get('/contabilidad/reportes/caja-chica', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'cajaChica'])->name('contabilidad.reportes.caja_chica');
+    Route::get('/contabilidad/reportes/b2b', [\App\Http\Controllers\Accounting\ReporteContabilidadController::class, 'b2b'])->name('contabilidad.reportes.b2b');
+
+    // -------------------------------------------------------
+    // MÓDULO DE NÓMINA (LOCAL ONLY)
+    // -------------------------------------------------------
+    Route::get('/nomina/mis-datos', [\App\Http\Controllers\Identity\NominaController::class, 'misDatos'])->name('nomina.mis_datos');
+    Route::post('/nomina/mis-datos', [\App\Http\Controllers\Identity\NominaController::class, 'guardarMisDatos'])->name('nomina.guardar_mis_datos');
+
+    Route::get('/nomina/admin', [\App\Http\Controllers\Identity\NominaController::class, 'adminIndex'])->name('nomina.admin');
+    Route::post('/nomina/admin/guardar/{usuario_id}', [\App\Http\Controllers\Identity\NominaController::class, 'guardarDatosNominaAdmin'])->name('nomina.admin_guardar');
+    Route::get('/nomina/admin/exportar-excel', [\App\Http\Controllers\Identity\NominaController::class, 'exportarExcel'])->name('nomina.exportar_excel');
+
+    // Solicitudes y Aprobación de Vacaciones
+    Route::post('/nomina/vacaciones/solicitar', [\App\Http\Controllers\Identity\NominaController::class, 'solicitarVacaciones'])->name('nomina.vacaciones_solicitar');
+    Route::post('/nomina/vacaciones/aprobar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'aprobarVacaciones'])->name('nomina.vacaciones_aprobar');
+    Route::post('/nomina/vacaciones/rechazar/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'rechazarVacaciones'])->name('nomina.vacaciones_rechazar');
+    Route::get('/nomina/vacaciones/imprimir/{id}', [\App\Http\Controllers\Identity\NominaController::class, 'imprimirSolicitudVacaciones'])->name('nomina.vacaciones_imprimir');
+
+    // -------------------------------------------------------
+    // MÓDULO DE TICKETS DE SOPORTE & SISTEMAS
+    // -------------------------------------------------------
+    // Portal de Solicitantes (Usuarios Externos / Tiendas)
+    Route::get('/tickets/mis-tickets', [\App\Http\Controllers\Operations\MisTicketsController::class, 'index'])->name('mistickets.index');
+    Route::get('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'create'])->name('mistickets.create');
+    Route::post('/tickets/crear', [\App\Http\Controllers\Operations\MisTicketsController::class, 'store'])->name('mistickets.store');
+    Route::get('/tickets/mis-tickets/{id}', [\App\Http\Controllers\Operations\MisTicketsController::class, 'show'])->name('mistickets.show');
+    Route::post('/tickets/mis-tickets/{id}/responder', [\App\Http\Controllers\Operations\MisTicketsController::class, 'responder'])->name('mistickets.responder');
+    // Endpoints Universales de Calificación
+    Route::post('/tickets/mis-tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar'])->name('mistickets.calificar');
+    Route::post('/mistickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar']);
+    Route::post('/tickets/gestion/{id}/calificar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'calificar'])->name('tickets.calificar');
+    Route::post('/tickets/{id}/calificar', [\App\Http\Controllers\Operations\MisTicketsController::class, 'calificar']);
+    Route::post('/tickets/mis-tickets/{id}/reabrir', [\App\Http\Controllers\Operations\MisTicketsController::class, 'reabrir'])->name('mistickets.reabrir');
+    Route::get('/tickets/mis-tickets/{id}/word-mba', [\App\Http\Controllers\Operations\MisTicketsController::class, 'descargarWordMba'])->name('mistickets.word_mba');
+    Route::get('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'perfil'])->name('mistickets.perfil');
+    Route::post('/tickets/mi-perfil', [\App\Http\Controllers\Operations\MisTicketsController::class, 'guardarPerfil'])->name('mistickets.guardar_perfil');
+
+    // Mesa de Ayuda / Gestión Centralizada Quito (Técnicos, Admins, Sistemas)
+    Route::get('/tickets/gestion', [\App\Http\Controllers\Operations\TicketGestionController::class, 'index'])->name('tickets.gestion');
+    Route::get('/tickets/gestion/{id}', [\App\Http\Controllers\Operations\TicketGestionController::class, 'show'])->name('tickets.show');
+    Route::get('/tickets/gestion/{id}/word-mba', [\App\Http\Controllers\Operations\TicketGestionController::class, 'descargarWordMba'])->name('tickets.word_mba');
+    Route::post('/tickets/gestion/{id}/asignar', [\App\Http\Controllers\Operations\TicketGestionController::class, 'asignar'])->name('tickets.asignar');
+    Route::post('/tickets/gestion/{id}/cambiar-estado', [\App\Http\Controllers\Operations\TicketGestionController::class, 'cambiarEstado'])->name('tickets.cambiar_estado');
+    Route::post('/tickets/gestion/{id}/responder', [\App\Http\Controllers\Operations\TicketGestionController::class, 'responder'])->name('tickets.responder');
+    Route::get('/tickets/{id}/imprimir', [\App\Http\Controllers\Operations\TicketGestionController::class, 'imprimir'])->name('tickets.imprimir');
+
+    // Administración de Solicitantes de Tiendas
+    Route::get('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'index'])->name('tickets.solicitantes');
+    Route::post('/tickets/solicitantes', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'store'])->name('tickets.solicitantes.store');
+    Route::post('/tickets/solicitantes/{id}', [\App\Http\Controllers\Operations\TicketSolicitantesController::class, 'update'])->name('tickets.solicitantes.update');
+
+    // Motor de Chat en Tiempo Real
+    Route::get('/tickets/chat/{id}/sync', [\App\Http\Controllers\Operations\TicketChatController::class, 'sync'])->name('tickets.chat.sync');
+    Route::post('/tickets/chat/{id}/enviar', [\App\Http\Controllers\Operations\TicketChatController::class, 'enviar'])->name('tickets.chat.enviar');
+
+    // Motor de Llamada de Voz WebRTC & Compartir Pantalla en Tiempo Real
+    Route::post('/tickets/llamada/{id}/iniciar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'iniciar'])->name('tickets.llamada.iniciar');
+    Route::post('/tickets/llamada/{id}/contestar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'contestar'])->name('tickets.llamada.contestar');
+    Route::post('/tickets/llamada/{id}/ice', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'enviarIce'])->name('tickets.llamada.ice');
+    Route::get('/tickets/llamada/{id}/estado', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'estado'])->name('tickets.llamada.estado');
+    Route::post('/tickets/llamada/{id}/rechazar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'rechazar'])->name('tickets.llamada.rechazar');
+    Route::post('/tickets/llamada/{id}/finalizar', [\App\Http\Controllers\Operations\TicketLlamadaController::class, 'finalizar'])->name('tickets.llamada.finalizar');
+
+    // Auditoría & Reportería de Tickets (Admin Master & Admins)
+    Route::get('/tickets/auditoria', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'index'])->name('tickets.auditoria');
+    Route::get('/tickets/auditoria/exportar', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'exportarExcel'])->name('tickets.auditoria.exportar');
+    Route::get('/tickets/auditoria/data-excel', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'dataExcel'])->name('tickets.auditoria.data_excel');
+    Route::get('/tickets/auditoria/{id}/detalle', [\App\Http\Controllers\Operations\TicketAuditoriaController::class, 'detalleModal'])->name('tickets.auditoria.detalle');
+
+    // Servidor seguro de archivos adjuntos en storage
+    Route::get('/storage/{path}', function ($path) {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Archivo no encontrado.');
+        }
+        return response()->file($fullPath);
+    })->where('path', '.*');
+});
+
+// Descarga Directa de la App Móvil Android
+Route::get('/app/tickets', function () {
+    $path = public_path('downloads/NovitecTickets.apk');
+    if (file_exists($path)) {
+        return response()->download($path, 'NovitecTickets.apk', [
+            'Content-Type' => 'application/vnd.android.package-archive'
+        ]);
+    }
+    return response()->file(public_path('NovitecTickets.apk'));
+})->name('app.tickets.download');
+
+Route::get('/apk', function () {
+    return redirect('/sgn/downloads/NovitecTickets.apk');
 });

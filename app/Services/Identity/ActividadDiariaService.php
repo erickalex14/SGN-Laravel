@@ -54,45 +54,11 @@ class ActividadDiariaService
     }
 
     /**
-     * Obtiene las actividades del día para un técnico, sobrescribiendo las automáticas si existe un registro manual.
+     * Obtiene las actividades del día para un técnico (incluye automáticas y manuales).
      */
     public function obtenerActividadesDelDia(int $usuarioId, string $fecha): Collection
     {
-        $actividades = $this->repository->obtenerPorUsuarioYFecha($usuarioId, $fecha);
-
-        // Agrupar por hora de la jornada (9-17)
-        $grupos = [];
-        foreach ($actividades as $act) {
-            $hora = Carbon::parse($act->fecha_hora)->hour;
-            if ($hora < 9) {
-                $hora = 9;
-            } elseif ($hora > 17) {
-                $hora = 17;
-            }
-            $grupos[$hora][] = $act;
-        }
-
-        $filtradas = new Collection();
-        foreach ($grupos as $hora => $acts) {
-            // Buscar si hay registro manual
-            $manual = null;
-            foreach ($acts as $act) {
-                if ($act->tipo_accion === 'registro_manual') {
-                    $manual = $act;
-                    break;
-                }
-            }
-
-            if ($manual) {
-                $filtradas->push($manual);
-            } else {
-                foreach ($acts as $act) {
-                    $filtradas->push($act);
-                }
-            }
-        }
-
-        return $filtradas->sortBy('fecha_hora')->values();
+        return $this->repository->obtenerPorUsuarioYFecha($usuarioId, $fecha);
     }
 
     /**
@@ -179,7 +145,7 @@ class ActividadDiariaService
             '0957967847'
         ];
 
-        return Usuario::where('activo', true)
+        return Usuario::tecnicosOperativos()
             ->whereNotIn('nombre_tecnico', $nombresExcluidos)
             ->whereNotIn('usuario', $usuariosExcluidos)
             ->orderBy('nombre_tecnico', 'asc')

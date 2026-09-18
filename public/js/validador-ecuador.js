@@ -23,16 +23,20 @@ const EcuadorianValidator = {
         return true;
     },
 
-    validarIdentificacion(val) {
-        val = val.trim();
+    validarIdentificacion(val, tipo = 'both') {
+        val = (val || '').trim();
+        if (tipo === 'cedula') return EcuadorianValidator.validarCedula(val);
+        if (tipo === 'ruc') return EcuadorianValidator.validarRuc(val);
+        if (tipo === 'pasaporte') return EcuadorianValidator.validarPasaporte(val);
+
         if (EcuadorianValidator.validarCedula(val)) return true;
         if (EcuadorianValidator.validarRuc(val)) return true;
         return EcuadorianValidator.validarPasaporte(val);
     },
 
     validarPasaporte(val) {
-        val = val.trim();
-        return /^(?=.*[A-Za-z])[A-Za-z0-9]{5,20}$/.test(val);
+        val = (val || '').trim();
+        return val.length >= 3 && val.length <= 30 && /^[a-zA-Z0-9\-\.]+$/.test(val);
     },
 
     validarTelefono(val) {
@@ -78,7 +82,7 @@ function setupDynamicValidation(input, validate, getErrorMsg) {
             errorEl.style.display = 'none';
             return true;
         } else {
-            const hasInvalidChars = (validate === EcuadorianValidator.validarIdentificacion && /[^a-zA-Z0-9]/.test(val))
+            const hasInvalidChars = (validate === EcuadorianValidator.validarIdentificacion && /[^a-zA-Z0-9\-\.]/.test(val))
                 || ((validate === EcuadorianValidator.validarTelefono || validate === EcuadorianValidator.validarRuc || validate === EcuadorianValidator.validarCedula) && /[^\d]/.test(val));
             
             if (isBlur || hasInvalidChars || (val.length >= 20 && validate === EcuadorianValidator.validarIdentificacion) || (val.length >= 13 && validate === EcuadorianValidator.validarRuc) || (val.length >= 10 && validate === EcuadorianValidator.validarTelefono)) {

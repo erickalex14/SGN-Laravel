@@ -40,6 +40,7 @@ readonly class CrearOrdenDTO
         public ?string $nro_sucursal_cliente,
         public ?string $estado_repuesto,
         public ?string $garantia_tipo,
+        public ?string $empresa_garantia = null,
         public ?int $cas_id,
         public ?int $repuesto_inventario_id,
         public ?array $repuestos_seleccionados = null

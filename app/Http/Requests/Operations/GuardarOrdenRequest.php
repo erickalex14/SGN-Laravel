@@ -31,10 +31,11 @@ class GuardarOrdenRequest extends FormRequest
 
         $reglas = [
             // Validacion de Cliente
+            'cli_tipo_documento' => ['nullable', 'string', 'in:cedula,ruc,pasaporte'],
             'cli_identificacion' => [
                 $esEmpresa ? 'nullable' : 'required',
                 'string',
-                new EcuadorIdentificacion,
+                new EcuadorIdentificacion($this->input('cli_tipo_documento') ?: 'both'),
             ],
             'cli_nombres' => [
                 $esEmpresa ? 'nullable' : 'required', 
@@ -70,6 +71,10 @@ class GuardarOrdenRequest extends FormRequest
 
                     $codigo = strtoupper(trim((string) $this->input('producto_inventario_codigo', '')));
                     if ($codigo === '') {
+                        $descripcion = strtoupper(trim((string) $value));
+                        if ($descripcion === '' || mb_strlen($descripcion) < 2) {
+                            $fail('Debes ingresar la descripción o modelo del equipo.');
+                        }
                         return;
                     }
 
@@ -79,8 +84,8 @@ class GuardarOrdenRequest extends FormRequest
                     }
 
                     $descripcion = strtoupper(trim((string) $value));
-                    if ($descripcion === '' || $descripcion === $codigo || $descripcion === 'GENERICO' || mb_strlen($descripcion) < 3) {
-                        $fail('Debes ingresar una descripcion valida para el producto nuevo antes de crear la orden.');
+                    if ($descripcion === '' || $descripcion === $codigo || $descripcion === 'GENERICO' || mb_strlen($descripcion) < 2) {
+                        $fail('Debes ingresar una descripción válida para el producto nuevo antes de crear la orden.');
                     }
                 },
             ],
@@ -89,7 +94,7 @@ class GuardarOrdenRequest extends FormRequest
             'eq_observacion' => ['nullable', 'string'],
             'eq_tipo_servicio' => [$esGarantia ? 'required' : 'nullable', 'integer', 'exists:tiposservicio,id'],
             'tipo_servicio_texto' => ['required_if:motivo_ingreso,Servicio Cliente Externo', 'nullable', 'string', 'max:100'],
-            'producto_inventario_codigo' => [$esEmpresa ? 'nullable' : 'required', 'string', 'max:50'],
+            'producto_inventario_codigo' => [$esGarantia ? 'required' : 'nullable', 'string', 'max:50'],
 
             'series' => [$esEmpresa ? 'nullable' : 'required', 'array', 'min:1'],
             'series.*' => ['nullable', 'string', 'max:100'],
@@ -118,6 +123,12 @@ class GuardarOrdenRequest extends FormRequest
                 },
             ],
             'estado_repuesto' => ['nullable', 'string', 'max:50'],
+            'empresa_garantia' => [
+                $esGarantia ? 'required' : 'nullable',
+                'string',
+                'max:50',
+                Rule::in(['NOVISOLUTIONS', 'ENV', 'novisolutions', 'env', 'Novisolutions', 'Env'])
+            ],
             'garantia_tipo' => [
                 $esGarantia ? 'required' : 'nullable',
                 'string',
@@ -132,6 +143,13 @@ class GuardarOrdenRequest extends FormRequest
             'cred_usuario' => ['nullable', 'array'],
             'cred_contrasena' => ['nullable', 'array'],
             'cred_es_patron' => ['nullable', 'array'],
+
+            // Validacion de 6 fotos obligatorias del equipo (Garantia, Cliente Externo, Stock, Autoconsumo)
+            'fotos_equipo' => [(!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'required' : 'nullable', 'array', (!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'size:6' : 'max:6'],
+            'fotos_equipo.*' => [(!$esEmpresa || in_array($this->input('subtipo_empresa'), ['Autoconsumo', 'Stock'], true)) ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:15360'],
+
+            // Validacion de factura (Solo en Validacion de Garantia)
+            'archivo_factura' => ['required_if:motivo_ingreso,Validacion de Garantia', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:15360'],
         ];
 
         if ($esEmpresa) {
@@ -215,6 +233,15 @@ class GuardarOrdenRequest extends FormRequest
             'cli_apellidos.regex' => 'El apellido del cliente sólo debe contener letras, tildes y espacios.',
             'fecha_facturacion.before_or_equal' => 'La fecha de facturación no puede ser superior al día de hoy.',
             'fecha_prometido.after_or_equal' => 'La fecha prometida de entrega no puede ser anterior al día de hoy.',
+            'fotos_equipo.required' => 'Es obligatorio subir las 6 fotos del equipo.',
+            'fotos_equipo.size' => 'Debe adjuntar exactamente 6 fotos del equipo.',
+            'fotos_equipo.*.required' => 'Cada una de las 6 fotos del equipo es obligatoria.',
+            'fotos_equipo.*.mimes' => 'Las fotos del equipo deben ser archivos de imagen válidos (JPG, PNG, WEBP).',
+            'fotos_equipo.*.max' => 'Cada foto del equipo no puede superar los 15MB.',
+            'archivo_factura.required' => 'El archivo de la factura es obligatorio para órdenes de Validación de Garantía.',
+            'archivo_factura.required_if' => 'El archivo de la factura es obligatorio para órdenes de Validación de Garantía.',
+            'archivo_factura.mimes' => 'La factura debe ser un archivo PDF o imagen (JPG, PNG, WEBP).',
+            'archivo_factura.max' => 'El archivo de la factura no puede superar los 15MB.',
         ];
     }
 

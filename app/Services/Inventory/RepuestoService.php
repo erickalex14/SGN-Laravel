@@ -46,6 +46,7 @@ class RepuestoService
         $repuesto->nombre              = strtoupper(trim($dto->nombre));
         $repuesto->stock               = $dto->stock;
         $repuesto->costo               = $dto->costo;
+        $repuesto->pvp                 = $dto->pvp;
         $repuesto->bodega              = $this->normalizarBodegaParaEsquema($dto->bodega);
         $repuesto->descripcion         = $this->normalizarTextoOpcional($dto->descripcion);
         $repuesto->marca_id            = $this->normalizarTextoOpcional($dto->marca_id, true);

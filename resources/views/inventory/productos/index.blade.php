@@ -217,15 +217,32 @@
             btn.disabled = true;
 
             try {
-                const r = await fetch('{{ route("productos.guardar") }}', { method: 'POST', body: fd });
-                const d = await r.json();
+                const r = await fetch('{{ route("productos.guardar") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: fd
+                });
 
-                if (d.ok) {
+                let d = null;
+                try {
+                    d = await r.json();
+                } catch (parseErr) {
+                    const text = await r.text();
+                    console.error('Server response:', text);
+                }
+
+                if (d && d.ok) {
                     location.reload();
-                } else {
+                } else if (d && d.error) {
                     mostrarError(d.error);
+                } else {
+                    mostrarError('No se pudo guardar el producto. Verifica los datos ingresados.');
                 }
             } catch (e) {
+                console.error('Error al guardar:', e);
                 mostrarError('Se produjo un error de conexión al servidor.');
             } finally {
                 btn.disabled = false;
@@ -241,10 +258,20 @@
             fd.append('id', id);
 
             try {
-                const r = await fetch('{{ route("productos.guardar") }}', { method: 'POST', body: fd });
+                const r = await fetch('{{ route("productos.guardar") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: fd
+                });
                 const d = await r.json();
-                if (d.ok) location.reload();
-                else alert(d.error);
+                if (d.ok) {
+                    location.reload();
+                } else {
+                    alert(d.error || 'No se pudo eliminar el producto.');
+                }
             } catch (e) {
                 alert('Se produjo un error de conexión al servidor.');
             }

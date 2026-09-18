@@ -7,11 +7,12 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 class EcuadorIdentificacion implements ValidationRule
 {
-    protected string $type; // 'both', 'cedula', 'ruc'
+    protected string $type; // 'both', 'cedula', 'ruc', 'pasaporte'
 
     public function __construct(string $type = 'both')
     {
-        $this->type = $type;
+        $type = strtolower(trim($type));
+        $this->type = in_array($type, ['cedula', 'ruc', 'pasaporte'], true) ? $type : 'both';
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -22,34 +23,65 @@ class EcuadorIdentificacion implements ValidationRule
         $value = trim((string) $value);
         $len = strlen($value);
 
-        // Si el tipo es 'both', también aceptamos pasaportes (alfanumérico de 5 a 20 caracteres)
+        // Modo Explícito: Pasaporte (permite cualquier pasaporte alfanumérico entre 3 y 30 caracteres)
+        if ($this->type === 'pasaporte') {
+            if ($len < 3 || $len > 30) {
+                $fail('El pasaporte debe tener entre 3 y 30 caracteres.');
+                return;
+            }
+            if (!preg_match('/^[A-Za-z0-9\-\.]+$/', $value)) {
+                $fail('El pasaporte contiene caracteres no válidos.');
+                return;
+            }
+            return;
+        }
+
+        // Modo Explícito: Cédula (exactamente 10 dígitos numéricos)
+        if ($this->type === 'cedula') {
+            if ($len !== 10) {
+                $fail('La cédula debe tener exactamente 10 dígitos.');
+                return;
+            }
+            if (!ctype_digit($value)) {
+                $fail('La cédula sólo debe contener números.');
+                return;
+            }
+            if (!$this->validarCedula($value)) {
+                $fail('La cédula ingresada no es válida.');
+            }
+            return;
+        }
+
+        // Modo Explícito: RUC (exactamente 13 dígitos numéricos)
+        if ($this->type === 'ruc') {
+            if ($len !== 13) {
+                $fail('El RUC debe tener exactamente 13 dígitos.');
+                return;
+            }
+            if (!ctype_digit($value)) {
+                $fail('El RUC sólo debe contener números.');
+                return;
+            }
+            if (!$this->validarRuc($value)) {
+                $fail('El RUC ingresado no es válido.');
+            }
+            return;
+        }
+
+        // Modo 'both' (cuando no se especifica el tipo explícito)
         $esPasaporte = false;
-        if ($this->type === 'both' && preg_match('/^(?=.*[A-Za-z])[A-Za-z0-9]{5,20}$/', $value)) {
+        if (preg_match('/^(?=.*[A-Za-z])[A-Za-z0-9\-\.]{3,30}$/', $value)) {
             $esPasaporte = true;
         }
 
         if (! $esPasaporte) {
-            if ($this->type === 'cedula' && $len !== 10) {
-                $fail('La identificación debe ser una cédula de 10 dígitos.');
-
-                return;
-            }
-
-            if ($this->type === 'ruc' && $len !== 13) {
-                $fail('La identificación debe ser un RUC de 13 dígitos.');
-
-                return;
-            }
-
             if ($len !== 10 && $len !== 13) {
-                $fail('La identificación debe ser una cédula (10 dígitos), RUC (13 dígitos) o pasaporte válido (5 a 20 caracteres alfanuméricos).');
-
+                $fail('La identificación debe ser una cédula (10 dígitos), RUC (13 dígitos) o un pasaporte válido.');
                 return;
             }
 
             if (! ctype_digit($value)) {
                 $fail('La identificación sólo debe contener números.');
-
                 return;
             }
 

@@ -115,7 +115,9 @@
                                 'sucursal_cliente_numero' => $po->sucursal_cliente_numero, 'sucursal_ciudad' => $po->sucursal_ciudad,
                                 'ciudad_procedencia' => $po->ciudad_procedencia, 'serie' => $po->serie
                             ];
-                            $fotos = [$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4];
+                            $fotos = array_filter([$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4]);
+                            $tieneFotos = count($fotos) > 0;
+                            $fotosArray = [$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4];
                         @endphp
                         <tr data-nro="{{ strtolower($po->nro_preorden) }}"
                             data-cliente="{{ strtolower(trim($po->nombres.' '.$po->apellidos)) }}"
@@ -136,7 +138,15 @@
                                 <div class="po-sub" style="font-size: 11px;"><i class="bi bi-shop text-primary me-1"></i>{{ $po->sucursal_ciudad ?: '-' }}</div>
                             </td>
                             <td>
-                                <button class="btn-ver-fotos" onclick='poVerFotos(@json($fotos))'><i class="bi bi-images me-1"></i>Fotos</button>
+                                @if($tieneFotos)
+                                    <button class="btn-ver-fotos" onclick='poVerFotos(@json($fotosArray))' title="Ver las {{ count($fotos) }} fotos del equipo">
+                                        <i class="bi bi-images me-1 text-primary"></i>Fotos ({{ count($fotos) }})
+                                    </button>
+                                @else
+                                    <button class="btn-ver-fotos" style="opacity: 0.55; background: #f8fafc; color: #94a3b8; border-color: #cbd5e1;" onclick='poVerFotos([])' title="Esta pre-orden no tiene fotos registradas">
+                                        <i class="bi bi-camera-slash me-1"></i>Sin fotos
+                                    </button>
+                                @endif
                                 <button class="btn-ver-fotos" onclick="poImprimirPreorden({{ $po->id }})"><i class="bi bi-printer me-1"></i>Comprobante</button>
                             </td>
                             <td><button class="btn-ingresar" onclick='poAbrirModal(@json($poJson))'><i class="bi bi-box-arrow-in-down me-1"></i>Ingresar</button></td>
@@ -169,7 +179,11 @@
                     </thead>
                     <tbody id="po-tbody-ing">
                         @foreach(($preordenesIngresadas ?? []) as $po)
-                        @php $fotos = [$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4]; @endphp
+                        @php
+                            $fotos = array_filter([$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4]);
+                            $tieneFotos = count($fotos) > 0;
+                            $fotosArray = [$po->foto_1, $po->foto_2, $po->foto_3, $po->foto_4];
+                        @endphp
                         <tr data-nro="{{ strtolower($po->nro_preorden) }}"
                             data-cliente="{{ strtolower(trim($po->nombres.' '.$po->apellidos)) }}"
                             data-fac="{{ strtolower($po->nro_factura ?? '') }}"
@@ -192,7 +206,15 @@
                                 <div class="po-sub" style="font-size:11px;"><i class="bi bi-shop text-primary me-1"></i>{{ $po->sucursal_ciudad ?: '-' }}</div>
                             </td>
                             <td>
-                                <button class="btn-ver-fotos" onclick='poVerFotos(@json($fotos))'><i class="bi bi-images me-1"></i>Fotos</button>
+                                @if($tieneFotos)
+                                    <button class="btn-ver-fotos" onclick='poVerFotos(@json($fotosArray))' title="Ver las {{ count($fotos) }} fotos del equipo">
+                                        <i class="bi bi-images me-1 text-primary"></i>Fotos ({{ count($fotos) }})
+                                    </button>
+                                @else
+                                    <button class="btn-ver-fotos" style="opacity: 0.55; background: #f8fafc; color: #94a3b8; border-color: #cbd5e1;" onclick='poVerFotos([])' title="Esta pre-orden no tiene fotos registradas">
+                                        <i class="bi bi-camera-slash me-1"></i>Sin fotos
+                                    </button>
+                                @endif
                                 <button class="btn-ver-fotos" onclick="poImprimirPreorden({{ $po->id }})"><i class="bi bi-printer me-1"></i>Preorden</button>
                                 @if(!empty($po->orden_id))
                                     <a class="btn-ver-fotos" href="{{ route('ordenes.imprimir', $po->orden_id) }}" target="_blank"><i class="bi bi-file-earmark-pdf me-1"></i>Orden PDF</a>
@@ -276,21 +298,62 @@ function poBuscar() {
 }
 function poFotoUrl(url) {
     var src = String(url || '').trim();
-    if (!src) return '';
+    if (!src || src === 'null' || src === 'undefined') return '';
     if (/^https?:\/\//i.test(src)) return src;
     src = src.replace(/^\/+/, '');
-    return window.location.origin + '/' + src;
+    return '/' + src;
 }
 function poVerFotos(fotos) {
-    var labels = ['Lado derecho', 'Lado izquierdo', 'De frente', 'Parte trasera'];
-    var grid = document.getElementById('pof-grid'); grid.innerHTML = '';
+    var labels = ['Lado Derecho', 'Lado Izquierdo', 'De Frente', 'Parte Trasera'];
+    var icons = ['bi-box-arrow-in-right', 'bi-box-arrow-in-left', 'bi-aspect-ratio', 'bi-arrow-repeat'];
+    var grid = document.getElementById('pof-grid');
+    grid.innerHTML = '';
+    
+    if (!Array.isArray(fotos) || fotos.length === 0 || fotos.every(function(f){ return !f || f === 'null'; })) {
+        grid.innerHTML = '<div style="grid-column: span 2; padding: 40px 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 12px; border: 1.5px dashed #cbd5e1;"><i class="bi bi-camera-slash" style="font-size: 40px; display: block; margin-bottom: 10px; color: #94a3b8;"></i><div style="font-weight:700;font-size:14px;color:#334155;margin-bottom:4px;">Sin fotos adjuntas</div><div style="font-size:12px;color:#64748b;">Esta pre-orden fue registrada sin adjuntar fotografías del equipo.</div></div>';
+        document.getElementById('pof-overlay').classList.add('open');
+        return;
+    }
+
+    var validCount = 0;
+
     fotos.forEach(function(url, i){
-        if (!url) return;
-        var div = document.createElement('div');
         var fullSrc = poFotoUrl(url);
-        div.innerHTML = '<a href="' + fullSrc + '" target="_blank"><img class="pof-img" src="' + fullSrc + '" onerror="this.style.display=\'none\'" loading="lazy"></a><div class="pof-lbl">' + labels[i] + '</div>';
+        var div = document.createElement('div');
+        div.className = 'po-photo-card';
+        div.style.cssText = 'background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 230px;';
+
+        if (fullSrc) {
+            validCount++;
+            div.innerHTML = `
+                <div class="po-img-container" style="position: relative; overflow: hidden; border-radius: 8px; background: #0f172a; height: 190px; display: flex; align-items: center; justify-content: center;">
+                    <a href="${fullSrc}" target="_blank" title="Clic para ampliar en pestaña nueva" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                        <img class="pof-img" src="${fullSrc}" alt="${labels[i]}"
+                             style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; transition: transform 0.2s;"
+                             onmouseover="this.style.transform='scale(1.04)'"
+                             onmouseout="this.style.transform='scale(1)'"
+                             onerror="this.onerror=null; this.closest('.po-photo-card').innerHTML = '<div style=\\'height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 8px; color: #94a3b8; border: 1px dashed #cbd5e1;\\'><i class=\\'bi bi-camera-slash\\' style=\\'font-size: 32px; opacity: 0.5; margin-bottom: 6px;\\'></i><span style=\\'font-size: 11.5px; font-weight: 500;\\'>Foto no disponible</span></div><div class=\\'pof-lbl\\' style=\\'font-weight: 600; color: #94a3b8; margin-top: 8px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px;\\'><i class=\\'bi ${icons[i]}\\'></i> ${labels[i]}</div>';"
+                             loading="lazy">
+                    </a>
+                </div>
+                <div class="pof-lbl" style="font-weight: 700; color: #334155; margin-top: 8px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                    <i class="bi ${icons[i]} text-primary"></i> ${labels[i]}
+                </div>
+            `;
+        } else {
+            div.innerHTML = `
+                <div style="height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 8px; color: #94a3b8; border: 1px dashed #e2e8f0;">
+                    <i class="bi bi-camera" style="font-size: 32px; opacity: 0.4;"></i>
+                    <span style="font-size: 11.5px; margin-top: 6px;">Sin foto adjunta</span>
+                </div>
+                <div class="pof-lbl" style="font-weight: 600; color: #94a3b8; margin-top: 8px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                    <i class="bi ${icons[i]}" style="opacity: 0.5;"></i> ${labels[i]}
+                </div>
+            `;
+        }
         grid.appendChild(div);
     });
+
     document.getElementById('pof-overlay').classList.add('open');
 }
 function pofCerrar(e){ if(e.target===document.getElementById('pof-overlay')) document.getElementById('pof-overlay').classList.remove('open'); }

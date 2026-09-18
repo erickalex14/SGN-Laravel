@@ -8,6 +8,10 @@ readonly class CambiarEstadoOrdenDTO
         public int $orden_id,
         public string $estado_orden,
         public ?string $nc_asunto = null,
-        public ?string $nc_detalles = null
+        public ?string $nc_detalles = null,
+        public ?string $memo_entrega = null,
+        public ?string $foto_evidencia_entrega = null,
+        public ?string $titulo_servicio = null,
+        public ?float $valor_mano_obra = null
     ) {}
 }

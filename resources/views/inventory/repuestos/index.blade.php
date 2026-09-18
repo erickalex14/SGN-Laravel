@@ -81,6 +81,7 @@
                         <th>Nombre</th>
                         <th>Stock</th>
                         <th>Costo ($)</th>
+                        <th style="color:#166534;">PVP ($)</th>
                         <th>Marca / Tipo</th>
                         <th>Bodega</th>
                         <th style="width:90px; text-align:right;">Acciones</th>
@@ -99,6 +100,7 @@
                                 <span class="stock-badge {{ $cClass }}">{{ $r->stock }}</span>
                             </td>
                             <td>{{ number_format($r->costo, 2) }}</td>
+                            <td style="font-weight:700; color:#166534;">{{ number_format($r->pvp ?: $r->costo, 2) }}</td>
                             <td style="font-size:12px;">{{ $r->marca_id ?: 'N/A' }} / {{ $r->tipo_dispositivo_id ?: 'N/A' }}</td>
                             <td>{{ $r->bodega ?: '-' }}</td>
                             <td style="text-align:right;">
@@ -107,7 +109,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr id="tr-vacio"><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">No se han registrado repuestos.</td></tr>
+                        <tr id="tr-vacio"><td colspan="9" style="text-align:center; padding:40px; color:#94a3b8;">No se han registrado repuestos.</td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -142,7 +144,7 @@
                     <input type="text" id="r-nombre" maxlength="255" placeholder="Ej: Pantalla LED 15.6 30 pines" oninput="this.value=this.value.toUpperCase()">
                 </div>
 
-                <div class="grid-2">
+                <div class="grid-3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
                     <div class="campo">
                         <label>Stock Actual <span class="req">*</span></label>
                         <input type="number" id="r-stock" min="0" value="0">
@@ -150,6 +152,10 @@
                     <div class="campo">
                         <label>Costo (USD) <span class="req">*</span></label>
                         <input type="number" id="r-costo" step="0.01" min="0" value="0.00">
+                    </div>
+                    <div class="campo">
+                        <label>PVP (USD) <span class="req">*</span></label>
+                        <input type="number" id="r-pvp" step="0.01" min="0" value="0.00" style="border-color:#86efac; font-weight:700; color:#166534;">
                     </div>
                 </div>
 
@@ -194,6 +200,7 @@
             const nombre = document.getElementById('r-nombre');
             const stock = document.getElementById('r-stock');
             const costo = document.getElementById('r-costo');
+            const pvp = document.getElementById('r-pvp');
             const marca = document.getElementById('r-marca');
             const tipo = document.getElementById('r-tipo');
             const bodega = document.getElementById('r-bodega');
@@ -207,6 +214,7 @@
                 nombre.value = datos.nombre;
                 stock.value = datos.stock;
                 costo.value = parseFloat(datos.costo).toFixed(2);
+                pvp.value = parseFloat(datos.pvp || datos.costo || 0).toFixed(2);
                 marca.value = datos.marca_id;
                 tipo.value = datos.tipo_dispositivo_id;
                 bodega.value = datos.bodega || '';
@@ -219,6 +227,7 @@
                 nombre.value = '';
                 stock.value = '0';
                 costo.value = '0.00';
+                pvp.value = '0.00';
                 marca.value = '';
                 tipo.value = '';
                 bodega.value = '';
@@ -260,6 +269,7 @@
             fd.append('nombre', nombre);
             fd.append('stock', document.getElementById('r-stock').value);
             fd.append('costo', document.getElementById('r-costo').value);
+            fd.append('pvp', document.getElementById('r-pvp').value);
             fd.append('marca_id', marca);
             fd.append('tipo_dispositivo_id', tipo);
             fd.append('bodega', document.getElementById('r-bodega').value.trim());
@@ -270,15 +280,16 @@
 
             try {
                 const r = await fetch('{{ route("repuestos.guardar") }}', { method: 'POST', body: fd });
-                const d = await r.json();
+                const d = await r.json().catch(() => null);
 
-                if (d.ok) {
+                if (r.ok && d && d.ok) {
                     location.reload();
                 } else {
-                    mostrarError(d.error);
+                    const msg = (d && (d.error || d.mensaje)) ? (d.error || d.mensaje) : `Error (${r.status}): ${r.statusText || 'Acceso denegado o error del servidor'}`;
+                    mostrarError(msg);
                 }
             } catch (e) {
-                mostrarError('Error de comunicación con el servidor.');
+                mostrarError('Error de comunicación con el servidor: ' + e.message);
             } finally {
                 btn.disabled = false;
             }

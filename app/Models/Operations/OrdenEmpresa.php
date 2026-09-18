@@ -29,14 +29,28 @@ class OrdenEmpresa extends Model
         'fecha_prometido',
         'estado',
         'fecha_ingreso',
+        'fecha_recibida_tecnico',
         'nro_sucursal_cliente',
         'valor_hora',
         'horas_trabajadas',
         'cas_id',
         'fecha_finalizacion',
+        'fecha_lista_entrega',
         'fecha_entrega',
+        'fecha_modificacion',
+        'modificado_por',
         'estado_repuesto',
-        'repuesto_inventario_id'
+        'repuesto_inventario_id',
+        'memo_entrega',
+        'foto_evidencia_entrega',
+        'estado_facturacion',
+        'nro_factura',
+        'fecha_facturacion',
+        'nro_autorizacion_factura',
+        'valor_facturado',
+        'valor_mano_obra',
+        'titulo_servicio',
+        'valor_repuestos'
     ];
 
     public function tecnicos()
@@ -79,6 +93,11 @@ class OrdenEmpresa extends Model
         return $this->belongsTo(Usuario::class, 'ingresado_por', 'id');
     }
 
+    public function modificadoPor()
+    {
+        return $this->belongsTo(Usuario::class, 'modificado_por', 'id');
+    }
+
     public function llamadas()
     {
         return $this->hasMany(LlamadaOrden::class, 'orden_empresa_id')->latest('fecha_hora');
@@ -97,5 +116,29 @@ class OrdenEmpresa extends Model
     public function ordenRepuestos()
     {
         return $this->hasMany(OrdenRepuesto::class, 'orden_empresa_id', 'id');
+    }
+
+    public function informes()
+    {
+        return $this->hasMany(Informe::class, 'orden_id', 'id')
+            ->orWhere('orden_id', -1 * (int)$this->id);
+    }
+
+    public function tieneInforme(): bool
+    {
+        return Informe::where('orden_id', -1 * (int)$this->id)
+            ->orWhere('orden_id', (int)$this->id)
+            ->exists();
+    }
+
+    public function loteOrden()
+    {
+        return $this->hasOne(\App\Models\Accounting\FacturacionLoteOrden::class, 'orden_id', 'id')
+            ->where('tipo_orden', 'empresa');
+    }
+
+    public function adjuntos()
+    {
+        return $this->hasMany(OrdenAdjunto::class, 'orden_empresa_id', 'id');
     }
 }

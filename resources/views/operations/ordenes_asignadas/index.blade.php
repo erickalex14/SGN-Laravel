@@ -214,7 +214,7 @@
 </div>
 </section>
 
-<div id="oa-modal" class="oa-modal-overlay" onclick="cerrarDetalle(event)">
+<div id="oa-modal" class="oa-modal-overlay">
     <div class="oa-modal-box">
         <button class="oa-modal-close" onclick="cerrarModal()">&times;</button>
         <div id="oa-modal-body"></div>

@@ -27,7 +27,7 @@ class RecuperarOrdenController extends Controller
 
         $type = $request->query('type', 'orden'); // default to 'orden'
         $sucursales = Sucursal::orderBy('ciudad')->get();
-        $tecnicos = Usuario::where('activo', 1)->orderBy('nombre_tecnico')->get();
+        $tecnicos = Usuario::tecnicosOperativos()->orderBy('nombre_tecnico')->get();
 
         return view('operations.ordenes.recuperar', compact('sucursales', 'tecnicos', 'type'));
     }

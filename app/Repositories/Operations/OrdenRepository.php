@@ -139,10 +139,13 @@ class OrdenRepository
             'tecnico',
             'sucursal',
             'precioEstandar',
+            'preciosOrden',
             'repuestoInventario',
+            'ordenRepuestos.repuesto',
             'usuarioIngreso',
             'usuarioModificacion',
             'cas',
+            'solicitudesNc',
         ])->find($id);
     }
 
@@ -157,6 +160,7 @@ class OrdenRepository
             'sucursal',
             'cas',
             'ingresadoPor',
+            'ordenRepuestos.repuesto',
         ])->find($id);
     }
 
@@ -228,10 +232,20 @@ class OrdenRepository
         $resultados = collect();
 
         if ($incluirPersonal) {
-            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc']);
+            $queryPersonal = Orden::with(['cliente', 'equipo', 'tecnico', 'sucursal', 'cas', 'informes', 'preciosOrden', 'solicitudesNc', 'loteOrden.lote', 'ordenRepuestos.repuesto']);
 
             if (!empty($filtro->empresa_id)) {
-                $queryPersonal->whereRaw('1 = 0');
+                $isNoviFilter = ((int)$filtro->empresa_id === 1);
+                if ($isNoviFilter) {
+                    $queryPersonal->where(function ($q) {
+                        $q->where('motivo_ingreso', 'LIKE', '%garant%')
+                          ->orWhereNotNull('garantia_tipo')->where('garantia_tipo', '!=', '')
+                          ->orWhereNotNull('estado_garantia')->where('estado_garantia', '!=', '')
+                          ->orWhere('valor_mano_obra', '>', 0);
+                    });
+                } else {
+                    $queryPersonal->whereRaw('1 = 0');
+                }
             }
 
             if (!empty($filtro->fecha_inicio)) {
@@ -243,7 +257,12 @@ class OrdenRepository
             }
 
             if (!empty($filtro->estado)) {
-                $queryPersonal->where('estado_orden', $filtro->estado);
+                $estFiltro = trim((string) $filtro->estado);
+                if (str_starts_with($estFiltro, 'NC') || str_contains(mb_strtolower($estFiltro), 'nota de cred')) {
+                    $queryPersonal->whereIn('estado_orden', ['Nota de Credito', 'NC Aprobada-Abierta', 'NC Aprobada-Cerrada']);
+                } else {
+                    $queryPersonal->where('estado_orden', $estFiltro);
+                }
             }
 
             if (!empty($filtro->estado_repuesto)) {
@@ -282,6 +301,54 @@ class OrdenRepository
                 $queryPersonal->where('cas_id', $filtro->cas_id);
             }
 
+            if (!empty($filtro->garantia_tipo)) {
+                $gtFiltro = strtolower(trim((string) $filtro->garantia_tipo));
+                if ($gtFiltro === 'interna' || $gtFiltro === 'propia') {
+                    $queryPersonal->where(function ($q) {
+                        $q->whereIn('garantia_tipo', ['propia', 'interna'])
+                          ->orWhere(function ($q2) {
+                              $q2->whereNull('garantia_tipo')
+                                 ->whereNull('cas_id')
+                                 ->where(function($q3) {
+                                     $q3->whereNull('garantia_cas')->orWhere('garantia_cas', '');
+                                 });
+                          });
+                    });
+                } elseif ($gtFiltro === 'externa') {
+                    $queryPersonal->where(function ($q) {
+                        $q->where('garantia_tipo', 'externa')
+                          ->orWhereNotNull('cas_id')
+                          ->orWhere(function($q2) {
+                              $q2->whereNotNull('garantia_cas')->where('garantia_cas', '<>', '');
+                          });
+                    });
+                }
+            }
+
+            if (!empty($filtro->estado_facturacion)) {
+                $ef = trim((string) $filtro->estado_facturacion);
+                if ($ef === 'Facturado') {
+                    $queryPersonal->where('estado_facturacion', 'Facturado');
+                } elseif ($ef === 'Pendiente') {
+                    $queryPersonal->where(function($q) {
+                        $q->whereNull('estado_facturacion')
+                          ->orWhere('estado_facturacion', 'Pendiente')
+                          ->orWhere('estado_facturacion', '');
+                    });
+                }
+            }
+
+            if (!empty($filtro->nro_factura)) {
+                $nf = trim((string) $filtro->nro_factura);
+                $queryPersonal->where(function($q) use ($nf) {
+                    $q->where('nro_factura', 'LIKE', "%{$nf}%")
+                      ->orWhere('nro_autorizacion_factura', 'LIKE', "%{$nf}%")
+                      ->orWhereHas('loteOrden.lote', function($ql) use ($nf) {
+                          $ql->where('nro_factura', 'LIKE', "%{$nf}%");
+                      });
+                });
+            }
+
              $personales = $queryPersonal->get()->map(function (Orden $orden) use ($resolverSucursalCliente) {
                 $fechaIngreso = $orden->fecha_de_ingreso ?: null;
                 $fechaPrometida = $orden->fecha_prometido ?: null;
@@ -289,11 +356,47 @@ class OrdenRepository
                 $clienteNombre = trim((string) (($orden->cliente->nombres ?? '') . ' ' . ($orden->cliente->apellidos ?? '')));
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
-                $subtotalAdicionales = $orden->preciosOrden->sum('precio');
-                $subtotalTotal = $subtotalAdicionales + 28.00;
-                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia';
-                $valorNovicompu = $esGarantia ? round(($subtotalTotal * 1.15) * 0.60, 2) : 0.00;
+                $esGarantia = mb_strtolower(trim((string) $orden->motivo_ingreso)) === 'validacion de garantia'
+                    || str_contains(mb_strtolower((string) $orden->motivo_ingreso), 'garant')
+                    || !empty($orden->garantia_tipo)
+                    || !empty($orden->estado_garantia);
+
+                $totalRepuestos = 0.0;
+                if ($orden->ordenRepuestos && $orden->ordenRepuestos->isNotEmpty()) {
+                    foreach ($orden->ordenRepuestos as $orp) {
+                        $cant = (int) ($orp->cantidad ?? 1);
+                        $repPvp = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                        $totalRepuestos += round($cant * $repPvp, 2);
+                    }
+                } else {
+                    $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
+                }
+                $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
+                $moCobrada = round($valMo * 0.50, 2);
+                $baseFija = 14.25;
+
+                $valorNovicompu = ($esGarantia || $valMo > 0) ? round($baseFija + $moCobrada + $totalRepuestos, 2) : 0.00;
                 $valorOtraEmpresa = 0.00;
+
+                $garantiaTipo = (function() use ($orden) {
+                    if ($orden->garantia_tipo === 'externa' || $orden->cas_id || (!empty($orden->garantia_cas) && trim($orden->garantia_cas) !== '')) {
+                        return 'Externa';
+                    }
+                    if ($orden->garantia_tipo === 'propia' || $orden->garantia_tipo === 'interna') {
+                        return 'Interna';
+                    }
+                    $motivo = mb_strtolower(trim((string) $orden->motivo_ingreso));
+                    if (str_contains($motivo, 'garantia') || !empty($orden->estado_garantia)) {
+                        return 'Interna';
+                    }
+                    return !empty($orden->garantia_tipo) ? ucfirst($orden->garantia_tipo) : 'Interna';
+                })();
+
+                $casDestino = ($garantiaTipo === 'Externa' || $orden->cas_id || (!empty($orden->garantia_cas) && trim($orden->garantia_cas) !== ''))
+                    ? ($orden->cas?->nombre ?: ($orden->garantia_cas ?: '-'))
+                    : '-';
+
+                $nroFacturaMilenium = (string) ($orden->loteOrden?->lote?->nro_factura ?? '');
 
                 return [
                     'id' => $orden->id,
@@ -309,6 +412,8 @@ class OrdenRepository
                     'subtipo' => '',
                     'estado_repuesto' => $orden->estado_repuesto,
                     'estado_garantia' => $orden->estado_garantia,
+                    'garantia_tipo' => $garantiaTipo,
+                    'garantia_destino_cas' => $casDestino,
                     'estado_orden' => (function() use ($orden) {
                         if ($orden->estado_orden === 'Nota de Credito') {
                             $solicitudNc = $orden->solicitudesNc->first();
@@ -320,6 +425,13 @@ class OrdenRepository
                     })(),
                     'transferencia_plataforma' => $orden->transferencia_plataforma,
                     'transferencia_numero' => $orden->transferencia_numero,
+                    'estado_facturacion' => $orden->estado_facturacion ?: 'Pendiente',
+                    'nro_factura' => $nroFacturaMilenium,
+                    'nro_factura_compra' => (string) ($orden->nro_factura ?? ''),
+                    'nro_autorizacion_factura' => (string) ($orden->nro_autorizacion_factura ?? ''),
+                    'valor_facturado' => $orden->valor_facturado !== null ? (float) $orden->valor_facturado : ($orden->loteOrden?->lote?->valor_facturado !== null ? (float) $orden->loteOrden->lote->valor_facturado : null),
+                    'lote_facturacion_id' => $orden->loteOrden?->facturacion_lote_id ?? null,
+                    'lote_nro_factura' => $orden->loteOrden?->lote?->nro_factura ?? null,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $clienteNombre,
@@ -333,7 +445,7 @@ class OrdenRepository
                     'serie' => (string) ($orden->equipo->serie ?? ''),
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
-                    'cas_nombre' => (string) ($orden->cas->nombre ?? ''),
+                    'cas_nombre' => $casDestino,
                     'sucursal_cliente' => $resolverSucursalCliente($orden->nro_sucursal_cliente),
                     'dias_transcurridos' => $fechaIngreso ? (
                         in_array($orden->estado_orden, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
@@ -371,7 +483,7 @@ class OrdenRepository
         }
 
         if ($incluirEmpresa) {
-            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal']);
+            $queryEmpresa = OrdenEmpresa::with(['empresa', 'equipo', 'tecnico', 'tecnicos', 'sucursal', 'cas', 'loteOrden.lote', 'ordenRepuestos.repuesto']);
 
             if (!empty($filtro->empresa_id)) {
                 $queryEmpresa->where('empresa_id', $filtro->empresa_id);
@@ -414,7 +526,18 @@ class OrdenRepository
             }
 
             if (!empty($filtro->cas_id)) {
-                $queryEmpresa->whereRaw('1 = 0');
+                $queryEmpresa->where('cas_id', $filtro->cas_id);
+            }
+
+            if (!empty($filtro->garantia_tipo)) {
+                $gtFiltro = strtolower(trim((string) $filtro->garantia_tipo));
+                if ($gtFiltro === 'interna' || $gtFiltro === 'propia') {
+                    $queryEmpresa->where(function ($q) {
+                        $q->whereNull('cas_id')->orWhere('cas_id', 0);
+                    });
+                } elseif ($gtFiltro === 'externa') {
+                    $queryEmpresa->whereNotNull('cas_id')->where('cas_id', '>', 0);
+                }
             }
 
             if (!empty($filtro->estado_repuesto) && mb_strtolower(trim((string) $filtro->estado_repuesto)) !== 'no requerido') {
@@ -424,32 +547,98 @@ class OrdenRepository
                 $queryEmpresa->whereRaw('1 = 0');
             }
 
+            if (!empty($filtro->estado_facturacion)) {
+                $ef = trim((string) $filtro->estado_facturacion);
+                if ($ef === 'Facturado') {
+                    $queryEmpresa->where('estado_facturacion', 'Facturado');
+                } elseif ($ef === 'Pendiente') {
+                    $queryEmpresa->where(function($q) {
+                        $q->whereNull('estado_facturacion')
+                          ->orWhere('estado_facturacion', 'Pendiente')
+                          ->orWhere('estado_facturacion', '');
+                    });
+                }
+            }
+
+            if (!empty($filtro->nro_factura)) {
+                $nf = trim((string) $filtro->nro_factura);
+                $queryEmpresa->where(function($q) use ($nf) {
+                    $q->where('nro_factura', 'LIKE', "%{$nf}%")
+                      ->orWhere('nro_autorizacion_factura', 'LIKE', "%{$nf}%")
+                      ->orWhereHas('loteOrden.lote', function($ql) use ($nf) {
+                          $ql->where('nro_factura', 'LIKE', "%{$nf}%");
+                      });
+                });
+            }
+
             $empresas = $queryEmpresa->get()->map(function (OrdenEmpresa $orden) use ($resolverSucursalCliente) {
                 $nombreEmpresa = $orden->empresa?->nombre ?? 'EMPRESA';
                 $identificacionEmpresa = (string) ($orden->empresa?->ruc ?? $orden->empresa?->identificacion ?? '');
                 $fechaIngreso = $orden->fecha_ingreso ?: null;
                 $equipoNombre = trim((string) (($orden->equipo->tipo ?? '') . ' ' . ($orden->equipo->marca ?? '') . ' ' . ($orden->equipo->modelo ?? '')));
 
-                $esNovisolutionsServicio = ($orden->subtipo === 'Servicios');
-                if ($esNovisolutionsServicio) {
-                    $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
-                    $horas = (float) ($orden->horas_trabajadas ?? 0);
-                    $valHora = (float) ($orden->valor_hora ?? 0);
-                    $subtotalTotal = $cantTecnicos * $horas * $valHora;
+                $cantTecnicos = $orden->tecnicos->isNotEmpty() ? $orden->tecnicos->count() : 1;
+                if ($cantTecnicos <= 0) $cantTecnicos = 1;
+
+                $nombreEmpresaUpper = strtoupper(trim($nombreEmpresa));
+                $isNovisolutions = str_contains($nombreEmpresaUpper, 'NOVI') || str_contains($nombreEmpresaUpper, 'SOLUT') || (int)($orden->empresa_id ?? 0) === 1;
+                $isRbHealth = str_contains($nombreEmpresaUpper, 'RB') || str_contains($nombreEmpresaUpper, 'HEALTH') || (int)($orden->empresa_id ?? 0) === 2;
+
+                // Repuestos usados
+                $totalRepuestos = 0.0;
+                if ($orden->ordenRepuestos && $orden->ordenRepuestos->isNotEmpty()) {
+                    foreach ($orden->ordenRepuestos as $orp) {
+                        $cant = (int) ($orp->cantidad ?? 1);
+                        $repPvp = (float) (($orp->repuesto && (float)$orp->repuesto->pvp > 0) ? $orp->repuesto->pvp : ($orp->repuesto->costo ?? 0.0));
+                        $totalRepuestos += round($cant * $repPvp, 2);
+                    }
                 } else {
-                    $subtotalTotal = 28.00;
+                    $totalRepuestos = (float) ($orden->valor_repuestos ?? 0);
                 }
 
-                $esNovisolutions = (strtoupper(trim($nombreEmpresa)) === 'NOVISOLUTONS CIA. LTDA.');
-                
+                $valMo = (float) ($orden->valor_mano_obra ?? 0.0);
+                $moCobrada = round($valMo * 0.50, 2);
+
                 $valorNovicompu = 0.00;
                 $valorOtraEmpresa = 0.00;
 
-                if ($esNovisolutions) {
-                    $valorNovicompu = round($subtotalTotal, 2);
+                $subtipoLower = mb_strtolower(trim((string) $orden->subtipo));
+                $valHora = (float) ($orden->valor_hora ?? 0.0);
+                $horas = (float) ($orden->horas_trabajadas ?? 1.0);
+                if ($horas <= 0) $horas = 1.0;
+
+                $esServicio = ($subtipoLower === 'servicios') || ($valHora > 0 && (float)($orden->horas_trabajadas ?? 0) > 0);
+
+                if ($esServicio) {
+                    // Cálculo oficial servicio a empresa: cantidad técnicos * horas trabajadas * valor por hora
+                    if ($valHora <= 0) {
+                        $valHora = $isRbHealth ? 52.0 : 50.0;
+                    }
+                    $cobroHoras = round($cantTecnicos * $horas * $valHora, 2);
+                    $moAdicional = $valMo; // Si tiene mano de obra técnica adicional
+                    $totalCalculado = round($cobroHoras + $moAdicional + $totalRepuestos, 2);
+
+                    if ($isNovisolutions) {
+                        $valorNovicompu = $totalCalculado;
+                    } else {
+                        $valorOtraEmpresa = $totalCalculado;
+                    }
+                } elseif ($isNovisolutions) {
+                    // Regla oficial Novisolutions Stock / Autoconsumo / Garantía: Base Fija $14.25 + Mano de obra (-50%) + Repuestos (100%)
+                    $baseFija = 14.25;
+                    $valorNovicompu = round($baseFija + $moCobrada + $totalRepuestos, 2);
+                } elseif ($isRbHealth) {
+                    $tarifa = 52.0;
+                    $valorOtraEmpresa = round(($horas * $tarifa) + $totalRepuestos, 2);
                 } else {
-                    $valorOtraEmpresa = round($subtotalTotal, 2);
+                    $tarifa = (float) ($orden->presupuesto ?? $orden->total ?? 50.0);
+                    $valorOtraEmpresa = round(($tarifa > 0 ? $tarifa : 50.0) + $totalRepuestos, 2);
                 }
+
+                $garantiaTipo = ($orden->cas_id && $orden->cas_id > 0) ? 'Externa' : (str_contains(mb_strtolower((string)$orden->subtipo), 'garantia') ? 'Interna' : '-');
+                $casDestino = ($orden->cas_id && $orden->cas_id > 0) ? ($orden->cas?->nombre ?: 'CAS #'.$orden->cas_id) : '-';
+
+                $nroFacturaMilenium = (string) ($orden->loteOrden?->lote?->nro_factura ?? ($orden->estado_facturacion === 'Facturado' ? $orden->nro_factura : ''));
 
                 return [
                     'id' => 'empresa-' . $orden->id,
@@ -465,9 +654,17 @@ class OrdenRepository
                     'subtipo' => $orden->subtipo,
                     'estado_repuesto' => 'No requerido',
                     'estado_garantia' => '',
+                    'garantia_tipo' => $garantiaTipo,
+                    'garantia_destino_cas' => $casDestino,
                     'estado_orden' => $orden->estado,
                     'transferencia_plataforma' => null,
                     'transferencia_numero' => null,
+                    'estado_facturacion' => $orden->estado_facturacion ?: 'Pendiente',
+                    'nro_factura' => $nroFacturaMilenium,
+                    'nro_autorizacion_factura' => (string) ($orden->nro_autorizacion_factura ?? ''),
+                    'valor_facturado' => $orden->valor_facturado !== null ? (float) $orden->valor_facturado : ($orden->loteOrden?->lote?->valor_facturado !== null ? (float) $orden->loteOrden->lote->valor_facturado : null),
+                    'lote_facturacion_id' => $orden->loteOrden?->facturacion_lote_id ?? null,
+                    'lote_nro_factura' => $orden->loteOrden?->lote?->nro_factura ?? null,
                     'tecnico_id' => $orden->tecnico_id,
                     'sucursal_id' => $orden->sucursal_id,
                     'cliente_nombre' => $nombreEmpresa,
@@ -481,7 +678,7 @@ class OrdenRepository
                     'serie' => (string) ($orden->equipo->serie ?? ''),
                     'tecnico_nombre' => (string) ($orden->tecnico->nombre_tecnico ?? ''),
                     'sucursal_nombre' => (string) ($orden->sucursal->ciudad ?? ''),
-                    'cas_nombre' => '',
+                    'cas_nombre' => $casDestino,
                     'sucursal_cliente' => $resolverSucursalCliente($orden->nro_sucursal_cliente),
                     'dias_transcurridos' => $fechaIngreso ? (
                         in_array($orden->estado, ['Finalizada', 'Entregada', 'Devuelto sin reparar', 'Nota de Credito', 'REPARADO', 'ENTREGADO', 'DEVUELTO SIN REPARAR'], true)
@@ -489,12 +686,12 @@ class OrdenRepository
                         : now()->diffInDays(Carbon::parse($fechaIngreso))
                     ) : null,
                     'vencida' => $orden->fecha_prometido ? Carbon::parse($orden->fecha_prometido)->isPast() : false,
-                    'falla_reportada' => $esNovisolutionsServicio ? $orden->descripcion : ($orden->equipo->falla ?? ''),
+                    'falla_reportada' => $esServicio ? $orden->descripcion : ($orden->equipo->falla ?? ''),
                     'observacion' => $orden->equipo->observacion ?? '',
-                    'tecnico_lider' => $esNovisolutionsServicio ? ($orden->tecnico->nombre_tecnico ?? '') : '',
-                    'tecnicos_asignados' => $esNovisolutionsServicio ? $orden->tecnicos->pluck('nombre_tecnico')->implode(', ') : '',
-                    'cantidad_tecnicos' => $esNovisolutionsServicio ? $cantTecnicos : 1,
-                    'horas_trabajadas' => $esNovisolutionsServicio ? (float) ($orden->horas_trabajadas ?? 0) : 0,
+                    'tecnico_lider' => $esServicio ? ($orden->tecnico->nombre_tecnico ?? '') : '',
+                    'tecnicos_asignados' => $esServicio ? $orden->tecnicos->pluck('nombre_tecnico')->implode(', ') : '',
+                    'cantidad_tecnicos' => $esServicio ? $cantTecnicos : 1,
+                    'horas_trabajadas' => $esServicio ? (float) ($orden->horas_trabajadas ?? 0) : 0,
                     'cliente' => [
                         'nombres' => $nombreEmpresa,
                         'apellidos' => '',

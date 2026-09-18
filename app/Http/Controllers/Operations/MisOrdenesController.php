@@ -77,11 +77,30 @@ class MisOrdenesController extends Controller
                 $estadoAnterior = $orden ? $orden->estado_orden : '';
             }
 
+            $fotoEvidenciaPath = null;
+            if ($request->hasFile('foto_evidencia')) {
+                $file = $request->file('foto_evidencia');
+                if ($file && $file->isValid()) {
+                    $prefix = $tipoOrden === 'empresa' ? 'empresa_' : '';
+                    $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                    $filename = 'evidencia_' . $prefix . $ordenId . '_' . time() . '_' . uniqid() . '.' . $extension;
+                    $path = $file->storeAs('evidencias_entrega', $filename, 'public');
+                    $fotoEvidenciaPath = '/storage/' . $path;
+                }
+            }
+
+            $tituloServicio = $request->filled('titulo_servicio') ? trim((string) $request->input('titulo_servicio')) : null;
+            $valorManoObra = $request->filled('valor_mano_obra') ? (float) $request->input('valor_mano_obra') : null;
+
             $dto = new CambiarEstadoOrdenDTO(
                 $ordenId,
                 (string) $request->input('estado'),
                 $request->input('nc_asunto'),
-                $request->input('nc_detalles')
+                $request->input('nc_detalles'),
+                $request->input('memo_entrega'),
+                $fotoEvidenciaPath,
+                $tituloServicio,
+                $valorManoObra
             );
 
             $usuarioModificacionId = (int) session('tecnico_id', 0);
@@ -110,7 +129,11 @@ class MisOrdenesController extends Controller
                     $usuarioModificacionId,
                     $esAdmin,
                     $horasTrabajadas,
-                    $valorHora
+                    $valorHora,
+                    $request->input('memo_entrega'),
+                    $fotoEvidenciaPath,
+                    $tituloServicio,
+                    $valorManoObra
                 );
 
                 if ($orden) {
@@ -134,9 +157,19 @@ class MisOrdenesController extends Controller
                     );
                 }
 
+                $ordenActualizada = \App\Models\Operations\OrdenEmpresa::find($ordenId);
                 return response()->json([
                     'ok' => true,
-                    'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.'
+                    'mensaje' => 'El estado de la orden de empresa ha sido actualizado correctamente.',
+                    'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath,
+                    'fecha_modificacion' => $ordenActualizada?->fecha_modificacion,
+                    'fecha_recibida_tecnico' => $ordenActualizada?->fecha_recibida_tecnico,
+                    'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
+                    'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
+                    'fecha_entrega' => $ordenActualizada?->fecha_entrega,
+                    'titulo_servicio' => $ordenActualizada?->titulo_servicio,
+                    'valor_mano_obra' => (float) ($ordenActualizada?->valor_mano_obra ?? 0),
+                    'valor_repuestos' => (float) ($ordenActualizada?->valor_repuestos ?? 0),
                 ]);
             }
 
@@ -163,9 +196,19 @@ class MisOrdenesController extends Controller
                 );
             }
 
+            $ordenActualizada = \App\Models\Operations\Orden::find($ordenId);
             return response()->json([
                 'ok'      => true,
-                'mensaje' => 'El estado de la orden ha sido actualizado correctamente.'
+                'mensaje' => 'El estado de la orden ha sido actualizado correctamente.',
+                'foto_evidencia_entrega' => $ordenActualizada?->foto_evidencia_entrega ?? $fotoEvidenciaPath,
+                'fecha_modificacion' => $ordenActualizada?->fecha_modificacion,
+                'fecha_recibida_tecnico' => $ordenActualizada?->fecha_recibida_tecnico,
+                'fecha_finalizacion' => $ordenActualizada?->fecha_finalizacion,
+                'fecha_lista_entrega' => $ordenActualizada?->fecha_lista_entrega,
+                'fecha_entrega' => $ordenActualizada?->fecha_entrega,
+                'titulo_servicio' => $ordenActualizada?->titulo_servicio,
+                'valor_mano_obra' => (float) ($ordenActualizada?->valor_mano_obra ?? 0),
+                'valor_repuestos' => (float) ($ordenActualizada?->valor_repuestos ?? 0),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -665,6 +708,10 @@ class MisOrdenesController extends Controller
 
     private function resolverEsAdmin(): bool
     {
+        if (session('es_admin_lectura') === true) {
+            return false;
+        }
+
         $permisos = (array) session('permisos', []);
 
         return (bool) session('es_superadmin', false)

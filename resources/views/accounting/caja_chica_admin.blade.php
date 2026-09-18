@@ -311,6 +311,7 @@
 
             if (c.estado === 'Cerrada' && _esSuperAdmin) {
                 actionButtons += `
+                    <button type="button" class="btn btn-sm btn-warning p-1 py-0 me-1 text-dark fw-bold" onclick="reabrirCaja(${c.id})" title="Reabrir Caja Cerrada por Error"><i class="bi bi-unlock"></i> Reabrir</button>
                     <button type="button" class="btn btn-sm btn-success p-1 py-0 me-1" onclick="mostrarModalReembolso(${c.id}, ${totalGastado})" title="Reembolsar y Abrir Siguiente"><i class="bi bi-cash-coin"></i> Reembolsar</button>
                 `;
             }
@@ -559,7 +560,7 @@
     async function exportarExcel(id) {
         Swal.showLoading();
         try {
-            const res = await fetch(`${_apiUrl}/api/cajachica/${id}/export`, {
+            const res = await fetch(`${_apiUrl}/api/cajachica/${id}/export?token=${encodeURIComponent(_jwtToken)}`, {
                 method: 'GET',
                 headers: getHeaders()
             });
@@ -601,6 +602,66 @@
         const d = new Date(isoStr);
         d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
         return d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    async function reabrirCaja(id) {
+        const confirm = await Swal.fire({
+            title: '¿Reabrir Caja Chica?',
+            text: 'La caja chica volverá a estar en estado ABIERTA para permitir registrar o editar comprobantes.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, Reabrir',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#f59e0b'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`${_apiUrl}/api/cajachica/${id}/reopen`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    Swal.fire('Caja Reabierta', data.message, 'success');
+                    cargarCajasAdmin();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo reabrir la caja.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Fallo de conexión.', 'error');
+            }
+        }
+    }
+
+    async function forzarCerrarCaja(id) {
+        const confirm = await Swal.fire({
+            title: '¿Cerrar Caja Chica?',
+            text: 'La caja chica cambiará su estado a CERRADA.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, Cerrar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc2626'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`${_apiUrl}/api/cajachica/${id}/close`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    Swal.fire('Caja Cerrada', data.message, 'success');
+                    cargarCajasAdmin();
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo cerrar la caja.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Fallo de conexión.', 'error');
+            }
+        }
     }
 
     function _h(str) {

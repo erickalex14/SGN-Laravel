@@ -48,6 +48,18 @@ class UsuarioRepository
             ->leftJoin('ordenes as o', 'o.tecnico_id', '=', 'u.id')
             ->where('u.activo', 1)
             ->whereNotNull('u.nombre_tecnico')
+            ->where(function ($q) {
+                $q->whereIn('u.grupo_id', [1, 2, 3, 4, 5])
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('u.grupo_id')
+                          ->whereIn('u.rol_id', [1, 2, 3, 4]);
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('u.grupo_id', [8, 9])
+                  ->orWhereNull('u.grupo_id');
+            })
+            ->whereNull('u.sucursal_cliente_id')
             ->when(! $verTodos, function ($query) use ($sucursalId, $tecnicoActualId, $casIds) {
                 if (! empty($casIds)) {
                     $query->where(function ($q) use ($casIds, $tecnicoActualId) {
@@ -118,6 +130,19 @@ class UsuarioRepository
             ->from('usuarios as u')
             ->where('u.id', $tecnicoId)
             ->where('u.activo', 1)
+            ->whereNotNull('u.nombre_tecnico')
+            ->where(function ($q) {
+                $q->whereIn('u.grupo_id', [1, 2, 3, 4, 5])
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('u.grupo_id')
+                          ->whereIn('u.rol_id', [1, 2, 3, 4]);
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('u.grupo_id', [8, 9])
+                  ->orWhereNull('u.grupo_id');
+            })
+            ->whereNull('u.sucursal_cliente_id')
             ->where(function ($query) use ($verTodos, $sucursalId, $tecnicoActualId, $casIds) {
                 $esSuperadmin = (bool) session('es_superadmin', false);
                 if ($esSuperadmin && $verTodos) {

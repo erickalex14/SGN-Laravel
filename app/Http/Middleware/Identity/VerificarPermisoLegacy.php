@@ -27,6 +27,10 @@ class VerificarPermisoLegacy
             return $next($request);
         }
 
+        if ($this->puedeAccederPresupuestos($request, $modulo, $accion)) {
+            return $next($request);
+        }
+
         $permisos = (array) session('permisos', []);
         $tienePermiso = $this->tienePermiso($permisos, $modulo, $accion);
 
@@ -67,9 +71,12 @@ class VerificarPermisoLegacy
         $modulosRevisar = array_values(array_unique($modulosRevisar));
 
         $accionesRevisar = [$accionNorm];
-        // En el flujo legacy, "editar" suele implicar gestión completa del módulo.
+        // En el flujo legacy, "editar" o "ver" en repuestos suele implicar gestión del módulo.
         if ($accionNorm === 'crear') {
             $accionesRevisar[] = 'editar';
+            if (in_array($moduloNorm, ['repuestos_admin', 'inv_repuestos'], true)) {
+                $accionesRevisar[] = 'ver';
+            }
         }
         $accionesRevisar = array_values(array_unique($accionesRevisar));
 
@@ -145,6 +152,27 @@ class VerificarPermisoLegacy
         $ruta = (string) ($request->route()?->getName() ?? '');
 
         return in_array($ruta, $rutasTecnico, true) && $request->user() !== null;
+    }
+
+    private function puedeAccederPresupuestos(Request $request, string $modulo, string $accion): bool
+    {
+        if ($this->norm($modulo) !== 'presupuestos') {
+            return false;
+        }
+
+        $usuario = $request->user();
+        if (!$usuario) {
+            return false;
+        }
+
+        $grupo = $this->norm((string) session('grupo_nombre', $usuario->grupo?->nombre ?? ''));
+        $rol = $this->norm((string) session('rol_nombre', $usuario->rol?->rol ?? ''));
+
+        if (session('es_recepcion') === true || in_array($grupo, ['recepcion', 'recepción'], true) || in_array($rol, ['recepcion', 'recepcionista'], true)) {
+            return true;
+        }
+
+        return true; // Cualquier usuario operativo autenticado (técnicos, recepción, etc.) puede generar presupuestos
     }
 
     private function norm(string $value): string

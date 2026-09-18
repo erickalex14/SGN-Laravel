@@ -235,12 +235,15 @@
     padding: 3px 10px;
     border-radius: 20px;
 }
-.st-pendiente  { background:#fef9c3; color:#854d0e; }
-.st-proceso    { background:#dbeafe; color:#1e40af; }
-.st-finalizada { background:#dcfce7; color:#166534; }
-.st-entregada  { background:#ecfdf5; color:#047857; }
-.st-nc         { background:#fce7f3; color:#9d174d; }
-.st-otro       { background:#f1f5f9; color:#475569; }
+.st-recibido-recepcion { background:#f1f5f9; color:#475569; }
+.st-recibida            { background:#e0f2fe; color:#0369a1; }
+.st-pendiente           { background:#fef9c3; color:#854d0e; }
+.st-proceso             { background:#dbeafe; color:#1e40af; }
+.st-finalizada          { background:#dcfce7; color:#166534; }
+.st-lista-entrega       { background:#fef3c7; color:#92400e; }
+.st-entregada           { background:#ecfdf5; color:#047857; }
+.st-nc                  { background:#fce7f3; color:#9d174d; }
+.st-otro                { background:#f1f5f9; color:#475569; }
 
 .bo-card-info {
     display: grid;
@@ -623,11 +626,14 @@
     /* ── Estado visual ────────────────────────────────────────── */
     function claseEstado(v) {
         var t = (v || '').toLowerCase().trim();
-        if (t === 'pendiente' || t === 'abierta') return 'st-pendiente';
-        if (t === 'en proceso')                   return 'st-proceso';
-        if (t === 'finalizada')                   return 'st-finalizada';
-        if (t === 'entregada')                    return 'st-entregada';
-        if (t === 'nota de credito')              return 'st-nc';
+        if (t === 'recibido en recepcion' || t === 'ingreso') return 'st-recibido-recepcion';
+        if (t === 'entregado al tecnico' || t === 'recibida') return 'st-recibida';
+        if (t === 'pendiente' || t === 'abierta')             return 'st-pendiente';
+        if (t === 'en reparacion' || t === 'en proceso')      return 'st-proceso';
+        if (t === 'reparada' || t === 'finalizada')           return 'st-finalizada';
+        if (t === 'entregado en recepcion para entrega' || t === 'lista para entrega') return 'st-lista-entrega';
+        if (t === 'cerrado' || t === 'entregada')             return 'st-entregada';
+        if (t === 'nota de credito')                          return 'st-nc';
         return 'st-otro';
     }
 
@@ -635,6 +641,11 @@
         var out = '<span class="bo-badge ' + claseEstado(o.estado_orden) + '">' + (o.estado_orden || '—') + '</span>';
         if (o.estado_repuesto && o.estado_repuesto !== 'No requerido') {
             out += ' <span class="bo-badge st-otro">' + o.estado_repuesto + '</span>';
+        }
+        if (o.motivo_ingreso === 'Validacion de Garantia' || o.empresa_garantia) {
+            var empG = o.empresa_garantia || 'NOVISOLUTIONS';
+            var colorStyle = empG === 'ENV' ? 'background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;' : 'background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;';
+            out += ' <span class="bo-badge" style="' + colorStyle + '">Garantía ' + escHtml(empG) + '</span>';
         }
         return out;
     }
@@ -717,7 +728,10 @@
                         campo('Sucursal',    o.sucursal || '—') +
                         campo('Técnico',     o.tecnico  || '—') +
                         campo('Ingreso',     o.fecha_de_ingreso || '—') +
-                        campo('Entrega prom.', o.fecha_entrega || '—') +
+                        campo('Prometido',   o.fecha_prometido  || '—') +
+                        campo('Finalización',o.fecha_finalizacion || '—') +
+                        campo('Entrega',     o.fecha_entrega    || '—') +
+                        campo('Últ. Modif.', o.fecha_modificacion || '—') +
                         campo(esEmpresa ? 'Nro. Ticket' : 'Nro. Factura', facturas) +
                     '</div>' +
                     (o.motivo_ingreso
@@ -758,6 +772,20 @@
                     (o.observacion
                         ? '<div class="bo-det-lbl" style="margin-bottom:4px;">Observación</div>' +
                           '<div class="bo-text-block">' + escHtml(o.observacion) + '</div>'
+                        : '') +
+                    (o.memo_entrega || o.foto_evidencia_entrega || ['entregada', 'entregado'].includes(String(o.estado_orden || '').toLowerCase())
+                        ? '<div class="bo-det-lbl" style="margin-top:10px;margin-bottom:4px;color:#047857;font-weight:700;"><i class="bi bi-file-earmark-check me-1"></i>Memo de Entrega</div>' +
+                          '<div class="bo-text-block" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-weight:500;margin-bottom:8px;">' +
+                            escHtml(o.memo_entrega || 'Orden entregada al cliente.') +
+                          '</div>' +
+                          (o.foto_evidencia_entrega
+                            ? '<div style="margin-top:8px;">' +
+                                '<div class="bo-det-lbl" style="margin-bottom:4px;color:#047857;font-size:11.5px;font-weight:700;"><i class="bi bi-camera-fill me-1"></i>Foto de Evidencia de Entrega:</div>' +
+                                '<a href="' + escHtml(o.foto_evidencia_entrega.startsWith('http') || o.foto_evidencia_entrega.startsWith('/') ? o.foto_evidencia_entrega : '/' + o.foto_evidencia_entrega) + '" target="_blank" title="Clic para abrir foto en tamaño completo" style="display:inline-block;border-radius:10px;overflow:hidden;border:2px solid #86efac;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:transform 0.15s ease;">' +
+                                    '<img src="' + escHtml(o.foto_evidencia_entrega.startsWith('http') || o.foto_evidencia_entrega.startsWith('/') ? o.foto_evidencia_entrega : '/' + o.foto_evidencia_entrega) + '" alt="Evidencia de entrega" style="max-width:100%;max-height:220px;object-fit:cover;display:block;border-radius:8px;cursor:pointer;" onerror="this.parentElement.style.display=\'none\'">' +
+                                '</a>' +
+                              '</div>'
+                            : '')
                         : '') +
                 '</div>' +
             '</div>' +

@@ -51,19 +51,14 @@
         ]
     ]);
 
-    // Cálculos de subtotal y totales
-    $subtotalAdicionales = $preciosAdicionales->sum('precio');
-    $subtotalEstandar = $preciosEstandar->sum('precio');
-    $subtotalTotal = $subtotalAdicionales + $subtotalEstandar;
-
-    // Descuento 100% si es Validación de Garantía y el estado de la garantía no es Rechazada
-    $esGarantiaRechazada = trim(strtolower((string)($orden->estado_garantia ?? ''))) === 'rechazada';
-    $aplicaDescuento = $esGarantia && !$esGarantiaRechazada;
-
-    $descuento = $aplicaDescuento ? $subtotalTotal : 0;
-    $baseIva = $subtotalTotal - $descuento;
-    $iva = $baseIva * 0.15;
-    $total = $baseIva + $iva;
+    // Fuente única: Caja, factura y orden impresa usan exactamente el mismo cálculo.
+    $calculoFacturacion = app(\App\Services\Facturacion\OrderBillingCalculator::class)->calculate($orden);
+    $subtotalTotal = $calculoFacturacion['subtotal'];
+    $descuento = $calculoFacturacion['discount'];
+    $baseIva = $calculoFacturacion['taxable'];
+    $iva = $calculoFacturacion['tax'];
+    $total = $calculoFacturacion['total'];
+    $aplicaDescuento = $descuento > 0;
 
     $hayPrecios = $preciosAdicionales->isNotEmpty() || $preciosEstandar->isNotEmpty();
 @endphp
@@ -167,17 +162,21 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
         </tr>
         <tr>
             <td colspan="2"><span class="lbl">Sucursal del Cliente</span>{{ $nombreSucursalCliente ?? '-' }}</td>
-            <td colspan="2"></td>
+            @if($esGarantia)
+                <td colspan="2"><span class="lbl">Empresa de la Garantía</span><strong style="color:#1e40af; font-size:7.5pt;">{{ $orden->empresa_garantia ?: 'NOVISOLUTIONS' }}</strong></td>
+            @else
+                <td colspan="2"></td>
+            @endif
         </tr>
     </table>
 
-    <div class="sec-titulo">Tecnico Responsable</div>
+    <div class="sec-titulo">Personal Asignado y Recepción</div>
     <table class="datos">
         <tr>
-            <td width="25%"><span class="lbl">Tecnico Asignado</span>{{ $tecnico?->nombre_tecnico ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Correo</span>{{ $tecnico?->correo_tec ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Contacto</span>{{ $sucursal?->nro_base ?? '-' }}</td>
-            <td width="25%"><span class="lbl">Ingresado por</span>{{ $usuarioIngreso?->nombre_tecnico ?? $usuarioIngreso?->usuario ?? '-' }}</td>
+            <td width="25%"><span class="lbl">Recepcionista / Ingresado por</span><b>{{ $usuarioIngreso?->nombre_tecnico ?? ($usuarioIngreso?->usuario ?? '-') }}</b></td>
+            <td width="25%"><span class="lbl">Técnico Asignado</span><b>{{ $tecnico?->nombre_tecnico ?? '-' }}</b></td>
+            <td width="25%"><span class="lbl">Correo Técnico</span>{{ $tecnico?->correo_tec ?? '-' }}</td>
+            <td width="25%"><span class="lbl">Contacto Sucursal</span>{{ $sucursal?->nro_base ?? '-' }}</td>
         </tr>
         <tr>
             <td width="25%"><span class="lbl">Fecha Prometido</span>{{ $orden->fecha_prometido ? \Carbon\Carbon::parse($orden->fecha_prometido)->format('d/m/Y') : '-' }}</td>
@@ -227,9 +226,31 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
                 </span>
             </td>
             <td colspan="2">
-                @if($estadoRepuesto !== 'No requerido' && ($repuesto?->codigo || $repuesto?->nombre))
+                @php
+                    $repuestosAsignados = $orden->ordenRepuestos ?? collect();
+                    $tieneRepuestos = $repuestosAsignados->isNotEmpty();
+                @endphp
+                @if($tieneRepuestos)
+                    <span class="lbl">Repuesto(s) Asignado(s)</span>
+                    <div style="margin-top:2px;">
+                        @foreach($repuestosAsignados as $or)
+                            <div style="font-size:7pt; margin-bottom:1px;">
+                                <strong style="color:#b45309; font-family:monospace;">{{ $or->repuesto->codigo ?? '-' }}</strong>
+                                @if(!empty($or->repuesto->nombre))
+                                    - {{ $or->repuesto->nombre }}
+                                @endif
+                                @if($or->cantidad > 1)
+                                    <span style="font-weight:700; color:#475569;">(x{{ $or->cantidad }})</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @elseif($estadoRepuesto !== 'No requerido' && ($repuesto?->codigo || $repuesto?->nombre))
                     <span class="lbl">Repuesto Asignado</span>
                     {{ trim(($repuesto?->codigo ? $repuesto->codigo . ' - ' : '') . ($repuesto?->nombre ?? '')) ?: '-' }}
+                @else
+                    <span class="lbl">Repuesto Asignado</span>
+                    -
                 @endif
             </td>
         </tr>
@@ -369,11 +390,11 @@ table.precios-tbl tr.sep-row td { background: #f8fafc; font-weight: 700; font-si
     </div>
 
     <div style="margin-top:8px;padding:5px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:3px;font-size:7.5pt;color:#713f12;text-align:center;">
-        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 + IVA</b>.
+        <b>NOTA:</b> La p&eacute;rdida o reimpresi&oacute;n del presente documento de orden de trabajo tendr&aacute; un valor de <b>$5,00 d&oacute;lares</b>.
     </div>
 
     <div class="firmas">
-        <div class="firma-box"><div class="firma-linea">Recibido por:</div></div>
+        <div class="firma-box"><div class="firma-linea">Recibido por: {{ $usuarioIngreso?->nombre_tecnico ?? ($usuarioIngreso?->usuario ?? 'Recepción') }}</div></div>
         <div class="firma-box"><div class="firma-linea">Firma del cliente:</div></div>
     </div>
 

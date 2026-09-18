@@ -430,7 +430,7 @@ class InformeRepository
         return DB::table('usuarios')
             ->select(['id', 'nombre_tecnico'])
             ->where('activo', 1)
-            ->when(!$esMaster && $sucursalId > 0, fn ($q) => $q->where('sucursal_id', $sucursalId))
+            ->when(!$esMaster && $sucursalId > 0, fn ($q) => $q->where('u.sucursal_id', $sucursalId))
             ->orderBy('nombre_tecnico')
             ->get();
     }
